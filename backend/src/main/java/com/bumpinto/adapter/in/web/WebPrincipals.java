@@ -1,7 +1,7 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.ForbiddenException;
-import com.bumpinto.infra.ParticipantPrincipal;
+import com.bumpinto.application.error.ForbiddenException;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.UUID;

@@ -1,0 +1,39 @@
+info:
+  name: Force Decision
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/force-decision"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "venueId": null
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Iki kullanim var:
+
+    - **Kismi katilimla degerlendir:** govde bos/`venueId: null` — herkes bitirmeden
+      karar motorunu mevcut begenilerle calistirir.
+    - **Runoff beraberligini boz:** `venueId` verilir, o mekan secilir.
+
+    Govde tamamen opsiyoneldir (`required = false`).

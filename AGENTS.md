@@ -92,6 +92,20 @@ Inline (read, decide, act in the main session) is the normal mode.
 - After changes, run affected package/module tests by default.
 - Run full workspace build/tests only when cross-package impact exists or user asks.
 
+## API Collection Policy
+
+- Every new or changed HTTP endpoint MUST get a matching Bruno request in
+  `backend/.infra/bumpinto-collection/`. This is part of the endpoint's definition of done,
+  not a follow-up chore.
+- Format is the OpenCollection spec (`opencollection.yml` at the root, requests as `*.yml`
+  with `info` / `http` / `runtime` / `settings`) — NOT the legacy `bruno.json` + `.bru` layout.
+- Put the request in the folder matching its controller; set `seq` so the folder reads in
+  call order. Chain variables with `bru.setVar` so the collection is runnable top to bottom.
+- Real secrets are never written to these files. Environment files declare them as
+  `secret: true` with an empty value; the user fills them in via the Bruno UI.
+- Each request carries a short `docs:` block stating auth level, validation limits and
+  rate limit — the collection doubles as the hand-written API reference.
+
 ## Skills Policy
 
 Use relevant superpowers skills proactively:

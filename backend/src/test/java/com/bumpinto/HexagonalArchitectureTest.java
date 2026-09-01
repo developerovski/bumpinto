@@ -42,4 +42,18 @@ class HexagonalArchitectureTest {
                             + "|java\\.sql\\.Connection"
                             + "|java\\.sql\\.Statement"
                             + "|java\\.sql\\.PreparedStatement");
+
+    // Katman koklerinde sinif durmaz: her sinif bir ilgi alani alt paketinde yasar.
+    // Aksi halde infra/ ve application/ zamanla duz bir cop kutusuna doner (2026-09-01
+    // yeniden paketlemesinin sebebi buydu). Yalniz BumpintoApplication kokte kalir.
+    @ArchTest
+    static final ArchRule noClassesSitInLayerRoots = noClasses()
+            .that().resideOutsideOfPackage("com.bumpinto")
+            .should().resideInAnyPackage(
+                    "com.bumpinto.domain",
+                    "com.bumpinto.application",
+                    "com.bumpinto.infra",
+                    "com.bumpinto.adapter",
+                    "com.bumpinto.adapter.in",
+                    "com.bumpinto.adapter.out");
 }

@@ -4,7 +4,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.VenueCandidate;
-import com.bumpinto.infra.AppProps;
+import com.bumpinto.infra.config.AppProps;
 import kong.unirest.core.HttpResponse;
 import kong.unirest.core.JsonNode;
 import kong.unirest.core.UnirestInstance;
@@ -19,7 +19,12 @@ import java.util.Map;
 @Component
 public class FoursquareVenueProvider implements VenueProviderPort {
 
-    // FSQ OS Places kategori kimlikleri.
+    /**
+     * FSQ OS Places kategori kimlikleri. Bilerek EKSIK: yalnizca Plan 2'den devralinan bes tur
+     * burada. FSQ taksonomiyi yalnız Observable iframe'inde yayinladigi icin yeni turlerin
+     * kimligi dogrulanamiyor; tahmin kimlik hata vermez, sessizce yanlis mekan listeler.
+     * Eslenmemis tur Google'a devredilir (bkz. search + ResilientVenueProvider).
+     */
     static final Map<ActivityType, String> CATEGORIES = Map.of(
             ActivityType.COFFEE, "13032",
             ActivityType.FOOD, "13065",
@@ -42,13 +47,19 @@ public class FoursquareVenueProvider implements VenueProviderPort {
     @Override
     public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
                                        int limit) {
+        String category = CATEGORIES.get(type);
+        if (category == null) {
+            // Kategorisiz arama YAPMA: FSQ o zaman filtresiz sonuc doner ve "sinema" isteyen
+            // kullaniciya kafe listeler. Bos donersek Resilient katmani Google'a gecer.
+            return List.of();
+        }
         HttpResponse<JsonNode> response = http.get(SEARCH_URL)
                 .header("Authorization", "Bearer " + apiKey)
                 .header("X-Places-Api-Version", API_VERSION)
                 .header("Accept", "application/json")
                 .queryString("ll", center.lat() + "," + center.lng())
                 .queryString("radius", (int) Math.min(radiusKm * 1000, 100000))
-                .queryString("fsq_category_ids", CATEGORIES.get(type))
+                .queryString("fsq_category_ids", category)
                 .queryString("limit", Math.min(limit, 50))
                 .queryString("fields", FIELDS)
                 .asJson();

@@ -1,6 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.infra.AuthCookies;
+import com.bumpinto.infra.security.AuthCookies;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;

@@ -1,0 +1,40 @@
+info:
+  name: Get Session
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/sessions/{{slug}}"
+  headers:
+    - name: X-Participant-Token
+      value: "{{participantToken}}"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.venues && res.body.venues.length > 0) {
+          bru.setVar("venueId", res.body.venues[0].id);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i VEYA host JWT ile erisilir. Alanlar duruma gore doldurulur:
+    deste yalnizca SWIPING'de, oy sayimi RUNOFF'ta, `decidedVenueId` DECIDED'da.
+
+    Suresi dolmus oturum burada `EXPIRED` raporlanir — DB'ye yazilmaz, hesaplanan durumdur.
+
+    `venues[].travelMinutes` **participantId** ile anahtarlidir (displayName degil —
+    ayni isimli iki katilimci veri kaybina yol aciyordu).
+
+    Bu istek destedeki ilk mekani `venueId` degiskenine yazar; Deck istekleri onu kullanir.

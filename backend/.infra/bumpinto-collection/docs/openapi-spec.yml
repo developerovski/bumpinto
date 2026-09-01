@@ -1,0 +1,21 @@
+info:
+  name: OpenAPI Spec
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/v3/api-docs"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc. Plan 3 (web) ve Plan 4 (mobil) istemci kodunu bu ciktidan uretir.

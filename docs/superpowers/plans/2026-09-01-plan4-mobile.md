@@ -754,12 +754,24 @@ import { rememberSession } from "../../src/lib/localSessions";
 import { colors } from "../../src/theme";
 import { AppText, Button, Card, Chip, Input } from "../../src/components/atoms";
 
+// 15 tür — sığmaz, chip'ler SARMALI (flexWrap) ya da yatay kaydırmalı olmalı.
+// Sıra bilinçli: ilk beş günlük buluşma, gerisi "aklında olmayanı keşfet" (2026-09-01 kararı).
 const ACTIVITIES = [
   ["COFFEE", "Kahve"],
   ["FOOD", "Yemek"],
   ["BAR", "Bar"],
   ["WALK", "Yürüyüş"],
-  ["ACTIVITY", "Aktivite"],
+  ["ACTIVITY", "Bowling"],
+  ["SWIM", "Yüzme"],
+  ["HIKE", "Doğa yürüyüşü"],
+  ["FITNESS", "Spor salonu"],
+  ["CINEMA", "Sinema"],
+  ["MUSEUM", "Müze"],
+  ["ART", "Sanat"],
+  ["NIGHTLIFE", "Gece hayatı"],
+  ["THEME_PARK", "Lunapark"],
+  ["ADVENTURE", "Macera"],
+  ["GAMES", "Oyun"],
 ] as const;
 
 export default function NewSession() {

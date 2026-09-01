@@ -7,9 +7,15 @@ Bu gereksinim Plan 2 kapanış denetiminde **hiçbir planda sahipsiz** bulundu: 
 yok, Plan 5'te de yok — ama Plan 4'ün mobil arayüzü bunu kullanıcıya vaat ediyor. GDPR yükümlülüğü
 ve kullanıcıya verilmiş bir söz.
 
-**Architecture:** Hexagonal devamı — `domain.port.SessionRetentionPort` (saf), `application.SessionRetention`
-(toplu silme döngüsü), `adapter.out.persistence.SessionRetentionAdapter` (Spring Data), `infra.PurgeRunner`
-(profil kapsamlı tek atımlık giriş noktası). Tetikleyici uygulamanın içinde değil, K8s CronJob'ında.
+**Architecture:** Hexagonal devamı — `domain.port.SessionRetentionPort` (saf),
+`application.session.SessionRetention` (toplu silme döngüsü),
+`adapter.out.persistence.SessionRetentionAdapter` (Spring Data),
+`adapter.in.job.PurgeRunner` (profil kapsamlı tek atımlık giriş noktası).
+Tetikleyici uygulamanın içinde değil, K8s CronJob'ında.
+
+> **Paket notu:** `PurgeRunner` bir **driving** (içeri) adaptördür — use-case'i dışarıdan tetikler,
+> tıpkı `adapter.in.web` controller'ları gibi. Bu yüzden `infra`'da değil `adapter.in.job`'da durur.
+> `infra` yalnız `security` ve `config` barındırır.
 
 **Tech Stack:** Plan 2 yığını. **Yeni bağımlılık YOK.**
 
@@ -91,8 +97,8 @@ Doğrula: dört alt tabloda o oturuma ait satır kalmadı, **ikinci bir oturumun
 ### Task 2: Saklama portu + `SessionRetention` use-case (TDD)
 
 - Create: `backend/src/main/java/com/bumpinto/domain/port/SessionRetentionPort.java`
-- Create: `backend/src/main/java/com/bumpinto/application/SessionRetention.java`
-- Create: `backend/src/test/java/com/bumpinto/application/SessionRetentionTest.java`
+- Create: `backend/src/main/java/com/bumpinto/application/session/SessionRetention.java`
+- Create: `backend/src/test/java/com/bumpinto/application/session/SessionRetentionTest.java`
 
 - [ ] **Step 1: Portu yaz** (saf — framework importu YOK)
 
@@ -119,7 +125,7 @@ public interface SessionRetentionPort {
 - [ ] **Step 4: Implementasyonu yaz**
 
 ```java
-package com.bumpinto.application;
+package com.bumpinto.application.session;
 
 import com.bumpinto.domain.port.SessionRetentionPort;
 import org.springframework.stereotype.Service;
@@ -238,15 +244,15 @@ class SessionRetentionAdapter implements SessionRetentionPort {
 
 ### Task 4: Purge giriş noktası (profil kapsamlı, tek atımlık)
 
-- Create: `backend/src/main/java/com/bumpinto/infra/PurgeRunner.java`
-- Create: `backend/src/test/java/com/bumpinto/infra/PurgeRunnerTest.java`
+- Create: `backend/src/main/java/com/bumpinto/adapter/in/job/PurgeRunner.java`
+- Create: `backend/src/test/java/com/bumpinto/adapter/in/job/PurgeRunnerTest.java`
 
 - [ ] **Step 1: Runner'ı yaz**
 
 ```java
-package com.bumpinto.infra;
+package com.bumpinto.adapter.in.job;
 
-import com.bumpinto.application.SessionRetention;
+import com.bumpinto.application.session.SessionRetention;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;

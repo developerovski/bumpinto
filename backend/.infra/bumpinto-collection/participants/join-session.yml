@@ -1,0 +1,52 @@
+info:
+  name: Join Session
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/participants"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: mobile
+  body:
+    type: json
+    data: |-
+      {
+        "displayName": "Ayse",
+        "lat": 51.5719,
+        "lng": 5.0672
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201 && res.body.participantToken) {
+          bru.setVar("guestParticipantToken", res.body.participantToken);
+          bru.setVar("guestParticipantId", res.body.participantId);
+          bru.setVar("participantToken", res.body.participantToken);
+        }
+    - type: tests
+      code: |-
+        test("201 doner", function() {
+          expect(res.status).to.equal(201);
+        });
+        test("mobil yolda katilimci token'i govdede gelir", function() {
+          expect(res.body.participantToken).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc — davet linkiyle gelen herkes katilir, kimlik dogrulamasi yok.
+
+    `lat`/`lng` OPSIYONEL: konumsuz katilim desteklenir, ama konumsuz katilimci
+    deste akisinin DISINDA kalir (swipe/deck-done 409 doner, cozumu PUT /location).
+
+    `X-Client: web` gonderilirse token govdede DONMEZ, `bumpinto_pt_{slug}` HttpOnly
+    cookie'sine yazilir (`Path=/api/sessions/{slug}` — coklu oturum cakismaz).
+
+    Rate limit: 10/dk.

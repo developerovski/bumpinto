@@ -1,6 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.SessionQueries;
+import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoMath;
 import com.bumpinto.domain.geo.TravelEstimate;
 import com.bumpinto.domain.session.Participant;

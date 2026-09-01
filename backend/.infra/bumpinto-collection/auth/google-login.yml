@@ -1,0 +1,47 @@
+info:
+  name: Google Login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/auth/google"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: mobile
+  body:
+    type: json
+    data: |-
+      {
+        "idToken": "{{googleIdToken}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.accessToken) {
+          bru.setVar("accessToken", res.body.accessToken);
+          bru.setVar("userId", res.body.userId);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("mobil yolda token govdede gelir", function() {
+          expect(res.body.accessToken).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc. Google id_token'i YALNIZCA burada dogrulanir; API'nin geri kalani
+    backend'in kendi HMAC-SHA256 token'ini kabul eder (TTL 12h).
+
+    `X-Client: web` gonderilirse token govdede DONMEZ, `bumpinto_at` HttpOnly
+    cookie'sine yazilir (`Path=/api`).
+
+    Rate limit: 5/dk (IP bazli).

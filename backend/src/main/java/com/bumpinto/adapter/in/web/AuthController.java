@@ -1,10 +1,10 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.domain.port.UserStorePort;
-import com.bumpinto.infra.AppProps;
-import com.bumpinto.infra.AuthCookies;
-import com.bumpinto.infra.GoogleIdVerifier;
-import com.bumpinto.infra.TokenService;
+import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.infra.security.AuthCookies;
+import com.bumpinto.infra.security.GoogleIdVerifier;
+import com.bumpinto.infra.security.TokenService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;

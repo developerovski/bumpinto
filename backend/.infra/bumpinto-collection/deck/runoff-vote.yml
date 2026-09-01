@@ -1,0 +1,33 @@
+info:
+  name: Runoff Vote
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/runoff-votes"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "venueId": "{{venueId}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i gerekir. Oturum RUNOFF durumundayken tek secim yapilir;
+    tekrar oy vermek mevcut oyu degistirir (anahtar: sessionId + participantId).
+
+    Beraberlik host'un Force Decision cagrisiyla cozulur.

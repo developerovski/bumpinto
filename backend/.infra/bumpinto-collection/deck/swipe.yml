@@ -1,0 +1,35 @@
+info:
+  name: Swipe
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/swipes"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "venueId": "{{venueId}}",
+        "liked": true
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i gerekir. `venueId` degiskeni Get Session ya da Find Venues
+    tarafindan doldurulur.
+
+    Ayni mekana tekrar swipe atmak upsert'tir — anahtar (venueId, participantId).
+    Konumsuz katilimci swipe atamaz (409).

@@ -1,0 +1,21 @@
+info:
+  name: Undo Swipe
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/sessions/{{slug}}/swipes/{{venueId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i gerekir. Yalnizca cagiran katilimcinin o mekana ait swipe'ini siler.

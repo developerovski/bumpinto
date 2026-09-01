@@ -1,7 +1,7 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.DeckFlow;
-import com.bumpinto.infra.ParticipantPrincipal;
+import com.bumpinto.application.deck.DeckFlow;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;

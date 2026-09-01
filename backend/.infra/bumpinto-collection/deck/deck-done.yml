@@ -1,0 +1,25 @@
+info:
+  name: Deck Done
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/deck-done"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i gerekir. Desteyi bitirdigini bildirir.
+
+    KONUMU OLAN tum katilimcilar bitirdiginde karar motoru calisir; sonuc
+    DECIDED ya da RUNOFF olur, hic begeni yoksa `no_likes` olayi yayinlanir.
+    `done` ve `total` ayni populasyondan (konumlu katilimcilar) sayilir.

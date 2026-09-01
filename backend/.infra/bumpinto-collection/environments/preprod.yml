@@ -1,0 +1,6 @@
+variables:
+  - name: baseUrl
+    value: https://api-preprod.bumpinto.app
+  - name: googleIdToken
+    value: ""
+    secret: true

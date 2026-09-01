@@ -14,7 +14,8 @@ Spec: `docs/superpowers/specs/2026-08-31-bumpinto-mvp-design.md`
 7. **UI işlerinde tasarım kaynağı Claude Design'dır** — ilgili planın
    "UI Kaynağı" bölümüne uy; ajan kendi tasarımını yapmaz.
 
-Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `blocked` · `done`
+Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `blocked` · `done` ·
+`deferred` (yazıldı, bilinçli olarak yürütülmüyor — kural 6'nın sıralı akışına GİRMEZ, atlanır)
 
 | # | Plan | Dosya | Durum | Son adım | Not |
 |---|------|-------|-------|----------|-----|
@@ -24,3 +25,4 @@ Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `block
 | 4 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | ready | — | yazıldı |
 | 5 | CI + Docker + K8s deploy | `2026-09-01-plan5-ci-deploy.md` | ready | — | yazıldı |
 | 6 | Veri saklama — süresi dolan oturumların kalıcı silinmesi | `2026-09-01-plan6-data-retention.md` | ready | — | Spec §6 GDPR; Plan 2 kapanış denetiminde sahipsiz bulundu, plana bağlandı. **Plan 5 yayın kontrol listesi bu plan `done` olmadan işaretlenmez** |
+| 7 | Dinamik aktivite keşfi — self-host Overpass (OSM) | `2026-09-01-plan7-activity-discovery.md` | deferred | — | **YÜRÜTÜLMÜYOR.** Yerine ucuz yol seçildi: `ActivityType` 5→15 genişletildi (Plan 2 kodu üzerinde, 123/123 test). Bu plan yalnız Google taksonomisinde OLMAYAN türler (at binme, sörf, tırmanış, dalış) gerçekten istenirse açılır. Açılırsa **Plan 3'ten ÖNCE** koşar — API sözleşmesini değiştirir; Task 7 (K8s) Plan 5 Task 3'e bağımlıdır |

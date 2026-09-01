@@ -1,9 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.SessionCommands;
+import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.Participant;
-import com.bumpinto.infra.ParticipantPrincipal;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

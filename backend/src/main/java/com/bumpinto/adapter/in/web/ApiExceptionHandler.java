@@ -1,9 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.ConflictException;
-import com.bumpinto.application.ForbiddenException;
-import com.bumpinto.application.NoVenuesFoundException;
-import com.bumpinto.application.NotFoundException;
+import com.bumpinto.application.error.ConflictException;
+import com.bumpinto.application.error.ForbiddenException;
+import com.bumpinto.application.error.NoVenuesFoundException;
+import com.bumpinto.application.error.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;

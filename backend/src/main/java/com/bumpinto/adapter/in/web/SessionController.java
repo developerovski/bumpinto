@@ -1,8 +1,8 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.DeckFlow;
-import com.bumpinto.application.SessionCommands;
-import com.bumpinto.application.SessionQueries;
+import com.bumpinto.application.deck.DeckFlow;
+import com.bumpinto.application.session.SessionCommands;
+import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

@@ -4,7 +4,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.VenueCandidate;
-import com.bumpinto.infra.AppProps;
+import com.bumpinto.infra.config.AppProps;
 import kong.unirest.core.HttpResponse;
 import kong.unirest.core.JsonNode;
 import kong.unirest.core.UnirestInstance;
@@ -19,12 +19,31 @@ import java.util.Map;
 @Component
 public class GooglePlacesVenueProvider implements VenueProviderPort {
 
-    static final Map<ActivityType, String> TYPES = Map.of(
-            ActivityType.COFFEE, "cafe",
-            ActivityType.FOOD, "restaurant",
-            ActivityType.BAR, "bar",
-            ActivityType.WALK, "park",
-            ActivityType.ACTIVITY, "bowling_alley");
+    /**
+     * Bir aktivite birden cok Google turune acilir: includedTypes icindeki turler OR'lanir,
+     * yani tek istek daha genis sonuc verir (istek basina 50 ture kadar izinli). Turlerin
+     * tamami Places API (New) Table A'dan dogrulandi.
+     */
+    static final Map<ActivityType, List<String>> TYPES = Map.ofEntries(
+            Map.entry(ActivityType.COFFEE, List.of("cafe")),
+            Map.entry(ActivityType.FOOD, List.of("restaurant")),
+            Map.entry(ActivityType.BAR, List.of("bar")),
+            Map.entry(ActivityType.WALK, List.of("park")),
+            Map.entry(ActivityType.ACTIVITY, List.of("bowling_alley")),
+            Map.entry(ActivityType.SWIM, List.of("swimming_pool", "water_park")),
+            Map.entry(ActivityType.HIKE, List.of("hiking_area", "national_park", "state_park")),
+            Map.entry(ActivityType.FITNESS, List.of("gym", "fitness_center")),
+            Map.entry(ActivityType.CINEMA, List.of("movie_theater")),
+            Map.entry(ActivityType.MUSEUM, List.of("museum", "art_museum", "history_museum")),
+            Map.entry(ActivityType.ART,
+                    List.of("art_gallery", "performing_arts_theater", "cultural_landmark")),
+            Map.entry(ActivityType.NIGHTLIFE,
+                    List.of("night_club", "karaoke", "live_music_venue")),
+            Map.entry(ActivityType.THEME_PARK, List.of("amusement_park", "zoo", "aquarium")),
+            Map.entry(ActivityType.ADVENTURE,
+                    List.of("adventure_sports_center", "paintball_center", "go_karting_venue")),
+            Map.entry(ActivityType.GAMES,
+                    List.of("video_arcade", "amusement_center", "miniature_golf_course")));
 
     private static final String NEARBY_URL =
             "https://places.googleapis.com/v1/places:searchNearby";
@@ -40,13 +59,7 @@ public class GooglePlacesVenueProvider implements VenueProviderPort {
     @Override
     public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
                                        int limit) {
-        JSONObject body = new JSONObject()
-                .put("includedTypes", new JSONArray().put(TYPES.get(type)))
-                .put("maxResultCount", Math.min(limit, 20))
-                .put("locationRestriction", new JSONObject().put("circle", new JSONObject()
-                        .put("center", new JSONObject()
-                                .put("latitude", center.lat()).put("longitude", center.lng()))
-                        .put("radius", Math.min(radiusKm * 1000, 50000))));
+        JSONObject body = requestBody(center, radiusKm, type, limit);
         HttpResponse<JsonNode> response = http.post(NEARBY_URL)
                 .header("Content-Type", "application/json")
                 .header("X-Goog-Api-Key", apiKey)
@@ -76,6 +89,27 @@ public class GooglePlacesVenueProvider implements VenueProviderPort {
                     p.has("googleMapsUri") ? p.getString("googleMapsUri") : null));
         }
         return out;
+    }
+
+    /**
+     * Ayri metot: includedTypes'in DUZ bir dize dizisi olmasi gerekiyor. {@code put(List)}
+     * yazilirsa ic ice dizi ({@code [["a","b"]]}) gider — Google bunu 400 ile degil, sessizce
+     * filtresiz sonuc dondurerek karsilar. Testin dogrudan tutabilmesi icin ayrildi.
+     */
+    static JSONObject requestBody(GeoPoint center, double radiusKm, ActivityType type, int limit) {
+        List<String> includedTypes = TYPES.get(type);
+        if (includedTypes == null) {
+            throw new ProviderException("no google type mapping for " + type);
+        }
+        JSONArray types = new JSONArray();
+        includedTypes.forEach(types::put);
+        return new JSONObject()
+                .put("includedTypes", types)
+                .put("maxResultCount", Math.min(limit, 20))
+                .put("locationRestriction", new JSONObject().put("circle", new JSONObject()
+                        .put("center", new JSONObject()
+                                .put("latitude", center.lat()).put("longitude", center.lng()))
+                        .put("radius", Math.min(radiusKm * 1000, 50000))));
     }
 
     private static Integer priceLevel(String level) {

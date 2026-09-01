@@ -3,7 +3,7 @@ package com.bumpinto.adapter.out.provider;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.VenueCandidate;
-import com.bumpinto.infra.AppProps;
+import com.bumpinto.infra.config.AppProps;
 import kong.unirest.core.HttpMethod;
 import kong.unirest.core.MockClient;
 import kong.unirest.core.Unirest;
@@ -25,6 +25,28 @@ class FoursquareVenueProviderTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false));
+    }
+
+    /**
+     * Kategori eslemesi olmayan tur (SWIM ve sonrasi) FSQ'ya HIC gitmez. Gitseydi
+     * fsq_category_ids'siz arama olurdu: FSQ filtresiz sonuc doner, kullanici "yuzme"
+     * isteyip kafe listesi gorurdu. Mock bir sonuc dondurmeye HAZIR — bos gelmesi
+     * cagrinin hic yapilmadiginin kanitidir.
+     */
+    @Test
+    void skipsApiCallForActivityWithoutCategoryMapping() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.GET, SEARCH_URL)
+                .thenReturn("""
+                        {"results":[{"fsq_place_id":"f9","name":"Filtresiz Kafe",
+                          "latitude":51.44,"longitude":5.47}]}
+                        """);
+
+        List<VenueCandidate> out = new FoursquareVenueProvider(http, props())
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.SWIM, 10);
+
+        assertThat(out).isEmpty();
     }
 
     @Test

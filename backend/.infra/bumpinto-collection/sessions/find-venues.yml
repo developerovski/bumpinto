@@ -1,0 +1,38 @@
+info:
+  name: Find Venues
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/find-venues"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.venues && res.body.venues.length > 0) {
+          bru.setVar("venueId", res.body.venues[0].id);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("durum SWIPING", function() {
+          expect(res.body.status).to.equal("SWIPING");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Orta noktayi hesaplar, mekan saglayicisindan desteyi kurar
+    ve oturumu SWIPING'e gecirir. Sonuc bulunamazsa yaricap genisletilir
+    (en fazla `SearchRadius.MAX_EXPANSIONS`); hic mekan yoksa 422 doner.
+
+    Yalnizca KONUMU OLAN katilimcilar deste akisina girer.
+
+    Rate limit: 3/dk — bu ucta en dar limit, saglayici kotasini korur.

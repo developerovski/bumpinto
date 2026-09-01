@@ -1,0 +1,63 @@
+info:
+  name: Create Session
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: mobile
+  body:
+    type: json
+    data: |-
+      {
+        "activityType": "COFFEE",
+        "name": "Cuma kahvesi",
+        "lat": 51.6978,
+        "lng": 5.3037,
+        "displayName": "Mehmet"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("slug", res.body.slug);
+          bru.setVar("sessionId", res.body.sessionId);
+          bru.setVar("hostParticipantId", res.body.participantId);
+          if (res.body.participantToken) {
+            bru.setVar("hostParticipantToken", res.body.participantToken);
+            bru.setVar("participantToken", res.body.participantToken);
+          }
+        }
+    - type: tests
+      code: |-
+        test("201 doner", function() {
+          expect(res.status).to.equal(201);
+        });
+        test("slug uretildi", function() {
+          expect(res.body.slug).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Host ayni zamanda katilimci olarak eklenir.
+
+    `activityType` (15 deger, bilinmeyen deger 400 doner):
+    - Foursquare + Google: `COFFEE` `FOOD` `BAR` `WALK` `ACTIVITY` (=bowling)
+    - **Yalnizca Google** (kartlarda foto YOK, puan var): `SWIM` `HIKE` `FITNESS` `CINEMA`
+      `MUSEUM` `ART` `NIGHTLIFE` `THEME_PARK` `ADVENTURE` `GAMES`
+
+    `name` max 60, `displayName` max 40 (`Texts` ile normalize edilir).
+    `lat` -90..90, `lng` -180..180 — disina cikan deger 400 doner.
+
+    Rate limit: 10/dk.

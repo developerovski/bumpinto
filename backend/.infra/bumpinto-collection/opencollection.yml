@@ -2,9 +2,34 @@ opencollection: 1.0.0
 
 info:
   name: bumpinto-collection
+
 bundled: false
+
 extensions:
   bruno:
     ignore:
       - node_modules
       - .git
+
+docs:
+  type: text/markdown
+  content: |-
+    ### BumpInto API
+
+    Uc sozlesmesi: `docs/superpowers/plans/2026-09-01-plan2-backend-api.md` (satir 25-44).
+
+    **Akis sirasi:** Auth > Sessions (create) > Participants (join) > Sessions (find-venues)
+    > Sessions (get) > Deck (swipe, deck-done) > Sessions (get, karar).
+
+    **Degisken zinciri** (istekler `bru.setVar` ile birbirini besler):
+    `accessToken` <- auth/google · `slug` + `hostParticipantToken` <- sessions/create
+    `guestParticipantToken` <- participants/join · `venueId` <- sessions/get
+    `participantToken` her ikisinde de guncellenir; deck istekleri onu kullanir,
+    yani en son calistirdiginiz kimlik gecerlidir.
+
+    **Auth modu:** koleksiyon `X-Client: mobile` kullanir; token'lar govdede doner ve
+    header ile gonderilir. `X-Client: web` yolunda token'lar HttpOnly cookie'ye yazilir
+    ve govdede DONMEZ — o yol `WebSecuritySliceTest` + `ApiHappyPathTest` ile kapsanir.
+
+    Gercek sir degeri bu dosyalara YAZILMAZ; `environments/*.yml` icindeki
+    `secret: true` alanlari Bruno arayuzunden doldurulur.

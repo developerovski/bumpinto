@@ -7,6 +7,7 @@ import kong.unirest.core.HttpMethod;
 import kong.unirest.core.MockClient;
 import kong.unirest.core.Unirest;
 import kong.unirest.core.UnirestInstance;
+import kong.unirest.core.json.JSONArray;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -41,6 +42,28 @@ class GooglePlacesVenueProviderTest {
         assertThat(c.rating()).isEqualTo(4.2);
         assertThat(c.priceLevel()).isEqualTo(1);
         assertThat(c.mapsUrl()).isEqualTo("https://maps/g1");
+    }
+
+    /** Yeni bir ActivityType eklenip Google eslemesi unutulursa o tur calisma aninda patlar. */
+    @Test
+    void everyActivityTypeIsMappedToAtLeastOneGoogleType() {
+        for (ActivityType type : ActivityType.values()) {
+            assertThat(GooglePlacesVenueProvider.TYPES.get(type))
+                    .as("google type mapping for %s", type)
+                    .isNotNull().isNotEmpty();
+        }
+    }
+
+    /** includedTypes duz dize dizisi olmali; ic ice dizi Google'da sessizce filtresiz sonuc verir. */
+    @Test
+    void buildsFlatIncludedTypesArrayForMultiTypeActivity() {
+        JSONArray types = GooglePlacesVenueProvider
+                .requestBody(new GeoPoint(51.5, 5.5), 5.0, ActivityType.SWIM, 10)
+                .getJSONArray("includedTypes");
+
+        assertThat(types.length()).isEqualTo(2);
+        assertThat(types.getString(0)).isEqualTo("swimming_pool");
+        assertThat(types.getString(1)).isEqualTo("water_park");
     }
 
     @Test

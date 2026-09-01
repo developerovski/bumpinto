@@ -1,0 +1,37 @@
+info:
+  name: Update Location
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/sessions/{{slug}}/location"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Participant-Token
+      value: "{{participantToken}}"
+  body:
+    type: json
+    data: |-
+      {
+        "lat": 51.5719,
+        "lng": 5.0672
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i gerekir. Konumsuz katilan birinin deste akisina girmesinin yoludur.
+
+    Katilimci token'i FAIL-CLOSED dogrulanir: yalnizca `/api/sessions/{slug}/...`
+    yollarinda gecerlidir ve token'in ait oldugu oturum ile URL'deki slug eslesmeli.
+    Baska oturumun slug'i ile denerseniz 401 alirsiniz.
