@@ -42,6 +42,33 @@ Artboard ↔ ekran eşlemesi:
 | 08 · Karar | `src/screens/ResultScreen.tsx` — detay katı |
 | 09 · Profil | `app/profile.tsx` |
 
+### Tasarım denetimi bulguları (2026-09-01) — bu plan başlamadan KARAR gerekiyor
+
+`ActivityType` 5→15 genişletmesi sonrası yapılan UI/UX denetimi. Kural 3 gereği ajan bunları
+kendi başına çözmez: **tasarım kararı kullanıcınındır.**
+
+| # | Ağırlık | Bulgu | Artboard | Karar |
+|---|---|---|---|---|
+| 1 | **ENGELLEYİCİ** | 15 chip tek satırdan ~5 satıra çıkıyor (`.chip` 46px + 8px gap → +216px); taşma deseni tasarımda yok. 390px'te kıl payı sığıyor, 375px'te veya Dynamic Type büyütülünce CTA katlanın altına iniyor. | 03 | Serbest sarma mı, kategori grubu mu (Yeme-içme / Hareket / Kültür / Gece), "+n" disclosure mu? |
+| 2 | ÖNEMLİ | `.pho-tag` "foto · Places" rozeti, `photoUrl=null` gelen 10 tür için yanlış bilgi veriyor. | 05, 08 | **Karar gerekmez** — koşullu render (kod işi). |
+| 3 | ÖNEMLİ | Yalnız 3 gradyan (`pA/pB/pC`) ve mekan→gradyan eşleme kuralı yok. Sinema/Müze/Oyun destesinde 12 kartın 12'si gradyan olur; `.pol-ph` kartın ~%64'ü. Monogram kartları ayırt ediyor, ama renk her 3 kartta bir tekrar ediyor. | 05, 06, 07 | Gradyan sayısı artsın mı, tür bazlı tint mi, fotoğrafsız türde `.pol-ph` kısalsın mı? |
+| 4 | ÖNEMLİ | "Varsayılan etkinlik" satırının chevron'u bir seçim yüzeyine işaret ediyor; o sheet tasarımda yok. 15 değerle daha da gerekli. | 09 | 1 numaralı kararla **aynı deseni** paylaşmalı. |
+| 5 | MİNÖR | 5. chip'in metni "Aktivite"; sözleşmede `ACTIVITY` artık bowling demek. | 03 | Tasarım metni "Bowling" olsun mu? |
+| 6 | MİNÖR | Aktivite başına ikon/renk tasarımda hiç yok. 5 metin chip ayırt edilebiliyordu, 15 zor. DS "emoji ikon"u yasaklıyor → SVG set gerekir. | 03, DS | İkon seti yapılacak mı? |
+
+**Bu denetimden BAĞIMSIZ, önceden var olan boşluk:** artboard 08'deki "Gruba paylaş" butonunun
+ürettiği **viral paylaşım kartının tasarımı hiçbir dosyada yok**. `ActivityType` değişikliğiyle
+ilgisi yoktur, ama bu plan o butonu uygulayacağı için karar gerekir.
+
+**Sorun ÇIKMAYAN yerler** (denetimde doğrulandı, tekrar araştırma):
+
+- Fotoğrafsız kart **tasarımda çözülmüş durumdur** — DS kuralı: *"Fotoğraf yoksa ambient gradyan
+  + monogram — asla çizgili kutu."* Mockup'ların tamamı zaten bu varyantı gösteriyor, hiçbir
+  ekranda `<img>` yok. Placeholder icat edilmez.
+- Ekran içi sonuç kartları (06, 08) fotoğrafa bağımlı değil; monogramla çalışıyor.
+- Uzun etiketler taşmıyor ("Doğa yürüyüşü" en uzunu, 04 ve 02'de sığıyor) — ama bu iki öğede
+  `text-overflow` tanımsız; uygulama sırasında tek satır + ellipsis kuralı eklenir.
+
 ## Frontend mimari kuralları (BAĞLAYICI — kullanıcı talimatı 2026-09-01)
 
 - **Atomic design:** ekran dosyalarında ham `Pressable/TextInput`/kopya stil YASAK —
