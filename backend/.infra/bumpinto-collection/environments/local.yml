@@ -1,6 +1,6 @@
+name: local
 variables:
   - name: baseUrl
-    value: http://localhost:8080
-  - name: googleIdToken
-    value: ""
-    secret: true
+    value: http://localhost:8060
+  - secret: true
+    name: googleIdToken

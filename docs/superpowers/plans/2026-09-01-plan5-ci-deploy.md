@@ -243,7 +243,7 @@ volumes:
 ```
 
 - [ ] **Step 5: Doğrula** — Run: `rtk docker compose up --build -d` →
-`curl -s localhost:8080/v3/api-docs | head -c 100` JSON döner; `curl -s localhost:5173/healthz` → ok.
+`curl -s localhost:8060/v3/api-docs | head -c 100` JSON döner; `curl -s localhost:5173/healthz` → ok.
 
 - [ ] **Step 6: INDEX güncelle + Commit (kullanıcı)** — `build: docker imajlari + tam compose`
 

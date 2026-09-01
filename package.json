@@ -1,0 +1,12 @@
+{
+  "name": "bumpinto",
+  "private": true,
+  "packageManager": "pnpm@11.4.0",
+  "scripts": {
+    "codegen": "curl -sf http://localhost:8080/v3/api-docs -o frontend/shared/openapi.json && pnpm --filter @bumpinto/shared generate",
+    "dev:web": "pnpm --filter @bumpinto/web dev",
+    "build:web": "pnpm --filter @bumpinto/web build",
+    "build:web:preprod": "pnpm --filter @bumpinto/web build --mode preprod",
+    "test:web": "pnpm --filter @bumpinto/web test --run"
+  }
+}

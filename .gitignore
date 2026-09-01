@@ -14,6 +14,10 @@
 *.env
 !.env.example
 !.env.template
+# Vite build profilleri — sır değil, yalnız public API/WS URL'leri taşır (Plan 3):
+!frontend/web/.env.development
+!frontend/web/.env.preprod
+!frontend/web/.env.production
 
 # `*.env` şart: `prod.env` / `local.env` biçimi Docker `--env-file` ve K8s akışlarında yaygın,
 # ve `.env` / `.env.*` desenleri onu YAKALAMAZ. Plan 5 tam olarak bu dosyaları üretecek.

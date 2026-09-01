@@ -546,7 +546,7 @@ export function rememberParticipantToken(slug: string, token: string) {
 }
 
 export const api = createBumpintoApi(
-  createHttp(process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080", {
+  createHttp(process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8060", {
     getIdToken: () => getAccessToken(), // backend access token → Authorization: Bearer
     getParticipantToken: (slug) => participantTokens.get(slug),
   }, { client: "mobile" }),
@@ -662,7 +662,7 @@ export function useSessionLive(slug: string | null) {
     void refresh();
     const timer = setInterval(() => void refresh(), POLL_MS);
 
-    const base = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
+    const base = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8060";
     const client = new Client({
       brokerURL: base.replace(/^http/, "ws") + "/ws",
       reconnectDelay: 5000,
