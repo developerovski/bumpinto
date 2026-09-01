@@ -1,0 +1,93 @@
+# BumpInto — depo geneli yoksayma listesi.
+#
+# TEK KAYNAK BURASIDIR. Modül başına ayrı .gitignore tutulmaz: kopyalar zamanla ayrışır ve
+# yeni bir modül (web/, mobile/) eklendiğinde korumasız kalır.
+# Kural: içinde eğik çizgi OLMAYAN desen her derinlikte eşleşir — `target/` hem `backend/target/`
+# hem ileride eklenecek her modülün target'ını yakalar. Eğik çizgili desen ise bu dosyanın
+# bulunduğu dizine sabitlenir; o yüzden aşağıda bilinçli olarak kullanılmıyor.
+
+# ── Sırlar ve kimlik bilgileri ────────────────────────────────────────────────
+# Değer taşıyan hiçbir dosya depoya girmez. K8s manifest'leri yalnız secret ADI referanslar;
+# `kubectl create secret` komutlarını kullanıcı elle çalıştırır.
+.env
+.env.*
+*.env
+!.env.example
+!.env.template
+
+# `*.env` şart: `prod.env` / `local.env` biçimi Docker `--env-file` ve K8s akışlarında yaygın,
+# ve `.env` / `.env.*` desenleri onu YAKALAMAZ. Plan 5 tam olarak bu dosyaları üretecek.
+
+# K8s secret manifest'i (gerçek değer taşıyanı). Geniş `*secret*.yaml` bilinçli olarak
+# kullanılmadı: yalnız isim referanslayan meşru manifest'leri sessizce gizlerdi.
+*.secret.yaml
+
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+id_rsa*
+id_ed25519*
+
+# Bulut / CI kimlik dosyaları
+*-service-account*.json
+gha-creds-*.json
+kubeconfig
+*.kubeconfig
+
+# ── İşletim sistemi ──────────────────────────────────────────────────────────
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# ── Editör / IDE ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*~
+
+# VSCode: paylaşılabilir proje ayarları KALIR, kişisel durum gider.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ── Java / Maven (backend) ───────────────────────────────────────────────────
+target/
+*.class
+*.log
+
+# ── Node / pnpm (web — Plan 3) ───────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.vite/
+.turbo/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ── Expo / React Native (mobile — Plan 4) ────────────────────────────────────
+.expo/
+.expo-shared/
+web-build/
+Pods/
+.gradle/
+*.orig.*
+
+# ── Ajan / araç yerel durumu ─────────────────────────────────────────────────
+# DİKKAT: `.claude/` TOPTAN yoksayılmaz — `.claude/skills/` paylaşılan proje varlığıdır
+# ve takip edilir. Yalnızca kişiye özel ayar dosyası dışarıda kalır.
+.claude/settings.local.json

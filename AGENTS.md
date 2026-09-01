@@ -9,6 +9,11 @@ description: |
 This file is the baseline policy for AI coding agents in this repository.
 Tool-specific add-ons should stay in that tool's own config.
 
+**Before touching backend code, read `backend/ARCHITECTURE.md`.** It carries the layer rules,
+the machine-enforced invariants (ArchUnit), the security model, and the local-run gotchas
+(jenv/ryuk/Testcontainers). This policy file covers *how to work*; that one covers *how the
+backend is built*.
+
 ## Operational Rules
 
 - Do not run git write operations.
