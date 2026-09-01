@@ -1,0 +1,11 @@
+bumpinto:
+  cors:
+    allowed-origins:
+      - https://preprod.bumpinto.app
+  cookies:
+    secure: true
+    domain: ""
+
+logging:
+  level:
+    com.bumpinto: DEBUG

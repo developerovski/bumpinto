@@ -1,0 +1,16 @@
+bumpinto:
+  security:
+    # YALNIZCA local: bilinen bir sir/kimlik prod'a sizmasin diye application.yml'de default yok.
+    google-client-id: ${GOOGLE_CLIENT_ID:dev-client-id}
+    token-secret: ${TOKEN_SECRET:local-only-secret-change-me-0123456789}
+  providers:
+    # YALNIZCA local: anahtar yoksa saglayici cagrisi 401 alir, uygulama yine de ayaga kalkar.
+    foursquare-key: ${FOURSQUARE_API_KEY:local-only-fsq-key}
+    google-key: ${GOOGLE_PLACES_API_KEY:local-only-google-key}
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:8081
+  cookies:
+    secure: false
+    domain: ""

@@ -7,7 +7,7 @@ public final class SearchRadius {
     static final double MIN_KM = 1.0;
     static final double BASE_MAX_KM = 10.0;
     static final double ABSOLUTE_MAX_KM = 40.0;
-    static final int MAX_EXPANSIONS = 3;
+    public static final int MAX_EXPANSIONS = 3;
     private static final double SPREAD_FACTOR = 0.25;
 
     private SearchRadius() {

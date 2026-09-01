@@ -1,0 +1,7 @@
+bumpinto:
+  cors:
+    allowed-origins:
+      - https://bumpinto.app
+  cookies:
+    secure: true
+    domain: ""

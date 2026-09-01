@@ -19,7 +19,15 @@ Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `block
 | # | Plan | Dosya | Durum | Son adım | Not |
 |---|------|-------|-------|----------|-----|
 | 1 | Backend iskelet + alan çekirdeği + karar motoru | `2026-09-01-plan1-backend-core.md` | done | Task 8/8 + final review | 23/23 test yeşil (BUILD SUCCESS); domain saf, sıfır TODO; commit'ler kullanıcıda |
-| 2 | Backend application + adapter katmanları (API, Security, Unirest, STOMP) | `2026-09-01-plan2-backend-api.md` | ready | — | yazıldı |
+| 2 | Backend application + adapter katmanları (API, Security, Unirest, STOMP) | `2026-09-01-plan2-backend-api.md` | done | Task 10/10 + 2 temizlik turu + kapanis denetimi | 119/119 test yesil (temiz build); sifir TODO/olu kod; ArchUnit 3 kural; subagent-driven (impl Opus / review Fable); commit'ler kullanicida |
 | 3 | pnpm workspace + web katılım uygulaması | `2026-09-01-plan3-web.md` | ready | — | yazıldı |
 | 4 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | ready | — | yazıldı |
 | 5 | CI + Docker + K8s deploy | `2026-09-01-plan5-ci-deploy.md` | ready | — | yazıldı |
+
+## Planlar arasi SAHIPSIZ gereksinim (Plan 2 kapanis denetiminde bulundu)
+
+- **Spec §6: "suresi dolan oturum 30 gun sonra kalici silinir" hicbir planda yok.**
+  Backend'de `@Scheduled`/cron yok, Plan 5'te de yok — ama Plan 4 mobil UI bunu
+  kullaniciya vaat ediyor. GDPR gereksinimi + kullaniciya verilmis soz.
+  Prod'dan once Plan 5'e CronJob ya da backend'e `@Scheduled` purge eklenmeli.
+  (Plan 2 kapsaminda DEGIL — bilincli olarak genisletilmedi.)

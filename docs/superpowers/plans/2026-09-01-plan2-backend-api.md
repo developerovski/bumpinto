@@ -39,7 +39,8 @@ POST   /api/sessions/{slug}/force-decision    host JWT      kısmi katılımla d
 POST   /api/sessions/{slug}/runoff-votes      token         {venueId} tek seçim
 GET    /v3/api-docs                           public        OpenAPI (codegen için)
 WS     /ws  → /topic/session/{slug}           public        olaylar: participant_joined, deck_ready,
-                                                            deck_progress, runoff_started, session_decided
+                                                            deck_progress, runoff_started, session_decided,
+                                                            no_likes
 ```
 
 ## Güvenlik mimarisi (BAĞLAYICI — kullanıcı talimatı 2026-09-01)

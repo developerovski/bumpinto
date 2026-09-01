@@ -1,6 +1,8 @@
 spring:
   application:
     name: bumpinto-backend
+  profiles:
+    default: local
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/bumpinto}
     username: ${DB_USER:bumpinto}
@@ -10,3 +12,20 @@ spring:
 
 server:
   port: 8080
+
+bumpinto:
+  security:
+    # Default YOK (bilincli): preprod/prod'da bu degerler yoksa acilis patlar.
+    # Local default'lari application-local.yml'de.
+    google-client-id: ${GOOGLE_CLIENT_ID}
+    token-secret: ${TOKEN_SECRET}
+    token-ttl: 12h
+  providers:
+    # Default YOK (bilincli): TOKEN_SECRET ile ayni desen.
+    # Local default'lari application-local.yml'de.
+    foursquare-key: ${FOURSQUARE_API_KEY}
+    google-key: ${GOOGLE_PLACES_API_KEY}
+  rate-limit:
+    # Default GUVENLI (false): X-Forwarded-For istemci tarafindan uydurulabilir.
+    # YALNIZCA header'i ezerek yeniden yazan bir ingress arkasinda true yapilir (Plan 5).
+    trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}
