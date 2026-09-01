@@ -18,7 +18,7 @@ Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `block
 
 | # | Plan | Dosya | Durum | Son adım | Not |
 |---|------|-------|-------|----------|-----|
-| 1 | Backend iskelet + alan çekirdeği + karar motoru | `2026-09-01-plan1-backend-core.md` | ready | — | 8 görev |
+| 1 | Backend iskelet + alan çekirdeği + karar motoru | `2026-09-01-plan1-backend-core.md` | done | Task 8/8 + final review | 23/23 test yeşil (BUILD SUCCESS); domain saf, sıfır TODO; commit'ler kullanıcıda |
 | 2 | Backend application + adapter katmanları (API, Security, Unirest, STOMP) | `2026-09-01-plan2-backend-api.md` | ready | — | yazıldı |
 | 3 | pnpm workspace + web katılım uygulaması | `2026-09-01-plan3-web.md` | ready | — | yazıldı |
 | 4 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | ready | — | yazıldı |

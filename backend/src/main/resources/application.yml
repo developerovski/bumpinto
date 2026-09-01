@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: bumpinto-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bumpinto}
+    username: ${DB_USER:bumpinto}
+    password: ${DB_PASSWORD:bumpinto}
+  flyway:
+    enabled: true
+
+server:
+  port: 8080

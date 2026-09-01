@@ -71,7 +71,7 @@ com.bumpinto
 - Create: `backend/src/main/resources/application.yml`
 - Test: `backend/src/test/java/com/bumpinto/ApplicationSmokeTest.java`
 
-- [ ] **Step 1: pom.xml'i yaz**
+- [x] **Step 1: pom.xml'i yaz**
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -123,7 +123,7 @@ com.bumpinto
 </project>
 ```
 
-- [ ] **Step 2: .gitignore'u yaz**
+- [x] **Step 2: .gitignore'u yaz**
 
 ```gitignore
 target/
@@ -132,7 +132,7 @@ target/
 .DS_Store
 ```
 
-- [ ] **Step 3: Uygulama sınıfını yaz**
+- [x] **Step 3: Uygulama sınıfını yaz**
 
 ```java
 package com.bumpinto;
@@ -149,7 +149,7 @@ public class BumpintoApplication {
 }
 ```
 
-- [ ] **Step 4: application.yml'i yaz**
+- [x] **Step 4: application.yml'i yaz**
 
 ```yaml
 spring:
@@ -160,7 +160,7 @@ server:
   port: 8080
 ```
 
-- [ ] **Step 5: Smoke testi yaz**
+- [x] **Step 5: Smoke testi yaz**
 
 ```java
 package com.bumpinto;
@@ -177,7 +177,7 @@ class ApplicationSmokeTest {
 }
 ```
 
-- [ ] **Step 6: Testi çalıştır**
+- [x] **Step 6: Testi çalıştır**
 
 Run: `rtk mvn -q test`
 Expected: `BUILD SUCCESS`, `Tests run: 1, Failures: 0`
@@ -197,7 +197,7 @@ Expected: `BUILD SUCCESS`, `Tests run: 1, Failures: 0`
 
 Not: koordinat alan adları DB şemasıyla tutarlı olsun diye `lat` / `lng` (lon değil).
 
-- [ ] **Step 1: Failing testi yaz**
+- [x] **Step 1: Failing testi yaz**
 
 ```java
 package com.bumpinto.domain.geo;
@@ -226,12 +226,12 @@ class GeoMathTest {
 }
 ```
 
-- [ ] **Step 2: Testin FAIL ettiğini doğrula**
+- [x] **Step 2: Testin FAIL ettiğini doğrula**
 
 Run: `rtk mvn -q test -Dtest=GeoMathTest`
 Expected: derleme hatası — `cannot find symbol: class GeoPoint` (sınıflar henüz yok). Bu beklenen kırmızı.
 
-- [ ] **Step 3: Minimal implementasyonu yaz**
+- [x] **Step 3: Minimal implementasyonu yaz**
 
 `GeoPoint.java`:
 
@@ -277,7 +277,7 @@ public final class GeoMath {
 }
 ```
 
-- [ ] **Step 4: Testin PASS ettiğini doğrula**
+- [x] **Step 4: Testin PASS ettiğini doğrula**
 
 Run: `rtk mvn -q test -Dtest=GeoMathTest`
 Expected: `Tests run: 2, Failures: 0`
@@ -294,7 +294,7 @@ Expected: `Tests run: 2, Failures: 0`
 - Modify: `backend/src/main/java/com/bumpinto/domain/geo/GeoMath.java` (metot ekle)
 - Test: `backend/src/test/java/com/bumpinto/domain/geo/GeoMathTest.java` (test ekle)
 
-- [ ] **Step 1: Failing testleri GeoMathTest'e ekle**
+- [x] **Step 1: Failing testleri GeoMathTest'e ekle**
 
 ```java
     @Test
@@ -319,12 +319,12 @@ Expected: `Tests run: 2, Failures: 0`
     }
 ```
 
-- [ ] **Step 2: FAIL doğrula**
+- [x] **Step 2: FAIL doğrula**
 
 Run: `rtk mvn -q test -Dtest=GeoMathTest`
 Expected: derleme hatası — `cannot find symbol: method centroid`
 
-- [ ] **Step 3: centroid metodunu GeoMath'e ekle**
+- [x] **Step 3: centroid metodunu GeoMath'e ekle**
 
 ```java
     public static GeoPoint centroid(List<GeoPoint> points) {
@@ -352,7 +352,7 @@ Expected: derleme hatası — `cannot find symbol: method centroid`
     }
 ```
 
-- [ ] **Step 4: PASS doğrula**
+- [x] **Step 4: PASS doğrula**
 
 Run: `rtk mvn -q test -Dtest=GeoMathTest`
 Expected: `Tests run: 5, Failures: 0`
@@ -372,7 +372,7 @@ Expected: `Tests run: 5, Failures: 0`
 Politika (spec §3 "Coğrafi hesaplar" maddesini somutlar):
 taban = clamp(0.25 × merkeze-en-uzak-katılımcı-km, 1, 10); genişletme attempt∈{0..3} için taban×2^attempt, mutlak tavan 40 km.
 
-- [ ] **Step 1: Failing testi yaz**
+- [x] **Step 1: Failing testi yaz**
 
 ```java
 package com.bumpinto.domain.geo;
@@ -429,12 +429,12 @@ class SearchRadiusTest {
 }
 ```
 
-- [ ] **Step 2: FAIL doğrula**
+- [x] **Step 2: FAIL doğrula**
 
 Run: `rtk mvn -q test -Dtest=SearchRadiusTest`
 Expected: derleme hatası — `cannot find symbol: class SearchRadius`
 
-- [ ] **Step 3: Implementasyonu yaz**
+- [x] **Step 3: Implementasyonu yaz**
 
 ```java
 package com.bumpinto.domain.geo;
@@ -473,7 +473,7 @@ public final class SearchRadius {
 }
 ```
 
-- [ ] **Step 4: PASS doğrula**
+- [x] **Step 4: PASS doğrula**
 
 Run: `rtk mvn -q test -Dtest=SearchRadiusTest`
 Expected: `Tests run: 5, Failures: 0`
@@ -492,7 +492,7 @@ Expected: `Tests run: 5, Failures: 0`
 
 Heuristik (spec §3): yol km = kuş uçuşu × 1.3; süre = yol km / 72 km/s (NL şehirlerarası ortalama). Dış API yok.
 
-- [ ] **Step 1: Failing testi yaz**
+- [x] **Step 1: Failing testi yaz**
 
 ```java
 package com.bumpinto.domain.geo;
@@ -526,12 +526,12 @@ class TravelEstimateTest {
 }
 ```
 
-- [ ] **Step 2: FAIL doğrula**
+- [x] **Step 2: FAIL doğrula**
 
 Run: `rtk mvn -q test -Dtest=TravelEstimateTest`
 Expected: derleme hatası — `cannot find symbol: class TravelEstimate`
 
-- [ ] **Step 3: Implementasyonu yaz**
+- [x] **Step 3: Implementasyonu yaz**
 
 ```java
 package com.bumpinto.domain.geo;
@@ -552,7 +552,7 @@ public record TravelEstimate(int minutes, double roadKm) {
 }
 ```
 
-- [ ] **Step 4: PASS doğrula**
+- [x] **Step 4: PASS doğrula**
 
 Run: `rtk mvn -q test -Dtest=TravelEstimateTest`
 Expected: `Tests run: 3, Failures: 0`
@@ -576,7 +576,7 @@ kesişim 2+ → Runoff (beğeni sayısı, sonra rating'e göre sıralı); kesiş
 en çok beğenilen 3 mekan Runoff'a (hiç beğeni yoksa NoLikes). Plan kararı:
 fallback tek adaya inerse runoff anlamsız → doğrudan Decided.
 
-- [ ] **Step 1: Domain tiplerini yaz (test bunlara derleniyor)**
+- [x] **Step 1: Domain tiplerini yaz (test bunlara derleniyor)**
 
 `ParticipantLikes.java`:
 
@@ -611,7 +611,7 @@ public sealed interface DeckOutcome {
 }
 ```
 
-- [ ] **Step 2: Failing testi yaz**
+- [x] **Step 2: Failing testi yaz**
 
 ```java
 package com.bumpinto.domain.deck;
@@ -708,12 +708,12 @@ class DecisionEngineTest {
 }
 ```
 
-- [ ] **Step 3: FAIL doğrula**
+- [x] **Step 3: FAIL doğrula**
 
 Run: `rtk mvn -q test -Dtest=DecisionEngineTest`
 Expected: derleme hatası — `cannot find symbol: class DecisionEngine`
 
-- [ ] **Step 4: DecisionEngine'i yaz**
+- [x] **Step 4: DecisionEngine'i yaz**
 
 ```java
 package com.bumpinto.domain.deck;
@@ -775,12 +775,12 @@ public final class DecisionEngine {
 }
 ```
 
-- [ ] **Step 5: PASS doğrula**
+- [x] **Step 5: PASS doğrula**
 
 Run: `rtk mvn -q test -Dtest=DecisionEngineTest`
 Expected: `Tests run: 7, Failures: 0`
 
-- [ ] **Step 6: Tüm testleri çalıştır**
+- [x] **Step 6: Tüm testleri çalıştır**
 
 Run: `rtk mvn -q test`
 Expected: `Tests run: 21, Failures: 0` (1 smoke + 5 geo + 5 radius + 3 travel + 7 engine)
@@ -801,7 +801,7 @@ Expected: `Tests run: 21, Failures: 0` (1 smoke + 5 geo + 5 radius + 3 travel + 
 - Delete: `backend/src/test/java/com/bumpinto/ApplicationSmokeTest.java` (DB'siz boot artık mümkün değil; yerine aşağıdaki test geçiyor)
 - Test: `backend/src/test/java/com/bumpinto/SchemaMigrationTest.java`
 
-- [ ] **Step 1: pom.xml'e bağımlılıkları ekle** (`<dependencies>` içine)
+- [x] **Step 1: pom.xml'e bağımlılıkları ekle** (`<dependencies>` içine)
 
 ```xml
     <dependency>
@@ -838,7 +838,7 @@ Expected: `Tests run: 21, Failures: 0` (1 smoke + 5 geo + 5 radius + 3 travel + 
     </dependency>
 ```
 
-- [ ] **Step 2: application.yml'e datasource ekle** (dosyanın tam yeni hali)
+- [x] **Step 2: application.yml'e datasource ekle** (dosyanın tam yeni hali)
 
 ```yaml
 spring:
@@ -855,7 +855,7 @@ server:
   port: 8080
 ```
 
-- [ ] **Step 3: V1__init.sql'i yaz** (spec §5 veri modeli; katılımcı konumu nullable — linke tıklayıp konum vermemiş "Bekliyor" durumu için)
+- [x] **Step 3: V1__init.sql'i yaz** (spec §5 veri modeli; katılımcı konumu nullable — linke tıklayıp konum vermemiş "Bekliyor" durumu için)
 
 ```sql
 create table users (
@@ -926,7 +926,7 @@ create index idx_venues_session on venues (session_id);
 create index idx_swipes_session on swipes (session_id);
 ```
 
-- [ ] **Step 4: docker-compose.yml'i repo köküne yaz**
+- [x] **Step 4: docker-compose.yml'i repo köküne yaz**
 
 ```yaml
 services:
@@ -945,7 +945,7 @@ volumes:
   pgdata:
 ```
 
-- [ ] **Step 5: Eski smoke testi sil, yeni boot+şema testini yaz**
+- [x] **Step 5: Eski smoke testi sil, yeni boot+şema testini yaz**
 
 `ApplicationSmokeTest.java` dosyasını sil. Yerine:
 
@@ -986,7 +986,7 @@ class SchemaMigrationTest {
 }
 ```
 
-- [ ] **Step 6: Testleri çalıştır (Docker açık olmalı)**
+- [x] **Step 6: Testleri çalıştır (Docker açık olmalı)**
 
 Run: `rtk mvn -q test`
 Expected: `BUILD SUCCESS`; `SchemaMigrationTest` dahil tüm testler geçer. İlk çalıştırma postgres imajını çeker (yavaş olabilir).
@@ -1009,7 +1009,7 @@ Expected: log'da `Successfully applied 1 migration` ve `Started BumpintoApplicat
 - Modify: `backend/pom.xml` (bağımlılık ekle)
 - Test: `backend/src/test/java/com/bumpinto/HexagonalArchitectureTest.java`
 
-- [ ] **Step 1: pom.xml'e ArchUnit'i ekle** (`<dependencies>` içine)
+- [x] **Step 1: pom.xml'e ArchUnit'i ekle** (`<dependencies>` içine)
 
 ```xml
     <dependency>
@@ -1020,7 +1020,7 @@ Expected: log'da `Successfully applied 1 migration` ve `Started BumpintoApplicat
     </dependency>
 ```
 
-- [ ] **Step 2: Mimari kural testini yaz**
+- [x] **Step 2: Mimari kural testini yaz**
 
 ```java
 package com.bumpinto;
@@ -1050,12 +1050,12 @@ class HexagonalArchitectureTest {
 }
 ```
 
-- [ ] **Step 3: Testin PASS ettiğini doğrula**
+- [x] **Step 3: Testin PASS ettiğini doğrula**
 
 Run: `rtk mvn -q test -Dtest=HexagonalArchitectureTest`
 Expected: `Tests run: 2, Failures: 0`
 
-- [ ] **Step 4: Korumanın gerçekten çalıştığını kanıtla (kırmızıyı gör)**
+- [x] **Step 4: Korumanın gerçekten çalıştığını kanıtla (kırmızıyı gör)**
 
 `DecisionEngine.decide` metodunun ilk satırına geçici olarak şunu ekle:
 
@@ -1076,6 +1076,6 @@ Satırı sil, tekrar çalıştır: PASS.
 
 ## Plan sonu doğrulaması
 
-- [ ] `rtk mvn -q test` → tümü yeşil (`BUILD SUCCESS`)
-- [ ] Spec eşlemesi: §3 geo hesapları → Task 2-5; §4 karar motoru → Task 6; §5 veri modeli → Task 7; hexagonal koruma → Task 8. REST/servis/Unirest sağlayıcıları/Spring Security/STOMP bilinçli olarak Plan 2'de.
+- [x] `rtk mvn -q test` → tümü yeşil (`BUILD SUCCESS`)
+- [x] Spec eşlemesi: §3 geo hesapları → Task 2-5; §4 karar motoru → Task 6; §5 veri modeli → Task 7; hexagonal koruma → Task 8. REST/servis/Unirest sağlayıcıları/Spring Security/STOMP bilinçli olarak Plan 2'de.
 - [ ] Kullanıcıya bildir: Plan 1 bitti, Plan 2 (application + adapter katmanları: API, Spring Security, Unirest provider'lar, realtime) yazılmaya hazır.
