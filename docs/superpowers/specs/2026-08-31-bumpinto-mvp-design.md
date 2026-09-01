@@ -20,7 +20,8 @@ bir üründür.
 
 ## 2. Çekirdek Akış (Happy Path)
 
-1. Host mobil uygulamada (Expo RN) hesapla giriş yapar, oturum oluşturur:
+1. Host web'de ya da mobil uygulamada (Expo RN) hesapla giriş yapar, oturum oluşturur
+   (web ve mobil tüm fonksiyonları eşit destekler — bkz. `2026-09-01-web-parity-design.md`):
    etkinlik türü + kendi konumu (GPS veya adres) + opsiyonel isim/tarih.
 2. Uygulama davet linki üretir: `bumpinto.app/j/{slug}` (nanoid, tahmin edilemez).
 3. Katılımcı linki tarayıcıda açar (React web): sadece ad + konum
@@ -280,5 +281,7 @@ vurgu, polaroid deste kartı, story-ring avatar, dönüklük bütçesi (≤3/ekr
 Deste kartları polaroid; kaydırma sırasında başkalarının beğenisi gösterilmez.
 
 Mobil ekranlar: Giriş, Oturumlar, Yeni oturum, Lobi, Deste, Ortak nokta,
-Runoff, Karar, Profil. Web: Katıl, Katıldın/Bekle, Deste (klavye destekli),
-Sonuç (+ viral "buluşma kur" bloğu).
+Runoff, Karar, Profil. Web (2026-09-01 revizyonu, `2026-09-01-web-parity-design.md`):
+mobil ile fonksiyon paritesi — Landing/Giriş, Oturumlar, Yeni oturum, Lobi, Katıl,
+Bekle, Deste (klavye destekli), Runoff, Karar (+ viral blok), Profil, Hata; her
+ekran 1280 + 390 artboard çifti; üst çubukta TR/EN/NL dil menüsü.

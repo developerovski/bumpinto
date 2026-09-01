@@ -11,6 +11,7 @@ type SessionState = {
   slug: string;
   view: SessionView | null;
   needsJoin: boolean;
+  /** i18n anahtarı (ör. "session.notFound") — metne SessionPage'de çevrilir. */
   error: string | null;
   self: Self | null;
   bind: (slug: string) => void;
@@ -38,7 +39,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     } catch (e) {
       const status = e instanceof AxiosError ? e.response?.status : undefined;
       if (status === 401) set({ needsJoin: true, view: null });
-      else if (status === 404) set({ error: "Bu oturum bulunamadı — link doğru mu?" });
+      else if (status === 404) set({ error: "session.notFound" });
       // diğer hatalar: mevcut görünümü koru, polling tekrar dener
     }
   },

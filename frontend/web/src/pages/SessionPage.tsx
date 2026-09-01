@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
+import { Note, Page } from "../components/atoms";
 import { useSessionLive } from "../store/useSessionLive";
 import { useSessionStore } from "../store/sessionStore";
 import DeckScreen from "./DeckScreen";
@@ -8,16 +10,18 @@ import RunoffScreen from "./RunoffScreen";
 import WaitingRoom from "./WaitingRoom";
 
 export default function SessionPage() {
+  const { t } = useTranslation();
   const { slug = "" } = useParams();
   useSessionLive(slug);
   const { view, needsJoin, error, refresh } = useSessionStore();
 
   if (error) {
+    // `error` bir çeviri anahtarı (sessionStore) — bilinmeyen değerde i18next stringi aynen döner.
     return (
-      <main className="page" style={{ justifyContent: "center" }}>
-        <h1>Hmm.</h1>
-        <p className="muted">{error}</p>
-      </main>
+      <Page center>
+        <h1>{t("session.errorTitle")}</h1>
+        <Note>{t(error)}</Note>
+      </Page>
     );
   }
   if (needsJoin || !view) {
@@ -35,9 +39,9 @@ export default function SessionPage() {
       return <ResultScreen view={view} />;
     default:
       return (
-        <main className="page">
-          <p className="muted">Bu oturumun süresi dolmuş.</p>
-        </main>
+        <Page>
+          <Note>{t("session.expired")}</Note>
+        </Page>
       );
   }
 }

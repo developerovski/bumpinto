@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "types": "src/components/index.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -11,9 +12,14 @@
   "dependencies": {
     "@bumpinto/shared": "workspace:*",
     "@stomp/stompjs": "^7.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "i18next": "^26.4.0",
+    "i18next-browser-languagedetector": "^8.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.12",
     "react-router-dom": "^7.1.0",
+    "tailwindcss": "^4.3.3",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

@@ -1,12 +1,15 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
-import { Sticker, Wordmark } from "../components/atoms";
+import { Note, Page, Wordmark } from "../components/atoms";
+import RunoffIntro from "../components/molecules/RunoffIntro";
 import RunoffList from "../components/organisms/RunoffList";
 import { useSessionStore } from "../store/sessionStore";
 
 /** Kaynak: mobil `07 Runoff` artboard'u, webe birebir uyarlandı
     (durum çubuğu gibi mobil kabuk çıkarıldı, açılış Wordmark eklendi). */
 export default function RunoffScreen(props: { slug: string; view: SessionView }) {
+  const { t } = useTranslation();
   const finalists = useMemo(
     () => (props.view.venues ?? []).filter((v) => props.view.runoffVenueIds?.includes(v.id!)),
     [props.view.venues, props.view.runoffVenueIds],
@@ -16,27 +19,19 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
   const travelLabels = useMemo(() => {
     const labels: Record<string, string> = {};
     for (const p of props.view.participants ?? []) {
-      if (p.id) labels[p.id] = p.id === self?.id ? "Sen" : (p.displayName ?? "Arkadaşın");
+      if (p.id)
+        labels[p.id] =
+          p.id === self?.id ? t("runoff.travelSelf") : (p.displayName ?? t("deck.travelFriend"));
     }
     return labels;
-  }, [props.view.participants, self?.id]);
+  }, [props.view.participants, self?.id, t]);
 
   return (
-    <main className="page">
+    <Page>
       <Wordmark />
-      {/* Artboard .top: .col style="gap:4px;align-items:flex-start" */}
-      <div className="col" style={{ gap: 4, alignItems: "flex-start" }}>
-        <Sticker>Son düzlük</Sticker>
-        <h1 style={{ fontSize: 29, marginTop: 6 }}>
-          İkisi de güzel,
-          <br />
-          biri kazanacak
-        </h1>
-      </div>
-      <p className="muted">
-        Herkes ikisini de beğendi. Tek seçim hakkın var — sonuç herkes seçince açıklanır.
-      </p>
+      <RunoffIntro />
+      <Note>{t("runoff.copy")}</Note>
       <RunoffList slug={props.slug} finalists={finalists} travelLabels={travelLabels} />
-    </main>
+    </Page>
   );
 }

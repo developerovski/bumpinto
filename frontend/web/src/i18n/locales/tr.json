@@ -1,0 +1,82 @@
+{
+  "common": { "wordmark": "BumpInto" },
+  "app": {
+    "homeTitle": "Ortada <0>buluşalım.</0>",
+    "homeHint": "Bir davet linkin olmalı — örn. bumpinto.app/j/x7k2m"
+  },
+  "session": {
+    "errorTitle": "Hmm.",
+    "notFound": "Bu oturum bulunamadı — link doğru mu?",
+    "expired": "Bu oturumun süresi dolmuş."
+  },
+  "join": {
+    "invited": "Arkadaşın seni buluşmaya çağırdı",
+    "title": "<0>Buluşmaya</0> katıl",
+    "subtitle": "Konumunu at, ortada buluşalım. Hesap filan gerekmez.",
+    "nameLabel": "Adın",
+    "namePlaceholder": "Arkadaşların sana ne der?",
+    "whereLabel": "Neredesin?",
+    "useMyLocation": "Mevcut konumumu kullan",
+    "currentLocation": "Mevcut konumun",
+    "or": "veya",
+    "addressPlaceholder": "Şehir ya da adres yaz",
+    "addressAria": "Şehir ya da adres",
+    "submit": "Katıl",
+    "privacy": "Konumun yalnızca bu buluşma için kullanılır.",
+    "errGeolocation": "Konum izni alınamadı — adres yazabilirsin.",
+    "errGeocode": "Bu adres bulunamadı — yakındaki bir şehri dene.",
+    "errJoin": "Katılamadın — bu oturum kapanmış olabilir."
+  },
+  "waiting": {
+    "joined": "Katıldın!",
+    "preparing": "Deste hazırlanıyor…",
+    "copy": "Mekanlar gelince buradan kaydıracaksın — sayfayı kapatma yeter.",
+    "who": "Kimler var",
+    "readyCount": "{{ready}} / {{total}} hazır",
+    "host": "Kuran",
+    "ready": "Hazır",
+    "waitingBadge": "Bekliyor",
+    "waitingLocation": "Konum bekleniyor…",
+    "you": "(sen)",
+    "changeLocation": "Konumumu değiştir",
+    "errUpdate": "Konum güncellenemedi — tekrar dene."
+  },
+  "deck": {
+    "counter": "{{current}} / {{total}}",
+    "seeAll": "Hepsini gör",
+    "photoTag": "foto · Places",
+    "pass": "geç",
+    "like": "beğen",
+    "ariaUndo": "Geri al",
+    "ariaPass": "Geç",
+    "ariaLike": "Beğen",
+    "travel": "{{who}} {{min}} dk",
+    "travelShort": "{{who}} {{min}}′",
+    "travelSelf": "Sana",
+    "travelFriend": "Arkadaşın",
+    "travelFallback": "Yol",
+    "finishedTitle": "Deste <0>bitti!</0>",
+    "likedCount": "{{count}} mekanı beğendin.",
+    "send": "Beğenilerimi gönder",
+    "backToList": "Listeye dön, düzelt",
+    "listTitle": "Hangisi olsun?"
+  },
+  "runoff": {
+    "sticker": "Son düzlük",
+    "title": "İkisi de güzel,<0/>biri kazanacak",
+    "copy": "Herkes ikisini de beğendi. Tek seçim hakkın var — sonuç herkes seçince açıklanır.",
+    "note": "kim neyi seçti, sonuçta belli olur",
+    "lockIn": "Seçimimi kilitle",
+    "locked": "seçimin kilitli — diğerlerini bekliyoruz",
+    "travelSelf": "Sen"
+  },
+  "result": {
+    "overline": "Ortak nokta",
+    "sticker": "Karar verildi!",
+    "directions": "Yol tarifi al",
+    "viralTitle": "Sıradaki buluşma senden mi?",
+    "viralCopy": "30 saniyede kur — arkadaşların linkle katılır.",
+    "viralCta": "Buluşma kur",
+    "viralSticker": "sıra sende"
+  }
+}

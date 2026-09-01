@@ -1,3 +1,5 @@
+/* Kaynak: ui.css .a-ico-* (→ c-ico-*) + W3 aksiyon satırı ölçüleri */
+import { useTranslation } from "react-i18next";
 import { Button } from "../atoms";
 
 /** Artboard W3 · .act / .a-un / .a-yes — geri al · geç · beğen.
@@ -7,26 +9,35 @@ export default function DeckActions(props: {
   onPass: () => void;
   onLike: () => void;
 }) {
-  // Artboard W3: .row style="justify-content:center;gap:20px;margin-top:12px;flex:0 0 auto"
+  const { t } = useTranslation();
   return (
-    <div
-      className="row"
-      style={{ justifyContent: "center", gap: 20, marginTop: 12, flex: "0 0 auto" }}
-    >
+    <div className="mt-3 flex flex-none items-center justify-center gap-5">
       <Button
         type="button"
         kind="white"
         shape="round-sm"
-        aria-label="Geri al"
+        aria-label={t("deck.ariaUndo")}
         onClick={props.onUndo}
       >
-        <span className="a-ico-undo" aria-hidden />
+        <span className="c-ico-undo" aria-hidden />
       </Button>
-      <Button type="button" kind="white" shape="round" aria-label="Geç" onClick={props.onPass}>
-        <span className="a-ico-x" aria-hidden />
+      <Button
+        type="button"
+        kind="white"
+        shape="round"
+        aria-label={t("deck.ariaPass")}
+        onClick={props.onPass}
+      >
+        <span className="c-ico-x" aria-hidden />
       </Button>
-      <Button type="button" kind="grad" shape="round" aria-label="Beğen" onClick={props.onLike}>
-        <span className="a-ico-heart" aria-hidden>
+      <Button
+        type="button"
+        kind="grad"
+        shape="round"
+        aria-label={t("deck.ariaLike")}
+        onClick={props.onLike}
+      >
+        <span className="c-ico-heart" aria-hidden>
           <i />
         </span>
       </Button>

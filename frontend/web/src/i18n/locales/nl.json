@@ -1,0 +1,85 @@
+{
+  "_status": "tasarım onayı bekliyor (2026-09-01)",
+  "common": {
+    "wordmark": "BumpInto"
+  },
+  "app": {
+    "homeTitle": "Laten we <0>in het midden afspreken.</0>",
+    "homeHint": "Je hebt een uitnodigingslink nodig — bijv. bumpinto.app/j/x7k2m"
+  },
+  "session": {
+    "errorTitle": "Hmm.",
+    "notFound": "Deze sessie is niet gevonden — klopt de link?",
+    "expired": "Deze sessie is verlopen."
+  },
+  "join": {
+    "invited": "Een vriend nodigt je uit om af te spreken",
+    "title": "Doe mee met de <0>afspraak</0>",
+    "subtitle": "Deel je locatie, we spreken in het midden af. Geen account nodig.",
+    "nameLabel": "Je naam",
+    "namePlaceholder": "Hoe noemen je vrienden je?",
+    "whereLabel": "Waar ben je?",
+    "useMyLocation": "Gebruik mijn locatie",
+    "currentLocation": "Je huidige locatie",
+    "or": "of",
+    "addressPlaceholder": "Typ een stad of adres",
+    "addressAria": "Stad of adres",
+    "submit": "Meedoen",
+    "privacy": "Je locatie wordt alleen voor deze afspraak gebruikt.",
+    "errGeolocation": "Geen toegang tot je locatie — typ anders een adres.",
+    "errGeocode": "Dit adres is niet gevonden — probeer een stad in de buurt.",
+    "errJoin": "Meedoen lukte niet — deze sessie is misschien gesloten."
+  },
+  "waiting": {
+    "joined": "Je doet mee!",
+    "preparing": "De stapel wordt klaargemaakt…",
+    "copy": "Zodra de plekken er zijn swipe je hier — laat deze pagina gewoon openstaan.",
+    "who": "Wie er zijn",
+    "readyCount": "{{ready}} / {{total}} klaar",
+    "host": "Host",
+    "ready": "Klaar",
+    "waitingBadge": "Wachten",
+    "waitingLocation": "Wachten op locatie…",
+    "you": "(jij)",
+    "changeLocation": "Mijn locatie wijzigen",
+    "errUpdate": "Locatie bijwerken lukte niet — probeer opnieuw."
+  },
+  "deck": {
+    "counter": "{{current}} / {{total}}",
+    "seeAll": "Toon alles",
+    "photoTag": "foto · Places",
+    "pass": "overslaan",
+    "like": "leuk",
+    "ariaUndo": "Ongedaan maken",
+    "ariaPass": "Overslaan",
+    "ariaLike": "Leuk",
+    "travel": "{{who}} {{min}} min",
+    "travelShort": "{{who}} {{min}}′",
+    "travelSelf": "Jij",
+    "travelFriend": "Je vriend",
+    "travelFallback": "Reis",
+    "finishedTitle": "Stapel <0>klaar!</0>",
+    "likedCount": "Je vond er {{count}} leuk.",
+    "send": "Stuur mijn keuzes",
+    "backToList": "Terug naar de lijst, pas aan",
+    "listTitle": "Welke wordt het?"
+  },
+  "runoff": {
+    "sticker": "Laatste ronde",
+    "title": "Allebei goed,<0/>eentje wint",
+    "copy": "Iedereen vond ze allebei leuk. Je hebt één keuze — de uitslag komt als iedereen gekozen heeft.",
+    "note": "wie wat koos, zie je in de uitslag",
+    "lockIn": "Mijn keuze vastzetten",
+    "locked": "je keuze staat vast — we wachten op de rest",
+    "travelSelf": "Jij"
+  },
+  "result": {
+    "overline": "Gemene deler",
+    "sticker": "Beslist!",
+    "directions": "Routebeschrijving",
+    "viralTitle": "Is de volgende afspraak aan jou?",
+    "viralCopy": "In 30 seconden geregeld — vrienden doen mee via een link.",
+    "viralCta": "Afspraak maken",
+    "viralSticker": "jouw beurt"
+  }
+}

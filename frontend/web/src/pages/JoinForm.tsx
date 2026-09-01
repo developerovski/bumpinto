@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Avatar, Button, Highlight, TextInput, Wordmark } from "../components/atoms";
-import Field from "../components/molecules/Field";
+import { useTranslation } from "react-i18next";
+import { Page, Wordmark } from "../components/atoms";
+import JoinFormFields from "../components/molecules/JoinFormFields";
+import JoinIntro from "../components/molecules/JoinIntro";
 import { api } from "../lib/api";
 import { useSessionStore } from "../store/sessionStore";
 
@@ -22,6 +24,7 @@ async function geocode(query: string): Promise<Coords | null> {
 }
 
 export default function JoinForm(props: { slug: string; onJoined: () => void }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [coords, setCoords] = useState<Coords | null>(null);
@@ -36,10 +39,15 @@ export default function JoinForm(props: { slug: string; onJoined: () => void }) 
         setCoords({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          label: "Mevcut konumun",
+          label: t("join.currentLocation"),
         }),
-      () => setError("Konum izni alınamadı — adres yazabilirsin."),
+      () => setError(t("join.errGeolocation")),
     );
+  }
+
+  function changeAddress(value: string) {
+    setAddress(value);
+    setCoords(null);
   }
 
   async function submit(e: FormEvent) {
@@ -51,7 +59,7 @@ export default function JoinForm(props: { slug: string; onJoined: () => void }) 
       if (!location && address.trim()) {
         location = await geocode(address.trim());
         if (!location) {
-          setError("Bu adres bulunamadı — yakındaki bir şehri dene.");
+          setError(t("join.errGeocode"));
           return;
         }
       }
@@ -68,68 +76,27 @@ export default function JoinForm(props: { slug: string; onJoined: () => void }) 
       });
       props.onJoined(); // token HttpOnly cookie'de — web'de saklanmaz
     } catch {
-      setError("Katılamadın — bu oturum kapanmış olabilir.");
+      setError(t("join.errJoin"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="page">
+    <Page>
       <Wordmark />
-      <div className="field" style={{ gap: 12 }}>
-        <div className="row">
-          <Avatar name="B" ring />
-          <span>Arkadaşın seni buluşmaya çağırdı</span>
-        </div>
-        <h1>
-          <Highlight>Buluşmaya</Highlight> katıl
-        </h1>
-        <p className="muted">Konumunu at, ortada buluşalım. Hesap filan gerekmez.</p>
-      </div>
-      <div className="a-dv" />
-
-      <form onSubmit={submit} className="field" style={{ gap: 15 }}>
-        <Field
-          id="join-name"
-          label="Adın"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Arkadaşların sana ne der?"
-          autoComplete="name"
-        />
-        <div className="field">
-          <span className="label">Neredesin?</span>
-          <Button type="button" kind="white" align="start" onClick={useMyLocation}>
-            <span className="a-dot" aria-hidden>
-              <i />
-            </span>
-            {coords ? coords.label : "Mevcut konumumu kullan"}
-          </Button>
-          <div className="a-dv-text">veya</div>
-          <TextInput
-            id="join-address"
-            aria-label="Şehir ya da adres"
-            placeholder="Şehir ya da adres yaz"
-            value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              setCoords(null);
-            }}
-          />
-        </div>
-        {error && (
-          <p className="err" role="alert">
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={busy || !name.trim()}>
-          Katıl
-        </Button>
-        <p className="muted" style={{ textAlign: "center" }}>
-          Konumun yalnızca bu buluşma için kullanılır.
-        </p>
-      </form>
-    </main>
+      <JoinIntro />
+      <JoinFormFields
+        name={name}
+        address={address}
+        locationLabel={coords?.label ?? null}
+        error={error}
+        busy={busy}
+        onNameChange={setName}
+        onAddressChange={changeAddress}
+        onUseLocation={useMyLocation}
+        onSubmit={submit}
+      />
+    </Page>
   );
 }

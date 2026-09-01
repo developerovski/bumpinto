@@ -1,0 +1,39 @@
+{
+  "projectId": "b5ce02cd-9c34-4b28-ac1e-53e86053d69e",
+  "shape": "package",
+  "pkg": "@bumpinto/web",
+  "globalName": "BumpInto",
+  "entry": "frontend/web/src/components/index.ts",
+  "buildCmd": "sh .design-sync/build-css.sh",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-css/ds-styles.css",
+  "extraEntries": [
+    "../../.design-sync/ds-preview-context.tsx"
+  ],
+  "provider": {
+    "component": "BumpIntoProvider"
+  },
+  "libOverrides": {
+    "dts.mjs": "jsdocFor sanitiser stripped Turkish letters (\\w is ASCII-only without the u flag)"
+  },
+  "dtsPropsFor": {
+    "JoinedCard": "  /** Katılan kişi; henüz katılmadıysa `null` — kart o zaman alt satırı basmaz. */\n  self: { id?: string; name: string; locationLabel: string | null } | null;",
+    "JoinFormFields": "  name: string;\n  address: string;\n  /** Konum alındıysa etiketi; yoksa buton \"Mevcut konumumu kullan\" der. */\n  locationLabel: string | null;\n  /** Hata metni; yoksa `null`. */\n  error: string | null;\n  /** Gönderim sürerken — submit butonu devre dışı. */\n  busy: boolean;\n  onNameChange: (value: string) => void;\n  onAddressChange: (value: string) => void;\n  onUseLocation: () => void;\n  onSubmit: (e: React.FormEvent) => void;"
+  },
+  "overrides": {
+    "ParticipantRow": {
+      "cardMode": "column"
+    },
+    "VenueCard": {
+      "cardMode": "column"
+    },
+    "VenueCheckRow": {
+      "cardMode": "column"
+    },
+    "WinnerCard": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

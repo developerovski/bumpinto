@@ -1,0 +1,8 @@
+/* Design-sync stylesheet entry. Same Tailwind v4 engine and same @theme tokens
+   as the app (app.css is imported verbatim); adds the brand webfonts the app
+   loads from index.html, and widens source scanning to the authored previews so
+   preview layout glue compiles too. Compiled by .design-sync/build-css.sh. */
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap");
+@import "../frontend/web/src/styles/app.css";
+@source "../frontend/web/src";  /* explicit: auto-detection is scoped to frontend/web by --cwd */
+@source "./previews";

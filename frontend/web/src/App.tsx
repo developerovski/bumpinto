@@ -1,20 +1,22 @@
+import { Trans, useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router-dom";
-import Highlight from "./components/atoms/Highlight";
+import { Highlight, Note, Page } from "./components/atoms";
 import SessionPage from "./pages/SessionPage";
 
 export default function App() {
+  const { t } = useTranslation();
   return (
     <Routes>
       <Route path="/j/:slug" element={<SessionPage />} />
       <Route
         path="*"
         element={
-          <main className="page" style={{ justifyContent: "center" }}>
+          <Page center>
             <h1>
-              Ortada <Highlight>buluşalım.</Highlight>
+              <Trans i18nKey="app.homeTitle" components={[<Highlight key="0" />]} />
             </h1>
-            <p className="muted">Bir davet linkin olmalı — örn. bumpinto.app/j/x7k2m</p>
-          </main>
+            <Note>{t("app.homeHint")}</Note>
+          </Page>
         }
       />
     </Routes>

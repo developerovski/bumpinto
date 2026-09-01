@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #fffbf6;
+  --color-card: #ffffff;
+  --color-ink: #27203b;
+  --color-ink2: #6e6584;
+  --color-ink3: #a79db8;
+  --color-flame: #fd3e6b;
+  --color-flame2: #ff7854;
+  --color-flame-deep: #de2456;
+  --color-flame-wash: #ffe9ef;
+  --color-sun: #ffc93c;
+  --color-hl: #ffe27a;
+  --color-grass: #0b7a44;
+  --color-grass-wash: #dff5e9;
+  --color-violet: #6234d8;
+  --color-violet-wash: #f1ebff;
+  --color-amber: #a96a0b;
+  --color-amber-wash: #fff1d6;
+  --color-line: #f1e8de;
+  --color-line2: #e4d9cd;
+  --color-line-in: #91869c;
+  --font-head: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+  --font-hand: "Caveat", cursive;
+  --text-display: 2.125rem; /* 34px — h1 */
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-h2: 1.3125rem; /* 21px */
+  --text-h3: 1.0625rem; /* 17px */
+  --radius-card: 1.375rem; /* 22px */
+  --shadow-sh1: 0 1px 3px rgba(39, 32, 59, 0.05), 0 4px 14px rgba(39, 32, 59, 0.06);
+  --shadow-sh2: 0 2px 6px rgba(39, 32, 59, 0.08), 0 12px 30px rgba(39, 32, 59, 0.12);
+}
+
+:root {
+  --grad: linear-gradient(120deg, #fd3e6b 10%, #ff7854 90%);
+  --story-ring: conic-gradient(from 210deg, #fd3e6b, #ff7854, #ffc93c, #7c4dff, #fd3e6b);
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+  a {
+    color: var(--color-flame-deep);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-ink);
+    text-decoration: underline;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-head);
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  h1 {
+    font-size: var(--text-display);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: var(--text-h2);
+    font-weight: 700;
+  }
+  h3 {
+    font-size: var(--text-h3);
+    font-weight: 700;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+@layer components {
+  /* Yalnız ::before/::after gerektiren desenler (spec §4). Değerler ui.css'ten birebir. */
+
+  /* ui.css .a-dv-text — .row(gap:10;margin:2px 0) > .dv(flex:1) + .mi + .dv(flex:1). */
+  .c-dv-text {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0.125rem 0;
+    font-size: 0.75rem;
+    color: var(--color-ink2);
+  }
+  .c-dv-text::before,
+  .c-dv-text::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-line);
+  }
+
+  /* ui.css .a-check — Artboard W2: yeşil onay kartındaki beyaz daire + tik işareti. */
+  .c-check {
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    box-shadow: var(--shadow-sh1);
+  }
+  .c-check > i {
+    display: block;
+    width: 0.625rem;
+    height: 0.375rem;
+    border-left: 2.5px solid var(--color-grass);
+    border-bottom: 2.5px solid var(--color-grass);
+    transform: rotate(-45deg);
+    margin-bottom: 0.1875rem;
+  }
+
+  /* ui.css .a-ico-undo — Artboard .undo — geri al ikonu. */
+  .c-ico-undo {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    border: 2.5px solid var(--color-ink2);
+    border-radius: 50%;
+    border-top-color: transparent;
+    transform: rotate(-45deg);
+  }
+
+  /* ui.css .a-ico-x — Artboard .x1 — geç ikonu. */
+  .c-ico-x {
+    position: relative;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  .c-ico-x::before,
+  .c-ico-x::after {
+    content: "";
+    position: absolute;
+    left: 0.5625rem;
+    top: 0.0625rem;
+    width: 2.5px;
+    height: 1.125rem;
+    background: var(--color-ink);
+    border-radius: 0.125rem;
+  }
+  .c-ico-x::before {
+    transform: rotate(45deg);
+  }
+  .c-ico-x::after {
+    transform: rotate(-45deg);
+  }
+
+  /* ui.css .a-ico-heart — Artboard .heart — beğen ikonu (gradyan buton üstünde beyaz). */
+  .c-ico-heart {
+    position: relative;
+    width: 1.1875rem;
+    height: 1.0625rem;
+    transform: rotate(-45deg);
+    margin-top: 0.125rem;
+  }
+  .c-ico-heart::before,
+  .c-ico-heart::after {
+    content: "";
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    left: 0;
+    top: 0;
+  }
+  .c-ico-heart::after {
+    transform: translateX(0.375rem);
+  }
+  .c-ico-heart > i {
+    position: absolute;
+    left: 0.1875rem;
+    top: 0.375rem;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    background: #fff;
+    border-radius: 0.125rem;
+    display: block;
+  }
+
+  /* ui.css .a-mark* — Artboard W2 .mark/.mk-* — kesikli halka, iki nokta, gradyan iğne. */
+  .c-mark {
+    position: relative;
+    width: 4.5rem;
+    height: 4.5rem;
+    flex: 0 0 auto;
+  }
+  .c-mark-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3.75rem;
+    height: 3.75rem;
+    transform: translate(-50%, -50%);
+    border: 2px dashed #d8cce8;
+    border-radius: 50%;
+  }
+  .c-mark-dot {
+    position: absolute;
+    width: 0.8125rem;
+    height: 0.8125rem;
+    border-radius: 50%;
+    background: var(--color-ink3);
+  }
+  .c-mark-dot--a {
+    left: 0;
+    top: 0.75rem;
+  }
+  .c-mark-dot--b {
+    right: 0;
+    bottom: 0.625rem;
+  }
+  .c-mark-pin {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.8125rem;
+    height: 1.8125rem;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: var(--grad);
+    border-radius: 50% 50% 50% 0.1875rem;
+    box-shadow: 0 8px 20px rgba(222, 36, 86, 0.3);
+  }
+  .c-mark-pin::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.5625rem;
+    height: 0.5625rem;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 50%;
+  }
+}

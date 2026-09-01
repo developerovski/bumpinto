@@ -26,6 +26,16 @@
 # kullanılmadı: yalnız isim referanslayan meşru manifest'leri sessizce gizlerdi.
 *.secret.yaml
 
+# Spring'in `./config/` override dizini — GERÇEK backend sırları burada yaşar.
+# `src/main/resources/application-*.yml` depoda kalır ve yalnız placeholder taşır;
+# değerler bu dizindeki aynı isimli dosyadan gelir (jar dışı profil dosyası = en yüksek öncelik).
+# DİKKAT: dizinin kendisi değil İÇERİĞİ (`/*`) yoksayılır — git, ebeveyni hariç tutulmuş bir
+# dosyayı geri dahil edemez, yani `/backend/config/` yazsaydık alttaki negasyon çalışmazdı.
+/backend/config/*
+!/backend/config/*.example
+
+backend/.run/*.run.xml
+
 *.pem
 *.key
 *.p8
@@ -95,3 +105,14 @@ Pods/
 # DİKKAT: `.claude/` TOPTAN yoksayılmaz — `.claude/skills/` paylaşılan proje varlığıdır
 # ve takip edilir. Yalnızca kişiye özel ayar dosyası dışarıda kalır.
 .claude/settings.local.json
+
+# ── design-sync (claude.ai/design) ───────────────────────────────────────────
+# Sahnelenen converter script'leri, üretilen bundle ve makine-yerel durum.
+# `.design-sync/` altındaki geri kalan her şey (config.json, NOTES.md,
+# conventions.md, previews/, overrides/) KALICIDIR ve commit edilir.
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+frontend/web/.ds-css/

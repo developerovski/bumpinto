@@ -1,9 +1,13 @@
 export { default as Avatar } from "./Avatar";
 export { default as Badge } from "./Badge";
 export { default as Button } from "./Button";
-export { default as Chip } from "./Chip";
+export { default as ErrorText } from "./ErrorText";
 export { default as HandNote } from "./HandNote";
+export { default as Heading } from "./Heading";
 export { default as Highlight } from "./Highlight";
+export { default as LinkButton } from "./LinkButton";
+export { default as Note } from "./Note";
+export { default as Page } from "./Page";
 export { default as Progress } from "./Progress";
 export { default as Sticker } from "./Sticker";
 export { default as TextInput } from "./TextInput";

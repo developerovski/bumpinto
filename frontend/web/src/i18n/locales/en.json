@@ -1,0 +1,83 @@
+{
+  "_status": "tasarım onayı bekliyor (2026-09-01)",
+  "common": { "wordmark": "BumpInto" },
+  "app": {
+    "homeTitle": "Let's meet <0>in the middle.</0>",
+    "homeHint": "You need an invite link — e.g. bumpinto.app/j/x7k2m"
+  },
+  "session": {
+    "errorTitle": "Hmm.",
+    "notFound": "This session wasn't found — is the link right?",
+    "expired": "This session has expired."
+  },
+  "join": {
+    "invited": "A friend invited you to meet up",
+    "title": "Join the <0>meetup</0>",
+    "subtitle": "Drop your location, we'll meet in the middle. No account needed.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "What do your friends call you?",
+    "whereLabel": "Where are you?",
+    "useMyLocation": "Use my current location",
+    "currentLocation": "Your current location",
+    "or": "or",
+    "addressPlaceholder": "Type a city or address",
+    "addressAria": "City or address",
+    "submit": "Join",
+    "privacy": "Your location is used only for this meetup.",
+    "errGeolocation": "Couldn't get your location — you can type an address.",
+    "errGeocode": "Address not found — try a city nearby.",
+    "errJoin": "Couldn't join — this session may have closed."
+  },
+  "waiting": {
+    "joined": "You're in!",
+    "preparing": "Getting the deck ready…",
+    "copy": "You'll swipe here once the places land — just keep this page open.",
+    "who": "Who's here",
+    "readyCount": "{{ready}} / {{total}} ready",
+    "host": "Host",
+    "ready": "Ready",
+    "waitingBadge": "Waiting",
+    "waitingLocation": "Waiting for a location…",
+    "you": "(you)",
+    "changeLocation": "Change my location",
+    "errUpdate": "Couldn't update your location — try again."
+  },
+  "deck": {
+    "counter": "{{current}} / {{total}}",
+    "seeAll": "See all",
+    "photoTag": "photo · Places",
+    "pass": "pass",
+    "like": "like",
+    "ariaUndo": "Undo",
+    "ariaPass": "Pass",
+    "ariaLike": "Like",
+    "travel": "{{who}} {{min}} min",
+    "travelShort": "{{who}} {{min}}′",
+    "travelSelf": "You",
+    "travelFriend": "Your friend",
+    "travelFallback": "Trip",
+    "finishedTitle": "Deck <0>done!</0>",
+    "likedCount": "You liked {{count}} of them.",
+    "send": "Send my likes",
+    "backToList": "Back to the list, edit",
+    "listTitle": "Which one?"
+  },
+  "runoff": {
+    "sticker": "Home stretch",
+    "title": "Both are great,<0/>one will win",
+    "copy": "Everyone liked both. You get one pick — the result shows once everyone has chosen.",
+    "note": "who picked what shows in the result",
+    "lockIn": "Lock in my pick",
+    "locked": "your pick is locked — waiting on the others",
+    "travelSelf": "You"
+  },
+  "result": {
+    "overline": "Common ground",
+    "sticker": "Decided!",
+    "directions": "Get directions",
+    "viralTitle": "Is the next meetup on you?",
+    "viralCopy": "Set one up in 30 seconds — friends join with a link.",
+    "viralCta": "Start a meetup",
+    "viralSticker": "your turn"
+  }
+}
