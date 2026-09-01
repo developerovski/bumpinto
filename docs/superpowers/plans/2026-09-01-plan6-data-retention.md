@@ -13,8 +13,11 @@ ve kullanıcıya verilmiş bir söz.
 
 **Tech Stack:** Plan 2 yığını. **Yeni bağımlılık YOK.**
 
-**Ön koşul:** Plan 2 `done`. Plan 5 `done` (CronJob manifest'i oradaki imaj/secret adlarına dayanıyor).
-Task 1-4 Plan 5'ten bağımsız yürütülebilir; yalnız Task 5 Plan 5 çıktısını bekler.
+**Ön koşul:** Plan 2 `done`. Task 1-4 Plan 5'ten BAĞIMSIZ yürütülebilir.
+Yalnız Task 5, Plan 5 **Task 3'ün** (K8s manifest'leri) çıktısına dayanır — imaj ve secret adlarını
+oradan alır. Görünürdeki kilitlenmeyi önlemek için sıra nettir:
+**Plan 5 Task 1-3 → Plan 6 (tümü) → Plan 5 Task 4 (yayın kontrol listesi).**
+Plan 5'in yayın kontrol listesi bu plan `done` olmadan işaretlenmez (kapı satırı oraya EKLENDİ).
 
 ---
 
@@ -340,9 +343,10 @@ spec:
 `concurrencyPolicy: Forbid` — uzun süren bir purge ertesi gün üst üste binmez.
 `envFrom` aynı secret'ı verir; `AppProps` fail-fast doğrulaması korunur (Kapsam kararı 5).
 
-- [ ] **Step 2: Plan 5 yayın kontrol listesine kapı satırı ekle** —
-`2026-09-01-plan5-ci-deploy.md` Task 4 Step 1 listesine:
-`- [ ] Plan 6 (veri saklama) done ve retention CronJob uygulandı — GDPR gereği prod'a çıkmadan önce`
+- [ ] **Step 2: Plan 5 kapı satırını DOĞRULA** (eklemek gerekmiyor — zaten eklendi).
+`2026-09-01-plan5-ci-deploy.md` Task 4 Step 1 listesinde "Plan 6 (veri saklama) `done`" kutusu
+duruyor olmalı. Yoksa ekle. Kapı, Plan 5 Plan 6'dan önce yürütülse bile maddenin açık
+kalmamasını garanti eder.
 
 - [ ] **Step 3: Kullanıcı doğrulaması** (ajan komutu sunar, kullanıcı çalıştırır):
 `kubectl -n bumpinto create job --from=cronjob/bumpinto-retention-purge purge-manual-1`

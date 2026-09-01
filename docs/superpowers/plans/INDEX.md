@@ -23,11 +23,4 @@ Durum değerleri: `ready` (yazıldı, yürütülmedi) · `in-progress` · `block
 | 3 | pnpm workspace + web katılım uygulaması | `2026-09-01-plan3-web.md` | ready | — | yazıldı |
 | 4 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | ready | — | yazıldı |
 | 5 | CI + Docker + K8s deploy | `2026-09-01-plan5-ci-deploy.md` | ready | — | yazıldı |
-
-## Planlar arasi SAHIPSIZ gereksinim (Plan 2 kapanis denetiminde bulundu)
-
-- **Spec §6: "suresi dolan oturum 30 gun sonra kalici silinir" hicbir planda yok.**
-  Backend'de `@Scheduled`/cron yok, Plan 5'te de yok — ama Plan 4 mobil UI bunu
-  kullaniciya vaat ediyor. GDPR gereksinimi + kullaniciya verilmis soz.
-  Prod'dan once Plan 5'e CronJob ya da backend'e `@Scheduled` purge eklenmeli.
-  (Plan 2 kapsaminda DEGIL — bilincli olarak genisletilmedi.)
+| 6 | Veri saklama — süresi dolan oturumların kalıcı silinmesi | `2026-09-01-plan6-data-retention.md` | ready | — | Spec §6 GDPR; Plan 2 kapanış denetiminde sahipsiz bulundu, plana bağlandı. **Plan 5 yayın kontrol listesi bu plan `done` olmadan işaretlenmez** |
