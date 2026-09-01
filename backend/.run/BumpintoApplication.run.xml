@@ -1,7 +1,12 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="BumpintoApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
     <option name="ACTIVE_PROFILES" value="local" />
-
+    <envs>
+      <env name="FOURSQUARE_API_KEY" value="" />
+      <env name="GOOGLE_CLIENT_ID" value="" />
+      <env name="GOOGLE_PLACES_API_KEY" value="" />
+      <env name="TOKEN_SECRET" value="" />
+    </envs>
     <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UnknownPolicyInFreeMode" />
     <module name="backend" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.bumpinto.BumpintoApplication" />
