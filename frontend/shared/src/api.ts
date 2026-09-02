@@ -5,6 +5,9 @@ export type Schemas = components["schemas"];
 export type SessionView = Schemas["SessionView"];
 export type VenueDto = Schemas["VenueDto"];
 export type ParticipantDto = Schemas["ParticipantDto"];
+export type MeResponse = Schemas["MeResponse"];
+export type SessionSummaryDto = Schemas["SessionSummaryDto"];
+export type SessionPreview = Schemas["SessionPreview"];
 
 export function createBumpintoApi(http: AxiosInstance) {
   return {
@@ -38,6 +41,14 @@ export function createBumpintoApi(http: AxiosInstance) {
       http.post<ParticipantDto>(`/api/sessions/${slug}/points`, body).then((r) => r.data),
     removePoint: (slug: string, participantId: string) =>
       http.delete(`/api/sessions/${slug}/points/${participantId}`).then(() => undefined),
+    listSessions: () =>
+      http.get<Schemas["SessionListResponse"]>("/api/sessions").then((r) => r.data),
+    me: () => http.get<MeResponse>("/api/me").then((r) => r.data),
+    updateMe: (body: Schemas["UpdateMeRequest"]) =>
+      http.put<MeResponse>("/api/me", body).then((r) => r.data),
+    logout: () => http.post("/api/auth/logout").then(() => undefined),
+    preview: (slug: string) =>
+      http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
   };
 }
 

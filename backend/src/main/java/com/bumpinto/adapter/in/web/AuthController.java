@@ -73,4 +73,11 @@ class AuthController {
         }
         return ResponseEntity.ok(new LoginResponse(accessToken, expiresAt, userId));
     }
+
+    /** Kimlik gerekmez: suresi dolmus cerezle de cikis yapilabilmeli. Mobil icin no-op (204). */
+    @PostMapping("/logout")
+    ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString()).build();
+    }
 }

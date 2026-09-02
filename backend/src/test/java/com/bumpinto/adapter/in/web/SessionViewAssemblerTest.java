@@ -35,7 +35,7 @@ class SessionViewAssemblerTest {
         Session s = session(SessionType.SOLO);
         Participant p = person(s.id(), new GeoPoint(51.697812, 5.303749), "'s-Hertogenbosch", true);
         ApiDtos.SessionView view = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(p), List.of(), Map.of(), Set.of()));
+                new SessionQueries.SessionSnapshot(s, List.of(p), List.of(), Map.of(), Set.of()), null);
         ApiDtos.ParticipantDto dto = view.participants().get(0);
         assertThat(dto.approxLocation().lat()).isEqualTo(51.70);
         assertThat(dto.approxLocation().lng()).isEqualTo(5.30);
@@ -53,13 +53,13 @@ class SessionViewAssemblerTest {
                 false, null);
 
         ApiDtos.SessionView one = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(a, none), List.of(), Map.of(), Set.of()));
+                new SessionQueries.SessionSnapshot(s, List.of(a, none), List.of(), Map.of(), Set.of()), null);
         assertThat(one.midpoint()).isNull();
         assertThat(one.radiusKm()).isNull();
         assertThat(one.participants().get(1).approxLocation()).isNull();
 
         ApiDtos.SessionView two = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(a, b), List.of(), Map.of(), Set.of()));
+                new SessionQueries.SessionSnapshot(s, List.of(a, b), List.of(), Map.of(), Set.of()), null);
         assertThat(two.midpoint().lat()).isBetween(51.38, 51.70);
         assertThat(two.midpoint().lng()).isBetween(5.30, 5.72);
         assertThat(two.radiusKm()).isBetween(1.0, 10.0);

@@ -13,6 +13,11 @@ class UserEntity {
     String email;
     String name;
     String authProvider;
+    Double defaultLat;
+    Double defaultLng;
+    String defaultLocationLabel;
+    String defaultActivity;
+    String language;
 
     static UserEntity of(UUID id, String email, String name, String provider) {
         UserEntity u = new UserEntity();

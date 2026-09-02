@@ -794,8 +794,9 @@ docs: "Tum alanlar opsiyonel. `language`: tr|en|nl (aksi 400). `displayName` nul
 
 ## Plan sonu doğrulaması
 
-- [ ] `GET /api/sessions` open/past ayrımı tembel expiry ile doğru; sıralama en yeni önce; limit 20.
-- [ ] `PUT /api/me` `language` yalnız tr/en/nl; `displayName` null → değişmez; diğer null'lar temizler.
-- [ ] `POST /api/auth/logout` çerezi siler, kimliksiz de 204 döner.
-- [ ] `frontend/shared` client'ta `listSessions`, `me`, `updateMe`, `logout` var; web `tsc` yeşil.
-- [ ] Spec §8 kalem 1–3 kapandı; M-1 `localSessions.ts` tavizi gereksiz (M-1 Ek A).
+- [x] `GET /api/sessions` open/past ayrımı tembel expiry ile doğru; sıralama en yeni önce; limit 20.
+- [x] `PUT /api/me` `language` yalnız tr/en/nl; `displayName` null → değişmez; diğer null'lar temizler.
+- [x] `POST /api/auth/logout` çerezi siler, kimliksiz de 204 döner.
+- [x] `frontend/shared` client'ta `listSessions`, `me`, `updateMe`, `logout` var; web `tsc` yeşil.
+- [x] Spec §8 kalem 1–3 kapandı; M-1 `localSessions.ts` tavizi gereksiz (M-1 Ek A).
+- [x] Ek: `GET /sessions/{slug}/preview` + `SessionView.viewer`; kamu uçlarında bayat çerez 401'i kapatıldı (`PUBLIC_ENDPOINTS`). Yürütme notu: Task 3 iki parça (3a liste/me/logout, 3b preview/viewer) olarak koşuldu; Bruno istekleri Task 4'te değil ilgili uç görevinde yazıldı.

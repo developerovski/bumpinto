@@ -5,7 +5,9 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
@@ -188,6 +190,82 @@ class StoreAdapterTest {
 
         assertThat(new UserStoreAdapter(racing).upsertByEmail("race@x.dev", "Ayşe"))
                 .isEqualTo(winner);
+    }
+
+    @Test
+    void userProfileRoundTripsPreferences() {
+        UUID id = users.upsertByEmail("pref@bumpinto.test", "Mehmet");
+        UserProfile before = users.profileOf(id).orElseThrow();
+        assertThat(before.language()).isNull();
+        users.saveProfile(before.withPreferences("Mehmet Ş.", new GeoPoint(51.6978, 5.3037),
+                "'s-Hertogenbosch", ActivityType.COFFEE, "tr"));
+        UserProfile after = users.profileOf(id).orElseThrow();
+        assertThat(after.name()).isEqualTo("Mehmet Ş.");
+        assertThat(after.defaultLocation()).isEqualTo(new GeoPoint(51.6978, 5.3037));
+        assertThat(after.defaultLocationLabel()).isEqualTo("'s-Hertogenbosch");
+        assertThat(after.defaultActivity()).isEqualTo(ActivityType.COFFEE);
+        assertThat(after.language()).isEqualTo("tr");
+    }
+
+    /**
+     * created_at aynı transaction içindeki tüm INSERT'lerde now()'dan sabittir (Postgres
+     * transaction timestamp'i) — sıralama id DESC tie-break'e düşer; bu yüzden ikinci oturuma
+     * kasten daha büyük bir id veriyoruz.
+     */
+    @Test
+    void hostSummariesCountParticipantsAndGuests() {
+        UUID hostA = users.upsertByEmail("summary-host@bumpinto.test", "Ayla");
+
+        Session session1 = sessions.saveSession(new Session(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"), "smryssn1", hostA, "Cuma",
+                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(600), null, List.of()));
+        Session session2 = sessions.saveSession(new Session(
+                UUID.fromString("22222222-2222-2222-2222-222222222222"), "smryssn2", hostA,
+                "Cumartesi", ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(600), null, List.of()));
+
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayla",
+                new GeoPoint(51.6978, 5.3037), true, "tok-s1-host", null, false, null));
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayşe",
+                new GeoPoint(51.7, 5.3), false, "tok-s1-ayse", Instant.now(), false, null));
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Kerem",
+                null, false, "tok-s1-kerem", null, false, null));
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Nokta",
+                new GeoPoint(51.71, 5.31), false, null, null, true, "Manuel nokta"));
+
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Ayla",
+                new GeoPoint(51.6978, 5.3037), true, "tok-s2-host", null, false, null));
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Zeynep",
+                new GeoPoint(51.72, 5.32), false, "tok-s2-zeynep", Instant.now(), false, null));
+        sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Mert",
+                new GeoPoint(51.73, 5.33), false, "tok-s2-mert", null, false, null));
+
+        Venue decidedVenue = venue(session2, "smry-venue", 0);
+        deck.saveVenues(List.of(decidedVenue));
+        sessions.saveSession(session2.decided(decidedVenue.id()));
+
+        List<SessionSummary> summaries = sessions.summariesOfHost(hostA, 10);
+        assertThat(summaries).extracting(s -> s.session().id())
+                .containsExactly(session2.id(), session1.id());
+
+        SessionSummary newest = summaries.get(0);
+        assertThat(newest.participantCount()).isEqualTo(3);
+        assertThat(newest.readyCount()).isEqualTo(3);
+        assertThat(newest.doneCount()).isEqualTo(1);
+        assertThat(newest.decidedVenueName()).isEqualTo(decidedVenue.name());
+        assertThat(newest.decidedVenuePhotoUrl()).isEqualTo(decidedVenue.photoUrl());
+
+        SessionSummary older = summaries.get(1);
+        assertThat(older.participantCount()).isEqualTo(4);
+        assertThat(older.readyCount()).isEqualTo(3);
+        assertThat(older.doneCount()).isEqualTo(1);
+        assertThat(older.decidedVenueName()).isNull();
+        assertThat(older.decidedVenuePhotoUrl()).isNull();
+
+        assertThat(sessions.summariesOfHost(hostA, 1)).hasSize(1);
+        assertThat(sessions.hostedSessionCount(hostA)).isEqualTo(2);
+        assertThat(sessions.distinctGuestsOfHost(hostA)).isEqualTo(4); // Ayşe, Kerem, Zeynep, Mert
     }
 
     private Session newSession(String slug) {

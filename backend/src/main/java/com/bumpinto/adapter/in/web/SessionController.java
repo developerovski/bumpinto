@@ -3,11 +3,13 @@ package com.bumpinto.adapter.in.web;
 import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.SessionType;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,14 +29,22 @@ class SessionController {
     private final SessionQueries queries;
     private final SessionViewAssembler assembler;
     private final ParticipantTokenDelivery tokens;
+    private final UserProfileQueries profiles;
 
     SessionController(SessionCommands commands, DeckFlow deckFlow, SessionQueries queries,
-                      SessionViewAssembler assembler, ParticipantTokenDelivery tokens) {
+                      SessionViewAssembler assembler, ParticipantTokenDelivery tokens,
+                      UserProfileQueries profiles) {
         this.commands = commands;
         this.deckFlow = deckFlow;
         this.queries = queries;
         this.assembler = assembler;
         this.tokens = tokens;
+        this.profiles = profiles;
+    }
+
+    @GetMapping
+    ApiDtos.SessionListResponse mine(@AuthenticationPrincipal Jwt jwt) {
+        return assembler.toList(profiles.mySessions(WebPrincipals.hostUserId(jwt)));
     }
 
     @PostMapping
@@ -56,27 +66,34 @@ class SessionController {
     }
 
     @GetMapping("/{slug}")
-    ApiDtos.SessionView view(@PathVariable String slug) {
-        return assembler.toView(queries.snapshot(slug));
+    ApiDtos.SessionView view(@PathVariable String slug, Authentication auth) {
+        return assembler.toView(queries.snapshot(slug), auth);
+    }
+
+    @GetMapping("/{slug}/preview")
+    ApiDtos.SessionPreview preview(@PathVariable String slug) {
+        return assembler.toPreview(queries.snapshot(slug));
     }
 
     @PostMapping("/{slug}/find-venues")
-    ApiDtos.SessionView findVenues(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug) {
+    ApiDtos.SessionView findVenues(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
+            Authentication auth) {
         deckFlow.findVenues(slug, WebPrincipals.hostUserId(jwt));
-        return assembler.toView(queries.snapshot(slug));
+        return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/shuffle")
-    ApiDtos.SessionView shuffle(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug) {
+    ApiDtos.SessionView shuffle(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
+            Authentication auth) {
         deckFlow.shuffle(slug, WebPrincipals.hostUserId(jwt));
-        return assembler.toView(queries.snapshot(slug));
+        return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/force-decision")
     ApiDtos.SessionView forceDecision(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
-            @RequestBody(required = false) ApiDtos.ForceDecisionRequest request) {
+            @RequestBody(required = false) ApiDtos.ForceDecisionRequest request, Authentication auth) {
         deckFlow.forceDecision(slug, WebPrincipals.hostUserId(jwt),
                 request == null ? null : request.venueId());
-        return assembler.toView(queries.snapshot(slug));
+        return assembler.toView(queries.snapshot(slug), auth);
     }
 }

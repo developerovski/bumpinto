@@ -1,0 +1,9 @@
+info:
+  name: Me (profil · tercihler)
+  type: folder
+  seq: 6
+
+http:
+  auth:
+    type: bearer
+    token: "{{accessToken}}"

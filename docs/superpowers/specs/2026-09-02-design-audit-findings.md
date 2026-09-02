@@ -106,3 +106,22 @@ Bunlar hata değil, spec'in sessiz kaldığı yerler; W-3/W-4 başlamadan yazıl
 - Mekanlar grup 390 davetli: aynı oturum 1280'de 3 pin, 390'da 2 pin → üçüncü katılımcı pini eksik.
 - Mekanlar bireysel 390: buton "Seç", her yerde "Bunu seç" → terim birliği.
 - Yeni oturum TR 390: "Eğlence" etkinlik grubu markup'ta yok; EN/NL 390'da var → ekle.
+
+## 9. B-6 API ↔ artboard hizalaması (2026-09-02, uygulandı)
+
+Oturumlar / Profil / Katıl artboard'ları B-6 sözleşmesiyle karşılaştırıldı. Düzeltmeler bu kez
+**Claude Design dosyalarına uygulandı** (`Web Ekranlar v2` + `Mobil Ekranlar v2`; yerel kopya
+üzerinde byte-doğrulamalı yazım — girişteki "elle yapılmalı" notu bu yöntemle aşıldı).
+
+| # | Bulgu | Karar / yapılan |
+|---|---|---|
+| 1 | Oturumlar satırı `Kahve · Eindhoven civarı · 12 kart` — şehir ve deste sayısı API'de yok | Artboard: `Kahve · Grup` (`sessionType` API'de var). Geçmiş satırlarındaki ` · <şehir>` düştü. Orta nokta şehir adı B-7 adayı olarak kalır |
+| 2 | İlerleme `2/3 bitirdi — sıra Kerem'de` / `1/3 hazır` | API: `SessionSummaryDto.readyCount` (konumu olan) + `doneCount` (desteyi bitiren). Artboard: ad gerektiren "— sıra Kerem'de" düştü |
+| 3 | Geçmiş satırında mekan fotoğrafı | API: `decidedVenuePhotoUrl` (nullable; Google-only 10 türde null). Artboard'daki renk bloğu foto-yok fallback'idir |
+| 4 | Katıl sağ bölge: "Kimler var 2/3 hazır", avatarlar, "…hazır. Sıra sende" cümlesi, pinli harita | API: `preview.participants[{displayName, host, hasLocation}]` + `participantCount` — id/koordinat YOK (kamu uçtan koordinat çıkmaz). Artboard TR/EN/NL: pinler, şehir etiketleri, orta nokta halkası kaldırıldı; harita pinsiz + "Katılınca konumlar haritada görünür." notu. EN/NL'deki rev-1 `class="map"` bloğu TR'nin `gmap` yapısıyla değiştirildi, gizlilik cümlesi rev 2'ye çekildi (§1'in Katıl satırları kapandı; "Yeni oturum EN/NL 390" hâlâ açık) |
+| 5 | Profil'de ad düzenlenemiyor, `PUT /api/me` destekliyor (spec §8/2) | Artboard: ad satırına diğer tercih satırlarıyla aynı chevron eklendi (Profil 1280/390 + Mobil 09) |
+| 6 | Null tercih hâlleri çizilmemiş | Artboard açılmadı. **Kural:** değer yoksa satır `Seçilmedi` / `Not set` / `Niet ingesteld` gösterir, chevron kalır (EN/NL kopyası onay bekler) |
+| 7 | `expiresAt` hiçbir artboard'da kullanılmıyor | API'de kalır (kalan süre rozeti isterse hazır); artboard değişmedi |
+
+Dokunulmayan: Lobi/Mekanlar/Karar/Deste'deki "Orta nokta · Eindhoven civarı" etiketi W-4'ün bilinen
+sınırı (B-7 ters geocode). Mobil dosyada Katıl/preview ekranı yok (M-1/M-2 çizer).

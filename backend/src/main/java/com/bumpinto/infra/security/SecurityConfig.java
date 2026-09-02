@@ -3,6 +3,7 @@ package com.bumpinto.infra.security;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.infra.config.AppProps;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,8 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,6 +28,13 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // Kimlik gerektirmeyen TEK liste: hem yetki kuralinda hem bearer resolver'da (bayat cerez 401'letmesin) kullanilir.
+    static final List<RequestMatcher> PUBLIC_ENDPOINTS = List.of(
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/google"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/logout"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/sessions/*/participants"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"));
+
     @Bean
     SecurityFilterChain apiChain(HttpSecurity http, SessionStorePort sessions,
                                  BearerTokenResolver bearerTokenResolver) throws Exception {
@@ -34,8 +44,7 @@ public class SecurityConfig {
             .cors(cors -> {})
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/google").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/sessions/*/participants").permitAll()
+                .requestMatchers(PUBLIC_ENDPOINTS.toArray(RequestMatcher[]::new)).permitAll()
                 .requestMatchers("/v3/api-docs/**", "/ws/**", "/error").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(o -> o
@@ -59,6 +68,9 @@ public class SecurityConfig {
             if (fromHeader != null) {
                 return fromHeader; // mobil
             }
+            if (isPublicEndpoint(request)) {
+                return null; // eski/bozuk bumpinto_at hicbir public ucu 401'letmesin
+            }
             if (request.getCookies() != null) {
                 for (Cookie cookie : request.getCookies()) {
                     if (AuthCookies.ACCESS.equals(cookie.getName())) {
@@ -68,6 +80,10 @@ public class SecurityConfig {
             }
             return null;
         };
+    }
+
+    private static boolean isPublicEndpoint(HttpServletRequest request) {
+        return PUBLIC_ENDPOINTS.stream().anyMatch(m -> m.matches(request));
     }
 
     @Bean

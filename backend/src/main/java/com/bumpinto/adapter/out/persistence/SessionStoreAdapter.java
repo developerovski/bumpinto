@@ -6,12 +6,17 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -20,10 +25,13 @@ public class SessionStoreAdapter implements SessionStorePort {
 
     private final SessionRepository sessions;
     private final ParticipantRepository participants;
+    private final VenueRepository venues;
 
-    public SessionStoreAdapter(SessionRepository sessions, ParticipantRepository participants) {
+    public SessionStoreAdapter(SessionRepository sessions, ParticipantRepository participants,
+                               VenueRepository venues) {
         this.sessions = sessions;
         this.participants = participants;
+        this.venues = venues;
     }
 
     @Override public Session saveSession(Session s) {
@@ -74,6 +82,46 @@ public class SessionStoreAdapter implements SessionStorePort {
 
     @Override public void deleteParticipant(UUID participantId) {
         participants.deleteById(participantId);
+    }
+
+    @Override public List<SessionSummary> summariesOfHost(UUID hostId, int limit) {
+        List<SessionEntity> rows = sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId,
+                PageRequest.of(0, limit));
+        List<UUID> sessionIds = rows.stream().map(e -> e.id).toList();
+        Map<UUID, List<ParticipantEntity>> bySession = participants.findBySessionIdIn(sessionIds)
+                .stream().collect(Collectors.groupingBy(p -> p.sessionId));
+        Set<UUID> decidedVenueIds = rows.stream().map(e -> e.decidedVenueId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, VenueEntity> venueById = venues.findAllById(decidedVenueIds).stream()
+                .collect(Collectors.toMap(v -> v.id, v -> v));
+        return rows.stream()
+                .map(e -> toSummary(e, bySession.getOrDefault(e.id, List.of()), venueById))
+                .toList();
+    }
+
+    @Override public long hostedSessionCount(UUID hostId) {
+        return sessions.countByHostId(hostId);
+    }
+
+    @Override public long distinctGuestsOfHost(UUID hostId) {
+        return participants.countDistinctGuestsOfHost(hostId);
+    }
+
+    private static SessionSummary toSummary(SessionEntity e, List<ParticipantEntity> ps,
+                                            Map<UUID, VenueEntity> venueById) {
+        int ready = 0;
+        int done = 0;
+        for (ParticipantEntity p : ps) {
+            if (p.lat != null && p.lng != null) {
+                ready++;
+            }
+            if (p.deckDoneAt != null) {
+                done++;
+            }
+        }
+        VenueEntity decided = e.decidedVenueId == null ? null : venueById.get(e.decidedVenueId);
+        return new SessionSummary(toSession(e), e.createdAt, ps.size(), ready, done,
+                decided == null ? null : decided.name, decided == null ? null : decided.photoUrl);
     }
 
     static Session toSession(SessionEntity e) {

@@ -28,7 +28,7 @@ public final class SessionExpiry {
     }
 
     /** Okuma tarafı: süresi dolmuş oturum EXPIRED olarak raporlanır (kayıt değişmez). */
-    static Session applied(Session session, Instant now) {
+    public static Session applied(Session session, Instant now) {
         return expired(session, now) ? session.withStatus(SessionStatus.EXPIRED) : session;
     }
 

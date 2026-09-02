@@ -1,0 +1,39 @@
+info:
+  name: Preview Session
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  auth:
+    type: none
+  url: "{{baseUrl}}/api/sessions/{{slug}}/preview"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("hostDisplayName string doner", function() {
+          expect(res.body.hostDisplayName).to.be.a("string");
+        });
+        test("participants dizi doner", function() {
+          expect(res.body.participants).to.be.an("array");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Kimlik gerekmez (davet linkiyle acilan Katil ekrani). Koordinat, katilimci id'si ve
+    mekan DONMEZ; `participants[]` yalniz ad + host + hasLocation.
+
+    Bayat `bumpinto_at` / `bumpinto_pt_*` cerezi ucu engellemez.
+
+    SOLO oturumda da doner ama davet linki yok.
+
+    Suresi dolmus oturum EXPIRED raporlanir. `participantCount` elle konumlari (manual) SAYMAZ;
+    `GET /sessions/{slug}` icindeki `participants` listesi sayar.
+
+    Rate limit: genel /api 120/dk.

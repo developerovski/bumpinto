@@ -10,6 +10,7 @@ import java.time.Duration;
 public class AuthCookies {
 
     public static final String ACCESS = "bumpinto_at";
+    static final String ACCESS_PATH = "/api";
 
     private final AppProps props;
 
@@ -22,7 +23,12 @@ public class AuthCookies {
     }
 
     public ResponseCookie access(String token, Duration ttl) {
-        return base(ACCESS, token, "/api", ttl);
+        return base(ACCESS, token, ACCESS_PATH, ttl);
+    }
+
+    // Web cikisi: ayni ad/yol ile Max-Age=0
+    public ResponseCookie clearAccess() {
+        return base(ACCESS, "", ACCESS_PATH, Duration.ZERO);
     }
 
     public ResponseCookie participant(String slug, String token, Duration ttl) {

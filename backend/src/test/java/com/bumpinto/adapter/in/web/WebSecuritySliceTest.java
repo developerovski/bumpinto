@@ -3,6 +3,7 @@ package com.bumpinto.adapter.in.web;
 import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.ActivityType;
@@ -79,6 +80,7 @@ class WebSecuritySliceTest {
     @MockitoBean DeckFlow deckFlow;
     @MockitoBean SessionQueries queries;
     @MockitoBean SessionStorePort store;
+    @MockitoBean UserProfileQueries profiles;
 
     static final UUID SESSION_ID = UUID.randomUUID();
 

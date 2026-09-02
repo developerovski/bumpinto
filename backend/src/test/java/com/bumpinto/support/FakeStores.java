@@ -4,10 +4,14 @@ import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
+import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
+import com.bumpinto.domain.session.SessionSummary;
+import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.domain.venue.Venue;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -26,6 +30,7 @@ public class FakeStores {
     public static class InMemorySessionStore implements SessionStorePort {
         public final Map<UUID, Session> sessions = new HashMap<>();
         public final Map<UUID, Participant> participants = new HashMap<>();
+        public final Map<UUID, Instant> createdAt = new HashMap<>();
 
         @Override public Session saveSession(Session s) {
             sessions.put(s.id(), s);
@@ -52,6 +57,44 @@ public class FakeStores {
 
         @Override public void deleteParticipant(UUID participantId) {
             participants.remove(participantId);
+        }
+
+        @Override public List<SessionSummary> summariesOfHost(UUID hostId, int limit) {
+            return sessions.values().stream()
+                    .filter(s -> s.hostId().equals(hostId))
+                    // Adaptor'la ayni tie-break: findByHostIdOrderByCreatedAtDescIdDesc
+                    .sorted(Comparator.comparing(this::createdAtOf, Comparator.reverseOrder())
+                            .thenComparing(Session::id, Comparator.reverseOrder()))
+                    .limit(limit)
+                    .map(this::toSummary)
+                    .toList();
+        }
+
+        @Override public long hostedSessionCount(UUID hostId) {
+            return sessions.values().stream().filter(s -> s.hostId().equals(hostId)).count();
+        }
+
+        @Override public long distinctGuestsOfHost(UUID hostId) {
+            Set<UUID> hostSessionIds = sessions.values().stream()
+                    .filter(s -> s.hostId().equals(hostId)).map(Session::id)
+                    .collect(Collectors.toSet());
+            return participants.values().stream()
+                    .filter(p -> hostSessionIds.contains(p.sessionId()))
+                    .filter(p -> !p.host() && !p.manual())
+                    .map(Participant::displayName)
+                    .distinct()
+                    .count();
+        }
+
+        private Instant createdAtOf(Session s) {
+            return createdAt.getOrDefault(s.id(), Instant.EPOCH);
+        }
+
+        private SessionSummary toSummary(Session s) {
+            List<Participant> ps = participantsOf(s.id());
+            int ready = (int) ps.stream().filter(Participant::hasLocation).count();
+            int done = (int) ps.stream().filter(Participant::deckDone).count();
+            return new SessionSummary(s, createdAtOf(s), ps.size(), ready, done, null, null);
         }
     }
 
@@ -140,6 +183,29 @@ public class FakeStores {
         @Override public Set<UUID> voters(UUID sessionId) {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId))
                     .map(Vote::participantId).collect(Collectors.toSet());
+        }
+    }
+
+    public static class InMemoryUserStore implements UserStorePort {
+        public final Map<UUID, UserProfile> users = new HashMap<>();
+
+        @Override public UUID upsertByEmail(String email, String name) {
+            return users.values().stream().filter(u -> u.email().equals(email)).findFirst()
+                    .map(UserProfile::id)
+                    .orElseGet(() -> {
+                        UUID id = UUID.randomUUID();
+                        users.put(id, new UserProfile(id, email, name, null, null, null, null));
+                        return id;
+                    });
+        }
+
+        @Override public Optional<UserProfile> profileOf(UUID userId) {
+            return Optional.ofNullable(users.get(userId));
+        }
+
+        @Override public UserProfile saveProfile(UserProfile profile) {
+            users.put(profile.id(), profile);
+            return profile;
         }
     }
 }

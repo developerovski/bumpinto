@@ -6,17 +6,21 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
 import com.bumpinto.domain.geo.TravelEstimate;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionSummary;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class SessionViewAssembler {
 
-    public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap) {
+    public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
                 .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
                         p.hasLocation(), p.deckDone(), p.manual(), p.locationLabel(),
@@ -45,7 +49,36 @@ public class SessionViewAssembler {
                 snap.session().status(), snap.session().expiresAt(),
                 participants, venues, snap.session().runoffVenueIds(),
                 snap.session().decidedVenueId(), snap.voteTally(), midpoint, radiusKm,
-                snap.voters().stream().sorted().toList());
+                snap.voters().stream().sorted().toList(), WebPrincipals.viewerOf(snap, auth));
+    }
+
+    /** Katilmadan once: koordinat, katilimci id'si ve mekan YOK — yalniz ad + host + hasLocation. */
+    public ApiDtos.SessionPreview toPreview(SessionQueries.SessionSnapshot snap) {
+        List<ApiDtos.PreviewParticipantDto> participants = snap.participants().stream()
+                .filter(p -> !p.manual())
+                .map(p -> new ApiDtos.PreviewParticipantDto(p.displayName(), p.host(), p.hasLocation()))
+                .toList();
+        String hostDisplayName = participants.stream()
+                .filter(ApiDtos.PreviewParticipantDto::host)
+                .findFirst().map(ApiDtos.PreviewParticipantDto::displayName).orElse(null);
+        return new ApiDtos.SessionPreview(snap.session().slug(), snap.session().name(),
+                snap.session().activityType(), snap.session().sessionType(),
+                snap.session().status(), hostDisplayName, participants.size(), participants);
+    }
+
+    public ApiDtos.SessionListResponse toList(List<SessionSummary> rows) {
+        Map<Boolean, List<ApiDtos.SessionSummaryDto>> byBucket = rows.stream()
+                .map(SessionViewAssembler::toSummaryDto)
+                .collect(Collectors.partitioningBy(d -> d.status() == SessionStatus.DECIDED
+                        || d.status() == SessionStatus.EXPIRED));
+        return new ApiDtos.SessionListResponse(byBucket.get(false), byBucket.get(true));
+    }
+
+    private static ApiDtos.SessionSummaryDto toSummaryDto(SessionSummary s) {
+        return new ApiDtos.SessionSummaryDto(s.session().slug(), s.session().name(),
+                s.session().activityType(), s.session().sessionType(), s.session().status(),
+                s.createdAt(), s.session().expiresAt(), s.participantCount(), s.readyCount(),
+                s.doneCount(), s.decidedVenueName(), s.decidedVenuePhotoUrl());
     }
 
     /** 2 ondalik = ~1.1 km enlem hassasiyeti. */

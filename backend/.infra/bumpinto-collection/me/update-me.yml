@@ -1,0 +1,50 @@
+info:
+  name: Update Me
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/me"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "displayName": "Mehmet",
+        "defaultLocation": {
+          "lat": 51.6978,
+          "lng": 5.3037,
+          "label": "'s-Hertogenbosch"
+        },
+        "defaultActivity": "COFFEE",
+        "language": "tr"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("language guncellendi", function() {
+          expect(res.body.language).to.equal("tr");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. **Tam degistirme**: her alan opsiyoneldir, govdeye
+    yazilmayan/`null` gonderilen bir tercih TEMIZLENIR. Istisna: `displayName` null =
+    degismez (mevcut isim korunur).
+
+    Limitler: `displayName` <= 40, `defaultLocation.label` <= 80, `lat` -90..90,
+    `lng` -180..180. `language`: yalniz `tr`|`en`|`nl`, aksi 400.
+
+    Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

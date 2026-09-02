@@ -1,6 +1,6 @@
 # BumpInto Backend — Mimari
 
-Son güncelleme: 2026-09-02 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 `done`, 140/140 test yeşil.
+Son güncelleme: 2026-09-02 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 `done`, 149/149 test yeşil.
 
 ## Bu belge ne değildir
 
@@ -80,25 +80,28 @@ atomikliği (iki yazma, tek transaction) kaybedildi ve geri alındı. Tekrarlama
 ## 3. Paket haritası
 
 ```
-com.bumpinto                                   (69 sınıf)
+com.bumpinto                                   (76 sınıf)
 ├── BumpintoApplication                        ← kökte duran TEK sınıf (kural 4)
 │
-├── domain/                                    19 sınıf — saf Java
+├── domain/                                    22 sınıf — saf Java
 │   ├── deck/      DecisionEngine · DeckOutcome · ParticipantLikes
 │   ├── geo/       GeoPoint · GeoMath · SearchRadius · TravelEstimate
 │   ├── port/      SessionStorePort · DeckStorePort · UserStorePort
 │   │              VenueProviderPort · SessionEventsPort · SessionEvent
-│   ├── session/   Session · SessionStatus · Participant · ActivityType
+│   ├── session/   Session · SessionStatus · SessionType · Participant · ActivityType
+│   │              SessionSummary (liste satırı: sayımlar + karar mekanı)
+│   ├── user/      UserProfile (hesap + tercihler)
 │   └── venue/     Venue · VenueCandidate
 │
-├── application/                               10 sınıf — use-case'ler
+├── application/                               12 sınıf — use-case'ler
 │   ├── session/   SessionCommands · SessionQueries · SessionExpiry
 │   ├── deck/      DeckFlow
+│   ├── user/      UserPreferences · UserProfileQueries
 │   ├── text/      Ids · Texts
 │   └── error/     NotFound · Conflict · Forbidden · NoVenuesFound Exception
 │
-├── adapter/                                   30 sınıf
-│   ├── in/web/           10 — controller, ApiDtos, ApiExceptionHandler,
+├── adapter/                                   32 sınıf
+│   ├── in/web/           12 — Session/Participant/Deck/Points/Me/Auth controller, ApiDtos, ApiExceptionHandler,
 │   │                          SessionViewAssembler, ParticipantTokenDelivery,
 │   │                          WebPrincipals, WebSocketConfig
 │   └── out/
@@ -294,6 +297,15 @@ kurduğu bir filtre böylece istek başına **iki kez** çalışır (`Participan
 okuması demekti). Bu yüzden `ParticipantTokenFilter` ve `RateLimitFilter` bilinçli olarak
 `@Component` **değildir**.
 
+### Kamu uçları tek listede
+
+`SecurityConfig.PUBLIC_ENDPOINTS` (yöntem + yol): `POST /api/auth/google`, `POST /api/auth/logout`,
+`POST /api/sessions/*/participants`, `GET /api/sessions/*/preview`. Aynı liste hem `permitAll`
+hem de bearer resolver tarafından kullanılır: resolver kamu uçlarında **cookie'yi okumaz**
+(`Authorization` başlığı yine geçerlidir). Sebep: `BearerTokenAuthenticationFilter` yetkilendirmeden
+önce koşar; bayat/geçersiz `bumpinto_at` cookie'si `permitAll`'a rağmen 401 üretiyor, çıkış ve
+yeniden giriş kilitleniyordu (`AccountApiTest` bunu tutar). Yeni kamu ucu açarken yalnız bu listeye ekle.
+
 ### Rate limit
 
 Politikalar sırayla eşleşir; ilk eşleşen kazanır:
@@ -409,14 +421,14 @@ secret` komutlarını kullanıcı çalıştırır.
 
 ## 13. Test mimarisi
 
-123 test. Katman katman:
+149 test. Katman katman:
 
 | Tür | Kapsam | Örnek |
 |---|---|---|
 | Saf birim | Spring yok, IO yok | `DecisionEngineTest`, `GeoMathTest`, `SearchRadiusTest` |
 | Use-case | Fake port'lar (`support/FakeStores`) | `DeckFlowTest`, `SessionCommandsTest` |
 | Slice | Tek katman + Testcontainers/MockMvc | `PersistenceSliceTest`, `WebSecuritySliceTest` |
-| Uçtan uca | Tam context | `ApiHappyPathTest` |
+| Uçtan uca | Tam context | `ApiHappyPathTest` · `AccountApiTest` |
 | Mimari | ArchUnit | `HexagonalArchitectureTest` |
 
 **Testcontainers kuralı (BAĞLAYICI):** her zaman `com.bumpinto.support.PostgresContainer.shared()`.
@@ -441,6 +453,7 @@ testin bir şey tuttuğunu kanıtlamaz.
 | Rate limit ve olay yayını süreç içi | Çok pod'da kova ve broker paylaşılmaz | Bucket4j-Redis + harici broker (Plan 5 notu) |
 | Spec §6'nın 30 günlük kalıcı silme gereksinimi | GDPR | **Plan 6** yazıldı, yürütülmedi |
 | Google taksonomisinde olmayan türler (at binme, sörf, tırmanış, dalış) | Bu aktiviteler hiç sunulamıyor | **Plan 7** yazıldı, `deferred` |
+| `GET /api/sessions` son 20 oturumla sınırlı, sayfalama yok (`UserProfileQueries.LIST_LIMIT`) | 20+ oturumu olan host eskilerini göremez | cursor + `hasMore` — B-7 adayı |
 
 ---
 

@@ -1,0 +1,34 @@
+info:
+  name: Get Me
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/me"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("email string doner", function() {
+          expect(res.body.email).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. `language` null = tercih yok — istemci tarayici dilini kullanir
+    (spec §6).
+
+    `stats.friendsMet`: bu hostun oturumlarindaki, host olmayan ve manuel (SOLO `points`)
+    olmayan katilimcilarin isim bazinda ayrik sayisi. `stats.sessionsHosted`: toplam
+    bastirilan oturum sayisi.
+
+    Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

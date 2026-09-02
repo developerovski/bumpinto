@@ -1,0 +1,40 @@
+info:
+  name: List My Sessions
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/sessions"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("open ve past dizileri doner", function() {
+          expect(res.body.open).to.be.an("array");
+          expect(res.body.past).to.be.an("array");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Bu kullanicinin en son bastirdigi 20 oturumu doner, en yeni once
+    (`createdAt` desc, esitlikte `id` desc).
+
+    `open`: `DECIDED`/`EXPIRED` disindaki durumlar. `past`: karar verilmis ya da suresi
+    dolmus (tembel expiry — okuma sirasinda hesaplanir, DB'ye yazilmaz).
+
+    Satir alanlari: `participantCount`, `readyCount` (konumu olan), `doneCount`
+    (desteyi bitiren), `decidedVenueName`/`decidedVenuePhotoUrl` (yalniz DECIDED'da dolu;
+    yalniz-Google activity type'larda foto her zaman null).
+
+    B-3 saklama suresiyle silinen oturumlar listeden duser.
+
+    Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

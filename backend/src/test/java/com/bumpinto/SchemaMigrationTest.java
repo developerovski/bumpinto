@@ -49,4 +49,13 @@ class SchemaMigrationTest {
                         + "where table_name = 'participants' and column_name = 'token'", String.class);
         assertThat(tokenNullable).isEqualTo("YES");
     }
+
+    @Test
+    void v4AddsUserPreferenceColumns() {
+        List<String> cols = jdbc.queryForList(
+                "select column_name from information_schema.columns where table_name = 'users'",
+                String.class);
+        assertThat(cols).contains("default_lat", "default_lng", "default_location_label",
+                "default_activity", "language");
+    }
 }

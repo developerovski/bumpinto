@@ -203,7 +203,9 @@ class SecurityPolicyTest {
     @Test
     void publicEndpointsNeedNoCredentials() throws Exception {
         assertThat(reachesApp(request("POST", "/api/auth/google"))).isTrue();
+        assertThat(reachesApp(request("POST", "/api/auth/logout"))).isTrue();
         assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/participants"))).isTrue();
+        assertThat(reachesApp(request("GET", "/api/sessions/x7k2m/preview"))).isTrue();
         assertThat(reachesApp(request("GET", "/v3/api-docs"))).isTrue();
         assertThat(reachesApp(request("GET", "/ws/info"))).isTrue();
         assertThat(reachesApp(request("GET", "/error"))).isTrue();
@@ -222,7 +224,9 @@ class SecurityPolicyTest {
     @Test
     void publicRulesAreMethodScoped() throws Exception {
         assertThat(reachesApp(request("GET", "/api/auth/google"))).isFalse();
+        assertThat(reachesApp(request("GET", "/api/auth/logout"))).isFalse();
         assertThat(reachesApp(request("GET", "/api/sessions/x7k2m/participants"))).isFalse();
+        assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/preview"))).isFalse();
     }
 
     @Test

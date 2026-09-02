@@ -46,3 +46,6 @@ docs:
 
     Gizlilik: `midpoint` ve `radiusKm` de yuvarlanir (2 ondalik / 1 ondalik). Ham orta nokta
     2 kisilik oturumda kendi konumunu bilen tarafa digerinin tam koordinatini verirdi.
+
+    `viewer{participantId, host}`: istegi yapanin oturumdaki satiri — katilimci token'i kendi
+    satiri, host JWT host satiri; uye degilse null. Sayfa yenilemede 'ben kimim' bunu kullanir.

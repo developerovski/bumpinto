@@ -3,6 +3,7 @@ package com.bumpinto.adapter.in.web;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -111,6 +112,53 @@ public final class ApiDtos {
                               Map<UUID, Long> voteTally,
                               /** Konumu olan >=2 nokta varsa; yoksa null. */
                               GeoPointDto midpoint, Double radiusKm,
-                              List<UUID> runoffVotedParticipantIds) {
+                              List<UUID> runoffVotedParticipantIds,
+                              /** Istegi yapanin bu oturumdaki satiri; uye degilse null. */
+                              ViewerDto viewer) {
+    }
+
+    /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si, mekan YOK. */
+    public record PreviewParticipantDto(String displayName, boolean host, boolean hasLocation) {
+    }
+
+    public record SessionPreview(String slug, String name, ActivityType activityType,
+                                 SessionType sessionType, SessionStatus status,
+                                 String hostDisplayName, int participantCount,
+                                 List<PreviewParticipantDto> participants) {
+    }
+
+    /** Istegi yapan kisinin oturumdaki yeri. Katilimci token'i -> o satir; host JWT -> host satiri. */
+    public record ViewerDto(UUID participantId, boolean host) {
+    }
+
+    public record SessionSummaryDto(String slug, String name, ActivityType activityType,
+                                    SessionType sessionType, SessionStatus status,
+                                    Instant createdAt, Instant expiresAt, int participantCount,
+                                    int readyCount, int doneCount,
+                                    String decidedVenueName, String decidedVenuePhotoUrl) {
+    }
+
+    /** open: DECIDED/EXPIRED disi; past: karar verilmis ya da suresi dolmus. */
+    public record SessionListResponse(List<SessionSummaryDto> open, List<SessionSummaryDto> past) {
+    }
+
+    public record LocationPrefDto(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
+                                  @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
+                                  @Size(max = 80) String label) {
+    }
+
+    public record StatsDto(long sessionsHosted, long friendsMet) {
+    }
+
+    public record MeResponse(UUID id, String email, String displayName,
+                             LocationPrefDto defaultLocation, ActivityType defaultActivity,
+                             String language, StatsDto stats) {
+    }
+
+    /** Tam degistirme: null = o tercihi temizle (displayName haric: null = degistirme). */
+    public record UpdateMeRequest(@Size(max = 40) String displayName,
+                                  @Valid LocationPrefDto defaultLocation,
+                                  ActivityType defaultActivity,
+                                  String language) {
     }
 }

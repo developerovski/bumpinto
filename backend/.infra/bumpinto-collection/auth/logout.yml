@@ -1,0 +1,28 @@
+info:
+  name: Logout
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/auth/logout"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc, kimlik gerekmez — suresi dolmus/gecersiz cerezle de cikis yapilabilir.
+
+    Web: `bumpinto_at` cerezini ayni ad/yol (`Path=/api`) ile `Max-Age=0` yaparak siler.
+    Mobil: 204 + ayni `Set-Cookie` basligi doner (cerez jar'i yoksa zararsiz); istemci kendi
+    SecureStore'unu temizler.
+
+    Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk) — Google
+    dogrulama maliyeti tasimadigi icin 5/dk `auth` kovasina girmez.
