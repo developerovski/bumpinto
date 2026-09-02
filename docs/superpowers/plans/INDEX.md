@@ -149,3 +149,10 @@ backend'siz görevleri ve I-1 T1–T3 aynı anda başlayabilir.
 - **B-7 adayları** (yeni plan açılmadı): host'un kaydırmama seçeneği ("Ben de kaydıracağım"),
   mekan açık/kapalı saati, BROWSING'de SOLO konum düzenleme, orta nokta için şehir adı (ters geocode),
   Apple girişi, `GET /api/sessions` sayfalama (bugün son 20), **`SessionView.likeCounts`** (DECIDED'da mekan→beğeni sayısı: W-3'te Karar ekranının "hepiniz aynı yeri beğendi / 3/3 beğendi!" kesişim-1 kutlaması KAPALI bırakıldı — boş `voteTally` seyrek fallback ve force-decision'da da boş olduğundan oybirliği kanıtlanamıyor; ayrıca deste notundaki "diğerlerinin beğenileri sonuçta belli olur" vaadini karşılar).
+- **Harita maliyeti kararı (2026-09-02, W-4 sonrası):** bugünkü kurulum kalır — Dynamic Maps 10.000 yükleme/ay ücretsiz,
+  390'da Maps JS yüklenmiyor, ~2.000 oturum/ay'a kadar $0. **B-7 adayları:** (a) tek `google.maps.Map` örneğini oturum
+  boyunca ekranlar arası taşımak (oturum başına 1 yükleme; bugün ekran başına 1), (b) Karar/Bekle haritaları için Static
+  Maps ($2/1000, Dynamic $7/1000). Ücretsiz harita (MapLibre + OpenFreeMap/Protomaps) yalnız veri Google'dan gelmezse
+  mümkün (Places ToS "No Use With Non-Google Maps") → Foursquare OS Places (Apache 2.0) + OSM/Overpass = B-4'ün konusu;
+  bedeli foto yok, 15 tür kategori eşlemesi, PostGIS, mobilde MapLibre RN. Apple MapKit JS ve Mapbox elendi
+  (Android'de Apple Maps yok; ToS engeli aynı).
