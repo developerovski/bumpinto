@@ -31,6 +31,14 @@ public record SessionEvent(String type, Map<String, Object> payload) {
         return new SessionEvent("runoff_started", Map.of("finalistCount", finalistCount));
     }
 
+    /**
+     * Eleme berabere bitti: karar host'un force-decision'ina gecti. Yayinlanmazsa istemciler
+     * "digerlerini bekliyoruz" ekraninda kalir — oysa bekleyecek kimse kalmamistir.
+     */
+    public static SessionEvent runoffTie(int finalistCount) {
+        return new SessionEvent("runoff_tie", Map.of("finalistCount", finalistCount));
+    }
+
     public static SessionEvent sessionDecided(UUID venueId) {
         return new SessionEvent("session_decided", Map.of("venueId", venueId.toString()));
     }

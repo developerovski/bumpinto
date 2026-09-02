@@ -1,9 +1,14 @@
-/* Kaynak: ui.css .a-ico-* (→ c-ico-*) + W3 aksiyon satırı ölçüleri */
+/* Kaynak: artboard W3 aksiyon satırı; ikonlar Phosphor (el yapımı CSS glifleri değiştirdi) */
+import { ArrowCounterClockwise, Heart, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../atoms";
 
 /** Artboard W3 · .act / .a-un / .a-yes — geri al · geç · beğen.
-    İkonlar artboard'un CSS glifleri (.undo/.x1/.heart); aria-label metin karşılığı. */
+    Üç ikon da TEK ölçüde (ACTION_ICON): eski CSS glifleri 15/20/19px çiziyordu, satır
+    dengesiz görünüyordu. Buton çapları artboard'daki gibi farklı kalır (48 / 60 / 60).
+    aria-label metin karşılığıdır; ikonlar dekoratif. */
+export const ACTION_ICON = 24;
+
 export default function DeckActions(props: {
   onUndo: () => void;
   onPass: () => void;
@@ -19,7 +24,7 @@ export default function DeckActions(props: {
         aria-label={t("deck.ariaUndo")}
         onClick={props.onUndo}
       >
-        <span className="c-ico-undo" aria-hidden />
+        <ArrowCounterClockwise size={ACTION_ICON} weight="bold" className="text-ink2" aria-hidden />
       </Button>
       <Button
         type="button"
@@ -28,7 +33,7 @@ export default function DeckActions(props: {
         aria-label={t("deck.ariaPass")}
         onClick={props.onPass}
       >
-        <span className="c-ico-x" aria-hidden />
+        <X size={ACTION_ICON} weight="bold" className="text-ink" aria-hidden />
       </Button>
       <Button
         type="button"
@@ -37,9 +42,7 @@ export default function DeckActions(props: {
         aria-label={t("deck.ariaLike")}
         onClick={props.onLike}
       >
-        <span className="c-ico-heart" aria-hidden>
-          <i />
-        </span>
+        <Heart size={ACTION_ICON} weight="fill" className="text-white" aria-hidden />
       </Button>
     </div>
   );

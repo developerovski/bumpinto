@@ -213,8 +213,12 @@ public class DeckFlow {
                     .filter(e -> e.getValue() == max).map(Map.Entry::getKey).toList();
             if (winners.size() == 1) {
                 decide(session, winners.get(0));
+            } else {
+                // beraberlik: RUNOFF açık kalır, host force-decision ile seçer (spec §4).
+                // Yeni oy geldikçe yeniden yayınlanır: tekrar oy beraberliği bozabilir ve
+                // olay yalnızca istemciyi tazelemeye çağırır — tekrarı zararsızdır.
+                events.publish(session.slug(), SessionEvent.runoffTie(winners.size()));
             }
-            // beraberlik: RUNOFF açık kalır, host force-decision ile seçer (spec §4)
         }
     }
 

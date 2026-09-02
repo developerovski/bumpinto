@@ -18,6 +18,8 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `GOOGLE_PLACES_API_KEY` | Places API (New) sunucu anahtarı | Google Cloud → Keys & Credentials → API key | **Evet** |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Postgres | — | Parola **evet** |
 | `TRUST_FORWARDED_FOR` | XFF'e güven bayrağı | — | Hayır |
+| `PROVIDER_QUOTA_REFRESH` | Kota scheduler aralığı (ISO süre, varsayılan `PT5M`) | — | Hayır |
+| `GOOGLE_MONTHLY_BUDGET` | Google için aylık `searchNearby` bütçesi (varsayılan `5000`); Google kota telemetrisi vermediği için kota = bütçe − yerel sayaç | Cloud Console → Maps Platform → Quotas'taki ücretsiz hakkına ya da harcamak istediğine göre | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —
 kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local ≠ preprod ≠ prod.
@@ -69,7 +71,7 @@ docker run -d --name bumpinto-postgres-alt -p 5434:5432 \
 
 ```bash
 set -a && source backend/.env.local && set +a
-cd backend && JAVA_HOME=$(/usr/libexec/java_home -v 21) JENV_VERSION=21 mvn -o spring-boot:run
+cd backend && JAVA_HOME=$(/usr/libexec/java_home -v 25) JENV_VERSION=25 mvn -o spring-boot:run
 ```
 
 `set -a` kabuk değişkenlerini otomatik **export** eder — Spring yalnız gerçek ortam
@@ -160,9 +162,21 @@ Prod'a çıkmadan:
 
 Google Places faturalandırma hesabı ister (ücretsiz kotada kalsanız bile).
 
-Kodumuza özel risk: `find-venues` yeterli mekan bulamazsa yarıçapı 3 kez ikiye katlıyor →
-**tek çağrı en fazla 4 Google isteği**. Yeni 10 aktivite türünde Foursquare devre dışı olduğu
-için her seferinde Google'a gidiliyor. Frenler: rate limit 3/dk ve 30 dakikalık sonuç cache'i.
+Kodumuza özel riskler:
+
+- `find-venues` yeterli mekan bulamazsa yarıçapı 3 kez ikiye katlıyor → **tek çağrı en fazla
+  4 Nearby Search isteği**. Yeni 10 aktivite türünde Foursquare devre dışı olduğu için her
+  seferinde Google'a gidiliyor.
+- Google yedeğinde her Nearby Search sonucu için **mekan başına bir Places Photo isteği**
+  yapılıyor (foto adresi arama anında çözülüyor). 20 mekan = 20 foto isteği.
+- Sağlayıcı seçimi kotaya göre (`ProviderOrchestrator`): 429 dönen sağlayıcı yenilenme anına
+  kadar dışarıda (FSQ kredi-429'u: 24 saat; saatlik: `x-ratelimit-reset`). Scheduler 5 dk'da
+  bir kota ölçer ama FSQ probu **ücretli bir Pro çağrısıdır**; gerçek arama olan pencerede
+  atlanır, 429'lu sağlayıcı problanmaz. Trafiksiz bir ortamda yine de saatte 12 prob = ayda
+  ~8.600 Pro çağrısı → ücretsiz 500'ü aşar. Trafiksiz ortamda `PROVIDER_QUOTA_REFRESH=PT1H` ver.
+
+Frenler: rate limit 3/dk ve 30 dakikalık sonuç cache'i (foto adresleri sonuçla birlikte
+saklandığı için onları da kapsar).
 
 Yine de **bütçe uyarısı kurun** ve anahtarı yalnız Places API (New) ile kısıtlayın.
 

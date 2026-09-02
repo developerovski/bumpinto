@@ -39,7 +39,7 @@ Testler ve ortama özgü tuzaklar (jenv, Testcontainers/ryuk, bayat `target/clas
 ## Yapı
 
 ```text
-backend/     Spring Boot 4.1 · Java 21 · Postgres + Flyway · hexagonal
+backend/     Spring Boot 4.1 · Java 25 · Postgres + Flyway · hexagonal
 frontend/
   shared/    OpenAPI'den üretilen tipli axios client
   web/       React + Vite — katılım tarafı (giriş yok)

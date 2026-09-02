@@ -13,7 +13,7 @@ import java.time.Clock;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -32,9 +32,30 @@ public class SessionQueries {
         this.clock = clock;
     }
 
+    /** {@code runoffVotes}: katilimci -> sectigi mekan; yalniz RUNOFF'ta dolu. */
     public record SessionSnapshot(Session session, List<Participant> participants,
                                   List<Venue> venues, Map<UUID, Long> voteTally,
-                                  Set<UUID> voters) {
+                                  Map<UUID, UUID> runoffVotes) {
+    }
+
+    /**
+     * Oturumu kuran hesabın katılımcı kimliği; başkası sorarsa boş.
+     *
+     * <p>Host da bir katılımcıdır, ama katılımcı token'ı yalnızca oturum kurulurken BİR KEZ
+     * çereze yazılır (Path=/api/sessions/{slug}, 24s). Host oturumu başka bir tarayıcıda ya da
+     * cihazda — örneğin "Oturumlar" listesinden — açtığında elinde sadece hesap JWT'si olur ve
+     * o çerez bir daha ASLA dağıtılmaz. Kimlik buradan çözülmezse okuma tarafı (SessionView
+     * .viewer) çalışmaya devam eder, yazma tarafı 403 döner: host kaydırır, hiçbir swipe
+     * sunucuya ulaşmaz ve ekran her şey yolundaymış gibi görünür.
+     *
+     * <p>Yetki genişlemesi değil: JWT zaten aynı oturumda find-venues/shuffle/force-decision'ı
+     * açıyor — kendi swipe'ını kaydetmek bunlardan daha dar bir yetki.
+     */
+    public Optional<UUID> hostParticipantId(String slug, UUID userId) {
+        return store.sessionBySlug(slug)
+                .filter(session -> session.hostId().equals(userId))
+                .flatMap(session -> store.participantsOf(session.id()).stream()
+                        .filter(Participant::host).map(Participant::id).findFirst());
     }
 
     /** Okuma tarafı da tembel expiry uygular: süresi dolmuş oturum EXPIRED raporlanır, DB'ye yazılmaz. */
@@ -46,8 +67,9 @@ public class SessionQueries {
                 ? deck.venuesOf(session.id()) : List.of();
         Map<UUID, Long> tally = session.status() == SessionStatus.DECIDED
                 ? deck.voteTally(session.id()) : Map.of();
-        Set<UUID> voters = session.status() == SessionStatus.RUNOFF
-                ? deck.voters(session.id()) : Set.of();
-        return new SessionSnapshot(session, store.participantsOf(session.id()), venues, tally, voters);
+        Map<UUID, UUID> runoffVotes = session.status() == SessionStatus.RUNOFF
+                ? deck.votesByParticipant(session.id()) : Map.of();
+        return new SessionSnapshot(session, store.participantsOf(session.id()), venues, tally,
+                runoffVotes);
     }
 }

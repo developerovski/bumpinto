@@ -6,6 +6,13 @@ const cols = {
   map: "lg:grid-cols-[42fr_58fr]",
 };
 
+// .zone varsayılanı 16px; artboard Landing sol 18px / sağ 26px kullanır (yalnız ≥1024).
+const zoneGaps = {
+  default: "",
+  md: "lg:gap-[1.125rem]",
+  lg: "lg:gap-[1.625rem]",
+};
+
 export default function TwoZone(props: {
   left: ReactNode;
   right: ReactNode;
@@ -14,6 +21,9 @@ export default function TwoZone(props: {
   centerY?: boolean;
   /** Artboard 390: sağ bölge yok — yalnız ≥1024'te göster. */
   rightLgOnly?: boolean;
+  /** ≥1024 bölge içi boşluk — artboard bölge bazında 18/26px isteyebilir. */
+  leftGap?: keyof typeof zoneGaps;
+  rightGap?: keyof typeof zoneGaps;
 }) {
   return (
     <div
@@ -23,8 +33,17 @@ export default function TwoZone(props: {
         props.centerY ? "lg:items-center" : "lg:items-start",
       ].join(" ")}
     >
-      <div className="flex min-w-0 flex-col gap-4">{props.left}</div>
-      <div className={`${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4`}>{props.right}</div>
+      <div className={`flex min-w-0 flex-col gap-4 ${zoneGaps[props.leftGap ?? "default"]}`}>
+        {props.left}
+      </div>
+      <div
+        className={
+          `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ` +
+          zoneGaps[props.rightGap ?? "default"]
+        }
+      >
+        {props.right}
+      </div>
     </div>
   );
 }

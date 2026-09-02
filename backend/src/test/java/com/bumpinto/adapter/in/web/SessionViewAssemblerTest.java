@@ -9,12 +9,13 @@ import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 class SessionViewAssemblerTest {
 
@@ -35,7 +36,7 @@ class SessionViewAssemblerTest {
         Session s = session(SessionType.SOLO);
         Participant p = person(s.id(), new GeoPoint(51.697812, 5.303749), "'s-Hertogenbosch", true);
         ApiDtos.SessionView view = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(p), List.of(), Map.of(), Set.of()), null);
+                new SessionQueries.SessionSnapshot(s, List.of(p), List.of(), Map.of(), Map.of()), null);
         ApiDtos.ParticipantDto dto = view.participants().get(0);
         assertThat(dto.approxLocation().lat()).isEqualTo(51.70);
         assertThat(dto.approxLocation().lng()).isEqualTo(5.30);
@@ -53,15 +54,38 @@ class SessionViewAssemblerTest {
                 false, null);
 
         ApiDtos.SessionView one = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(a, none), List.of(), Map.of(), Set.of()), null);
+                new SessionQueries.SessionSnapshot(s, List.of(a, none), List.of(), Map.of(), Map.of()), null);
         assertThat(one.midpoint()).isNull();
         assertThat(one.radiusKm()).isNull();
         assertThat(one.participants().get(1).approxLocation()).isNull();
 
         ApiDtos.SessionView two = assembler.toView(
-                new SessionQueries.SessionSnapshot(s, List.of(a, b), List.of(), Map.of(), Set.of()), null);
+                new SessionQueries.SessionSnapshot(s, List.of(a, b), List.of(), Map.of(), Map.of()), null);
         assertThat(two.midpoint().lat()).isBetween(51.38, 51.70);
         assertThat(two.midpoint().lng()).isBetween(5.30, 5.72);
         assertThat(two.radiusKm()).isBetween(1.0, 10.0);
+    }
+    /**
+     * Runoff'ta kendi seçimi görüntüleyene GERİ DÖNMELİ: seçim yalnız istemcinin useState'inde
+     * yaşarsa sayfa yenilenince kaybolur ve kişi neyi kilitlediğini göremez. Başkalarının seçimi
+     * sızmaz — o bilinçli olarak sonuca saklı (runoff.note).
+     */
+    @Test
+    void viewerGetsItsOwnRunoffPickButNotTheOthers() {
+        Session s = session(SessionType.GROUP);
+        Participant me = person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false);
+        Participant other = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        UUID myPick = UUID.randomUUID();
+        UUID theirPick = UUID.randomUUID();
+        var snap = new SessionQueries.SessionSnapshot(s, List.of(me, other), List.of(), Map.of(),
+                Map.of(me.id(), myPick, other.id(), theirPick));
+        var auth = new UsernamePasswordAuthenticationToken(
+                new ParticipantPrincipal(me.id(), s.id(), false), null, List.of());
+
+        ApiDtos.SessionView view = assembler.toView(snap, auth);
+
+        assertThat(view.viewer().runoffVoteVenueId()).isEqualTo(myPick);
+        assertThat(view.runoffVotedParticipantIds()).containsExactlyInAnyOrder(me.id(), other.id());
+        assertThat(view.toString()).doesNotContain(theirPick.toString());
     }
 }

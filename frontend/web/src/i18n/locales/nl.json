@@ -108,6 +108,12 @@
     "lockedCopy": "we wachten op de rest — de uitslag komt zodra iedereen gekozen heeft",
     "countOf": "{{done}} / {{total}}",
     "votedCount": "{{done}}/{{total}} gekozen",
+    "tieNote": "Iedereen koos en het is gelijkspel.",
+    "tieTitle": "Gelijkspel",
+    "tieHostCopy": "Jij zette deze meetup op, dus jij hakt de knoop door.",
+    "tieGuestCopy": "{{host}} hakt de knoop door.",
+    "tieDecide": "Maak het definitief",
+    "errDecide": "Uitslag niet opgeslagen — probeer opnieuw.",
     "errVote": "Keuze niet verzonden — probeer opnieuw."
   },
   "result": {
@@ -139,7 +145,8 @@
     "step3Copy": "Iedereen stemt op de plekken in het midden; de overlap wint.",
     "errLogin": "Inloggen mislukt — probeer opnieuw.",
     "errScript": "Google-login kon niet laden.",
-    "sticker": "3/3 vonden 'm leuk!"
+    "sticker": "3/3 vonden 'm leuk!",
+    "cardCity": "Eindhoven"
   },
   "sessions": {
     "title": "Waar gaan<0/>we heen?",
@@ -224,7 +231,8 @@
     "midpointOnly": "Middelpunt",
     "midpointPending": "Het middelpunt wordt duidelijk zodra je meedoet",
     "joinToSee": "Locaties verschijnen op de kaart zodra je meedoet.",
-    "you": "jij"
+    "you": "jij",
+    "youPending": "jij · zodra je meedoet"
   },
   "newSession": {
     "back": "Afspraken",

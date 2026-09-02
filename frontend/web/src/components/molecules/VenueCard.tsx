@@ -1,5 +1,6 @@
 /* Kaynak: ui.css .a-pol* / .a-pho* / .a-row-card* / .a-row-thumb* / .a-pick* / DS v2 */
 import type { CSSProperties } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { Badge } from "../atoms";
@@ -16,8 +17,8 @@ export const PHOTO_CLASSES = [
   "bg-[image:radial-gradient(130%_100%_at_20%_10%,#fff0b8_0%,transparent_60%),radial-gradient(110%_85%_at_85%_90%,#ffc24a_0%,transparent_55%),linear-gradient(165deg,#ffe08a_0%,#f2a93b_100%)]",
 ];
 
-// .pho-mono — punto dışındaki tüm değerler iki varyantta ortak.
-const MONO =
+// .pho-mono — punto dışındaki tüm değerler tüm varyantlarda ortak (PolaroidFan da kullanır).
+export const PHOTO_MONO =
   "absolute left-1/2 top-[44%] transform-[translate(-50%,-50%)_rotate(-4deg)] " +
   "font-head font-extrabold text-[rgba(255,255,255,0.5)]";
 
@@ -67,6 +68,13 @@ export default function VenueCard(props: {
   // Tek yüklem: boş photoUrl da "fotoğraf yok" sayılır — gradyan/monogram ile
   // "foto · Places" rozeti bu sayede karşılıklı dışlayıcı kalır.
   const hasPhoto = v.photoUrl != null && v.photoUrl !== "";
+  // Foto CSS arka planı değil <img>: sağlayıcı bağlantısı ölürse (Google referansı
+  // dönerse, FSQ CDN'i 404 verirse) onError ile gradyan + monograma düşebiliyoruz —
+  // arka plan olsaydı geriye bomboş beyaz bir kutu kalırdı.
+  // <img> ise draggable=false + pointer-events-none: tarayıcının yerel resim sürüklemesi
+  // (hayalet görsel) SwipeCard'ın pointer olaylarını iptal ediyor, kart kaydırılamıyordu.
+  const [broken, setBroken] = useState(false);
+  const showPhoto = hasPhoto && !broken;
   const travel = Object.entries(v.travelMinutes ?? {});
   const hasPrice = v.priceLevel != null && v.priceLevel > 0;
   const hasMeta = v.rating != null || hasPrice;
@@ -94,14 +102,22 @@ export default function VenueCard(props: {
               "relative flex h-[4.625rem] w-[4.625rem] flex-none items-end",
               "overflow-hidden rounded-2xl",
               tilt,
-              hasPhoto ? null : photoClass,
+              photoClass,
             ]
               .filter(Boolean)
               .join(" ")}
-            style={hasPhoto ? { background: `url(${v.photoUrl}) center/cover` } : undefined}
           >
-            {!hasPhoto && (
-              <span className={`${MONO} text-[1.375rem]`} aria-hidden>
+            {showPhoto ? (
+              <img
+                src={v.photoUrl}
+                alt=""
+                loading="lazy"
+                onError={() => setBroken(true)}
+                className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+                draggable={false}
+              />
+            ) : (
+              <span className={`${PHOTO_MONO} text-[1.375rem]`} aria-hidden>
                 {mono}
               </span>
             )}
@@ -153,22 +169,24 @@ export default function VenueCard(props: {
       style={props.style}
     >
       <div
-        className={[
-          "relative flex items-end overflow-hidden rounded-2xl",
-          hasPhoto ? null : photoClass,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        style={{
-          height: props.photoOnly ? "100%" : `${(props.photoHeight ?? 264) / 16}rem`,
-          ...(hasPhoto ? { background: `url(${v.photoUrl}) center/cover` } : null),
-        }}
+        className={`relative flex items-end overflow-hidden rounded-2xl ${photoClass}`}
+        style={{ height: props.photoOnly ? "100%" : `${(props.photoHeight ?? 264) / 16}rem` }}
       >
+        {showPhoto && (
+          <img
+            src={v.photoUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setBroken(true)}
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            draggable={false}
+          />
+        )}
         {/* Arka kartlar (d2/d3) artboard'da çıplak gradyan — içinde hiçbir şey yok.
             DS kuralı: fotoğraf yoksa ambient gradyan + monogram — asla çizgili kutu.
             Tasarım denetimi bulgusu (2026-09-01): rozet YALNIZ gerçek foto varken. */}
         {!props.photoOnly &&
-          (hasPhoto ? (
+          (showPhoto ? (
             <span
               className={
                 "absolute right-2.5 top-2.5 rounded-full bg-[rgba(39,32,59,0.35)] " +
@@ -179,7 +197,7 @@ export default function VenueCard(props: {
               {t("deck.photoTag")}
             </span>
           ) : (
-            <span className={`${MONO} text-[2.25rem]`} aria-hidden>
+            <span className={`${PHOTO_MONO} text-[2.25rem]`} aria-hidden>
               {mono}
             </span>
           ))}

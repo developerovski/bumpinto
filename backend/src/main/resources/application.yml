@@ -29,3 +29,6 @@ bumpinto:
     # Default GUVENLI (false): X-Forwarded-For istemci tarafindan uydurulabilir.
     # YALNIZCA header'i ezerek yeniden yazan bir ingress arkasinda true yapilir (Plan 5).
     trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}
+  quota:
+    refresh: ${PROVIDER_QUOTA_REFRESH:PT5M}
+    google-monthly-budget: ${GOOGLE_MONTHLY_BUDGET:5000}

@@ -5,6 +5,8 @@ const variants = {
   default: "gap-[0.9375rem] px-[1.125rem] pt-5 pb-8 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem] lg:pb-11",
   deck: "gap-0 px-[1.125rem] pt-4 pb-0 lg:gap-4 lg:px-12 lg:pt-[2.125rem] lg:pb-11",
   result: "gap-3.5 px-[1.125rem] pt-5 pb-8 relative lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem] lg:pb-11",
+  landing:
+    "gap-[0.9375rem] px-[1.125rem] pt-5 pb-8 relative lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem] lg:pb-11",
 };
 
 export default function Page(props: {

@@ -26,7 +26,8 @@ class TokenServiceTest {
             new AppProps.Providers("", ""),
             new AppProps.Cors(List.of()),
             new AppProps.Cookies(false, ""),
-            new AppProps.RateLimit(false));
+            new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), 5000));
 
     final TokenService tokens = new TokenService(PROPS, Clock.systemUTC());
 
@@ -52,7 +53,7 @@ class TokenServiceTest {
     void shortSecretIsRejectedAtConstruction() {
         AppProps weak = new AppProps(
                 new AppProps.Security("cid", "kisa", Duration.ofHours(1)),
-                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit());
+                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota());
         assertThatThrownBy(() -> new TokenService(weak, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -83,7 +84,7 @@ class TokenServiceTest {
         AppProps unresolved = new AppProps(
                 new AppProps.Security("cid", "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}",
                         Duration.ofHours(1)),
-                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit());
+                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota());
         assertThatThrownBy(() -> new TokenService(unresolved, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("TOKEN_SECRET is not configured");

@@ -109,8 +109,8 @@ public class DeckStoreAdapter implements DeckStorePort {
         return votes.findBySessionId(sessionId).size();
     }
 
-    @Override public Set<UUID> voters(UUID sessionId) {
-        return votes.findBySessionId(sessionId).stream().map(e -> e.participantId)
-                .collect(Collectors.toSet());
+    @Override public Map<UUID, UUID> votesByParticipant(UUID sessionId) {
+        return votes.findBySessionId(sessionId).stream()
+                .collect(Collectors.toMap(e -> e.participantId, e -> e.venueId));
     }
 }

@@ -49,7 +49,8 @@ public class SessionViewAssembler {
                 snap.session().status(), snap.session().expiresAt(),
                 participants, venues, snap.session().runoffVenueIds(),
                 snap.session().decidedVenueId(), snap.voteTally(), midpoint, radiusKm,
-                snap.voters().stream().sorted().toList(), WebPrincipals.viewerOf(snap, auth));
+                snap.runoffVotes().keySet().stream().sorted().toList(),
+                WebPrincipals.viewerOf(snap, auth));
     }
 
     /** Katilmadan once: koordinat, katilimci id'si ve mekan YOK — yalniz ad + host + hasLocation. */

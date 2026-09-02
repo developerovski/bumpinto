@@ -3,6 +3,7 @@ export * from "./atoms";
 
 export { default as AvatarMenu } from "./molecules/AvatarMenu";
 export { default as Confetti } from "./molecules/Confetti";
+export { default as DecisionBurst } from "./molecules/DecisionBurst";
 export { default as DeckActions } from "./molecules/DeckActions";
 export { default as DeckHeader, HeaderButton } from "./molecules/DeckHeader";
 export { default as DeckProgressNote } from "./molecules/DeckProgressNote";
@@ -32,6 +33,7 @@ export { default as SessionHeader } from "./molecules/SessionHeader";
 export { default as ShareButton } from "./molecules/ShareButton";
 export { default as StatCard } from "./molecules/StatCard";
 export { default as StepList } from "./molecules/StepList";
+export { default as SwipeCard } from "./molecules/SwipeCard";
 export { default as TopBar } from "./molecules/TopBar";
 export { default as TravelList } from "./molecules/TravelList";
 export { default as TwoZone } from "./molecules/TwoZone";

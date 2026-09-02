@@ -108,6 +108,12 @@
     "lockedCopy": "waiting on the others — the result shows once everyone has picked",
     "countOf": "{{done}} / {{total}}",
     "votedCount": "{{done}}/{{total}} picked",
+    "tieNote": "Everyone picked and it came out level.",
+    "tieTitle": "It's a tie",
+    "tieHostCopy": "You set this meetup up, so you get the final call.",
+    "tieGuestCopy": "{{host}} is making the final call.",
+    "tieDecide": "Make it official",
+    "errDecide": "Couldn't set the result — try again.",
     "errVote": "Couldn't send your pick — try again."
   },
   "result": {
@@ -139,7 +145,8 @@
     "step3Copy": "Everyone votes on the venues in the middle; the overlap wins.",
     "errLogin": "Sign-in failed — try again.",
     "errScript": "Google sign-in couldn't load.",
-    "sticker": "3/3 liked it!"
+    "sticker": "3/3 liked it!",
+    "cardCity": "Eindhoven"
   },
   "sessions": {
     "title": "Where to<0/>next?",
@@ -224,7 +231,8 @@
     "midpointOnly": "Midpoint",
     "midpointPending": "The midpoint settles once you join",
     "joinToSee": "Locations appear on the map once you join.",
-    "you": "you"
+    "you": "you",
+    "youPending": "you · once you join"
   },
   "newSession": {
     "back": "Meetups",

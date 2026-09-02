@@ -127,8 +127,12 @@ public final class ApiDtos {
                                  List<PreviewParticipantDto> participants) {
     }
 
-    /** Istegi yapan kisinin oturumdaki yeri. Katilimci token'i -> o satir; host JWT -> host satiri. */
-    public record ViewerDto(UUID participantId, boolean host) {
+    /**
+     * Istegi yapan kisinin oturumdaki yeri. Katilimci token'i -> o satir; host JWT -> host satiri.
+     * {@code runoffVoteVenueId} KENDI elemeoyudur (yoksa null): istemci onu useState'te tutarsa
+     * sayfa yenilenince kaybolur. Baskasinin oyu bu gorunume hic girmez.
+     */
+    public record ViewerDto(UUID participantId, boolean host, UUID runoffVoteVenueId) {
     }
 
     public record SessionSummaryDto(String slug, String name, ActivityType activityType,

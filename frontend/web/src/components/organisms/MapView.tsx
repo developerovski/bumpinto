@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { ParticipantDto, VenueDto } from "@bumpinto/shared";
 import { Note } from "../atoms";
 import { MAP_ID, loadMaps, mapsConfigured } from "../../lib/maps";
+import { MAX_FIT_ZOOM, cameraFor, cameraSignature } from "../../lib/mapCamera";
+import type { LatLng } from "../../lib/geo";
 import { midpointPin, participantPin, venuePin } from "./mapPins";
 
 export type MapViewProps = {
@@ -25,6 +27,20 @@ export type MapViewProps = {
   lgOnly?: boolean;
 };
 
+/** Saf kamera kararını Google'a uygular. Yakın iki pinde fitBounds'un aşırı zoom'u kırpılır. */
+function applyCamera(map: google.maps.Map, camera: ReturnType<typeof cameraFor>) {
+  if (!camera) return;
+  if (camera.kind === "point") {
+    map.setCenter(camera.center);
+    map.setZoom(camera.zoom);
+    return;
+  }
+  map.fitBounds(new google.maps.LatLngBounds(camera.sw, camera.ne), 48);
+  google.maps.event.addListenerOnce(map, "idle", () => {
+    if ((map.getZoom() ?? 0) > MAX_FIT_ZOOM) map.setZoom(MAX_FIT_ZOOM);
+  });
+}
+
 export default function MapView(props: MapViewProps) {
   const { participants, venues, midpoint, radiusKm, selectedVenueId, onSelectVenue, pinLabels, tint, venueLabel, caption, heightClass, lgOnly } = props;
   const { t, i18n } = useTranslation();
@@ -35,7 +51,8 @@ export default function MapView(props: MapViewProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const circleRef = useRef<google.maps.Circle | null>(null);
-  const fittedRef = useRef(false);
+  /** Son sığdırılan coğrafi imza — aynı kaldığı sürece kullanıcının pan/zoom'una dokunulmaz. */
+  const fittedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!configured || !box.current) return;
@@ -50,7 +67,7 @@ export default function MapView(props: MapViewProps) {
           zoomControl: true,
           gestureHandling: "greedy",
           center: midpoint ?? { lat: 51.44, lng: 5.47 },
-          zoom: 10,
+          zoom: 10, // ilk kare; içerik gelince applyCamera devralır
         });
         setReady(true);
       })
@@ -61,6 +78,16 @@ export default function MapView(props: MapViewProps) {
       alive = false;
     };
   }, [configured, lgOnly]);
+
+  const points: LatLng[] = participants
+    .filter((p) => p.approxLocation?.lat != null && p.approxLocation?.lng != null)
+    .map((p) => ({ lat: p.approxLocation!.lat!, lng: p.approxLocation!.lng! }))
+    .concat(
+      venues
+        .filter((v) => v.lat != null && v.lng != null)
+        .map((v) => ({ lat: v.lat!, lng: v.lng! })),
+    );
+  const camera = cameraSignature(points, midpoint, radiusKm);
 
   const signature = JSON.stringify([
     participants.map((p) => [p.id, p.approxLocation?.lat, p.approxLocation?.lng, p.manual, p.displayName, pinLabels?.[p.id ?? ""]]),
@@ -85,7 +112,6 @@ export default function MapView(props: MapViewProps) {
       circleRef.current = null;
     };
     detach();
-    const bounds = new google.maps.LatLngBounds();
     const { AdvancedMarkerElement } = google.maps.marker;
     participants.forEach((p, i) => {
       if (p.approxLocation?.lat == null || p.approxLocation?.lng == null) return;
@@ -98,11 +124,9 @@ export default function MapView(props: MapViewProps) {
           title: `${p.displayName ?? ""}${p.locationLabel ? " · " + p.locationLabel : ""}`,
         }),
       );
-      bounds.extend(pos);
     });
     if (midpoint) {
       markersRef.current.push(new AdvancedMarkerElement({ map, position: midpoint, content: midpointPin() }));
-      bounds.extend(midpoint);
       if (radiusKm) {
         circleRef.current = new google.maps.Circle({
           map,
@@ -127,17 +151,17 @@ export default function MapView(props: MapViewProps) {
       });
       marker.addListener("click", () => onSelectVenue?.(v.id ?? null));
       markersRef.current.push(marker);
-      bounds.extend(pos);
     });
-    // Kamera yalnız ilk çizimde sığdırılır — seçim değişince kullanıcının pan/zoom'u korunur.
-    if (!fittedRef.current && !bounds.isEmpty()) {
-      map.fitBounds(bounds, 48);
-      fittedRef.current = true;
+    // Kamera coğrafi içerik değişince sığdırılır (yeni katılımcı, orta nokta, mekanlar);
+    // seçim/etiket değişiminde kullanıcının pan/zoom'u korunur.
+    if (fittedRef.current !== camera) {
+      fittedRef.current = camera;
+      applyCamera(map, cameraFor(points, midpoint, radiusKm));
     }
     return detach;
     // içerik imzası: polling her 3 sn yeni dizi üretir, pinler yalnız veri değişince yeniden çizilir
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, signature]);
+  }, [ready, signature, camera]);
 
   const summary = participants
     .filter((p) => p.approxLocation?.lat != null && p.approxLocation.lng != null)

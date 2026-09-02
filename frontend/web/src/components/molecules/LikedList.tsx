@@ -3,7 +3,7 @@ import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { Overline } from "../atoms";
-import VenueCard from "./VenueCard";
+import VenueThumb from "./VenueThumb";
 
 export default function LikedList(props: {
   venues: VenueDto[];
@@ -25,9 +25,9 @@ export default function LikedList(props: {
         <div key={v.id}>
           {i > 0 && <div className="mx-4 h-px bg-line" />}
           <div className="flex items-center gap-3 px-4 py-[0.8125rem]">
-            <div className="w-12 flex-none">
-              <VenueCard venue={v} photoOnly photoHeight={48} />
-            </div>
+            {/* VenueCard photoOnly yüksekliği %100'dür (deste yığını için); yüksekliği
+                olmayan bir satırda 0px'e çökerdi — küçük görselin doğru bileşeni bu. */}
+            <VenueThumb venue={v} tint={0} size={48} />
             <div className="flex flex-1 flex-col gap-0.5">
               <h3>{v.name}</h3>
               <span className="text-[0.75rem] text-ink2">

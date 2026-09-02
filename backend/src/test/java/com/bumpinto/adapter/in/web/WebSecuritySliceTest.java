@@ -39,6 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,7 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // ParticipantTokenFilter BILEREK import edilmez: bean olursa servlet zincirine de kaydolur ve
 // OncePerRequestFilter'in "already filtered" isareti zincir icindeki gercek ornegi atlatir.
 @Import({SecurityConfig.class, SessionViewAssembler.class, AuthCookies.class, TokenService.class,
-        ParticipantTokenDelivery.class, WebSecuritySliceTest.TestBeans.class})
+        ParticipantTokenDelivery.class, ParticipantIdentity.class,
+        WebSecuritySliceTest.TestBeans.class})
 class WebSecuritySliceTest {
 
     @TestConfiguration
@@ -64,7 +66,8 @@ class WebSecuritySliceTest {
                     new AppProps.Providers("", ""),
                     new AppProps.Cors(List.of("http://localhost:5173")),
                     new AppProps.Cookies(false, ""),
-                    new AppProps.RateLimit(false));
+                    new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), 5000));
         }
 
         @Bean
@@ -230,9 +233,9 @@ class WebSecuritySliceTest {
                 .andExpect(status().isForbidden());
     }
 
-    /** Host JWT'si katılımcı ucunu açmaz: deste eylemleri katılımcı token'ı ister. */
+    /** Baska birinin JWT'si katilimci ucunu ACMAZ: hesap, o oturumun kurucusu degil. */
     @Test
-    void hostJwtCannotDriveParticipantEndpoints() throws Exception {
+    void foreignJwtCannotDriveParticipantEndpoints() throws Exception {
         String bearer = tokens.issueAccessToken(UUID.randomUUID(), "m@x.dev");
 
         mvc.perform(post("/api/sessions/abc/swipes")
@@ -240,6 +243,26 @@ class WebSecuritySliceTest {
                         .contentType("application/json")
                         .content("{\"venueId\":\"" + UUID.randomUUID() + "\",\"liked\":true}"))
                 .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Host da bir katilimcidir. Katilimci token'i yalniz oturum kurulurken BIR KEZ cereze
+     * yazilir (Path=/api/sessions/{slug}); host oturumu baska bir tarayicida — ornegin
+     * "Oturumlar" listesinden — actiginda elinde sadece hesap JWT'si olur. Kimlik oradan
+     * cozulmezse host kaydirir, HICBIR yazma sunucuya ulasmaz ve ekran basarili gorunur.
+     */
+    @Test
+    void hostJwtDrivesParticipantEndpointsOfItsOwnSession() throws Exception {
+        UUID hostId = UUID.randomUUID();
+        UUID hostParticipantId = UUID.randomUUID();
+        when(queries.hostParticipantId("abc", hostId)).thenReturn(Optional.of(hostParticipantId));
+        String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
+
+        mvc.perform(post("/api/sessions/abc/deck-done")
+                        .header("Authorization", "Bearer " + bearer))
+                .andExpect(status().isOk());
+
+        verify(deckFlow).finishDeck("abc", hostParticipantId);
     }
 
     /** Filtre fail-closed: katılımcı token'ı /api/sessions/{slug} dışında kimlik doğrulamaz. */
@@ -259,7 +282,7 @@ class WebSecuritySliceTest {
         participantTokenIsValidForAbc();
         Session session = session(UUID.randomUUID());
         when(queries.snapshot("abc")).thenReturn(new SessionQueries.SessionSnapshot(
-                session, List.of(ayse()), List.of(), java.util.Map.of(), java.util.Set.of()));
+                session, List.of(ayse()), List.of(), java.util.Map.of(), java.util.Map.of()));
 
         mvc.perform(get("/api/sessions/abc").header(ParticipantTokenFilter.HEADER, "tok-a"))
                 .andExpect(status().isOk())

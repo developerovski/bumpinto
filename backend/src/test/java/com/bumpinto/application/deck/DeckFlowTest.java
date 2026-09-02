@@ -200,12 +200,19 @@ class DeckFlowTest {
         flow.runoffVote("s1", host.id(), v0);
         flow.runoffVote("s1", ayse.id(), v1); // beraberlik
         assertThat(store.sessionBySlug("s1").orElseThrow().status()).isEqualTo(SessionStatus.RUNOFF);
+        // Beraberlikte hicbir event yoksa ekranlar 3sn'lik polling'e kalir ve "digerlerini
+        // bekliyoruz" der; oysa bekleyecek kimse yoktur — karar host'a gecmistir.
+        assertThat(events.published).extracting(p -> p.event().type()).contains("runoff_tie");
+        assertThat(events.published.stream()
+                .filter(p -> p.event().type().equals("runoff_tie")).findFirst().orElseThrow()
+                .event().payload()).containsEntry("finalistCount", 2);
 
         flow.forceDecision("s1", hostUser, v0);
         Session decided = store.sessionBySlug("s1").orElseThrow();
         assertThat(decided.status()).isEqualTo(SessionStatus.DECIDED);
         assertThat(decided.decidedVenueId()).isEqualTo(v0);
-        assertThat(deck.voters(session.id())).containsExactlyInAnyOrder(host.id(), ayse.id());
+        assertThat(deck.votesByParticipant(session.id()))
+                .containsExactly(Map.entry(host.id(), v0), Map.entry(ayse.id(), v1));
     }
 
     @Test

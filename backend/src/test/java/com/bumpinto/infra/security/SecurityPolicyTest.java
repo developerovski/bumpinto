@@ -41,7 +41,8 @@ class SecurityPolicyTest {
                 new AppProps.Providers("", ""),
                 new AppProps.Cors(origins),
                 new AppProps.Cookies(secureCookies, domain),
-                new AppProps.RateLimit(false));
+                new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), 5000));
     }
 
     /**
@@ -56,7 +57,8 @@ class SecurityPolicyTest {
                 new AppProps.Providers("fsq-secret-key", "gplaces-secret-key"),
                 new AppProps.Cors(List.of("https://bumpinto.app")),
                 new AppProps.Cookies(true, ""),
-                new AppProps.RateLimit(false));
+                new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), 5000));
 
         String printed = props.toString();
 

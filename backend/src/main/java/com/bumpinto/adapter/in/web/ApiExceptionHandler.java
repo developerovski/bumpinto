@@ -5,6 +5,7 @@ import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.error.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,6 +38,18 @@ class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     ApiError noVenues(NoVenuesFoundException e) {
         return new ApiError(e.getMessage());
+    }
+
+    /**
+     * Google id_token'in reddi (imza/issuer/exp/audience) KULLANICI tarafinin hatasidir: 401.
+     * Eslenmezse GoogleIdVerifier.verify'in JwtException'i 500 olarak sizar ve gecmis bir
+     * oturum "sunucu hatasi" gibi loglanir. Govde mesaji tasimaz: dogrulayici metni saldirgana
+     * hangi kontrolun kaldigini soyler.
+     */
+    @ExceptionHandler(JwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    ApiError invalidIdToken(JwtException e) {
+        return new ApiError("invalid_token");
     }
 
     /**

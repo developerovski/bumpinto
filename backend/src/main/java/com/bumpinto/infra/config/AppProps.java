@@ -7,7 +7,7 @@ import java.util.List;
 
 @ConfigurationProperties(prefix = "bumpinto")
 public record AppProps(Security security, Providers providers, Cors cors, Cookies cookies,
-                       RateLimit rateLimit) {
+                       RateLimit rateLimit, Quota quota) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -54,5 +54,17 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
      * Varsayilan kapali — dogrudan internete acik deploy rate limit'i baypas edemesin.
      */
     public record RateLimit(boolean trustForwardedFor) {
+    }
+
+    /**
+     * Saglayici kota takibi.
+     *
+     * @param refresh             scheduler araligi; cache bundan tazeyse prob atilmaz
+     * @param googleMonthlyBudget Google'in kota telemetrisi yok (header yok, Cloud Monitoring
+     *                            gecikmeli ve servis hesabi ister); kota = bu butce − yerel
+     *                            sayac. Aylik ucretsiz Nearby Search hakkina ya da harcamak
+     *                            istedigin cagri sayisina gore ayarla.
+     */
+    public record Quota(Duration refresh, int googleMonthlyBudget) {
     }
 }

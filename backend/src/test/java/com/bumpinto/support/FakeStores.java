@@ -180,9 +180,9 @@ public class FakeStores {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId)).count();
         }
 
-        @Override public Set<UUID> voters(UUID sessionId) {
+        @Override public Map<UUID, UUID> votesByParticipant(UUID sessionId) {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId))
-                    .map(Vote::participantId).collect(Collectors.toSet());
+                    .collect(Collectors.toMap(Vote::participantId, Vote::venueId));
         }
     }
 

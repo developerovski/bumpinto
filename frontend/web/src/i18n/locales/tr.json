@@ -103,6 +103,12 @@
     "lockedCopy": "diğerlerini bekliyoruz — sonuç herkes seçince açıklanır",
     "countOf": "{{done}} / {{total}}",
     "votedCount": "{{done}}/{{total}} seçti",
+    "tieNote": "Herkes seçti ve berabere kaldı.",
+    "tieTitle": "Berabere",
+    "tieHostCopy": "Buluşmayı sen kurdun, son sözü sen söylüyorsun.",
+    "tieGuestCopy": "{{host}} son kararı veriyor.",
+    "tieDecide": "Kararı ver",
+    "errDecide": "Karar kaydedilemedi — tekrar dene.",
     "errVote": "Seçim gönderilemedi — tekrar dene."
   },
   "result": {
@@ -134,7 +140,8 @@
     "step3Copy": "Ortadaki mekanları herkes oylar; kesişim kazanır.",
     "errLogin": "Giriş yapılamadı — tekrar dene.",
     "errScript": "Google girişi yüklenemedi.",
-    "sticker": "3/3 beğendi!"
+    "sticker": "3/3 beğendi!",
+    "cardCity": "Eindhoven"
   },
   "sessions": {
     "title": "Nereye<0/>gidiyoruz?",
@@ -218,7 +225,8 @@
     "midpointOnly": "Orta nokta",
     "midpointPending": "Orta nokta sen katılınca netleşir",
     "joinToSee": "Katılınca konumlar haritada görünür.",
-    "you": "sen"
+    "you": "sen",
+    "youPending": "sen · katılınca"
   },
   "newSession": {
     "back": "Oturumlar",

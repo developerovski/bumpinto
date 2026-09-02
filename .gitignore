@@ -34,7 +34,7 @@
 /backend/config/*
 !/backend/config/*.example
 
-backend/.run/*.run.xml
+/backend/.run/*
 
 *.pem
 *.key

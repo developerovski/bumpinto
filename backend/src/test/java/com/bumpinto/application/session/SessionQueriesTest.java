@@ -3,6 +3,7 @@ package com.bumpinto.application.session;
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
@@ -33,6 +34,12 @@ class SessionQueriesTest {
         Session session = new Session(UUID.randomUUID(), "x7k2m", UUID.randomUUID(), "Kahve",
                 ActivityType.COFFEE, SessionType.GROUP, status, expiresAt, null, List.of());
         return sessions.saveSession(session);
+    }
+
+    Participant participantIn(Session session, boolean host) {
+        return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
+                host ? "Mehmet" : "Ayşe", new GeoPoint(51.7, 5.3), host,
+                host ? "tok-h" : "tok-a", null, false, null));
     }
 
     void venueIn(Session session) {
@@ -78,5 +85,30 @@ class SessionQueriesTest {
         assertThatThrownBy(() -> queries.snapshot("nope"))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("session not found");
+    }
+
+    /**
+     * Host da bir katilimcidir. Katilimci token'i yalniz oturum kurulurken BIR KEZ cereze
+     * yazilir; host oturumu baska bir tarayicida/cihazda actiginda elinde sadece hesap
+     * JWT'si olur. Kimligi oradan cozemezsek deste yazmalari 403 doner.
+     */
+    @Test
+    void hostParticipantIsResolvedFromTheAccountThatOwnsTheSession() {
+        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
+        UUID hostParticipant = participantIn(session, true).id();
+        participantIn(session, false);
+
+        assertThat(queries.hostParticipantId("x7k2m", session.hostId()))
+                .contains(hostParticipant);
+    }
+
+    /** Baska bir kullanicinin JWT'si host kimligini ACMAZ — yoksa herkes host adina kaydirirdi. */
+    @Test
+    void anotherAccountDoesNotResolveToTheHostParticipant() {
+        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
+        participantIn(session, true);
+
+        assertThat(queries.hostParticipantId("x7k2m", UUID.randomUUID())).isEmpty();
+        assertThat(queries.hostParticipantId("yok", session.hostId())).isEmpty();
     }
 }

@@ -1,0 +1,46 @@
+info:
+  name: Google Login — gecersiz token
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/auth/google"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: web
+  body:
+    type: json
+    data: |-
+      {
+        "idToken": "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmV2aWwuZXhhbXBsZSJ9.imzasiz"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401 doner (500 DEGIL)", function() {
+          expect(res.status).to.equal(401);
+        });
+        test("govde dogrulayici detayi sizdirmaz", function() {
+          expect(res.body.error).to.equal("invalid_token");
+        });
+        test("cerez yazilmaz", function() {
+          expect(res.headers["set-cookie"]).to.be.undefined;
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc — reddedilen id_token yolu. Imza, issuer, `exp` veya audience
+    kontrollerinden herhangi biri kalirsa **401 `{"error":"invalid_token"}`** doner.
+
+    Govde hangi kontrolun kaldigini SOYLEMEZ: dogrulayici metni saldirgana ipucu olur.
+
+    Regresyon citasi: `JwtException` bir sure hicbir handler'a eslenmedigi icin bu istek
+    500 donuyordu (bkz. `AuthControllerTest.rejectedIdTokenIs401`).
+
+    Rate limit: 5/dk (IP bazli) — basarisiz denemeler de sayar.

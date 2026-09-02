@@ -17,4 +17,26 @@ describe("LikedList", () => {
     expect(screen.getByText("Café Berlage")).toBeInTheDocument();
     expect(screen.queryByText("Koffie Top")).not.toBeInTheDocument();
   });
+
+  // Eskiden VenueCard photoOnly kullanılıyordu: yüksekliği %100 olduğu için satırda
+  // 0px'e çöküyor, beğenilen mekanın görseli hiç görünmüyordu.
+  it("beğenilen mekanın görselini gösterir", () => {
+    render(
+      <LikedList
+        venues={[{ id: "a", name: "Café Berlage", photoUrl: "https://lh3/x" }]}
+        liked={{ a: true }}
+      />,
+    );
+    expect(screen.getByRole("presentation", { hidden: true })).toHaveAttribute(
+      "src",
+      "https://lh3/x",
+    );
+  });
+
+  it("fotoğrafsız mekanda monogram gösterir", () => {
+    render(
+      <LikedList venues={[{ id: "a", name: "Café Berlage" }]} liked={{ a: true }} />,
+    );
+    expect(screen.getByText("cb")).toBeInTheDocument();
+  });
 });

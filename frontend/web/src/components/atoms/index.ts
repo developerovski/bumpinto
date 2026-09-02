@@ -5,6 +5,7 @@ export { default as ErrorText } from "./ErrorText";
 export { default as HandNote } from "./HandNote";
 export { default as Heading } from "./Heading";
 export { default as Highlight } from "./Highlight";
+export { default as Lead } from "./Lead";
 export { default as LinkButton } from "./LinkButton";
 export { default as Note } from "./Note";
 export { default as Overline } from "./Overline";

@@ -20,7 +20,7 @@ ve kod okunarak hızlıca anlaşılmayan **neden**'ler.
 
 | | |
 |---|---|
-| Dil / derleyici | Java 21 |
+| Dil / derleyici | Java 25 |
 | Çatı | Spring Boot **4.1.0** (Boot 3 değil — aşağıdaki farklar ısırır) |
 | Veri | PostgreSQL 16 + Flyway (`db/migration/V*.sql`) |
 | HTTP istemcisi | Unirest (`kong.unirest`) — `RestClient` değil |
@@ -106,7 +106,9 @@ com.bumpinto                                   (76 sınıf)
 │   │                          WebPrincipals, WebSocketConfig
 │   └── out/
 │       ├── persistence/  15 — *Entity, *Repository, *StoreAdapter
-│       ├── provider/      4 — Foursquare · GooglePlaces · Resilient · ProviderException
+│       ├── provider/      9 — Foursquare · GooglePlaces · ProviderOrchestrator · ProviderQuotaScheduler
+│       │                       ProviderQuotaCache · ProviderQuota · QuotaAwareVenueProvider
+│       │                       ProviderException · QuotaExceededException
 │       └── events/        1 — StompSessionEvents
 │
 └── infra/                                      9 sınıf — iş kuralı YOK
@@ -356,19 +358,50 @@ en fazla 3 olduğu için ayrı tablo açılmadı; sorgulanmıyor, yalnız okunup
 
 ## 10. Dış mekan sağlayıcıları
 
-`ResilientVenueProvider` (`@Primary`) zinciri yönetir:
+Üç parça, tek kota modeli (`ProviderQuota{limit, remaining, resetAt, measuredAt, source}`):
 
 ```
-Foursquare ──boş/hata──> Google Places ──> sonuç
+                 ┌──────────────────────┐   her 5 dk (bumpinto.quota.refresh)
+                 │ ProviderQuotaScheduler│──── measureQuota() ──┐
+                 └──────────────────────┘                      ▼
+  gerçek arama ── x-ratelimit-* (FSQ) ────────────▶ ProviderQuotaCache ◀── 429 → EXHAUSTED
+                                                          │
+                 ┌──────────────────────┐   ratio() sırası │
+  DeckFlow ────▶ │ ProviderOrchestrator │◀─────────────────┘
+                 └──────────────────────┘
+                   Foursquare(@Order 1) · GooglePlaces(@Order 2) · …
 ```
 
-- **Cache:** Caffeine, 30 dk, anahtar `lat:lng:radius:type:limit`.
-  **Boş sonuç ve hata cache'lenmez** — seyrek bölgedeki geçici bir boşluk 30 dk "mekan yok"a
-  dönüşürdü.
+- **Kota sinyali sağlayıcıya göre farklı** (2026-09-02 araştırması): FSQ her yanıtta
+  `x-ratelimit-limit/remaining/reset` verir (`HEADER`, bedava); Google **hiç header vermez**,
+  kota yalnız Cloud Monitoring'de (servis hesabı ister, dakikalar gecikmeli) → yerel sayaç:
+  `bumpinto.quota.google-monthly-budget − bu ayki searchNearby` (`BUDGET`); TripAdvisor'da ne
+  header ne API var → yalnız 429 ve yerel sayaç. Orkestratör bu farkı görmez.
+- **Scheduler** her aralıkta `measureQuota()` çağırır ama iki fren var, ikisi de para için:
+  cache o pencerede gerçek bir yanıtla tazelendiyse prob atılmaz (FSQ probu **ücretli Pro
+  çağrısı** — 5 dk'da bir boşuna atmak tek başına aylık ücretsiz 500'ü yer); 429 ile kapatılmış
+  sağlayıcı yenilenme anı gelmeden problanmaz. İlk tur da bir aralık sonra (testler API'ye
+  vurmasın).
+- **Orkestratör** kotası tükenmemiş sağlayıcıları `ratio()` (kalan/limit) büyükten küçüğe
+  sıralar; eşitlikte ve kota bilinmiyorken `@Order`. Kotası *bilinen* sağlayıcı bilinmeyenden
+  önce gelir. İlk dolu sonuç kazanır; boş/geçici hata → sıradaki. 429 →
+  `QuotaExceededException.resetAt()`'e kadar `EXHAUSTED`. FSQ'da kredi-429'u
+  (`x-ratelimit-limit: 0`, kendiliğinden dolmaz → 24 saat) ile saatlik-429'u (`reset`
+  başlığı) ayrılır. Herkes hata verirse "mekan yok" **denmez**, istisna yukarı gider (500).
+- **Yeni sağlayıcı** (TripAdvisor vb.) = `QuotaAwareVenueProvider` uygulayan `@Order(n)` bean'i;
+  orkestratör ve scheduler değişmez.
+- **Sınır:** cache ve Google sayacı süreç içi. Pod yeniden başlayınca cache boşalır (ilk tur
+  doldurur, o arada `@Order`), sayaç sıfırlanır (ay içinde eksik sayar). Çok pod'da paylaşılmaz.
+
 - **15 aktivite türü.** İlk beşinin (`COFFEE FOOD BAR WALK ACTIVITY`) Foursquare kategori
   eşlemesi vardır; kalan onu (`SWIM HIKE FITNESS CINEMA MUSEUM ART NIGHTLIFE THEME_PARK
-  ADVENTURE GAMES`) **yalnız Google'dan** gelir. Kartlarında fotoğraf yoktur (foto FSQ'dan
-  geliyordu); puan, fiyat ve harita linki vardır.
+  ADVENTURE GAMES`) **yalnız Google'dan** gelir.
+- **Fotoğraf arama anında çözülür.** FSQ doğrudan CDN adresi verir. Google `searchNearby`
+  ise yalnız bir foto *referansı* döner; referansı resme çevirmek API anahtarı ister ve anahtar
+  istemciye geçemez. Bu yüzden mekan başına bir `photos/*/media?skipHttpRedirect=true` çağrısı
+  yapılır (paralel) ve imzalı CDN adresi `venues.photo_url`'e yazılır — tarayıcı resmi tek
+  istekte çeker, arada kendi ucumuz yok. Adresin ömrü sınırlı; dolarsa kart monograma düşer
+  (`<img onError>`). Foto hatası aramayı düşürmez, o mekan fotosuz kalır.
 - Foursquare eşlemesi olmayan tür için `FoursquareVenueProvider` **HTTP çağrısı yapmadan** boş
   döner. Kategorisiz arama yapılsaydı FSQ filtresiz sonuç dönerdi ve "yüzme" isteyen kullanıcı
   kafe listesi görürdü — sessiz ve fark edilmesi zor bir hata. Testle kilitli.
@@ -449,7 +482,9 @@ testin bir şey tuttuğunu kanıtlamaz.
 |---|---|---|
 | Foursquare kategori ID'leri (5 tane) ölü v3 taksonomisinden geldi, doğrulanamadı — FSQ taksonomiyi yalnız Observable iframe'inde yayınlıyor | Yanlış ID hata vermez, **sessizce yanlış mekan** listeler | Gerçek anahtarla tek bir smoke call — kullanıcı |
 | Google'ın çok türlü `includedTypes` OR davranışı canlı API'de doğrulanmadı | Yanlışsa sonuç **boş** döner (gürültülü, sessiz değil) | Aynı smoke call |
-| Yeni 10 aktivite türünün kartlarında fotoğraf yok | Görsel kalite düşer | Google Photos API çağrısı (ek maliyet) ya da FSQ eşlemesi |
+| Google yedeğinde deste kurulumu mekan başına bir Places Photo çağrısı ekliyor (20 mekan = 20 ücretli istek), kullanıcı hepsini görmese de | Places Photo maliyeti | Ölçülüp gerekirse foto yalnız ilk N kart için çözülür |
+| Foursquare Premium alanları (`rating,price,photos`) kredi ister; hesapta kredi yok (2026-09-02). Pro alanlar çalışıyor ama kartın ihtiyacı premium olanlar | FSQ her aramada kredi-429 → 24 saat kapalı; fiilen hep Google | Kredi alınır ya da FSQ yalnız Pro alanlarla keşif + Google detay (iki çağrı/mekan) |
+| Kota cache'i ve Google sayacı süreç içi | Restart'ta cache boş, sayaç eksik; çok pod'da paylaşılmaz | Redis/DB'ye taşımak (Plan 5 notundaki broker/kova ile aynı iş) |
 | Rate limit ve olay yayını süreç içi | Çok pod'da kova ve broker paylaşılmaz | Bucket4j-Redis + harici broker (Plan 5 notu) |
 | Spec §6'nın 30 günlük kalıcı silme gereksinimi | GDPR | **Plan 6** yazıldı, yürütülmedi |
 | Google taksonomisinde olmayan türler (at binme, sörf, tırmanış, dalış) | Bu aktiviteler hiç sunulamıyor | **Plan 7** yazıldı, `deferred` |

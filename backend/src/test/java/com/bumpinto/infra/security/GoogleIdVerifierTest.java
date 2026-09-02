@@ -52,7 +52,8 @@ class GoogleIdVerifierTest {
                 new AppProps.Providers("", ""),
                 new AppProps.Cors(List.of()),
                 new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(false));
+                new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), 5000));
     }
 
     static GoogleIdVerifier verifier() {

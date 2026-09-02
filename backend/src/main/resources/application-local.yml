@@ -11,6 +11,7 @@ bumpinto:
     allowed-origins:
       - http://localhost:5173
       - http://localhost:8081
+      - ${DEV_TUNNEL_ORIGIN:https://unrenunciatory-unstrictly-dayle.ngrok-free.dev}
   cookies:
     secure: false
     domain: ""

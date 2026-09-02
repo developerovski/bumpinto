@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -194,6 +195,91 @@ class ApiHappyPathTest {
 
         // 8 — OpenAPI codegen ucu açık
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+    }
+
+    /**
+     * Host'un elinde SADECE hesap kimligi var: katilimci cerezi yok. Gercekte olan buydu —
+     * katilimci token'i yalnizca oturum kurulurken bir kez cereze yazilir, host oturumu baska
+     * bir tarayicida ("Oturumlar" listesinden) actiginda o cerez yoktur ve bir daha dagitilmaz.
+     * Onceden GET calisiyor, her yazma 403 "participant token required" donuyordu: host
+     * kaydiriyor, hicbir swipe kaydedilmiyor, ekran "Deste bitti" diyordu (sessiz veri kaybi).
+     */
+    @Test
+    void hostWithOnlyAnAccountTokenCanSwipeAndFinishTheDeck() throws Exception {
+        when(google.verify("gid3"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("nocookie@bumpinto.test", "Mehmet"));
+        when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(
+                IntStream.range(0, 6).mapToObj(i -> new VenueCandidate("foursquare", "n" + i,
+                        "Mekan " + i, new GeoPoint(51.54 + i * 0.001, 5.5),
+                        4.9 - i * 0.1, 2, null, "https://maps/n" + i)).toList());
+
+        String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid3\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("accessToken").asString();
+
+        // Host WEB olarak kurar; katilimci cerezini BILEREK atariz — baska bir tarayici.
+        String slug = json.readTree(mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .header("X-Client", "web")
+                        .contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("slug").asString();
+
+        Cookie ayseCookie = mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .header("X-Client", "web")
+                        .contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\",\"lat\":51.3855,\"lng\":5.7120}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getCookie("bumpinto_pt_" + slug);
+
+        mvc.perform(post("/api/sessions/" + slug + "/find-venues")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+        String favoriteId = json.readTree(mvc.perform(post("/api/sessions/" + slug + "/shuffle")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString())
+                .get("venues").get(0).get("id").asString();
+
+        // Sadece hesap token'iyla: kaydir, geri al, tekrar kaydir, desteyi bitir.
+        mvc.perform(post("/api/sessions/" + slug + "/swipes")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"venueId\":\"" + favoriteId + "\",\"liked\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/sessions/" + slug + "/swipes/" + favoriteId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/sessions/" + slug + "/swipes")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"venueId\":\"" + favoriteId + "\",\"liked\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/sessions/" + slug + "/deck-done")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        // Swipe GERCEKTEN kaydedildi: Ayşe de ayni mekani begenince karar cikar.
+        assertThat(json.readTree(mvc.perform(get("/api/sessions/" + slug)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andReturn().getResponse().getContentAsString())
+                .get("participants").get(0).get("deckDone").asBoolean()).isTrue();
+
+        mvc.perform(post("/api/sessions/" + slug + "/swipes").cookie(ayseCookie)
+                        .contentType(JSON)
+                        .content("{\"venueId\":\"" + favoriteId + "\",\"liked\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/sessions/" + slug + "/deck-done").cookie(ayseCookie))
+                .andExpect(status().isOk());
+
+        JsonNode decided = json.readTree(mvc.perform(get("/api/sessions/" + slug)
+                        .cookie(ayseCookie))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(decided.get("status").asString()).isEqualTo("DECIDED");
+        assertThat(decided.get("decidedVenueId").asString()).isEqualTo(favoriteId);
     }
 
     @Test
