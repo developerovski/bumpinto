@@ -1,6 +1,6 @@
 # BumpInto Backend — Mimari
 
-Son güncelleme: 2026-09-01 · Karşılığı olan kod: Plan 1 + Plan 2 `done`, 123/123 test yeşil.
+Son güncelleme: 2026-09-02 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 `done`, 140/140 test yeşil.
 
 ## Bu belge ne değildir
 
@@ -191,15 +191,16 @@ uç durumlar 500 olarak sızardı.
 ### Oturum durum makinesi
 
 ```
-COLLECTING ──find-venues──> SUGGESTING ──deste kuruldu──> SWIPING
-                                │                            │
-                     mekan yok  │                            ├── tek kazanan ──> DECIDED
-                     (geri döner)                            └── berabere ────> RUNOFF
-                                                                                  │
-                                                            oylama / host seçimi ─┘
-                                                                                  ▼
-                                                                              DECIDED
+COLLECTING ──find-venues──> SUGGESTING ──deste kuruldu──> BROWSING ("Mekanlar")
+                                │                              │
+                     mekan yok  │              GROUP: shuffle  ├──> SWIPING ──> DECIDED / RUNOFF ──> DECIDED
+                     (geri döner)              host/SOLO seçim └──> DECIDED
 ```
+
+`BROWSING`'de mekanlar herkese görünür ama deste yok; `GROUP` `shuffle` ile `SWIPING`'e geçer,
+`SOLO` (veya `GROUP` host kısayolu) `force-decision{venueId}` ile doğrudan `DECIDED`'a gider.
+`SWIPING`'den sonrası (tek kazanan → `DECIDED`, berabere → `RUNOFF` → oylama/host seçimi →
+`DECIDED`) Plan 1/2'deki gibi değişmedi.
 
 `EXPIRED` bu diyagramda yok — çünkü **hiç yazılmaz**.
 
@@ -231,12 +232,25 @@ Sıralama tamamen deterministiktir (son kırıcı `UUID::compareTo`) — aynı g
 kırpılır. Yeterli mekan bulunamazsa `expandedKm` ile en fazla 3 kez ikiye katlanır, **mutlak
 tavan 40 km**. `DeckFlow` en az 6, en çok 20 mekanlık deste hedefler.
 
-### Deste popülasyonu kuralı
+### Deste popülasyonu kuralı: geometri / oy ikilisi
 
-Deste **konumu olan** katılımcıların orta noktasından kurulur. `done/total` sayımı, runoff
-finishers ve karar motoru girdisi **hep** bu kümeyi kullanır — aksi halde konumsuz biri
-yüzünden eksik oyla erken karar çıkar. Konumsuz katılımcı üyedir ama deste dışıdır (409, 403 değil;
-çözümü `PUT /location`).
+İki ayrı katılımcı kümesi vardır ve karıştırılmamalı:
+
+- **Geometri kümesi** — konumu olan **tüm** katılımcılar (elle eklenen `manual=true` noktalar
+  dahil). `midpoint`, `radiusKm` ve mekan araması bu kümeden hesaplanır.
+- **Oy kümesi** — deste akışına giren katılımcılar (`manual=false`, konumu olan). `done/total`
+  sayımı, runoff finishers ve karar motoru girdisi **hep** bu kümeyi kullanır — aksi halde
+  konumsuz veya elle eklenmiş biri yüzünden eksik/yanlış oyla erken karar çıkar.
+
+Konumsuz katılımcı üyedir ama her iki kümenin de dışındadır (409, 403 değil; çözümü
+`PUT /location`).
+
+### `SessionType` ve elle konum
+
+`SessionType`: `GROUP` (davet linki + deste, varsayılan) | `SOLO` (yalnız host, davet linki
+çalışmaz). SOLO'da host `POST /points` ile başkalarının konumunu elle ekler: token verilmez,
+oy vermez (`manual=true`), yalnız geometri kümesindedir. `COLLECTING` dışında veya `GROUP`'ta
+eklenemez/silinemez (409); silme yalnız `manual=true` satırlar için, host'un kendi satırı hariç.
 
 ---
 
@@ -358,6 +372,8 @@ STOMP, `/ws` uç noktası, konu `/topic/session/{slug}`.
 | Olay | Yük |
 |---|---|
 | `participant_joined` | `participantCount` |
+| `participant_left` | `participantCount` |
+| `venues_ready` | `venueCount` |
 | `deck_ready` | `venueCount` |
 | `deck_progress` | `done`, `total` |
 | `runoff_started` | `finalistCount` |

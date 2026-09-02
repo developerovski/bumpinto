@@ -13,4 +13,5 @@ public interface SessionStorePort {
     Participant saveParticipant(Participant participant);
     List<Participant> participantsOf(UUID sessionId);
     Optional<Participant> participantByToken(String token);
+    void deleteParticipant(UUID participantId);
 }

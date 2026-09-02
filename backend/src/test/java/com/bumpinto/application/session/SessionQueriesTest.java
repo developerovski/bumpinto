@@ -5,6 +5,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.support.FakeStores;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ class SessionQueriesTest {
 
     Session stored(SessionStatus status, Instant expiresAt) {
         Session session = new Session(UUID.randomUUID(), "x7k2m", UUID.randomUUID(), "Kahve",
-                ActivityType.COFFEE, status, expiresAt, null, List.of());
+                ActivityType.COFFEE, SessionType.GROUP, status, expiresAt, null, List.of());
         return sessions.saveSession(session);
     }
 

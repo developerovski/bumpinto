@@ -6,6 +6,7 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionType;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -32,6 +33,7 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.hostId = s.hostId();
         e.name = s.name();
         e.activityType = s.activityType().name();
+        e.sessionType = s.sessionType().name();
         e.status = s.status().name();
         e.expiresAt = s.expiresAt();
         e.decidedVenueId = s.decidedVenueId();
@@ -55,12 +57,14 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.token = p.token();
         e.deckDoneAt = p.deckDoneAt();
         e.isHost = p.host();
+        e.isManual = p.manual();
+        e.locationLabel = p.locationLabel();
         participants.save(e);
         return p;
     }
 
     @Override public List<Participant> participantsOf(UUID sessionId) {
-        return participants.findBySessionId(sessionId).stream()
+        return participants.findBySessionIdOrderByJoinedAtAscIdAsc(sessionId).stream()
                 .map(SessionStoreAdapter::toParticipant).toList();
     }
 
@@ -68,15 +72,21 @@ public class SessionStoreAdapter implements SessionStorePort {
         return participants.findByToken(token).map(SessionStoreAdapter::toParticipant);
     }
 
+    @Override public void deleteParticipant(UUID participantId) {
+        participants.deleteById(participantId);
+    }
+
     static Session toSession(SessionEntity e) {
         List<UUID> runoff = e.runoffVenueIds == null ? List.of()
                 : Arrays.stream(e.runoffVenueIds.split(",")).map(UUID::fromString).toList();
         return new Session(e.id, e.slug, e.hostId, e.name, ActivityType.valueOf(e.activityType),
-                SessionStatus.valueOf(e.status), e.expiresAt, e.decidedVenueId, runoff);
+                SessionType.valueOf(e.sessionType), SessionStatus.valueOf(e.status), e.expiresAt,
+                e.decidedVenueId, runoff);
     }
 
     static Participant toParticipant(ParticipantEntity e) {
         GeoPoint loc = (e.lat == null || e.lng == null) ? null : new GeoPoint(e.lat, e.lng);
-        return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost, e.token, e.deckDoneAt);
+        return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost, e.token,
+                e.deckDoneAt, e.isManual, e.locationLabel);
     }
 }

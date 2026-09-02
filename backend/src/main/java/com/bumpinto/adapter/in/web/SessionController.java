@@ -4,6 +4,7 @@ import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.session.SessionType;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +43,9 @@ class SessionController {
             @Valid @RequestBody ApiDtos.CreateSessionRequest request) {
         SessionCommands.CreateSessionResult result = commands.createSession(
                 WebPrincipals.hostUserId(jwt), request.name(), request.activityType(),
-                new GeoPoint(request.lat(), request.lng()), request.displayName());
+                request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
+                new GeoPoint(request.lat(), request.lng()), request.displayName(),
+                request.locationLabel());
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, result.session().slug(),
@@ -60,6 +63,12 @@ class SessionController {
     @PostMapping("/{slug}/find-venues")
     ApiDtos.SessionView findVenues(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug) {
         deckFlow.findVenues(slug, WebPrincipals.hostUserId(jwt));
+        return assembler.toView(queries.snapshot(slug));
+    }
+
+    @PostMapping("/{slug}/shuffle")
+    ApiDtos.SessionView shuffle(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug) {
+        deckFlow.shuffle(slug, WebPrincipals.hostUserId(jwt));
         return assembler.toView(queries.snapshot(slug));
     }
 

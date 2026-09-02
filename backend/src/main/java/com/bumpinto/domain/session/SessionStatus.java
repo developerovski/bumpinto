@@ -1,3 +1,4 @@
 package com.bumpinto.domain.session;
 
-public enum SessionStatus { COLLECTING, SUGGESTING, SWIPING, RUNOFF, DECIDED, EXPIRED }
+/** BROWSING = "Mekanlar": deste hazir, herkes harita+listede gorur, oy yok. */
+public enum SessionStatus { COLLECTING, SUGGESTING, BROWSING, SWIPING, RUNOFF, DECIDED, EXPIRED }

@@ -47,7 +47,11 @@ public class FakeStores {
         }
 
         @Override public Optional<Participant> participantByToken(String token) {
-            return participants.values().stream().filter(p -> p.token().equals(token)).findFirst();
+            return participants.values().stream().filter(p -> token.equals(p.token())).findFirst();
+        }
+
+        @Override public void deleteParticipant(UUID participantId) {
+            participants.remove(participantId);
         }
     }
 
@@ -90,6 +94,17 @@ public class FakeStores {
                     .sorted(Comparator.comparingInt(Venue::deckOrder)).toList();
         }
 
+        @Override public void reorderVenues(UUID sessionId, List<UUID> orderedVenueIds) {
+            for (int i = 0; i < orderedVenueIds.size(); i++) {
+                UUID id = orderedVenueIds.get(i);
+                int order = i;
+                venues.replaceAll(v -> v.id().equals(id)
+                        ? new Venue(v.id(), v.sessionId(), v.provider(), v.externalId(), v.name(),
+                                v.location(), v.rating(), v.priceLevel(), v.photoUrl(), v.mapsUrl(), order)
+                        : v);
+            }
+        }
+
         @Override public void saveSwipe(UUID sessionId, UUID venueId, UUID participantId, boolean liked) {
             swipes.put(new SwipeKey(venueId, participantId),
                     new Swipe(sessionId, venueId, participantId, liked));
@@ -120,6 +135,11 @@ public class FakeStores {
 
         @Override public long votersCount(UUID sessionId) {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId)).count();
+        }
+
+        @Override public Set<UUID> voters(UUID sessionId) {
+            return votes.values().stream().filter(v -> v.sessionId().equals(sessionId))
+                    .map(Vote::participantId).collect(Collectors.toSet());
         }
     }
 }

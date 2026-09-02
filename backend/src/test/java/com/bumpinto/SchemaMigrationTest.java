@@ -33,4 +33,20 @@ class SchemaMigrationTest {
                 String.class);
         assertThat(tables).contains("users", "sessions", "participants", "venues", "swipes", "votes");
     }
+
+    @Test
+    void v3AddsSessionTypeAndManualParticipantColumns() {
+        List<String> sessionCols = jdbc.queryForList(
+                "select column_name from information_schema.columns where table_name = 'sessions'",
+                String.class);
+        assertThat(sessionCols).contains("session_type");
+        List<String> participantCols = jdbc.queryForList(
+                "select column_name from information_schema.columns where table_name = 'participants'",
+                String.class);
+        assertThat(participantCols).contains("is_manual", "location_label");
+        String tokenNullable = jdbc.queryForObject(
+                "select is_nullable from information_schema.columns "
+                        + "where table_name = 'participants' and column_name = 'token'", String.class);
+        assertThat(tokenNullable).isEqualTo("YES");
+    }
 }

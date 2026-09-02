@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{slug}/shuffle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["shuffle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{slug}/runoff-votes": {
         parameters: {
             query?: never;
@@ -62,6 +78,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["runoffVote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{slug}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["add"];
         delete?: never;
         options?: never;
         head?: never;
@@ -180,6 +212,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{slug}/points/{participantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -192,16 +240,20 @@ export interface components {
             lat: number;
             /** Format: double */
             lng: number;
+            label?: string;
         };
         CreateSessionRequest: {
             /** @enum {string} */
             activityType: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
             name?: string;
+            /** @enum {string} */
+            sessionType?: "GROUP" | "SOLO";
             /** Format: double */
             lat: number;
             /** Format: double */
             lng: number;
             displayName: string;
+            locationLabel?: string;
         };
         CreateSessionResponse: {
             slug?: string;
@@ -218,25 +270,11 @@ export interface components {
             venueId: string;
             liked: boolean;
         };
-        RunoffVoteRequest: {
-            /** Format: uuid */
-            venueId: string;
-        };
-        JoinRequest: {
-            displayName: string;
+        GeoPointDto: {
             /** Format: double */
             lat?: number;
             /** Format: double */
             lng?: number;
-        };
-        JoinResponse: {
-            /** Format: uuid */
-            participantId?: string;
-            participantToken?: string;
-        };
-        ForceDecisionRequest: {
-            /** Format: uuid */
-            venueId?: string;
         };
         ParticipantDto: {
             /** Format: uuid */
@@ -245,6 +283,9 @@ export interface components {
             host?: boolean;
             hasLocation?: boolean;
             deckDone?: boolean;
+            manual?: boolean;
+            locationLabel?: string;
+            approxLocation?: components["schemas"]["GeoPointDto"];
         };
         SessionView: {
             slug?: string;
@@ -252,7 +293,9 @@ export interface components {
             /** @enum {string} */
             activityType?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
             /** @enum {string} */
-            status?: "COLLECTING" | "SUGGESTING" | "SWIPING" | "RUNOFF" | "DECIDED" | "EXPIRED";
+            sessionType?: "GROUP" | "SOLO";
+            /** @enum {string} */
+            status?: "COLLECTING" | "SUGGESTING" | "BROWSING" | "SWIPING" | "RUNOFF" | "DECIDED" | "EXPIRED";
             /** Format: date-time */
             expiresAt?: string;
             participants?: components["schemas"]["ParticipantDto"][];
@@ -263,6 +306,10 @@ export interface components {
             voteTally?: {
                 [key: string]: number;
             };
+            midpoint?: components["schemas"]["GeoPointDto"];
+            /** Format: double */
+            radiusKm?: number;
+            runoffVotedParticipantIds?: string[];
         };
         VenueDto: {
             /** Format: uuid */
@@ -283,6 +330,35 @@ export interface components {
             travelMinutes?: {
                 [key: string]: number;
             };
+        };
+        RunoffVoteRequest: {
+            /** Format: uuid */
+            venueId: string;
+        };
+        PointRequest: {
+            displayName: string;
+            locationLabel?: string;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+        };
+        JoinRequest: {
+            displayName: string;
+            /** Format: double */
+            lat?: number;
+            /** Format: double */
+            lng?: number;
+            locationLabel?: string;
+        };
+        JoinResponse: {
+            /** Format: uuid */
+            participantId?: string;
+            participantToken?: string;
+        };
+        ForceDecisionRequest: {
+            /** Format: uuid */
+            venueId?: string;
         };
         GoogleLoginRequest: {
             idToken: string;
@@ -512,6 +588,73 @@ export interface operations {
             };
         };
     };
+    shuffle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SessionView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     runoffVote: {
         parameters: {
             query?: never;
@@ -533,6 +676,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PointRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParticipantDto"];
+                };
             };
             /** @description Bad Request */
             400: {
@@ -1002,6 +1216,72 @@ export interface operations {
             path: {
                 slug: string;
                 venueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                participantId: string;
             };
             cookie?: never;
         };

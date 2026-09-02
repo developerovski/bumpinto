@@ -22,4 +22,6 @@ class ParticipantEntity {
     @Generated(event = EventType.INSERT) @Column(updatable = false) Instant joinedAt;
     Instant deckDoneAt;
     boolean isHost;
+    boolean isManual;
+    String locationLabel;
 }

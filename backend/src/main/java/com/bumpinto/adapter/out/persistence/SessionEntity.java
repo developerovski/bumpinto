@@ -18,6 +18,7 @@ class SessionEntity {
     UUID hostId;
     String name;
     String activityType;
+    String sessionType;
     String status;
     Instant expiresAt;
     @Generated(event = EventType.INSERT) @Column(updatable = false) Instant createdAt;

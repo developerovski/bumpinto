@@ -13,6 +13,10 @@ public final class Texts {
         return raw == null ? null : normalize(raw, 60);
     }
 
+    public static String label(String raw) {
+        return raw == null || raw.isBlank() ? null : normalize(raw, 80);
+    }
+
     // Kontrol karakterlerini söker, boşlukları toplar, uzunluğu sınırlar.
     // Tırnak/SQL keyword TEMİZLEMEZ — 's-Hertogenbosch geçerli veridir.
     private static String normalize(String raw, int maxLength) {

@@ -22,6 +22,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,15 +116,29 @@ class ApiHappyPathTest {
         assertThat(ayseCookie).isNotNull();
         assertThat(ayseCookie.isHttpOnly()).isTrue();
 
-        // 3 — host desteyi kurar
+        // 3 — host desteyi kurar: onceki BROWSING ("Mekanlar"), herkes harita+listede gorur
         String viewBody = mvc.perform(post("/api/sessions/" + slug + "/find-venues")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode view = json.readTree(viewBody);
-        assertThat(view.get("status").asString()).isEqualTo("SWIPING");
+        assertThat(view.get("status").asString()).isEqualTo("BROWSING");
+        assertThat(view.get("sessionType").asString()).isEqualTo("GROUP");
         assertThat(view.get("venues").size()).isEqualTo(6);
-        String favoriteId = view.get("venues").get(0).get("id").asString();
+        assertThat(view.get("midpoint").get("lat").asDouble()).isBetween(51.38, 51.70);
+        assertThat(view.get("radiusKm").asDouble()).isBetween(1.0, 10.0);
+        // katilimci konumu 2 ondalikla doner (yaklasik ~1 km) — tam koordinat sizmaz
+        assertThat(view.get("participants").get(1).get("approxLocation").get("lat").asDouble())
+                .isEqualTo(51.39);
+
+        // 3b — host karistirir ve kaydirmayi acar
+        String shuffledBody = mvc.perform(post("/api/sessions/" + slug + "/shuffle")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode shuffled = json.readTree(shuffledBody);
+        assertThat(shuffled.get("status").asString()).isEqualTo("SWIPING");
+        String favoriteId = shuffled.get("venues").get(0).get("id").asString();
 
         // 4 — host header token'ıyla, Ayşe cookie'yle aynı mekanı beğenir + desteyi bitirir
         mvc.perform(post("/api/sessions/" + slug + "/swipes")
@@ -179,5 +194,61 @@ class ApiHappyPathTest {
 
         // 8 — OpenAPI codegen ucu açık
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+    }
+
+    @Test
+    void soloSessionPicksFromMapWithoutDeck() throws Exception {
+        when(google.verify("gid2"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("solo@bumpinto.test", "Mehmet"));
+        when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(List.of(
+                new VenueCandidate("foursquare", "f1", "Café Berlage", new GeoPoint(51.44, 5.47),
+                        4.6, 2, null, "https://maps/1")));
+        String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid2\"}"))
+                .andReturn().getResponse().getContentAsString()).get("accessToken").asString();
+
+        String slug = json.readTree(mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"sessionType\":\"SOLO\","
+                                + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\","
+                                + "\"locationLabel\":\"'s-Hertogenbosch\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("slug").asString();
+
+        // katilim SOLO'da kapali
+        mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .contentType(JSON).content("{\"displayName\":\"Ayşe\"}"))
+                .andExpect(status().isConflict());
+
+        // elle konum
+        String pointBody = mvc.perform(post("/api/sessions/" + slug + "/points")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\",\"locationLabel\":\"Someren\","
+                                + "\"lat\":51.3855,\"lng\":5.7120}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(pointBody).get("manual").asBoolean()).isTrue();
+
+        String browsing = mvc.perform(post("/api/sessions/" + slug + "/find-venues")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode view = json.readTree(browsing);
+        assertThat(view.get("status").asString()).isEqualTo("BROWSING");
+        String venueId = view.get("venues").get(0).get("id").asString();
+
+        mvc.perform(post("/api/sessions/" + slug + "/shuffle")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isConflict());
+
+        String decided = mvc.perform(post("/api/sessions/" + slug + "/force-decision")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON).content("{\"venueId\":\"" + venueId + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(decided).get("status").asString()).isEqualTo("DECIDED");
+        assertThat(json.readTree(decided).get("decidedVenueId").asString()).isEqualTo(venueId);
     }
 }

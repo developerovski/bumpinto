@@ -16,7 +16,8 @@ http:
     data: |-
       {
         "lat": 51.5719,
-        "lng": 5.0672
+        "lng": 5.0672,
+        "label": "Someren"
       }
 
 runtime:

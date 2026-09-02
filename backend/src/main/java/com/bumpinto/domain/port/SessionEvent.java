@@ -9,8 +9,18 @@ public record SessionEvent(String type, Map<String, Object> payload) {
         return new SessionEvent("participant_joined", Map.of("participantCount", count));
     }
 
+    /** SOLO: host elle konumu siler; abone istemcinin listesi bayat kalmasin. */
+    public static SessionEvent participantLeft(int count) {
+        return new SessionEvent("participant_left", Map.of("participantCount", count));
+    }
+
     public static SessionEvent deckReady(int venueCount) {
         return new SessionEvent("deck_ready", Map.of("venueCount", venueCount));
+    }
+
+    /** BROWSING: deste hazir, herkes Mekanlar ekranini gorur; oylama daha basladi. */
+    public static SessionEvent venuesReady(int venueCount) {
+        return new SessionEvent("venues_ready", Map.of("venueCount", venueCount));
     }
 
     public static SessionEvent deckProgress(long done, long total) {

@@ -32,6 +32,12 @@ export function createBumpintoApi(http: AxiosInstance) {
         .then((r) => r.data),
     runoffVote: (slug: string, body: Schemas["RunoffVoteRequest"]) =>
       http.post(`/api/sessions/${slug}/runoff-votes`, body).then(() => undefined),
+    shuffle: (slug: string) =>
+      http.post<SessionView>(`/api/sessions/${slug}/shuffle`).then((r) => r.data),
+    addPoint: (slug: string, body: Schemas["PointRequest"]) =>
+      http.post<ParticipantDto>(`/api/sessions/${slug}/points`, body).then((r) => r.data),
+    removePoint: (slug: string, participantId: string) =>
+      http.delete(`/api/sessions/${slug}/points/${participantId}`).then(() => undefined),
   };
 }
 

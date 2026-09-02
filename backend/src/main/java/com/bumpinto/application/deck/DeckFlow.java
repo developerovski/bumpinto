@@ -26,11 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -65,7 +67,7 @@ public class DeckFlow {
                 && session.status() != SessionStatus.SUGGESTING) {
             throw new ConflictException("deck already built: " + session.status());
         }
-        List<GeoPoint> points = deckPopulation(session.id()).stream()
+        List<GeoPoint> points = geometryPopulation(session.id()).stream()
                 .map(Participant::location).toList();
         if (points.size() < 2) {
             throw new ConflictException("need at least 2 participants with location");
@@ -103,9 +105,31 @@ public class DeckFlow {
                     c.mapsUrl(), i));
         }
         List<Venue> saved = deck.saveVenues(venues);
-        store.saveSession(session.withStatus(SessionStatus.SWIPING));
-        events.publish(slug, SessionEvent.deckReady(saved.size()));
+        store.saveSession(session.withStatus(SessionStatus.BROWSING));
+        events.publish(slug, SessionEvent.venuesReady(saved.size()));
         return saved;
+    }
+
+    /**
+     * Grup: host "Karistir ve kaydir" der; deste herkes icin AYNI rastgele siraya girer
+     * (tohum = oturum id'si — testte ve yeniden yuklemede deterministik). Liste ekrani puan
+     * sirasini SessionView'dan okumaya devam eder; deckOrder yalniz desteyi ilgilendirir.
+     */
+    @Transactional
+    public void shuffle(String slug, UUID hostUserId) {
+        Session session = required(slug);
+        requireHost(session, hostUserId);
+        if (session.status() != SessionStatus.BROWSING) {
+            throw new ConflictException("expected BROWSING but was " + session.status());
+        }
+        if (session.isSolo()) {
+            throw new ConflictException("solo session has no deck");
+        }
+        List<UUID> ids = new ArrayList<>(deck.venuesOf(session.id()).stream().map(Venue::id).toList());
+        Collections.shuffle(ids, new Random(session.id().getLeastSignificantBits()));
+        deck.reorderVenues(session.id(), ids);
+        store.saveSession(session.withStatus(SessionStatus.SWIPING));
+        events.publish(slug, SessionEvent.deckReady(ids.size()));
     }
 
     @Transactional
@@ -128,7 +152,7 @@ public class DeckFlow {
         Participant me = requireDeckParticipant(session, participantId);
         store.saveParticipant(me.doneAt(clock.instant()));
 
-        List<Participant> population = deckPopulation(session.id());
+        List<Participant> population = votingPopulation(session.id());
         long total = population.size();
         long done = population.stream().filter(Participant::deckDone).count();
         events.publish(slug, SessionEvent.deckProgress(done, total));
@@ -137,16 +161,30 @@ public class DeckFlow {
         }
     }
 
+    /**
+     * Uc kullanim: (a) BROWSING'de "Bunu sec" — SOLO'nun tek karar yolu, GROUP'ta host kisayolu;
+     * (b) RUNOFF beraberligini bozma; (c) SWIPING'de kismi katilimla degerlendirme (venueId null).
+     */
     @Transactional
     public void forceDecision(String slug, UUID hostUserId, UUID chosenVenueId) {
         Session session = required(slug);
         requireHost(session, hostUserId);
         if (chosenVenueId != null) {
-            if (session.status() != SessionStatus.RUNOFF) {
-                throw new ConflictException("venue can only be chosen during runoff");
-            }
-            if (!session.runoffVenueIds().contains(chosenVenueId)) {
-                throw new ConflictException("venue is not a finalist");
+            switch (session.status()) {
+                case BROWSING -> {
+                    boolean inSession = deck.venuesOf(session.id()).stream()
+                            .anyMatch(v -> v.id().equals(chosenVenueId));
+                    if (!inSession) {
+                        throw new ConflictException("venue is not in this session");
+                    }
+                }
+                case RUNOFF -> {
+                    if (!session.runoffVenueIds().contains(chosenVenueId)) {
+                        throw new ConflictException("venue is not a finalist");
+                    }
+                }
+                default -> throw new ConflictException(
+                        "venue can only be chosen while browsing or during runoff");
             }
             decide(session, chosenVenueId);
             return;
@@ -166,7 +204,7 @@ public class DeckFlow {
         }
         deck.castVote(session.id(), venueId, participantId);
 
-        long finishers = deckPopulation(session.id()).stream()
+        long finishers = votingPopulation(session.id()).stream()
                 .filter(Participant::deckDone).count();
         if (deck.votersCount(session.id()) >= finishers) {
             Map<UUID, Long> tally = deck.voteTally(session.id());
@@ -182,7 +220,7 @@ public class DeckFlow {
 
     private void evaluate(Session session, boolean interactive) {
         Map<UUID, Set<UUID>> likes = deck.likesByParticipant(session.id());
-        List<ParticipantLikes> participantLikes = deckPopulation(session.id()).stream()
+        List<ParticipantLikes> participantLikes = votingPopulation(session.id()).stream()
                 .map(p -> new ParticipantLikes(p.id(), p.deckDone(),
                         likes.getOrDefault(p.id(), Set.of())))
                 .toList();
@@ -238,14 +276,17 @@ public class DeckFlow {
                 .orElseThrow(() -> new ForbiddenException("participant not in this session"));
     }
 
-    /**
-     * Deste akışının popülasyonu = KONUMLU katılımcılar. Deste bu kişilerin orta noktasından
-     * kuruldu; konumsuz biri ne mesafe hesabına ne ilerleme sayımına girer. done/total,
-     * runoff finishers ve karar motoru girdisi HEP burayı kullanır — aksi halde eksik oyla
-     * erken karar çıkar.
-     */
-    private List<Participant> deckPopulation(UUID sessionId) {
+    /** Geometri popülasyonu: konumu olan HERKES (elle konumlar dahil) — orta nokta, yaricap, deste. */
+    private List<Participant> geometryPopulation(UUID sessionId) {
         return store.participantsOf(sessionId).stream().filter(Participant::hasLocation).toList();
+    }
+
+    /**
+     * Oy popülasyonu: konumu olan ve elle eklenmemis katilimcilar. done/total, runoff finishers ve
+     * karar motoru girdisi HEP burayi kullanir — elle konum kaydiramaz, yoksa oturum asla bitmez.
+     */
+    private List<Participant> votingPopulation(UUID sessionId) {
+        return store.participantsOf(sessionId).stream().filter(Participant::votes).toList();
     }
 
     /**
@@ -257,6 +298,9 @@ public class DeckFlow {
         Participant participant = requireMember(session, participantId);
         if (!participant.hasLocation()) {
             throw new ConflictException("share your location before joining the deck");
+        }
+        if (participant.manual()) {
+            throw new ConflictException("manual points do not swipe");
         }
         return participant;
     }

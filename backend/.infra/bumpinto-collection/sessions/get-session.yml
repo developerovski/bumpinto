@@ -38,3 +38,11 @@ docs:
     ayni isimli iki katilimci veri kaybina yol aciyordu).
 
     Bu istek destedeki ilk mekani `venueId` degiskenine yazar; Deck istekleri onu kullanir.
+
+    Yeni alanlar: `sessionType`, `midpoint{lat,lng}` + `radiusKm` (konumlu >=2 nokta varsa),
+    `participants[].approxLocation` (2 ondalik), `locationLabel`, `manual`,
+    `runoffVotedParticipantIds` (yalniz RUNOFF'ta dolu; kimin kilitledigi, ne sectigi degil).
+    Durum listesine `BROWSING` eklendi.
+
+    Gizlilik: `midpoint` ve `radiusKm` de yuvarlanir (2 ondalik / 1 ondalik). Ham orta nokta
+    2 kisilik oturumda kendi konumunu bilen tarafa digerinin tam koordinatini verirdi.

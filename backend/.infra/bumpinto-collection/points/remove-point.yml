@@ -1,0 +1,25 @@
+info:
+  name: Remove Point
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/sessions/{{slug}}/points/{{pointId}}"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Yalniz elle eklenen (`manual=true`) katilimci silinebilir; host'un kendi
+    satiri 409. Mekanlar bulunduktan sonra (COLLECTING disi) 409.

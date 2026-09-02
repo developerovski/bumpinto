@@ -13,13 +13,14 @@ import java.time.Clock;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class SessionQueries {
 
-    private static final EnumSet<SessionStatus> VENUES_VISIBLE =
-            EnumSet.of(SessionStatus.SWIPING, SessionStatus.RUNOFF, SessionStatus.DECIDED);
+    private static final EnumSet<SessionStatus> VENUES_VISIBLE = EnumSet.of(
+            SessionStatus.BROWSING, SessionStatus.SWIPING, SessionStatus.RUNOFF, SessionStatus.DECIDED);
 
     private final SessionStorePort store;
     private final DeckStorePort deck;
@@ -32,7 +33,8 @@ public class SessionQueries {
     }
 
     public record SessionSnapshot(Session session, List<Participant> participants,
-                                  List<Venue> venues, Map<UUID, Long> voteTally) {
+                                  List<Venue> venues, Map<UUID, Long> voteTally,
+                                  Set<UUID> voters) {
     }
 
     /** Okuma tarafı da tembel expiry uygular: süresi dolmuş oturum EXPIRED raporlanır, DB'ye yazılmaz. */
@@ -44,6 +46,8 @@ public class SessionQueries {
                 ? deck.venuesOf(session.id()) : List.of();
         Map<UUID, Long> tally = session.status() == SessionStatus.DECIDED
                 ? deck.voteTally(session.id()) : Map.of();
-        return new SessionSnapshot(session, store.participantsOf(session.id()), venues, tally);
+        Set<UUID> voters = session.status() == SessionStatus.RUNOFF
+                ? deck.voters(session.id()) : Set.of();
+        return new SessionSnapshot(session, store.participantsOf(session.id()), venues, tally, voters);
     }
 }

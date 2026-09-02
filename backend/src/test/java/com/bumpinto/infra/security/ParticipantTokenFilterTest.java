@@ -4,6 +4,7 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.support.FakeStores;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
@@ -35,13 +36,14 @@ class ParticipantTokenFilterTest {
     UUID session(String slug) {
         UUID id = UUID.randomUUID();
         store.saveSession(new Session(id, slug, UUID.randomUUID(), "Kahve", ActivityType.COFFEE,
-                SessionStatus.COLLECTING, Instant.now().plus(6, ChronoUnit.HOURS), null, List.of()));
+                SessionType.GROUP, SessionStatus.COLLECTING, Instant.now().plus(6, ChronoUnit.HOURS),
+                null, List.of()));
         return id;
     }
 
     void participantWithToken(UUID inSession, String token) {
         store.saveParticipant(new Participant(UUID.randomUUID(), inSession, "Ayşe",
-                null, false, token, null));
+                null, false, token, null, false, null));
     }
 
     Authentication filter(MockHttpServletRequest req) throws Exception {

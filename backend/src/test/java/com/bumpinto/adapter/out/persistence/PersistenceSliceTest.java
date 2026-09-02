@@ -35,6 +35,7 @@ class PersistenceSliceTest {
         s.hostId = u.id;
         s.name = "Cuma kahvesi";
         s.activityType = "COFFEE";
+        s.sessionType = "GROUP";
         s.status = "COLLECTING";
         s.expiresAt = Instant.now().plusSeconds(3600);
         sessions.save(s);
@@ -51,6 +52,6 @@ class PersistenceSliceTest {
 
         assertThat(sessions.findBySlug("x7k2m")).isPresent();
         assertThat(participants.findByToken("tok-1")).isPresent();
-        assertThat(participants.findBySessionId(s.id)).hasSize(1);
+        assertThat(participants.findBySessionIdOrderByJoinedAtAscIdAsc(s.id)).hasSize(1);
     }
 }

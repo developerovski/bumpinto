@@ -1,0 +1,46 @@
+info:
+  name: Add Point
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/points"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "displayName": "Ayşe",
+        "locationLabel": "Someren",
+        "lat": 51.3855,
+        "lng": 5.7120
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("pointId", res.body.id);
+        }
+    - type: tests
+      code: |-
+        test("201 doner", function() {
+          expect(res.status).to.equal(201);
+        });
+        test("manual=true", function() {
+          expect(res.body.manual).to.equal(true);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Yalniz `sessionType=SOLO` ve `COLLECTING` durumunda (aksi 409).
+    Token'siz, oy vermeyen katilimci olusturur; orta nokta ve yaricapa dahildir.
+    `displayName` max 40, `locationLabel` max 80, lat/lng aralik disi 400.

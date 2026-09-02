@@ -5,6 +5,7 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.FakeStores;
 import jakarta.servlet.Filter;
@@ -77,7 +78,7 @@ class SecurityPolicyTest {
     void participantToStringMasksTokenButKeepsDiagnostics() {
         UUID id = UUID.randomUUID();
         Participant participant = new Participant(id, UUID.randomUUID(), "Ayse", null, true,
-                "pt-secret-value", null);
+                "pt-secret-value", null, false, null);
 
         assertThat(participant.toString())
                 .doesNotContain("pt-secret-value")
@@ -140,10 +141,10 @@ class SecurityPolicyTest {
 
     static {
         STORE.saveSession(new Session(SESSION_ID, "x7k2m", UUID.randomUUID(), "Kahve",
-                ActivityType.COFFEE, SessionStatus.COLLECTING,
+                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plus(6, ChronoUnit.HOURS), null, List.of()));
         STORE.saveParticipant(new Participant(UUID.randomUUID(), SESSION_ID, "Ayse", null,
-                false, "pt-ok", null));
+                false, "pt-ok", null, false, null));
     }
 
     @Configuration

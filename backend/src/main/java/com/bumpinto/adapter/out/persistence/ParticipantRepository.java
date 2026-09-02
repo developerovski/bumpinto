@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ParticipantRepository extends JpaRepository<ParticipantEntity, UUID> {
-    List<ParticipantEntity> findBySessionId(UUID sessionId);
+    /** joinedAt sirasi: liste her istekte ayni; host ilk. ORDER BY yoksa satir guncellemesi
+     *  (konum girisi) satiri heap'te sona tasiyip sirayi degistiriyordu. */
+    List<ParticipantEntity> findBySessionIdOrderByJoinedAtAscIdAsc(UUID sessionId);
     Optional<ParticipantEntity> findByToken(String token);
 }

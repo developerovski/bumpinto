@@ -5,6 +5,7 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
@@ -50,10 +53,10 @@ class StoreAdapterTest {
         assertThat(userRows.findByEmail("m@x.dev").orElseThrow().name).isEqualTo("Mehmet Y");
 
         Session s = sessions.saveSession(new Session(UUID.randomUUID(), "slugtest", hostUser,
-                "Cuma", ActivityType.COFFEE, SessionStatus.COLLECTING,
+                "Cuma", ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
         Participant host = sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(),
-                "Mehmet", new GeoPoint(51.6978, 5.3037), true, "tok-h", null));
+                "Mehmet", new GeoPoint(51.6978, 5.3037), true, "tok-h", null, false, null));
 
         Session read = sessions.sessionBySlug("slugtest").orElseThrow();
         assertThat(read).isEqualTo(s);
@@ -126,6 +129,24 @@ class StoreAdapterTest {
     }
 
     @Test
+    void reorderVenuesSwapsOrderWithoutViolatingUniqueIndex() {
+        Session s = newSession("reordr");
+        Venue v0 = venue(s, "fsq-0", 0);
+        Venue v1 = venue(s, "fsq-1", 1);
+        Venue v2 = venue(s, "fsq-2", 2);
+        deck.saveVenues(List.of(v0, v1, v2));
+        List<Venue> before = deck.venuesOf(s.id());
+        List<UUID> reversed = new ArrayList<>(before.stream().map(Venue::id).toList());
+        Collections.reverse(reversed);
+
+        deck.reorderVenues(s.id(), reversed);
+
+        assertThat(deck.venuesOf(s.id()).stream().map(Venue::id).toList()).isEqualTo(reversed);
+        assertThat(deck.venuesOf(s.id()).stream().map(Venue::deckOrder).toList())
+                .containsExactly(0, 1, 2);
+    }
+
+    @Test
     void compositeKeysScopeSwipeDeleteAndVoteReplace() {
         Session s = newSession("compk");
         Participant p1 = join(s, "P1", "tok-p1", true);
@@ -172,13 +193,13 @@ class StoreAdapterTest {
     private Session newSession(String slug) {
         UUID host = users.upsertByEmail(slug + "@x.dev", "Host " + slug);
         return sessions.saveSession(new Session(UUID.randomUUID(), slug, host, "Cuma",
-                ActivityType.COFFEE, SessionStatus.COLLECTING, Instant.now().plusSeconds(600),
-                null, List.of()));
+                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(600), null, List.of()));
     }
 
     private Participant join(Session s, String name, String token, boolean host) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
-                new GeoPoint(51.6978, 5.3037), host, token, null));
+                new GeoPoint(51.6978, 5.3037), host, token, null, false, null));
     }
 
     private Venue venue(Session s, String externalId, int order) {

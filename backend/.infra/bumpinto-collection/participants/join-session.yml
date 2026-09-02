@@ -17,7 +17,8 @@ http:
       {
         "displayName": "Ayse",
         "lat": 51.5719,
-        "lng": 5.0672
+        "lng": 5.0672,
+        "locationLabel": "Someren"
       }
 
 runtime:

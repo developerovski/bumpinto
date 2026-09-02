@@ -1,0 +1,29 @@
+info:
+  name: Shuffle (Karıştır ve kaydır)
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/shuffle"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("SWIPING'e gecer", function() {
+          expect(res.body.status).to.equal("SWIPING");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host JWT gerekir. Yalniz `BROWSING` durumunda ve `sessionType=GROUP` icin (aksi 409).
+    `deckOrder` herkes icin ayni rastgele siraya yazilir; `deck_ready` olayi yayinlanir.
+    Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

@@ -5,6 +5,7 @@ import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.venue.Venue;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,18 @@ public class DeckStoreAdapter implements DeckStorePort {
                 .toList();
     }
 
+    @Override public void reorderVenues(UUID sessionId, List<UUID> orderedVenueIds) {
+        List<VenueEntity> rows = venues.findBySessionIdOrderByDeckOrder(sessionId);
+        rows.forEach(e -> e.deckOrder += 1000);
+        venues.saveAllAndFlush(rows);
+        Map<UUID, Integer> target = new HashMap<>();
+        for (int i = 0; i < orderedVenueIds.size(); i++) {
+            target.put(orderedVenueIds.get(i), i);
+        }
+        rows.forEach(e -> e.deckOrder = target.get(e.id));
+        venues.saveAllAndFlush(rows);
+    }
+
     @Override public void saveSwipe(UUID sessionId, UUID venueId, UUID participantId, boolean liked) {
         SwipeEntity e = new SwipeEntity();
         e.sessionId = sessionId;
@@ -94,5 +107,10 @@ public class DeckStoreAdapter implements DeckStorePort {
 
     @Override public long votersCount(UUID sessionId) {
         return votes.findBySessionId(sessionId).size();
+    }
+
+    @Override public Set<UUID> voters(UUID sessionId) {
+        return votes.findBySessionId(sessionId).stream().map(e -> e.participantId)
+                .collect(Collectors.toSet());
     }
 }

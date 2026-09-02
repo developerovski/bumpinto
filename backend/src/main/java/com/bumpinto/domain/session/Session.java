@@ -5,25 +5,29 @@ import java.util.List;
 import java.util.UUID;
 
 public record Session(UUID id, String slug, UUID hostId, String name, ActivityType activityType,
-                      SessionStatus status, Instant expiresAt, UUID decidedVenueId,
-                      List<UUID> runoffVenueIds) {
+                      SessionType sessionType, SessionStatus status, Instant expiresAt,
+                      UUID decidedVenueId, List<UUID> runoffVenueIds) {
 
     public boolean isExpired(Instant now) {
         return now.isAfter(expiresAt);
     }
 
+    public boolean isSolo() {
+        return sessionType == SessionType.SOLO;
+    }
+
     public Session withStatus(SessionStatus newStatus) {
-        return new Session(id, slug, hostId, name, activityType, newStatus, expiresAt,
+        return new Session(id, slug, hostId, name, activityType, sessionType, newStatus, expiresAt,
                 decidedVenueId, runoffVenueIds);
     }
 
     public Session decided(UUID venueId) {
-        return new Session(id, slug, hostId, name, activityType, SessionStatus.DECIDED, expiresAt,
-                venueId, runoffVenueIds);
+        return new Session(id, slug, hostId, name, activityType, sessionType, SessionStatus.DECIDED,
+                expiresAt, venueId, runoffVenueIds);
     }
 
     public Session inRunoff(List<UUID> venueIds) {
-        return new Session(id, slug, hostId, name, activityType, SessionStatus.RUNOFF, expiresAt,
-                null, List.copyOf(venueIds));
+        return new Session(id, slug, hostId, name, activityType, sessionType, SessionStatus.RUNOFF,
+                expiresAt, null, List.copyOf(venueIds));
     }
 }

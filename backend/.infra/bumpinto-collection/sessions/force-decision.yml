@@ -1,7 +1,7 @@
 info:
   name: Force Decision
   type: http
-  seq: 4
+  seq: 5
 
 http:
   method: POST
@@ -37,3 +37,6 @@ docs:
     - **Runoff beraberligini boz:** `venueId` verilir, o mekan secilir.
 
     Govde tamamen opsiyoneldir (`required = false`).
+
+    **BROWSING'de dogrudan secim:** `venueId` verilir; SOLO'nun tek karar yolu, GROUP'ta host
+    kisayolu (mekan oturumda olmali, aksi 409).
