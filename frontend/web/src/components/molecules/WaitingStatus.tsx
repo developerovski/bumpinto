@@ -8,7 +8,9 @@ export default function WaitingStatus(props: { onChange: () => void; busy: boole
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-3.5 rounded-card border border-line bg-card p-[1.375rem_1.25rem] text-center shadow-sh1">
-      <MapMark />
+      <div className="lg:hidden">
+        <MapMark />
+      </div>
       <div className="flex flex-col items-center gap-1.5">
         <h2>{t("waiting.preparing")}</h2>
         <p className="max-w-[34ch] text-center text-[0.8125rem] leading-normal text-ink2">

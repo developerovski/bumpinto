@@ -1,7 +1,7 @@
 /* Kaynak: ui.css .field(gap:12) / .row / .muted / .a-dv — artboard Katıl 1280/390 */
 import { Trans, useTranslation } from "react-i18next";
 import { Avatar, Badge, Highlight, Note } from "../atoms";
-import { ACTIVITY_ICONS } from "../../lib/activity";
+import ActivityBadge from "./ActivityBadge";
 
 /** Artboard W1 · davet başlığı bloğu + onu formdan ayıran saç teli ayraç.
     Oturum adı/etkinlik/katılımcı sayısı sunucu önizlemesinden (preview) gelir. */
@@ -12,7 +12,6 @@ export default function JoinIntro(props: {
   count: number;
 }) {
   const { t } = useTranslation();
-  const Icon = props.activity ? ACTIVITY_ICONS[props.activity] : undefined;
   const trimmedName = props.sessionName?.trim() ?? "";
   const words = trimmedName ? trimmedName.split(/\s+/) : [];
   return (
@@ -39,12 +38,7 @@ export default function JoinIntro(props: {
           </h1>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          {props.activity && Icon && (
-            <Badge tone="flame">
-              <Icon size={14} aria-hidden />
-              {t(`activity.${props.activity}`)}
-            </Badge>
-          )}
+          {props.activity && <ActivityBadge activity={props.activity} />}
           <Badge>{t("join.joinedCount", { count: props.count })}</Badge>
         </div>
         <Note>{t("join.subtitle")}</Note>

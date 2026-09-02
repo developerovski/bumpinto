@@ -1,11 +1,12 @@
 /* Kaynak: artboard Katıl 1280 sağ kart "Kimler var" — preview verisi (id/koordinat yok) */
+import type { ReactNode } from "react";
 import type { Schemas } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Avatar, HandNote, Overline } from "../atoms";
 
 type Row = Schemas["PreviewParticipantDto"];
 
-export default function WhoIsHere(props: { participants: Row[] }) {
+export default function WhoIsHere(props: { participants: Row[]; children?: ReactNode }) {
   const { t, i18n } = useTranslation();
   const ready = props.participants.filter((p) => p.hasLocation);
   const names = new Intl.ListFormat(i18n.resolvedLanguage ?? i18n.language, { type: "conjunction" })
@@ -30,6 +31,7 @@ export default function WhoIsHere(props: { participants: Row[] }) {
           </div>
         </div>
       )}
+      {props.children}
       <HandNote>{t("join.hand")}</HandNote>
     </>
   );

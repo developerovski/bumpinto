@@ -1,3 +1,4 @@
+import type { MeResponse } from "@bumpinto/shared";
 import { SignOut } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -44,7 +45,12 @@ export default function ProfilePage() {
         </>}
         right={<>
           <Overline>{t("profile.prefs")}</Overline>
-          <ProfilePrefs me={me} onLanguage={(language) => updatePrefs({ language })} />
+          <ProfilePrefs
+            me={me}
+            onLanguage={(language) => updatePrefs({ language })}
+            onLocation={(defaultLocation) => updatePrefs({ defaultLocation })}
+            onActivity={(defaultActivity) => updatePrefs({ defaultActivity: defaultActivity as MeResponse["defaultActivity"] })}
+          />
           <Note>{t("profile.langHint")}</Note>
         </>}
       />

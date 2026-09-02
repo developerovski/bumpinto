@@ -1,24 +1,98 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MeResponse } from "@bumpinto/shared";
-import { ErrorText } from "../atoms";
+import { Button, ErrorText } from "../atoms";
 import { ACTIVITY_ICONS, groupOf } from "../../lib/activity";
 import { LANGUAGES } from "../molecules/LangMenu";
+import ActivityPicker from "../molecules/ActivityPicker";
+import LocationField from "../molecules/LocationField";
 import PrefRow from "../molecules/PrefRow";
+import { useOwnLocation } from "../../store/useOwnLocation";
 
-/** Artboard W9 · Profil tercihler kartı — konum/etkinlik salt bilgi (W-4 düzenler), Dil açılır panel. */
-export default function ProfilePrefs({ me, onLanguage }: { me: MeResponse; onLanguage: (code: string) => Promise<void> }) {
+type Panel = "location" | "activity" | "language" | null;
+
+/** Artboard W9 · Profil tercihler kartı — konum, etkinlik ve dil düzenlenebilir açılır panelli. */
+export default function ProfilePrefs({
+  me,
+  onLanguage,
+  onLocation,
+  onActivity,
+}: {
+  me: MeResponse;
+  onLanguage: (code: string) => Promise<void>;
+  onLocation: (loc: { lat: number; lng: number; label?: string }) => Promise<void>;
+  onActivity: (a: string) => Promise<void>;
+}) {
   const { t, i18n } = useTranslation();
-  const [langOpen, setLangOpen] = useState(false);
+  const [open, setOpen] = useState<Panel>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const activity = me.defaultActivity;
   const Icon = activity ? ACTIVITY_ICONS[activity] : undefined;
   const currentCode = me.language ?? i18n.resolvedLanguage;
   const currentLang = LANGUAGES.find((l) => l.code === currentCode)?.label ?? "";
+  const loc = useOwnLocation({
+    initial: me.defaultLocation
+      ? { lat: me.defaultLocation.lat, lng: me.defaultLocation.lng, label: me.defaultLocation.label ?? null }
+      : null,
+  });
+
+  function toggle(panel: Exclude<Panel, null>) {
+    setError(null);
+    setOpen((o) => (o === panel ? null : panel));
+  }
+
+  // Tek render noktası: hata yalnız o an açık olan panelin içinde gösterilir.
+  const errorNode = error ? <ErrorText>{error}</ErrorText> : null;
+
+  async function saveLocation() {
+    setError(null);
+    setSaving(true);
+    try {
+      const c = await loc.resolve();
+      if (!c) {
+        setError(t("join.errGeocode"));
+        return;
+      }
+      await onLocation({ lat: c.lat, lng: c.lng, label: c.label ?? undefined });
+      setOpen(null);
+    } catch {
+      setError(t("profile.errSave"));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="rounded-card border border-line bg-card py-0.5 shadow-sh1">
-      <PrefRow label={t("profile.defaultLocation")} value={me.defaultLocation?.label ?? null} />
+      <PrefRow
+        label={t("profile.defaultLocation")}
+        value={me.defaultLocation?.label ?? null}
+        open={open === "location"}
+        onToggle={() => toggle("location")}
+      >
+        <div className="mx-[1.125rem] mb-3.5 flex flex-col gap-3">
+          <LocationField
+            title={t("profile.defaultLocation")}
+            state={loc.state}
+            label={loc.coords?.label ?? null}
+            address={loc.address}
+            onAddressChange={loc.setAddress}
+            onUseLocation={loc.detect}
+            onOtherAddress={loc.otherAddress}
+            busy={loc.busy}
+          />
+          <Button
+            kind="white"
+            size="fit"
+            disabled={saving || (!loc.coords && !loc.address.trim())}
+            onClick={() => void saveLocation()}
+          >
+            {t("common.save")}
+          </Button>
+          {open === "location" && errorNode}
+        </div>
+      </PrefRow>
       <div className="mx-[1.125rem] h-px bg-line" />
       <PrefRow
         label={t("profile.defaultActivity")}
@@ -31,13 +105,25 @@ export default function ProfilePrefs({ me, onLanguage }: { me: MeResponse; onLan
             </span>
           ) : undefined
         }
-      />
+        open={open === "activity"}
+        onToggle={() => toggle("activity")}
+      >
+        <div className="mx-[1.125rem] mb-3.5 flex flex-col gap-3">
+          <ActivityPicker
+            compact
+            value={me.defaultActivity ?? ""}
+            onChange={(a) => void onActivity(a).catch(() => setError(t("profile.errSave")))}
+            ariaLabel={t("profile.defaultActivity")}
+          />
+          {open === "activity" && errorNode}
+        </div>
+      </PrefRow>
       <div className="mx-[1.125rem] h-px bg-line" />
       <PrefRow
         label={t("profile.language")}
         value={`${currentLang} · ${t("profile.languageNote")}`}
-        open={langOpen}
-        onToggle={() => setLangOpen((o) => !o)}
+        open={open === "language"}
+        onToggle={() => toggle("language")}
       >
         <div
           role="radiogroup"
@@ -69,11 +155,7 @@ export default function ProfilePrefs({ me, onLanguage }: { me: MeResponse; onLan
             );
           })}
         </div>
-        {error && (
-          <div className="mx-[1.125rem] mb-3.5">
-            <ErrorText>{error}</ErrorText>
-          </div>
-        )}
+        {open === "language" && <div className="mx-[1.125rem] mb-3.5">{errorNode}</div>}
       </PrefRow>
     </div>
   );

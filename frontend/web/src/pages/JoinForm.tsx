@@ -1,80 +1,32 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Page } from "../components/atoms";
 import JoinFormFields from "../components/molecules/JoinFormFields";
 import JoinIntro from "../components/molecules/JoinIntro";
 import TwoZone from "../components/molecules/TwoZone";
 import WhoIsHere from "../components/molecules/WhoIsHere";
-import { geocode, reverseGeocode, type Coords } from "../lib/geocode";
+import MapView from "../components/organisms/MapView";
 import { useSessionStore } from "../store/sessionStore";
-
-type LocationState = "idle" | "granted" | "denied";
+import { useOwnLocation } from "../store/useOwnLocation";
 
 export default function JoinForm() {
   const { t } = useTranslation();
   const preview = useSessionStore((s) => s.preview);
   const join = useSessionStore((s) => s.join);
   const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [coords, setCoords] = useState<Coords | null>(null);
-  const [locationState, setLocationState] = useState<LocationState>("idle");
-  const [busy, setBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const addressRef = useRef(address);
-
-  function detectLocation(isCancelled: () => boolean = () => false) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (isCancelled()) return;
-        void (async () => {
-          const label = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          if (isCancelled()) return;
-          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, label });
-          // kullanıcı bu arada adres yazdıysa geç gelen otomatik konumu üzerine yazma
-          if (!addressRef.current.trim()) setLocationState("granted");
-        })();
-      },
-      () => {
-        if (!isCancelled()) setLocationState("denied");
-      },
-      { timeout: 10000, maximumAge: 300000 },
-    );
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!("geolocation" in navigator)) return;
-    detectLocation(() => cancelled);
-    return () => {
-      cancelled = true;
-    };
-    // yalnız ilk mount'ta — konum izni bir kez otomatik istenir
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function changeAddress(value: string) {
-    setAddress(value);
-    addressRef.current = value;
-    setCoords(null);
-  }
-
-  function otherAddress() {
-    setLocationState("idle");
-    setCoords(null);
-  }
+  const loc = useOwnLocation({ autoDetect: true });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    setSubmitting(true);
     setError(null);
     try {
-      let location = coords;
-      if (!location && address.trim()) {
-        location = await geocode(address.trim());
-        if (!location) {
-          setError(t("join.errGeocode"));
-          return;
-        }
+      const location = await loc.resolve();
+      if (!location && loc.address.trim()) {
+        setError(t("join.errGeocode"));
+        return;
       }
       // token HttpOnly cookie'de — web'de saklanmaz; join() görünümü tazeler
       await join({
@@ -86,7 +38,7 @@ export default function JoinForm() {
     } catch {
       setError(t("join.errJoin"));
     } finally {
-      setBusy(false);
+      setSubmitting(false);
     }
   }
 
@@ -103,20 +55,25 @@ export default function JoinForm() {
             />
             <JoinFormFields
               name={name}
-              address={address}
-              locationState={locationState}
-              locationLabel={coords?.label ?? null}
+              address={loc.address}
+              locationState={loc.state}
+              locationLabel={loc.coords?.label ?? null}
+              locationBusy={loc.busy}
               error={error}
-              busy={busy}
+              busy={submitting}
               onNameChange={setName}
-              onAddressChange={changeAddress}
-              onUseLocation={() => detectLocation()}
-              onOtherAddress={otherAddress}
+              onAddressChange={loc.setAddress}
+              onUseLocation={loc.detect}
+              onOtherAddress={loc.otherAddress}
               onSubmit={submit}
             />
           </>
         }
-        right={<WhoIsHere participants={preview?.participants ?? []} />}
+        right={
+          <WhoIsHere participants={preview?.participants ?? []}>
+            <MapView participants={[]} venues={[]} midpoint={null} radiusKm={null} caption={t("map.joinToSee")} lgOnly />
+          </WhoIsHere>
+        }
       />
     </Page>
   );

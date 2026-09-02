@@ -29,6 +29,16 @@ describe("ProfilePage", () => {
       expect.objectContaining({ language: "en", displayName: "Mehmet Şerefoğlu", defaultActivity: "COFFEE" })));
   });
 
+  it("varsayılan etkinliği düzenler ve kaydeder", async () => {
+    useAuthStore.setState({ status: "signed", me });
+    vi.mocked(api.updateMe).mockResolvedValueOnce({ ...me, defaultActivity: "MUSEUM" });
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: /Varsayılan etkinlik/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Müze" }));
+    await vi.waitFor(() => expect(api.updateMe).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultActivity: "MUSEUM", displayName: "Mehmet Şerefoğlu" })));
+  });
+
   it("adı düzenler ve kaydeder", async () => {
     useAuthStore.setState({ status: "signed", me });
     vi.mocked(api.updateMe).mockResolvedValueOnce({ ...me, displayName: "Mehmet S." });

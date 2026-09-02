@@ -9,7 +9,7 @@ import { Badge } from "../atoms";
     · "row" → Mobil `07 Runoff` `.card`; 74px küçük görsel + seçim dairesi. */
 
 // Artboard .pA/.pB/.pC/.pD — fotoğrafsız kartın üç katmanlı ambient gradyanı.
-const PHOTO_CLASSES = [
+export const PHOTO_CLASSES = [
   "bg-[image:radial-gradient(130%_100%_at_18%_8%,#ffd9a8_0%,transparent_62%),radial-gradient(110%_85%_at_88%_90%,#ff9e6b_0%,transparent_58%),linear-gradient(165deg,#f9c08a_0%,#e8794f_100%)]",
   "bg-[image:radial-gradient(130%_100%_at_80%_6%,#b8f0d8_0%,transparent_60%),radial-gradient(110%_85%_at_12%_92%,#4fc79a_0%,transparent_55%),linear-gradient(165deg,#8fddbb_0%,#2f9e71_100%)]",
   "bg-[image:radial-gradient(130%_100%_at_22%_10%,#d9c8ff_0%,transparent_60%),radial-gradient(110%_85%_at_85%_88%,#a47cff_0%,transparent_55%),linear-gradient(165deg,#c1a8f5_0%,#7c4dff_100%)]",
@@ -28,6 +28,16 @@ const BODY_GAPS = { sm: "gap-2", md: "gap-2.5" };
 const PICK_BASE = "h-[1.625rem] w-[1.625rem] flex-none rounded-full border-[1.5px]";
 const PICK = `${PICK_BASE} border-line-in`;
 const PICK_ON = `${PICK_BASE} flex items-center justify-center border-transparent bg-[image:var(--grad)]`;
+
+// Artboard: "Café Berlage" → "cb".
+export function monogram(name: string | undefined): string {
+  return (name ?? "")
+    .split(" ")
+    .map((w) => w[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toLowerCase();
+}
 
 export default function VenueCard(props: {
   venue: VenueDto;
@@ -53,13 +63,7 @@ export default function VenueCard(props: {
   const { t } = useTranslation();
   const v = props.venue;
   const photoClass = PHOTO_CLASSES[((props.tint ?? 0) + (v.deckOrder ?? 0)) % PHOTO_CLASSES.length];
-  // Artboard: "Café Berlage" → "cb".
-  const monogram = (v.name ?? "")
-    .split(" ")
-    .map((w) => w[0] ?? "")
-    .slice(0, 2)
-    .join("")
-    .toLowerCase();
+  const mono = monogram(v.name);
   // Tek yüklem: boş photoUrl da "fotoğraf yok" sayılır — gradyan/monogram ile
   // "foto · Places" rozeti bu sayede karşılıklı dışlayıcı kalır.
   const hasPhoto = v.photoUrl != null && v.photoUrl !== "";
@@ -98,7 +102,7 @@ export default function VenueCard(props: {
           >
             {!hasPhoto && (
               <span className={`${MONO} text-[1.375rem]`} aria-hidden>
-                {monogram}
+                {mono}
               </span>
             )}
           </div>
@@ -176,7 +180,7 @@ export default function VenueCard(props: {
             </span>
           ) : (
             <span className={`${MONO} text-[2.25rem]`} aria-hidden>
-              {monogram}
+              {mono}
             </span>
           ))}
       </div>

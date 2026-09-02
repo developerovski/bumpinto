@@ -19,3 +19,8 @@ export const GROUP_TINT: Record<ActivityGroup, 0 | 1 | 2 | 3> = { FOOD_DRINK: 0,
 export function groupOf(activity: string): ActivityGroup {
   return (Object.keys(ACTIVITY_GROUPS) as ActivityGroup[]).find((g) => ACTIVITY_GROUPS[g].includes(activity)) ?? "FOOD_DRINK";
 }
+
+/** SessionView.activityType — eksikse varsayılan COFFEE. */
+export function sessionActivity(view: { activityType?: string }): string {
+  return view.activityType ?? "COFFEE";
+}

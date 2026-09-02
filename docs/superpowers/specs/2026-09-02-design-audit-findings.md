@@ -149,3 +149,36 @@ Kodda artboard'dan **bilinçli** ayrılan yerler (INDEX W-3 notunda da var): Goo
 Karar'da adres / "şu an açık" / km yok (API'de yok); Oturumlar kartında avatar satırı yok (liste API'sinde
 ad yok); Bekle kopyası rev-1 metniyle kaldı (§3 onay bekliyor); Profil'de ad düzenleme satır-içi input
 (artboard yalnız chevron çiziyor — düzenleme hâli çizilmedi, onay bekliyor).
+
+## 11. W-4 uygulama turu — artboard düzeltmeleri (2026-09-02, uygulandı)
+
+W-4 (Plan 12) başlarken artboard ↔ API/kod karşılaştırması. **Claude Design'a yazıldı** (`Web Ekranlar v2`
+etag `1788351021656495`, 177 590 → 179 433 bayt; yerel kopya üzerinde asserted string replacement, `DesignSync`).
+Ortak gerekçe: `VenueDto`'da adres/şehir/açık-kapalı yok; `midpoint`/`radiusKm` şehir adı taşımaz; konumu
+olmayan katılımcı haritaya çizilemez; mekanlar bulunduktan sonra noktalar donar (backend `COLLECTING` dışında 409).
+
+| # | Artboard | Değişiklik | Gerekçe |
+|---|---|---|---|
+| 1 | Yeni oturum 1280 | mcap "Orta nokta · Eindhoven civarı · ~18 km" → "Orta nokta"; sol sütuna "Sen neredesin?" + `.loc.on` satırı + "…ya da adres yaz" eklendi | istemci önizlemesinde yarıçap/şehir yok; `createSession` lat/lng ister — host konumu için alan çizilmemişti |
+| 2 | Yeni oturum 390 (TR) | isim alanı ("Buluşmaya isim ver · istersen") + "Sen neredesin?" `.loc.on` satırı eklendi | EN/NL 390'da isim alanı vardı, TR'de yoktu; konum alanı hiçbirinde yoktu |
+| 3 | Yeni oturum EN/NL 390 | `seg` tip seçici (Group/Solo · Groep/Solo) + açıklama satırı + "Where are you? / Waar ben je?" `.loc.on` satırı eklendi | §1'in açık kalemi kapandı |
+| 4 | Lobi 1280 | mcap → "Orta nokta · ≤ 9 km"; Kerem'in "bekleniyor" pini kaldırıldı; alt satır "Linke tıkladı, konum seçiyor…" → "Konum bekleniyor…" | konumu olmayan katılımcının pini olamaz (§2'deki "soluk pin" ihtiyacı böylece düştü); kopya tek kaynak `waiting.waitingLocation` |
+| 5 | Lobi 390 | "Linke tıkladı, konum seçiyor…" → "Konum bekleniyor…" | aynı |
+| 6 | Bekle 1280 | K pini kaldırıldı | konumu yok |
+| 7 | Mekanlar grup 1280 | meta "12 mekan · orta noktadan ≤ 9 km"; satır/popcard'larda "Açık" / "17:00'de kapanır" rozetleri ve şehir adları kaldırıldı ("★ 4.6 · €€") | API'de yok |
+| 8 | Mekanlar grup 390 davetli | aynı meta temizliği; "Sana 28′" → "Sen 28′" | §10/5 terim birliği |
+| 9 | Mekanlar bireysel 1280 | "Konumları düzenle" butonu kaldırıldı; meta "12 mekan · orta noktadan ≤ 9 km"; satır/popcard temizliği | BROWSING'de noktalar donmuş (B-7 adayı) |
+| 10 | Mekanlar bireysel 390 | satır meta temizliği; alttaki "Haritada gör" butonu kaldırıldı (üstteki Liste/Harita `seg` kalır) | aynı işlev iki kontrol |
+| 11 | Karar 1280 | alt satır "Kleine Berg 16, Eindhoven · ★ 4.6 · €€ · şu an açık" → "★ 4.6 · €€"; harita mcap (adres) kaldırıldı | W-3'teki bilinçli sapmayla aynı hata sınıfı, artboard'a da uygulandı |
+
+Plan 12'den **düşen** kalemler (artboard'da yok, backend'de yok): "Ben de kaydıracağım" anahtarı (plan uydurmuş;
+hiçbir artboard'da `.tog` kullanılmıyor) ve "Link hemen oluşur, sonra atarsın" ipucu. Çizilmemiş kalan boşluk:
+**Yeni oturum 1280 · Grup** (sağ bölge "davetlinin göreceği" önizleme kartı yalnız spec §5'te tarif ediliyor) —
+kod spec'e göre yazılır (`InvitePreview`), artboard sonra çizilir.
+
+§7'nin W-4'te kapanan kalemleri (kod böyle yazıldı; spec'e taşınacak kural):
+- **Tip seçimi kontrolü:** ≥1024 iki `TypeCard`, <1024 `Segmented` (`TypeSelector`). Kasıtlı responsive uyarlama.
+- **390'da harita:** yalnız Lobi ve Mekanlar'da (artboard'larda `gmap` var); Katıl/Bekle/Karar 390'da harita yok →
+  `MapView lgOnly` ile ≥1024'e sınırlandı, Bekle 390 dekoratif `MapMark`'ı korur.
+- **"Puan sırası":** Mekanlar listesi `deckOrder`'a göre (backend'in iç skoru); ekrandaki ★ sırası değil.
+

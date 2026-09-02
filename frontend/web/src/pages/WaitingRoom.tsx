@@ -5,9 +5,10 @@ import { Page } from "../components/atoms";
 import JoinedCard from "../components/molecules/JoinedCard";
 import TwoZone from "../components/molecules/TwoZone";
 import WaitingStatus from "../components/molecules/WaitingStatus";
+import MapView from "../components/organisms/MapView";
 import ParticipantList from "../components/organisms/ParticipantList";
 import { reverseGeocode } from "../lib/geocode";
-import { useSessionStore, viewerOf } from "../store/sessionStore";
+import { mapProps, useSessionStore, viewerOf } from "../store/sessionStore";
 
 /** Artboard W2 · Katıldın — canlı bekleme. */
 export default function WaitingRoom({ view }: { view: SessionView }) {
@@ -54,7 +55,17 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
             <ParticipantList participants={view.participants ?? []} />
           </>
         }
-        right={<WaitingStatus onChange={changeLocation} busy={busy} error={error} />}
+        right={
+          <>
+            <MapView
+              {...mapProps(view, t("map.you"))}
+              venues={[]}
+              caption={view.radiusKm != null ? t("map.midpoint", { km: Math.round(view.radiusKm) }) : t("map.midpointPending")}
+              lgOnly
+            />
+            <WaitingStatus onChange={changeLocation} busy={busy} error={error} />
+          </>
+        }
       />
     </Page>
   );
