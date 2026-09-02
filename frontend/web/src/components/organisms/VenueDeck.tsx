@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { useDeckStore } from "../../store/deckStore";
-import { Progress } from "../atoms";
+import { HandNote } from "../atoms";
 import DeckActions from "../molecules/DeckActions";
 import VenueCard from "../molecules/VenueCard";
 
@@ -49,11 +49,7 @@ export default function VenueDeck(props: {
 
   if (!current) return null;
   return (
-    <>
-      {/* Artboard: sayaç ile aynı sayı — 4/12 → %33. */}
-      <div className="mb-3.5 flex-none">
-        <Progress value={Math.min(index + 1, venues.length) / venues.length} />
-      </div>
+    <div className="mx-auto w-full max-w-[26.25rem]">
       <div className={DECK}>
         {/* Arka katmanlar artboard'da yalnız fotoğraf alanı gösterir. */}
         {third && <VenueCard venue={third} photoOnly className={D3} />}
@@ -65,13 +61,19 @@ export default function VenueDeck(props: {
         onPass={() => void decide(current.id!, false)}
         onLike={() => void decide(current.id!, true)}
       />
-      <div className="mt-3 flex flex-none items-center justify-center gap-2">
+      <div className="mt-3 hidden flex-none items-center justify-center gap-2 lg:flex">
         <span className={KBD}>←</span>
         <span className="text-[0.75rem] text-ink2">{t("deck.pass")}</span>
         <span className="mx-1 text-[0.75rem] text-ink2">·</span>
         <span className={KBD}>→</span>
         <span className="text-[0.75rem] text-ink2">{t("deck.like")}</span>
+        <span className="mx-1 text-[0.75rem] text-ink2">·</span>
+        <span className={KBD}>⌫</span>
+        <span className="text-[0.75rem] text-ink2">{t("deck.undoKey")}</span>
       </div>
-    </>
+      <div className="mt-3 lg:hidden">
+        <HandNote center>{t("deck.swipeHand")}</HandNote>
+      </div>
+    </div>
   );
 }

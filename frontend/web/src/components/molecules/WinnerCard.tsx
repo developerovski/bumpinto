@@ -1,4 +1,4 @@
-/* Kaynak: ui.css .a-ov(--flame) / .a-pol--winner (+ .a-pol-body gap) / ResultScreen W4 */
+/* Kaynak: ui.css .a-ov(--flame) / .a-pol--winner (+ .a-pol-body gap) / Karar 1280 */
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { Heading, Highlight, LinkButton, Sticker } from "../atoms";
@@ -8,8 +8,9 @@ const OVERLINE = "m-0 text-[0.6875rem] font-bold tracking-[0.11em] text-flame-de
 // Artboard W4: .pol style="transform:rotate(-1.4deg);box-shadow:var(--sh2)".
 const WINNER = "transform-[rotate(-1.4deg)] shadow-sh2";
 
-/** Artboard W4 · kazanan bloğu: üst başlık + vurgulu ad + çıkartmalı kart + yol tarifi.
-    Fragment: üç parça sayfanın 14px kolon boşluğunu aynen kullanır. */
+/** Artboard Karar 1280 · kazanan bloğu: üst başlık + vurgulu ad + çıkartmalı kart + yol tarifi.
+    API oy birliğini kanıtlayamaz (voteTally boşluğu tekil sonuç için de force-decision için de
+    olur) — bu yüzden "herkes beğendi" kutlama yolu yok; başlık ve çıkartma her zaman sabit. */
 export default function WinnerCard(props: {
   venue: VenueDto;
   travelLabels?: Record<string, string>;

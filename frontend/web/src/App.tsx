@@ -1,24 +1,22 @@
-import { Trans, useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router-dom";
-import { Highlight, Note, Page } from "./components/atoms";
+import AppShell from "./components/organisms/AppShell";
+import RequireAuth from "./components/organisms/RequireAuth";
+import ErrorPage from "./pages/ErrorPage";
+import Landing from "./pages/Landing";
+import ProfilePage from "./pages/ProfilePage";
 import SessionPage from "./pages/SessionPage";
+import SessionsPage from "./pages/SessionsPage";
 
 export default function App() {
-  const { t } = useTranslation();
   return (
     <Routes>
-      <Route path="/j/:slug" element={<SessionPage />} />
-      <Route
-        path="*"
-        element={
-          <Page center>
-            <h1>
-              <Trans i18nKey="app.homeTitle" components={[<Highlight key="0" />]} />
-            </h1>
-            <Note>{t("app.homeHint")}</Note>
-          </Page>
-        }
-      />
+      <Route element={<AppShell />}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/j/:slug" element={<SessionPage />} />
+        <Route path="/sessions" element={<RequireAuth><SessionsPage /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="*" element={<ErrorPage kind="lost" />} />
+      </Route>
     </Routes>
   );
 }

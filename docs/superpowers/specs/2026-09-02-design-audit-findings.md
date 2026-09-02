@@ -125,3 +125,27 @@ Oturumlar / Profil / Katıl artboard'ları B-6 sözleşmesiyle karşılaştırı
 
 Dokunulmayan: Lobi/Mekanlar/Karar/Deste'deki "Orta nokta · Eindhoven civarı" etiketi W-4'ün bilinen
 sınırı (B-7 ters geocode). Mobil dosyada Katıl/preview ekranı yok (M-1/M-2 çizer).
+
+## 10. W-3 uygulama turu — artboard/DS düzeltmeleri (2026-09-02, uygulandı)
+
+W-3 (Plan 11) yürütülürken artboard ↔ API/kod karşılaştırmasından çıkan ve **Claude Design'a yazılan**
+değişiklikler (`Web Ekranlar v2` etag `1788347637445782`, `Design System v2` etag `1788347638279222`;
+yerel kopya üzerinde asserted string replacement, `DesignSync` ile yükleme):
+
+| # | Artboard / DS | Değişiklik | Gerekçe |
+|---|---|---|---|
+| 1 | Oturumlar 1280, kart 2 meta | "Yürüyüş · konumlar toplanıyor" → "Yürüyüş · Grup" | §9/1 kuralı: meta = etkinlik · tip; durum sticker + ilerleme satırında (`readyCount`/`doneCount`) |
+| 2 | Deste bitti 1280 | "…Gönderince Kerem'i bekleriz — herkes bitirince…" → "4 mekanı beğendin. Herkes bitirince sonuç açıklanır." | Türkçe ad eki şablonlanamaz; bekleyen adlar sağ bölgedeki ilerleme notunda |
+| 3 | Karar 1280 overline | "üçünüz de aynı yeri beğendi" → "hepiniz aynı yeri beğendi" | sayı sözcüğü şablonlanamaz. **Not:** kesişim-1 kutlama varyantı kodda KAPALI — bkz. B-7 `likeCounts` |
+| 4 | Katıl 1280/390/EN/NL rozeti | "2 kişi katıldı / 2 joined / 2 doen mee" → 3 | rozet `participantCount` (host dahil); üç avatar çizili |
+| 5 | Deste 390 kart rozeti | "Sana 28 dk" → "Sen 28 dk" | 1280/Karar/Runoff "Sen"; "Sana" yalnız liste modunda (`deck.travelSelfTo`) |
+| 6 | Mekanlar bireysel 390 | "Seç" ×4 → "Bunu seç" | §8 terim birliği |
+| 7 | Yeni oturum TR 390 | "Eğlence" grubu eklendi (Bowling/Oyun/Tema parkı/Gece hayatı) | §8; EN/NL 390'da vardı |
+| 8 | Mekanlar grup 390 davetli | üçüncü katılımcı pini (K) eklendi | §8; 1280'de 3 pin |
+| 9 | DS `.chip` | `min-height:46px` → `44px` | §2 kararı |
+| 10 | DS `@import` | Caveat `600;700` → `600` | §6: 700 kullanılmıyor |
+
+Kodda artboard'dan **bilinçli** ayrılan yerler (INDEX W-3 notunda da var): Google butonu GIS render'ı;
+Karar'da adres / "şu an açık" / km yok (API'de yok); Oturumlar kartında avatar satırı yok (liste API'sinde
+ad yok); Bekle kopyası rev-1 metniyle kaldı (§3 onay bekliyor); Profil'de ad düzenleme satır-içi input
+(artboard yalnız chevron çiziyor — düzenleme hâli çizilmedi, onay bekliyor).

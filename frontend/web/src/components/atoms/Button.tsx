@@ -5,6 +5,9 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** DS kural 1: "grad" yalnız round/ikon kullanımda — gradyan üstüne metin konmaz. */
   kind?: keyof typeof buttonKinds;
   shape?: "pill" | "round" | "round-sm";
+  /** `sm` yalnız `shape="pill"` ile — artboard .bsm küçük beyaz buton (DeckHeader). */
+  /** `fit` yalnız `shape="pill"` ile — artboard .fit içerik genişliğinde pill (Profil çıkış). */
+  size?: "md" | "sm" | "fit";
   /** İkonlu, sola yaslı kullanım (artboard W1 konum butonu). */
   align?: "center" | "start";
   children: ReactNode;
@@ -23,14 +26,21 @@ export const buttonKinds = {
   grad:
     "bg-[image:var(--grad)] text-white border-transparent " +
     "shadow-[0_10px_26px_rgba(222,36,86,0.35)]",
+  /** DS .b-dg — tehlikeli aksiyon (çıkış yap). */
+  danger: "bg-transparent text-[#c0392b] border-[#efc9c2]",
 };
 
 /** `round-sm` tek başına tamdır — eski `.a-btn--round` + `.a-btn--round-sm` bileşimi katlandı. */
 const rounds = {
   pill: "w-full min-h-[3.25rem] px-6 text-base",
-  round: "p-0 w-[3.875rem] min-h-[3.875rem] text-[1.375rem] flex-none",
-  "round-sm": "p-0 w-[2.75rem] min-h-[2.75rem] text-base flex-none",
+  round: "p-0 w-[3.75rem] min-h-[3.75rem] text-[1.375rem] flex-none",
+  "round-sm": "p-0 w-[3rem] min-h-[3rem] text-base flex-none",
 };
+
+/* DS .bsm — küçük beyaz pill (42px / 14px / yatay 16px). */
+const pillSm = "w-auto min-h-[2.625rem] px-4 text-[0.875rem]";
+/* DS .fit — içerik genişliğinde pill (Profil çıkış butonu, masaüstü). */
+const pillFit = "w-auto px-6 text-base min-h-[3.25rem]";
 
 export const buttonAligns = {
   center: "justify-center gap-[0.5625rem]",
@@ -40,14 +50,21 @@ export const buttonAligns = {
 export default function Button({
   kind = "flame",
   shape = "pill",
+  size = "md",
   align = "center",
   children,
   ...rest
 }: Props) {
+  const sizeClass =
+    shape === "pill" && size === "sm"
+      ? pillSm
+      : shape === "pill" && size === "fit"
+        ? pillFit
+        : rounds[shape];
   return (
     <button
       {...rest}
-      className={[buttonBase, buttonKinds[kind], rounds[shape], buttonAligns[align]]
+      className={[buttonBase, buttonKinds[kind], sizeClass, buttonAligns[align]]
         .join(" ")
         .trim()}
     >

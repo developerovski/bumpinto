@@ -13,7 +13,7 @@ export default function Sticker(props: {
 }) {
   return (
     <span
-      className={`${base} ${props.white ? "bg-white rotate-[1.8deg]" : "bg-sun -rotate-[2.5deg]"}`}
+      className={`${base} ${props.white ? "bg-white -rotate-[1.5deg]" : "bg-sun -rotate-[2.5deg]"}`}
     >
       {props.children}
     </span>

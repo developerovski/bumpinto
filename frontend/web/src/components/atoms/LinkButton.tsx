@@ -7,8 +7,15 @@ import { buttonAligns, buttonBase, buttonKinds } from "./Button";
     sırası (base < utilities) gereği zincirdeki `text-*` ve `no-underline` utility'lerine
     yenilir — özgüllükten bağımsız. Sonuç: hover'da ne renk ne alt çizgi değişir. */
 const PILL = "w-full px-6 text-base";
-/** md = ui.css .a-btn 52px; sm = artboard W4 viral CTA 46px. */
-const sizes = { md: `${PILL} min-h-[3.25rem]`, sm: `${PILL} min-h-[2.875rem]` };
+/** md = ui.css .a-btn 52px; sm = artboard W4 viral CTA 46px; fit = ui.css .btn.fit
+    (aynı 52px yükseklik, genişlik içerik kadar — W10 hata ekranı "Ana sayfa"). */
+const sizes = {
+  md: `${PILL} min-h-[3.25rem]`,
+  sm: `${PILL} min-h-[2.875rem]`,
+  fit: "w-auto px-6 text-base min-h-[3.25rem]",
+  /** DS .bsm — küçük beyaz pill (42px / 14px / yatay 16px). */
+  "fit-sm": "w-auto min-h-[2.625rem] px-4 text-[0.875rem]",
+};
 
 type Props = AnchorHTMLAttributes<HTMLAnchorElement> & {
   href: string;

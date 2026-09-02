@@ -6,7 +6,7 @@ const tones = {
   grass: "bg-grass-wash text-grass",
   amber: "bg-amber-wash text-amber",
   violet: "bg-violet-wash text-violet",
-  neutral: "bg-[#f4eee6] text-ink2",
+  neutral: "bg-sand text-ink2",
 };
 
 /** `sm` = ui.css `.a-row-travel > .a-badge` (11px) — 07 Runoff satır kartı. */

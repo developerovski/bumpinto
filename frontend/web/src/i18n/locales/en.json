@@ -1,12 +1,19 @@
 {
   "_status": "tasarım onayı bekliyor (2026-09-01)",
-  "common": { "wordmark": "BumpInto" },
-  "app": {
-    "homeTitle": "Let's meet <0>in the middle.</0>",
-    "homeHint": "You need an invite link — e.g. bumpinto.app/j/x7k2m"
+  "common": {
+    "wordmark": "BumpInto",
+    "title": "BumpInto — meet in the middle",
+    "save": "Save",
+    "retry": "Try again"
+  },
+  "shell": {
+    "sessions": "Meetups",
+    "profile": "Profile",
+    "logout": "Sign out",
+    "langAria": "Choose language",
+    "accountAria": "Account menu"
   },
   "session": {
-    "errorTitle": "Hmm.",
     "notFound": "This session wasn't found — is the link right?",
     "expired": "This session has expired."
   },
@@ -18,15 +25,25 @@
     "namePlaceholder": "What do your friends call you?",
     "whereLabel": "Where are you?",
     "useMyLocation": "Use my current location",
-    "currentLocation": "Your current location",
     "or": "or",
     "addressPlaceholder": "Type a city or address",
     "addressAria": "City or address",
     "submit": "Join",
-    "privacy": "Your location is used only for this meetup.",
+    "privacy": "Your location is used for this meetup and shown to the group approximately on the map.",
     "errGeolocation": "Couldn't get your location — you can type an address.",
     "errGeocode": "Address not found — try a city nearby.",
-    "errJoin": "Couldn't join — this session may have closed."
+    "errJoin": "Couldn't join — this session may have closed.",
+    "whoCopy": "{{names}} are ready. Your turn — drop your location so the midpoint is set.",
+    "hand": "we meet in the middle, to keep it fair →",
+    "invitedBy": "<0>{{host}}</0> invited you to meet up",
+    "joinedCount_one": "{{count}} joined",
+    "joinedCount_other": "{{count}} joined",
+    "locAuto": "Your current location",
+    "locAutoHint": "near {{label}} · detected automatically",
+    "locAutoHintNoLabel": "detected automatically",
+    "locOk": "OK",
+    "locOther": "Type another city or address",
+    "locRetry": "Try my location again"
   },
   "waiting": {
     "joined": "You're in!",
@@ -43,7 +60,6 @@
     "errUpdate": "Couldn't update your location — try again."
   },
   "deck": {
-    "counter": "{{current}} / {{total}}",
     "seeAll": "See all",
     "photoTag": "photo · Places",
     "pass": "pass",
@@ -57,10 +73,27 @@
     "travelFriend": "Your friend",
     "travelFallback": "Trip",
     "finishedTitle": "Deck <0>done!</0>",
-    "likedCount": "You liked {{count}} of them.",
     "send": "Send my likes",
     "backToList": "Back to the list, edit",
-    "listTitle": "Which one?"
+    "listTitle": "Which one?",
+    "liked": "Your likes",
+    "likedN_one": "{{count}} place",
+    "likedN_other": "{{count}} places",
+    "likedNote": "Liking doesn't lock you in — you can edit the list once you're done. Others' likes show up in the result.",
+    "undoKey": "undo",
+    "cardsOf": "{{current}} / {{total}} cards",
+    "cardsDone": "{{total}} / {{total}} cards · done",
+    "finishedSticker": "Deck done!",
+    "finishedCopy_one": "You liked {{count}} place. The result shows once everyone's done.",
+    "finishedCopy_other": "You liked {{count}} places. The result shows once everyone's done.",
+    "backToDeck": "Back to the deck",
+    "likesN_one": "{{count}} like",
+    "likesN_other": "{{count}} likes",
+    "progressDone": "{{names}} finished.",
+    "progressWaiting": "{{names}} still swiping; the result shows once everyone's done.",
+    "swipeHand": "swipe away — the buttons do the same",
+    "travelSelfTo": "You",
+    "minutes": "{{min}} min"
   },
   "runoff": {
     "sticker": "Home stretch",
@@ -68,8 +101,14 @@
     "copy": "Everyone liked both. You get one pick — the result shows once everyone has chosen.",
     "note": "who picked what shows in the result",
     "lockIn": "Lock in my pick",
-    "locked": "your pick is locked — waiting on the others",
-    "travelSelf": "You"
+    "who": "Who picked",
+    "choosing": "Choosing…",
+    "lockedBadge": "Locked in",
+    "lockedTitle": "Your pick is locked",
+    "lockedCopy": "waiting on the others — the result shows once everyone has picked",
+    "countOf": "{{done}} / {{total}}",
+    "votedCount": "{{done}}/{{total}} picked",
+    "errVote": "Couldn't send your pick — try again."
   },
   "result": {
     "overline": "Common ground",
@@ -78,6 +117,105 @@
     "viralTitle": "Is the next meetup on you?",
     "viralCopy": "Set one up in 30 seconds — friends join with a link.",
     "viralCta": "Start a meetup",
-    "viralSticker": "your turn"
+    "viralSticker": "your turn",
+    "share": "Share with the group",
+    "copied": "Copied",
+    "shareText": "{{name}}: {{venue}} — we met in the middle with BumpInto.",
+    "viralHostTitle": "Setting up the next one too?",
+    "viralHostCta": "Start a new meetup"
+  },
+  "landing": {
+    "title": "<0>Meet</0><1/>in the middle.",
+    "copy": "You're in Brooklyn, they're in Queens. No problem — find the fair midpoint and the best spot there together.",
+    "hand": "no fighting, just swiping →",
+    "google": "Continue with Google",
+    "terms": "By continuing you agree to the <0>Terms</0>.",
+    "noClientId": "Google sign-in isn't configured in this environment.",
+    "step1": "Start a meetup",
+    "step1Copy": "Say what you're doing and where you are.",
+    "step2": "Send the link",
+    "step2Copy": "Your friends join with no app download, no account.",
+    "step3": "Swipe, get a decision",
+    "step3Copy": "Everyone votes on the venues in the middle; the overlap wins.",
+    "errLogin": "Sign-in failed — try again.",
+    "errScript": "Google sign-in couldn't load.",
+    "sticker": "3/3 liked it!"
+  },
+  "sessions": {
+    "title": "Where to<0/>next?",
+    "new": "New meetup",
+    "open": "Open meetups",
+    "past": "Past meetups",
+    "goDeck": "Go to the deck",
+    "goLobby": "Go to the lobby",
+    "goVenues": "Go to venues",
+    "went": "Went",
+    "full": "Full",
+    "noDecision": "no decision",
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "group": "Group",
+    "solo": "Solo",
+    "readyOf": "{{ready}}/{{total}} ready",
+    "linkHint": "did you send the link?",
+    "doneOf": "{{done}}/{{total}} done",
+    "deckOpen": "Deck's open!",
+    "errLoad": "Couldn't load your meetups — try again.",
+    "retention": "Meetups close after 24 hours and are deleted after 30 days.",
+    "emptyTitle": "No meetups yet",
+    "emptyCopy": "Start one, send the link — the deck fills in once locations are in.",
+    "emptyHand": "takes 30 seconds, promise",
+    "status": {
+      "BROWSING": "venues ready",
+      "RUNOFF": "final round"
+    }
+  },
+  "activity": {
+    "COFFEE": "Coffee",
+    "FOOD": "Food",
+    "BAR": "Bar",
+    "WALK": "Walk",
+    "HIKE": "Hike",
+    "SWIM": "Swim",
+    "FITNESS": "Fitness",
+    "ADVENTURE": "Adventure",
+    "CINEMA": "Cinema",
+    "MUSEUM": "Museum",
+    "ART": "Art",
+    "ACTIVITY": "Bowling",
+    "GAMES": "Games",
+    "THEME_PARK": "Theme park",
+    "NIGHTLIFE": "Nightlife",
+    "group": {
+      "FOOD_DRINK": "Food & drink",
+      "ACTIVE": "Active",
+      "CULTURE": "Culture",
+      "FUN": "Fun"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "googleLogin": "Sign in with Google",
+    "editName": "Edit your name",
+    "hosted": "meetups hosted",
+    "friends": "friends met",
+    "prefs": "Preferences",
+    "defaultLocation": "Default location",
+    "defaultActivity": "Default activity",
+    "language": "Language",
+    "languageNote": "saved to your account",
+    "unset": "Not set",
+    "retention": "Meetups close after 24 hours and are deleted after 30 days. Only name + location are kept for participants — that's it.",
+    "langHint": "People who join via an invite link see their own browser language; your choice only applies to your account.",
+    "logout": "Sign out",
+    "errSave": "Couldn't save — try again."
+  },
+  "error": {
+    "hmm": "Hmm.",
+    "notFoundHint": "Ask whoever sent the link for a new one; there might be a typo.",
+    "expiredHint": "Meetups close after 24 hours. Ask the host to start a new one.",
+    "lostTitle": "There's nothing here.",
+    "lostCopy": "The page you're looking for may have moved, or never existed.",
+    "home": "Home"
   }
 }

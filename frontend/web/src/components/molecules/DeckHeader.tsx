@@ -1,31 +1,37 @@
 /* Kaynak: DeckScreen W3 başlık satırı (.row + .a-mi.tab + artboard .bsm) */
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Wordmark } from "../atoms";
+import { Button, Progress } from "../atoms";
+import SessionHeader from "./SessionHeader";
 
-/** Artboard W3 · marka + "4 / 12" sayacı + "Hepsini gör". */
+/** Artboard .bsm — küçük beyaz buton; `Button` atomunun `size="sm"` varyantı.
+    DeckScreen liste modunun "Desteye dön" aksiyonu da bu bileşeni paylaşır. */
+export function HeaderButton(props: { onClick: () => void; children: ReactNode }) {
+  return (
+    <Button type="button" kind="white" size="sm" onClick={props.onClick}>
+      {props.children}
+    </Button>
+  );
+}
+
+/** Artboard W3 · başlık + meta satırı + ilerleme çubuğu + "Hepsini gör". */
 export default function DeckHeader(props: {
-  current: number;
-  total: number;
-  onSeeAll: () => void;
+  title: string;
+  meta: string;
+  progress: number;
+  onSeeAll?: () => void;
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mb-3 flex flex-none items-center justify-between gap-2.5">
-      <Wordmark />
-      <div className="flex items-center gap-2.5">
-        <span className="text-[0.75rem] font-bold tabular-nums text-ink2">
-          {t("deck.counter", { current: props.current, total: props.total })}
-        </span>
-        {/* Artboard .bsm — Button atomunda küçük varyant yok; ölçüler yerinde kalır. */}
-        <Button
-          type="button"
-          kind="white"
-          style={{ width: "auto", minHeight: "2.125rem", fontSize: "0.8125rem", padding: "0 1rem" }}
-          onClick={props.onSeeAll}
-        >
-          {t("deck.seeAll")}
-        </Button>
-      </div>
+    <div className="mb-3 flex flex-none flex-col gap-3">
+      <SessionHeader
+        title={props.title}
+        meta={props.meta}
+        action={
+          props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>
+        }
+      />
+      <Progress value={props.progress} />
     </div>
   );
 }

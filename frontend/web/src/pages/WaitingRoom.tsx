@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
-import { Button, ErrorText, Page, Wordmark } from "../components/atoms";
+import { Page } from "../components/atoms";
 import JoinedCard from "../components/molecules/JoinedCard";
+import TwoZone from "../components/molecules/TwoZone";
 import WaitingStatus from "../components/molecules/WaitingStatus";
 import ParticipantList from "../components/organisms/ParticipantList";
-import { api } from "../lib/api";
-import { useSessionStore } from "../store/sessionStore";
+import { reverseGeocode } from "../lib/geocode";
+import { useSessionStore, viewerOf } from "../store/sessionStore";
 
 /** Artboard W2 · Katıldın — canlı bekleme. */
 export default function WaitingRoom({ view }: { view: SessionView }) {
   const { t } = useTranslation();
-  const slug = useSessionStore((s) => s.slug);
-  const self = useSessionStore((s) => s.self);
-  const setSelf = useSessionStore((s) => s.setSelf);
-  const refresh = useSessionStore((s) => s.refresh);
+  const updateLocation = useSessionStore((s) => s.updateLocation);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +23,13 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
       (pos) => {
         void (async () => {
           try {
-            await api.updateLocation(slug, {
+            const locationLabel = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+            // etiket sunucudan gelir — updateLocation() görünümü tazeler
+            await updateLocation({
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
+              label: locationLabel ?? undefined,
             });
-            if (self) setSelf({ ...self, locationLabel: t("join.currentLocation") });
-            await refresh();
           } catch {
             setError(t("waiting.errUpdate"));
           } finally {
@@ -42,19 +41,21 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
         setError(t("join.errGeolocation"));
         setBusy(false);
       },
+      { timeout: 10000, maximumAge: 300000 },
     );
   }
 
   return (
     <Page>
-      <Wordmark />
-      <JoinedCard self={self} />
-      <WaitingStatus />
-      <ParticipantList participants={view.participants ?? []} />
-      <Button type="button" kind="white" onClick={changeLocation} disabled={busy}>
-        {t("waiting.changeLocation")}
-      </Button>
-      {error && <ErrorText>{error}</ErrorText>}
+      <TwoZone
+        left={
+          <>
+            <JoinedCard self={viewerOf(view)} />
+            <ParticipantList participants={view.participants ?? []} />
+          </>
+        }
+        right={<WaitingStatus onChange={changeLocation} busy={busy} error={error} />}
+      />
     </Page>
   );
 }

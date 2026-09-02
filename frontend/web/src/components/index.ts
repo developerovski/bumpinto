@@ -1,23 +1,52 @@
 /* DS barrel — atoms/molecules/organisms tek giriş. `package.json#types` buraya bakar. */
 export * from "./atoms";
 
+export { default as AvatarMenu } from "./molecules/AvatarMenu";
 export { default as Confetti } from "./molecules/Confetti";
 export { default as DeckActions } from "./molecules/DeckActions";
-export { default as DeckHeader } from "./molecules/DeckHeader";
+export { default as DeckHeader, HeaderButton } from "./molecules/DeckHeader";
+export { default as DeckProgressNote } from "./molecules/DeckProgressNote";
 export { default as Field } from "./molecules/Field";
+export { default as FinishedCard } from "./molecules/FinishedCard";
+export { default as GoogleSignIn } from "./molecules/GoogleSignIn";
+export { default as IdentityCard } from "./molecules/IdentityCard";
 export { default as JoinFormFields } from "./molecules/JoinFormFields";
 export { default as JoinIntro } from "./molecules/JoinIntro";
 export { default as JoinedCard } from "./molecules/JoinedCard";
+export { default as LangMenu } from "./molecules/LangMenu";
+export { default as LikedList } from "./molecules/LikedList";
 export { default as MapMark } from "./molecules/MapMark";
+export { default as MobileCta, DesktopOnly } from "./molecules/MobileCta";
+export { default as EmptySessions } from "./molecules/EmptySessions";
+export { default as OneZone } from "./molecules/OneZone";
+export { default as PageHeader } from "./molecules/PageHeader";
 export { default as ParticipantRow } from "./molecules/ParticipantRow";
+export { default as PastSessionRow } from "./molecules/PastSessionRow";
+export { default as PolaroidFan } from "./molecules/PolaroidFan";
+export { default as PrefRow } from "./molecules/PrefRow";
+export { default as ProfileStats } from "./molecules/ProfileStats";
 export { default as RunoffIntro } from "./molecules/RunoffIntro";
+export { default as RunoffStatus } from "./molecules/RunoffStatus";
+export { default as SessionCard } from "./molecules/SessionCard";
+export { default as SessionHeader } from "./molecules/SessionHeader";
+export { default as ShareButton } from "./molecules/ShareButton";
+export { default as StatCard } from "./molecules/StatCard";
+export { default as StepList } from "./molecules/StepList";
+export { default as TopBar } from "./molecules/TopBar";
+export { default as TravelList } from "./molecules/TravelList";
+export { default as TwoZone } from "./molecules/TwoZone";
 export { default as VenueCard } from "./molecules/VenueCard";
 export { default as VenueCheckRow } from "./molecules/VenueCheckRow";
 export { default as ViralCard } from "./molecules/ViralCard";
 export { default as WaitingStatus } from "./molecules/WaitingStatus";
+export { default as WhoIsHere } from "./molecules/WhoIsHere";
 export { default as WinnerCard } from "./molecules/WinnerCard";
 
+export { default as AppShell } from "./organisms/AppShell";
 export { default as ParticipantList } from "./organisms/ParticipantList";
+export { default as PastSessionList } from "./organisms/PastSessionList";
+export { default as ProfilePrefs } from "./organisms/ProfilePrefs";
+export { default as RequireAuth } from "./organisms/RequireAuth";
 export { default as RunoffList } from "./organisms/RunoffList";
 export { default as VenueDeck } from "./organisms/VenueDeck";
 

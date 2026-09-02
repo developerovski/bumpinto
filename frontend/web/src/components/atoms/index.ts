@@ -7,6 +7,7 @@ export { default as Heading } from "./Heading";
 export { default as Highlight } from "./Highlight";
 export { default as LinkButton } from "./LinkButton";
 export { default as Note } from "./Note";
+export { default as Overline } from "./Overline";
 export { default as Page } from "./Page";
 export { default as Progress } from "./Progress";
 export { default as Sticker } from "./Sticker";

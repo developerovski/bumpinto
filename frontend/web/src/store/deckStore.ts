@@ -14,6 +14,7 @@ type DeckState = {
   undo: (venueId: string) => Promise<void>;
   setListMode: (on: boolean) => void;
   finish: () => Promise<void>;
+  vote: (slug: string, venueId: string) => Promise<void>;
 };
 
 export const useDeckStore = create<DeckState>((set, get) => ({
@@ -56,5 +57,9 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     } finally {
       set({ sending: false });
     }
+  },
+
+  vote: async (slug, venueId) => {
+    await api.runoffVote(slug, { venueId });
   },
 }));

@@ -1,20 +1,52 @@
-/* Kaynak: ui.css .field(gap:12) / .row / .muted / .a-dv */
+/* Kaynak: ui.css .field(gap:12) / .row / .muted / .a-dv — artboard Katıl 1280/390 */
 import { Trans, useTranslation } from "react-i18next";
-import { Avatar, Highlight, Note } from "../atoms";
+import { Avatar, Badge, Highlight, Note } from "../atoms";
+import { ACTIVITY_ICONS } from "../../lib/activity";
 
-/** Artboard W1 · davet başlığı bloğu + onu formdan ayıran saç teli ayraç. */
-export default function JoinIntro() {
+/** Artboard W1 · davet başlığı bloğu + onu formdan ayıran saç teli ayraç.
+    Oturum adı/etkinlik/katılımcı sayısı sunucu önizlemesinden (preview) gelir. */
+export default function JoinIntro(props: {
+  hostName: string | null;
+  sessionName: string | null;
+  activity: string | null;
+  count: number;
+}) {
   const { t } = useTranslation();
+  const Icon = props.activity ? ACTIVITY_ICONS[props.activity] : undefined;
+  const trimmedName = props.sessionName?.trim() ?? "";
+  const words = trimmedName ? trimmedName.split(/\s+/) : [];
   return (
     <>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
-          <Avatar name="B" ring />
-          <span>{t("join.invited")}</span>
+          <Avatar name={props.hostName ?? "B"} ring />
+          <span>
+            {props.hostName ? (
+              <Trans i18nKey="join.invitedBy" values={{ host: props.hostName }} components={[<strong key="0" />]} />
+            ) : (
+              t("join.invited")
+            )}
+          </span>
         </div>
-        <h1>
-          <Trans i18nKey="join.title" components={[<Highlight key="0" />]} />
-        </h1>
+        {trimmedName ? (
+          <h1>
+            <Highlight>{words[0]}</Highlight>
+            {words.length > 1 ? ` ${words.slice(1).join(" ")}` : null}
+          </h1>
+        ) : (
+          <h1>
+            <Trans i18nKey="join.title" components={[<Highlight key="0" />]} />
+          </h1>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {props.activity && Icon && (
+            <Badge tone="flame">
+              <Icon size={14} aria-hidden />
+              {t(`activity.${props.activity}`)}
+            </Badge>
+          )}
+          <Badge>{t("join.joinedCount", { count: props.count })}</Badge>
+        </div>
         <Note>{t("join.subtitle")}</Note>
       </div>
       <div className="h-px bg-line" />

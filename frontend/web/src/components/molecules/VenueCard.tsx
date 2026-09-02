@@ -8,11 +8,12 @@ import { Badge } from "../atoms";
     · "polaroid" (varsayılan) → Web W3/W4 `.pol`; deste, liste ve sonuç ekranları.
     · "row" → Mobil `07 Runoff` `.card`; 74px küçük görsel + seçim dairesi. */
 
-// Artboard .pA/.pB/.pC — fotoğrafsız kartın üç katmanlı ambient gradyanı.
+// Artboard .pA/.pB/.pC/.pD — fotoğrafsız kartın üç katmanlı ambient gradyanı.
 const PHOTO_CLASSES = [
   "bg-[image:radial-gradient(130%_100%_at_18%_8%,#ffd9a8_0%,transparent_62%),radial-gradient(110%_85%_at_88%_90%,#ff9e6b_0%,transparent_58%),linear-gradient(165deg,#f9c08a_0%,#e8794f_100%)]",
   "bg-[image:radial-gradient(130%_100%_at_80%_6%,#b8f0d8_0%,transparent_60%),radial-gradient(110%_85%_at_12%_92%,#4fc79a_0%,transparent_55%),linear-gradient(165deg,#8fddbb_0%,#2f9e71_100%)]",
   "bg-[image:radial-gradient(130%_100%_at_22%_10%,#d9c8ff_0%,transparent_60%),radial-gradient(110%_85%_at_85%_88%,#a47cff_0%,transparent_55%),linear-gradient(165deg,#c1a8f5_0%,#7c4dff_100%)]",
+  "bg-[image:radial-gradient(130%_100%_at_20%_10%,#fff0b8_0%,transparent_60%),radial-gradient(110%_85%_at_85%_90%,#ffc24a_0%,transparent_55%),linear-gradient(165deg,#ffe08a_0%,#f2a93b_100%)]",
 ];
 
 // .pho-mono — punto dışındaki tüm değerler iki varyantta ortak.
@@ -44,12 +45,14 @@ export default function VenueCard(props: {
   selected?: boolean;
   /** Katılımcı id → etiket ("Sana", "Mehmet"). travelMinutes UUID ile anahtarlıdır. */
   travelLabels?: Record<string, string>;
+  /** Gradyan başlangıç ofseti (ör. aktivite grubuna göre GROUP_TINT) — deckOrder ile toplanır. */
+  tint?: 0 | 1 | 2 | 3;
   className?: string;
   style?: CSSProperties;
 }) {
   const { t } = useTranslation();
   const v = props.venue;
-  const photoClass = PHOTO_CLASSES[(v.deckOrder ?? 0) % PHOTO_CLASSES.length];
+  const photoClass = PHOTO_CLASSES[((props.tint ?? 0) + (v.deckOrder ?? 0)) % PHOTO_CLASSES.length];
   // Artboard: "Café Berlage" → "cb".
   const monogram = (v.name ?? "")
     .split(" ")
@@ -132,10 +135,13 @@ export default function VenueCard(props: {
     );
   }
 
+  // 07 Runoff finalist kartı: seçim burada da mümkün — flame kenarlık + tikli daire.
+  const isPick = props.selected !== undefined;
   return (
     <div
       className={[
-        "relative flex w-full flex-col rounded-3xl border border-line bg-white p-2.5",
+        "relative flex w-full flex-col rounded-3xl bg-white p-2.5",
+        props.selected ? "border-[1.5px] border-flame-deep shadow-sh2" : "border border-line",
         props.className,
       ]
         .filter(Boolean)
@@ -176,14 +182,25 @@ export default function VenueCard(props: {
       </div>
       {!props.photoOnly && (
         <div className={`flex flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]} px-2 pt-3 pb-2`}>
-          {!props.hideTitle && <h2 className="text-[1.25rem]">{v.name}</h2>}
-          {hasMeta && (
-            <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
-              {v.rating != null && <strong className="font-bold text-ink">★ {v.rating}</strong>}
-              {v.rating != null && hasPrice && <span aria-hidden>·</span>}
-              {hasPrice && <span>{"€".repeat(v.priceLevel!)}</span>}
+          <div className="flex items-start justify-between gap-2">
+            <div className={`flex flex-1 flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]}`}>
+              {!props.hideTitle && <h2 className="text-[1.25rem]">{v.name}</h2>}
+              {hasMeta && (
+                <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
+                  {v.rating != null && <strong className="font-bold text-ink">★ {v.rating}</strong>}
+                  {v.rating != null && hasPrice && <span aria-hidden>·</span>}
+                  {hasPrice && <span>{"€".repeat(v.priceLevel!)}</span>}
+                </div>
+              )}
             </div>
-          )}
+            {isPick && (
+              <span className={props.selected ? PICK_ON : PICK} aria-hidden>
+                {props.selected && (
+                  <i className="mb-0.5 block h-[0.3125rem] w-[0.5625rem] border-b-2 border-l-2 border-b-white border-l-white transform-[rotate(-45deg)]" />
+                )}
+              </span>
+            )}
+          </div>
           {travel.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 tabular-nums">
               {travel.map(([who, min]) => (

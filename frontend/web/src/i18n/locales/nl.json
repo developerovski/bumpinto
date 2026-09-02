@@ -1,14 +1,19 @@
 {
   "_status": "tasarım onayı bekliyor (2026-09-01)",
   "common": {
-    "wordmark": "BumpInto"
+    "wordmark": "BumpInto",
+    "title": "BumpInto — spreek af in het midden",
+    "save": "Opslaan",
+    "retry": "Probeer opnieuw"
   },
-  "app": {
-    "homeTitle": "Laten we <0>in het midden afspreken.</0>",
-    "homeHint": "Je hebt een uitnodigingslink nodig — bijv. bumpinto.app/j/x7k2m"
+  "shell": {
+    "sessions": "Afspraken",
+    "profile": "Profiel",
+    "logout": "Uitloggen",
+    "langAria": "Taal kiezen",
+    "accountAria": "Accountmenu"
   },
   "session": {
-    "errorTitle": "Hmm.",
     "notFound": "Deze sessie is niet gevonden — klopt de link?",
     "expired": "Deze sessie is verlopen."
   },
@@ -20,15 +25,25 @@
     "namePlaceholder": "Hoe noemen je vrienden je?",
     "whereLabel": "Waar ben je?",
     "useMyLocation": "Gebruik mijn locatie",
-    "currentLocation": "Je huidige locatie",
     "or": "of",
     "addressPlaceholder": "Typ een stad of adres",
     "addressAria": "Stad of adres",
     "submit": "Meedoen",
-    "privacy": "Je locatie wordt alleen voor deze afspraak gebruikt.",
+    "privacy": "Je locatie wordt voor deze afspraak gebruikt en bij benadering op de kaart aan de groep getoond.",
     "errGeolocation": "Geen toegang tot je locatie — typ anders een adres.",
     "errGeocode": "Dit adres is niet gevonden — probeer een stad in de buurt.",
-    "errJoin": "Meedoen lukte niet — deze sessie is misschien gesloten."
+    "errJoin": "Meedoen lukte niet — deze sessie is misschien gesloten.",
+    "whoCopy": "{{names}} zijn klaar. Jouw beurt — deel je locatie, dan ligt het midden vast.",
+    "hand": "we spreken in het midden af, wel zo eerlijk →",
+    "invitedBy": "<0>{{host}}</0> nodigt je uit om af te spreken",
+    "joinedCount_one": "{{count}} doet mee",
+    "joinedCount_other": "{{count}} doen mee",
+    "locAuto": "Je huidige locatie",
+    "locAutoHint": "bij {{label}} · automatisch bepaald",
+    "locAutoHintNoLabel": "automatisch bepaald",
+    "locOk": "Oké",
+    "locOther": "Typ een andere stad of adres",
+    "locRetry": "Probeer mijn locatie opnieuw"
   },
   "waiting": {
     "joined": "Je doet mee!",
@@ -45,7 +60,6 @@
     "errUpdate": "Locatie bijwerken lukte niet — probeer opnieuw."
   },
   "deck": {
-    "counter": "{{current}} / {{total}}",
     "seeAll": "Toon alles",
     "photoTag": "foto · Places",
     "pass": "overslaan",
@@ -59,10 +73,27 @@
     "travelFriend": "Je vriend",
     "travelFallback": "Reis",
     "finishedTitle": "Stapel <0>klaar!</0>",
-    "likedCount": "Je vond er {{count}} leuk.",
     "send": "Stuur mijn keuzes",
     "backToList": "Terug naar de lijst, pas aan",
-    "listTitle": "Welke wordt het?"
+    "listTitle": "Welke wordt het?",
+    "liked": "Jouw likes",
+    "likedN_one": "{{count}} plek",
+    "likedN_other": "{{count}} plekken",
+    "likedNote": "Een like legt je nergens op vast — je kunt de lijst aanpassen als je klaar bent. Likes van anderen zie je in de uitslag.",
+    "undoKey": "ongedaan maken",
+    "cardsOf": "{{current}} / {{total}} kaarten",
+    "cardsDone": "{{total}} / {{total}} kaarten · klaar",
+    "finishedSticker": "Stapel klaar!",
+    "finishedCopy_one": "Je vond {{count}} plek leuk. De uitslag komt zodra iedereen klaar is.",
+    "finishedCopy_other": "Je vond {{count}} plekken leuk. De uitslag komt zodra iedereen klaar is.",
+    "backToDeck": "Terug naar de stapel",
+    "likesN_one": "{{count}} like",
+    "likesN_other": "{{count}} likes",
+    "progressDone": "{{names}} zijn klaar.",
+    "progressWaiting": "{{names}} swipen nog; de uitslag komt zodra iedereen klaar is.",
+    "swipeHand": "swipe maar — de knoppen doen hetzelfde",
+    "travelSelfTo": "Jij",
+    "minutes": "{{min}} min"
   },
   "runoff": {
     "sticker": "Laatste ronde",
@@ -70,8 +101,14 @@
     "copy": "Iedereen vond ze allebei leuk. Je hebt één keuze — de uitslag komt als iedereen gekozen heeft.",
     "note": "wie wat koos, zie je in de uitslag",
     "lockIn": "Mijn keuze vastzetten",
-    "locked": "je keuze staat vast — we wachten op de rest",
-    "travelSelf": "Jij"
+    "who": "Wie koos wat",
+    "choosing": "Aan het kiezen…",
+    "lockedBadge": "Vastgezet",
+    "lockedTitle": "Je keuze staat vast",
+    "lockedCopy": "we wachten op de rest — de uitslag komt zodra iedereen gekozen heeft",
+    "countOf": "{{done}} / {{total}}",
+    "votedCount": "{{done}}/{{total}} gekozen",
+    "errVote": "Keuze niet verzonden — probeer opnieuw."
   },
   "result": {
     "overline": "Gemene deler",
@@ -80,6 +117,105 @@
     "viralTitle": "Is de volgende afspraak aan jou?",
     "viralCopy": "In 30 seconden geregeld — vrienden doen mee via een link.",
     "viralCta": "Afspraak maken",
-    "viralSticker": "jouw beurt"
+    "viralSticker": "jouw beurt",
+    "share": "Deel met de groep",
+    "copied": "Gekopieerd",
+    "shareText": "{{name}}: {{venue}} — we spraken af in het midden met BumpInto.",
+    "viralHostTitle": "Regel jij de volgende ook?",
+    "viralHostCta": "Nieuwe afspraak maken"
+  },
+  "landing": {
+    "title": "<0>Spreek af</0><1/>in het midden.",
+    "copy": "Jij zit in Utrecht, zij in Amersfoort. Geen probleem — vind samen het eerlijke midden en de beste plek daar.",
+    "hand": "geen ruzie, wel swipen →",
+    "google": "Doorgaan met Google",
+    "terms": "Als je doorgaat, ga je akkoord met de <0>Voorwaarden</0>.",
+    "noClientId": "Inloggen met Google is niet geconfigureerd in deze omgeving.",
+    "step1": "Start een afspraak",
+    "step1Copy": "Vertel wat je gaat doen en waar je bent.",
+    "step2": "Stuur de link",
+    "step2Copy": "Je vrienden doen mee zonder app of account.",
+    "step3": "Swipe, krijg een uitslag",
+    "step3Copy": "Iedereen stemt op de plekken in het midden; de overlap wint.",
+    "errLogin": "Inloggen mislukt — probeer opnieuw.",
+    "errScript": "Google-login kon niet laden.",
+    "sticker": "3/3 vonden 'm leuk!"
+  },
+  "sessions": {
+    "title": "Waar gaan<0/>we heen?",
+    "new": "Nieuwe afspraak",
+    "open": "Openstaande afspraken",
+    "past": "Eerdere afspraken",
+    "goDeck": "Naar de stapel",
+    "goLobby": "Naar de lobby",
+    "goVenues": "Naar de plekken",
+    "went": "Geweest",
+    "full": "Vol",
+    "noDecision": "geen keuze",
+    "people_one": "{{count}} persoon",
+    "people_other": "{{count}} personen",
+    "group": "Groep",
+    "solo": "Alleen",
+    "readyOf": "{{ready}}/{{total}} klaar",
+    "linkHint": "link al gestuurd?",
+    "doneOf": "{{done}}/{{total}} klaar",
+    "deckOpen": "Stapel is open!",
+    "errLoad": "Afspraken laden mislukt — probeer opnieuw.",
+    "retention": "Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd.",
+    "emptyTitle": "Nog geen afspraken",
+    "emptyCopy": "Maak er een, stuur de link — de stapel vult zich zodra locaties binnen zijn.",
+    "emptyHand": "kost 30 seconden, beloofd",
+    "status": {
+      "BROWSING": "plekken klaar",
+      "RUNOFF": "laatste ronde"
+    }
+  },
+  "activity": {
+    "COFFEE": "Koffie",
+    "FOOD": "Eten",
+    "BAR": "Bar",
+    "WALK": "Wandelen",
+    "HIKE": "Hiken",
+    "SWIM": "Zwemmen",
+    "FITNESS": "Fitness",
+    "ADVENTURE": "Avontuur",
+    "CINEMA": "Bioscoop",
+    "MUSEUM": "Museum",
+    "ART": "Kunst",
+    "ACTIVITY": "Bowlen",
+    "GAMES": "Games",
+    "THEME_PARK": "Pretpark",
+    "NIGHTLIFE": "Nachtleven",
+    "group": {
+      "FOOD_DRINK": "Eten & drinken",
+      "ACTIVE": "Actief",
+      "CULTURE": "Cultuur",
+      "FUN": "Uitgaan"
+    }
+  },
+  "profile": {
+    "title": "Profiel",
+    "googleLogin": "Inloggen met Google",
+    "editName": "Naam bewerken",
+    "hosted": "afspraken gehost",
+    "friends": "vrienden ontmoet",
+    "prefs": "Voorkeuren",
+    "defaultLocation": "Standaardlocatie",
+    "defaultActivity": "Standaardactiviteit",
+    "language": "Taal",
+    "languageNote": "opgeslagen in je account",
+    "unset": "Niet ingesteld",
+    "retention": "Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd. Van deelnemers wordt alleen naam + locatie bewaard — meer niet.",
+    "langHint": "Mensen die via een uitnodigingslink meedoen zien hun eigen browsertaal; jouw keuze geldt alleen voor je eigen account.",
+    "logout": "Uitloggen",
+    "errSave": "Opslaan mislukt — probeer opnieuw."
+  },
+  "error": {
+    "hmm": "Hmm.",
+    "notFoundHint": "Vraag degene die de link stuurde om een nieuwe; er kan een typfout in zitten.",
+    "expiredHint": "Afspraken sluiten na 24 uur. Vraag de host om een nieuwe te starten.",
+    "lostTitle": "Hier is niets te vinden.",
+    "lostCopy": "De pagina die je zoekt is misschien verplaatst, of heeft nooit bestaan.",
+    "home": "Home"
   }
 }

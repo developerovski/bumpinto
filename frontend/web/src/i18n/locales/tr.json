@@ -1,11 +1,18 @@
 {
-  "common": { "wordmark": "BumpInto" },
-  "app": {
-    "homeTitle": "Ortada <0>buluşalım.</0>",
-    "homeHint": "Bir davet linkin olmalı — örn. bumpinto.app/j/x7k2m"
+  "common": {
+    "wordmark": "BumpInto",
+    "title": "BumpInto — ortada buluşun",
+    "save": "Kaydet",
+    "retry": "Tekrar dene"
+  },
+  "shell": {
+    "sessions": "Oturumlar",
+    "profile": "Profil",
+    "logout": "Çıkış yap",
+    "langAria": "Dil seç",
+    "accountAria": "Hesap menüsü"
   },
   "session": {
-    "errorTitle": "Hmm.",
     "notFound": "Bu oturum bulunamadı — link doğru mu?",
     "expired": "Bu oturumun süresi dolmuş."
   },
@@ -17,15 +24,24 @@
     "namePlaceholder": "Arkadaşların sana ne der?",
     "whereLabel": "Neredesin?",
     "useMyLocation": "Mevcut konumumu kullan",
-    "currentLocation": "Mevcut konumun",
     "or": "veya",
     "addressPlaceholder": "Şehir ya da adres yaz",
     "addressAria": "Şehir ya da adres",
     "submit": "Katıl",
-    "privacy": "Konumun yalnızca bu buluşma için kullanılır.",
+    "privacy": "Konumun bu buluşma için kullanılır ve gruba haritada yaklaşık gösterilir.",
     "errGeolocation": "Konum izni alınamadı — adres yazabilirsin.",
     "errGeocode": "Bu adres bulunamadı — yakındaki bir şehri dene.",
-    "errJoin": "Katılamadın — bu oturum kapanmış olabilir."
+    "errJoin": "Katılamadın — bu oturum kapanmış olabilir.",
+    "whoCopy": "{{names}} hazır. Sıra sende — konumunu at, orta nokta belli olsun.",
+    "hand": "ortada buluşuyoruz, adil olsun diye →",
+    "invitedBy": "<0>{{host}}</0> seni buluşmaya çağırdı",
+    "joinedCount": "{{count}} kişi katıldı",
+    "locAuto": "Mevcut konumun",
+    "locAutoHint": "{{label}} civarı · otomatik alındı",
+    "locAutoHintNoLabel": "otomatik alındı",
+    "locOk": "Tamam",
+    "locOther": "Başka bir şehir ya da adres yaz",
+    "locRetry": "Konumumu tekrar dene"
   },
   "waiting": {
     "joined": "Katıldın!",
@@ -42,7 +58,6 @@
     "errUpdate": "Konum güncellenemedi — tekrar dene."
   },
   "deck": {
-    "counter": "{{current}} / {{total}}",
     "seeAll": "Hepsini gör",
     "photoTag": "foto · Places",
     "pass": "geç",
@@ -52,14 +67,28 @@
     "ariaLike": "Beğen",
     "travel": "{{who}} {{min}} dk",
     "travelShort": "{{who}} {{min}}′",
-    "travelSelf": "Sana",
+    "travelSelf": "Sen",
     "travelFriend": "Arkadaşın",
     "travelFallback": "Yol",
     "finishedTitle": "Deste <0>bitti!</0>",
-    "likedCount": "{{count}} mekanı beğendin.",
     "send": "Beğenilerimi gönder",
     "backToList": "Listeye dön, düzelt",
-    "listTitle": "Hangisi olsun?"
+    "listTitle": "Hangisi olsun?",
+    "liked": "Beğendiklerin",
+    "likedN": "{{count}} mekan",
+    "likedNote": "Beğeni seni bağlamaz — bitirince listeden düzeltebilirsin. Diğerlerinin beğenileri sonuçta belli olur.",
+    "undoKey": "geri al",
+    "cardsOf": "{{current}} / {{total}} kart",
+    "cardsDone": "{{total}} / {{total}} kart · bitti",
+    "finishedSticker": "Deste bitti!",
+    "finishedCopy": "{{count}} mekanı beğendin. Herkes bitirince sonuç açıklanır.",
+    "backToDeck": "Desteye dön",
+    "likesN": "{{count}} beğeni",
+    "progressDone": "{{names}} bitirdi.",
+    "progressWaiting": "{{names}} hâlâ kaydırıyor; herkes bitirince sonuç açıklanır.",
+    "swipeHand": "kaydır gitsin — butonlar da aynı işi yapar",
+    "travelSelfTo": "Sana",
+    "minutes": "{{min}} dk"
   },
   "runoff": {
     "sticker": "Son düzlük",
@@ -67,8 +96,14 @@
     "copy": "Herkes ikisini de beğendi. Tek seçim hakkın var — sonuç herkes seçince açıklanır.",
     "note": "kim neyi seçti, sonuçta belli olur",
     "lockIn": "Seçimimi kilitle",
-    "locked": "seçimin kilitli — diğerlerini bekliyoruz",
-    "travelSelf": "Sen"
+    "who": "Kim seçti",
+    "choosing": "Seçiyor…",
+    "lockedBadge": "Kilitledi",
+    "lockedTitle": "Seçimin kilitli",
+    "lockedCopy": "diğerlerini bekliyoruz — sonuç herkes seçince açıklanır",
+    "countOf": "{{done}} / {{total}}",
+    "votedCount": "{{done}}/{{total}} seçti",
+    "errVote": "Seçim gönderilemedi — tekrar dene."
   },
   "result": {
     "overline": "Ortak nokta",
@@ -77,6 +112,104 @@
     "viralTitle": "Sıradaki buluşma senden mi?",
     "viralCopy": "30 saniyede kur — arkadaşların linkle katılır.",
     "viralCta": "Buluşma kur",
-    "viralSticker": "sıra sende"
+    "viralSticker": "sıra sende",
+    "share": "Gruba paylaş",
+    "copied": "Kopyalandı",
+    "shareText": "{{name}}: {{venue}} — BumpInto ile ortada buluştuk.",
+    "viralHostTitle": "Bir sonrakini de sen mi kuracaksın?",
+    "viralHostCta": "Yeni buluşma kur"
+  },
+  "landing": {
+    "title": "<0>Ortada</0><1/>buluşalım.",
+    "copy": "Sen Den Bosch'tasın, o Someren'de. Dert değil — adil orta noktayı ve oradaki en iyi mekânı birlikte bulun.",
+    "hand": "kavga yok, kaydırma var →",
+    "google": "Google ile devam et",
+    "terms": "Devam edersen <0>Koşulları</0> kabul etmiş olursun.",
+    "noClientId": "Google girişi bu ortamda yapılandırılmadı.",
+    "step1": "Buluşmayı kur",
+    "step1Copy": "Ne yapacağınızı ve nerede olduğunu söyle.",
+    "step2": "Linki at",
+    "step2Copy": "Arkadaşların uygulama indirmeden, hesapsız katılır.",
+    "step3": "Kaydır, karar çıksın",
+    "step3Copy": "Ortadaki mekanları herkes oylar; kesişim kazanır.",
+    "errLogin": "Giriş yapılamadı — tekrar dene.",
+    "errScript": "Google girişi yüklenemedi.",
+    "sticker": "3/3 beğendi!"
+  },
+  "sessions": {
+    "title": "Nereye<0/>gidiyoruz?",
+    "new": "Yeni buluşma kur",
+    "open": "Açık buluşmalar",
+    "past": "Geçmiş buluşmalar",
+    "goDeck": "Desteye git",
+    "goLobby": "Lobiye git",
+    "goVenues": "Mekanlara git",
+    "went": "Gidildi",
+    "full": "Doldu",
+    "noDecision": "karar çıkmadı",
+    "people": "{{count}} kişi",
+    "group": "Grup",
+    "solo": "Bireysel",
+    "readyOf": "{{ready}}/{{total}} hazır",
+    "linkHint": "linki attın mı?",
+    "doneOf": "{{done}}/{{total}} bitirdi",
+    "deckOpen": "Deste açık!",
+    "errLoad": "Buluşmalar yüklenemedi — tekrar dene.",
+    "retention": "Buluşmalar 24 saatte kapanır, 30 günde silinir.",
+    "emptyTitle": "Henüz buluşma yok",
+    "emptyCopy": "İlkini kur, linki at — konumlar toplanınca deste kendiliğinden gelir.",
+    "emptyHand": "30 saniye sürer, söz",
+    "status": {
+      "BROWSING": "mekanlar hazır",
+      "RUNOFF": "son düzlük"
+    }
+  },
+  "activity": {
+    "COFFEE": "Kahve",
+    "FOOD": "Yemek",
+    "BAR": "Bar",
+    "WALK": "Yürüyüş",
+    "HIKE": "Doğa yürüyüşü",
+    "SWIM": "Yüzme",
+    "FITNESS": "Fitness",
+    "ADVENTURE": "Macera",
+    "CINEMA": "Sinema",
+    "MUSEUM": "Müze",
+    "ART": "Sanat",
+    "ACTIVITY": "Bowling",
+    "GAMES": "Oyun",
+    "THEME_PARK": "Tema parkı",
+    "NIGHTLIFE": "Gece hayatı",
+    "group": {
+      "FOOD_DRINK": "Yeme-içme",
+      "ACTIVE": "Hareket",
+      "CULTURE": "Kültür",
+      "FUN": "Eğlence"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "googleLogin": "Google ile giriş",
+    "editName": "Adını düzenle",
+    "hosted": "buluşma kuruldu",
+    "friends": "dost görüldü",
+    "prefs": "Tercihler",
+    "defaultLocation": "Varsayılan konum",
+    "defaultActivity": "Varsayılan etkinlik",
+    "language": "Dil",
+    "languageNote": "hesabında tutulur",
+    "unset": "Seçilmedi",
+    "retention": "Buluşmalar 24 saatte kapanır, 30 günde silinir. Katılanlardan yalnızca ad + konum tutulur — o kadar.",
+    "langHint": "Davet linkiyle gelenler kendi tarayıcı dilini görür; senin seçimin yalnız senin hesabın için.",
+    "logout": "Çıkış yap",
+    "errSave": "Kaydedilemedi — tekrar dene."
+  },
+  "error": {
+    "hmm": "Hmm.",
+    "notFoundHint": "Linki atan kişiden yeniden iste; harf hatası olabilir.",
+    "expiredHint": "Buluşmalar 24 saatte kapanır. Yenisi için kuran kişiye yaz.",
+    "lostTitle": "Burada bir şey yok.",
+    "lostCopy": "Aradığın sayfa taşınmış ya da hiç olmamış olabilir.",
+    "home": "Ana sayfa"
   }
 }

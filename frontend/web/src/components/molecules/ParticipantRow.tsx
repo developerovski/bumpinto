@@ -9,12 +9,10 @@ export default function ParticipantRow(props: {
   participant: ParticipantDto;
   index: number;
   isSelf?: boolean;
-  /** Yalnız kendi satırında dolu — ParticipantDto konum etiketi taşımıyor. */
-  locationLabel?: string | null;
 }) {
   const { t } = useTranslation();
   const p = props.participant;
-  const subtitle = p.hasLocation ? props.locationLabel : t("waiting.waitingLocation");
+  const subtitle = p.hasLocation ? p.locationLabel : t("waiting.waitingLocation");
   return (
     <div className="flex items-center gap-3 px-4 py-[0.8125rem]">
       <Avatar
