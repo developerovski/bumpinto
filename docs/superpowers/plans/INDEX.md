@@ -1,6 +1,11 @@
 # BumpInto — Plan Index
 
-Spec: `docs/superpowers/specs/2026-08-31-bumpinto-mvp-design.md`
+Spec'ler: `docs/superpowers/specs/2026-08-31-bumpinto-mvp-design.md` (MVP) ·
+`2026-09-01-web-tailwind-i18n-design.md` (web stil/i18n) ·
+**`2026-09-01-web-parity-design.md` (rev 2 — web = tam ürün, oturum tipi, Mekanlar, Google haritası)**.
+
+UI kaynağı (bağlayıcı): Claude Design `719fcd5f-…` (`Web Ekranlar v2.dc.html` — 34 artboard,
+`Mobil Ekranlar v2.dc.html`) ve `b536b3aa-…` (`Design System v2.dc.html` §06–§10).
 
 ## Kimlik şeması
 
@@ -13,7 +18,7 @@ Planlar bileşen **izlerine** ayrılır; her iz kendi harfiyle numaralanır ve k
 | `M` | Mobil | `frontend/mobile` (Expo) |
 | `I` | Altyapı | CI, imaj, K8s, dağıtım — tek bir bileşene ait olmayan, hepsini besleyen işler |
 
-Yeni plan, ait olduğu izin bir sonraki numarasını alır. Sıradakiler: **B-5, W-3, M-2, I-2**.
+Yeni plan, ait olduğu izin bir sonraki numarasını alır. Sıradakiler: **B-7, W-5, M-3, I-2**.
 
 **Dosya adları tarihsel şemada kalır** (`2026-09-01-plan3-web.md`). `Eski #` kolonu iki şema
 arasındaki tek çeviri anahtarıdır: plan gövdelerindeki "Plan 2", "Plan 5 Task 3" gibi çapraz
@@ -26,13 +31,17 @@ referanslar hâlâ eski numarayı kullanır — hangi kimliğe karşılık geldi
 3. Plan tamamlanınca **Durum** → `done`, **Not** alanına tek satır özet.
 4. Engellenirsen **Durum** → `blocked`, **Not** alanına neden + ne gerektiği.
 5. Bu dosyayı yalnızca düzenle — git commit'i kullanıcı yapar (AGENTS.md).
-6. **Her iz kendi içinde sıralı koşar** (B-1 → B-2 → B-3). **Farklı izler eşzamanlı koşabilir.**
+6. **Her iz kendi içinde sıralıdır; sırayı kimlik numarası değil aşağıdaki "Yürütme sırası" bölümü
+   belirler** (ör. B-3 retention, B-5 ve B-6'dan SONRA koşar). **Farklı izler eşzamanlı koşabilir.**
    6a. Bir plana başlamadan önce **Bağımlılık** kolonundaki her kimliğin durumunu bu dosyadan
    doğrula. Görev-seviyeli bağımlılık (`I-1:T3`) yalnız işaretlendiği görev bloğunu kapatır —
    planın geri kalanı beklemez.
    6b. `deferred` planlar iz akışına GİRMEZ, atlanır.
 7. **UI işlerinde tasarım kaynağı Claude Design'dır** — ilgili planın "UI Kaynağı" bölümüne uy;
    ajan kendi tasarımını yapmaz.
+8. **Bir planın "Ek A" bölümü varsa gövdeden ÖNCE okunur ve çelişkide kazanır** (M-1, I-1, B-3).
+9. **Flyway numara sicili:** V1–V2 mevcut · **V3 = B-5** · **V4 = B-6** · **V5 = B-3**. Yeni
+   migration açan plan burada numara alır; `outOfOrder` hep kapalı.
 
 **Durum değerleri:** `ready` (yazıldı, yürütülmedi) · `in-progress` · `blocked` · `done` ·
 `deferred` (yazıldı, bilinçli olarak yürütülmüyor)
@@ -42,47 +51,90 @@ referanslar hâlâ eski numarayı kullanır — hangi kimliğe karşılık geldi
 
 ---
 
+## Yürütme sırası (2026-09-02, rev 2 spec'inden türetildi)
+
+Üç şerit paralel koşar; oklar zorunlu sırayı gösterir.
+
+```
+Backend   : B-5 ──> B-6 ──> B-3 (T1–T4) ──┐
+Web       : W-3 T1–T3 (hemen) ──> [B-6] W-3 T4–T7 ──> [B-5] W-4 ──┤
+Mobil     : [B-6] M-1 (Ek A) ──> [B-5, W-4] M-2 ──────────────────┤
+Altyapı   : I-1 T1–T3 (hemen) ──> [B-3 T5 ← I-1:T3] ──> I-1 T4 ◄──┘  (yayın kontrol listesi)
+```
+
+Kritik yol: **B-5 → B-6 → W-3 (T4–T7) → W-4 → M-2 → I-1:T4**. B-5 en önce başlar; W-3'ün
+backend'siz görevleri ve I-1 T1–T3 aynı anda başlayabilir.
+
+---
+
 ## B — Backend
 
 | Kimlik | Plan | Dosya | Eski # | Durum | Bağımlılık | Son adım | Not |
 |---|---|---|---|---|---|---|---|
 | B-1 | Backend iskelet + alan çekirdeği + karar motoru | `2026-09-01-plan1-backend-core.md` | Plan 1 | done | — | Task 8/8 + final review | 23/23 test yeşil (BUILD SUCCESS); domain saf, sıfır TODO; commit'ler kullanıcıda |
 | B-2 | Application + adapter katmanları (API, Security, Unirest, STOMP) | `2026-09-01-plan2-backend-api.md` | Plan 2 | done | B-1 | Task 10/10 + 2 temizlik turu + kapanış denetimi | 119/119 test yeşil (temiz build); sıfır TODO/ölü kod; ArchUnit 3 kural; subagent-driven (impl Opus / review Fable); commit'ler kullanıcıda |
-| B-3 | Veri saklama — süresi dolan oturumların kalıcı silinmesi | `2026-09-01-plan6-data-retention.md` | Plan 6 | ready | B-2 ✓ · *Task 5 için* `I-1:T3` | — | Spec §6 GDPR. Task 1-4 **şimdi koşabilir** (I-1'den bağımsız). Task 5 (K8s CronJob) I-1'in imaj/secret adlarına dayanır. I-1'in yayın kontrol listesi bu plan `done` olmadan işaretlenmez |
-| B-4 | Dinamik aktivite keşfi — self-host Overpass (OSM) | `2026-09-01-plan7-activity-discovery.md` | Plan 7 | deferred | iz akışı dışı | — | **YÜRÜTÜLMÜYOR.** Yerine ucuz yol seçildi: `ActivityType` 5→15 genişletildi (B-2 kodu üzerinde, 123/123 test). Yalnız Google taksonomisinde OLMAYAN türler (at binme, sörf, tırmanış, dalış) gerçekten istenirse açılır. **Açılırsa yeni bedel:** plan metni "Task 1-6, Plan 3'ten ÖNCE koşar" diyor ama W-1/W-2 artık `done` — bugün açılırsa web de geriye dönük düzeltilmeli. Task 7 (K8s) `I-1:T3`'e bağımlı |
+| B-5 | **Oturum modeli rev 2** — `SessionType`, `BROWSING`, `shuffle`, elle konum (`points`), yuvarlanmış konum + şehir etiketi, orta nokta/yarıçap, BROWSING'de "Bunu seç", runoff kilitleyenler | `2026-09-02-plan9-backend-session-model-v2.md` | Plan 9 | ready | B-2 ✓ | — | **Şimdi koşabilir; kritik yolun başı.** Migration **V3**. Spec §8 kalem 4–9. Karar motoru popülasyonu ikiye ayrılır: geometri (konumu olan herkes) / oy (elle olmayanlar) |
+| B-6 | **Hesap ve liste API'leri** — `GET /api/sessions`, `GET/PUT /api/me` (tercihler + dil), `POST /api/auth/logout`, `GET /sessions/{slug}/preview` (kamu), `SessionView.viewer` | `2026-09-02-plan10-backend-account-api.md` | Plan 10 | ready | B-5 | — | Migration **V4**. Spec §8 kalem 1–3 + iki mimar eklemesi (`preview`: katılmadan önce host adı/kişi sayısı; `viewer`: sayfa yenilemede "ben kimim"). M-1'in cihaz-yerel liste tavizini kaldırır |
+| B-3 | Veri saklama — süresi dolan oturumların kalıcı silinmesi | `2026-09-01-plan6-data-retention.md` | Plan 6 | ready | **B-6** · *Task 5 için* `I-1:T3` | — | Spec §6 GDPR. **Ek A: migration V5** (V3/V4 B-5/B-6'ya verildi). B-6'dan sonra koşar; Task 5 (K8s CronJob) I-1'in imaj/secret adlarına dayanır. I-1'in yayın kontrol listesi bu plan `done` olmadan işaretlenmez |
+| B-4 | Dinamik aktivite keşfi — self-host Overpass (OSM) | `2026-09-01-plan7-activity-discovery.md` | Plan 7 | deferred | iz akışı dışı | — | **YÜRÜTÜLMÜYOR.** Yerine ucuz yol seçildi: `ActivityType` 5→15 genişletildi (B-2 kodu üzerinde, 123/123 test). Açılırsa API sözleşmesi değişir → W-1/W-2/W-3/W-4/M-1/M-2 geriye dönük düzeltme; Task 7 (K8s) `I-1:T3`'e bağımlı |
 
 ## W — Web
 
 | Kimlik | Plan | Dosya | Eski # | Durum | Bağımlılık | Son adım | Not |
 |---|---|---|---|---|---|---|---|
-| W-1 | pnpm workspace + web katılım uygulaması | `2026-09-01-plan3-web.md` | Plan 3 | done | B-2 | Task 7/7 + kapanış denetimi | 5/5 test + tsc + prod/preprod build yeşil; subagent-driven (impl Opus / review Opus / orkestrasyon Fable); tüm ekranlar artboard'lardan birebir (pho-tag koşulu test-pinli); pnpm 11 uyarlamaları (nodeLinker→workspace.yaml, packageManager pini, .nvmrc 22, `--` script fix'leri); elle uçtan uca (Task 7 Step 5) kullanıcıda — gerçek Google login + sağlayıcı anahtarı gerekiyor; commit'ler kullanıcıda |
-| W-2 | Web UI — Tailwind v4 + i18n (tr/en/nl) + rem token migrasyonu | `2026-09-01-plan8-web-tailwind-i18n.md` | Plan 8 | done | W-1 | Task 7/7 + final review | Spec: `2026-09-01-web-tailwind-i18n-design.md`. Tailwind v4 utility-first (utility yalnız components/), @theme rem token'ları, react-i18next tr/en/nl; eski tokens/ui.css silindi; 5/5 test + tsc + prod/preprod build yeşil; 63 render'lık en/nl taşma taraması temiz. **en/nl çevirileri `_status` işaretiyle tasarım onayı bekliyor.** Subagent-driven (impl/review Opus, orkestrasyon Fable); commit'ler kullanıcıda |
+| W-1 | pnpm workspace + web katılım uygulaması | `2026-09-01-plan3-web.md` | Plan 3 | done | B-2 | Task 7/7 + kapanış denetimi | 5/5 test + tsc + prod/preprod build yeşil; subagent-driven; tüm ekranlar artboard'lardan birebir; pnpm 11 uyarlamaları; elle uçtan uca kullanıcıda; commit'ler kullanıcıda |
+| W-2 | Web UI — Tailwind v4 + i18n (tr/en/nl) + rem token migrasyonu | `2026-09-01-plan8-web-tailwind-i18n.md` | Plan 8 | done | W-1 | Task 7/7 + final review | Tailwind v4 utility-first (utility yalnız components/), @theme rem token'ları, react-i18next tr/en/nl; 5/5 test + build yeşil. **en/nl çevirileri `_status` işaretiyle tasarım onayı bekliyor** (onay artefaktı: W-3 Task 2 + `Katıl EN/NL 1280` artboard'ları) |
+| W-3 | **Kabuk, kimlik, hesap ekranları, dil menüsü, iki bölgeli yerleşim** — TopBar/LangMenu/AvatarMenu, Google web girişi, Landing, Oturumlar, Profil, hata sayfaları, mevcut 5 oturum ekranının ≥1024 iki bölgeye taşınması (harita hariç) | `2026-09-02-plan11-web-shell-account.md` | Plan 11 | ready | W-2 ✓ · *Task 4–7 için* **B-6** | — | **Task 1–3 şimdi koşabilir.** Varsayılan dil **en**; `?lng=` > sunucu tercihi > tarayıcı. Bilinçli sapma: Google butonu GIS render'ı (özel stil yok). `/sessions/new` W-4'e dek 404 |
+| W-4 | **Oturum tipi, Yeni buluşma, Lobi, Mekanlar, Google haritası** — `MapView` (Maps JS + AdvancedMarker, Map ID stili), tip seçimi, gruplu etkinlik seçici, Bireysel elle konumlar, rol/durum yönlendirmesi, Mekanlar (liste ↔ harita, Karıştır, Bunu seç), Katıl/Bekle/Karar haritaları, Profil tercih düzenleme | `2026-09-02-plan12-web-session-type-map.md` | Plan 12 | ready | **W-3, B-5, B-6** | — | Harita yalnız Google (Places ToS). Anahtarlar `VITE_GOOGLE_MAPS_KEY` + `VITE_GOOGLE_MAPS_MAP_ID` (kullanıcı; I-1 Ek A). Bilinçli sınırlar: "Ben de kaydıracağım" görünür-kilitli (backend yok), Mekanlar'da açık/kapalı rozeti yok (API'de yok), SOLO BROWSING'de konum düzenleme yok, orta nokta şehir adı yok — **B-7 adayları** |
 
 ## M — Mobil
 
 | Kimlik | Plan | Dosya | Eski # | Durum | Bağımlılık | Son adım | Not |
 |---|---|---|---|---|---|---|---|
-| M-1 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | Plan 4 | ready | W-1 ✓ | — | **Şimdi koşabilir.** Google OAuth client id'leri kullanıcıda. Task 7 (EAS internal build) `I-1:T4`'ün yayın kontrol listesini besler |
+| M-1 | Expo RN host uygulaması | `2026-09-01-plan4-mobile.md` | Plan 4 | ready | **B-6** (Ek A) | — | **Ek A (2026-09-02) gövdeden önce okunur:** cihaz-yerel liste YOK (`GET /api/sessions`), Apple girişi YOK, 15 tür 4 grup + "Bowling", grup tint'leri, Profil `/api/me`, `BROWSING` yer tutucu + "Karıştır", `sessionType: GROUP`, `locationLabel`. Google OAuth client id'leri kullanıcıda. Task 7 (EAS build) `I-1:T4`'ü besler |
+| M-2 | **Mobil parite** — ortak dil dosyaları (`frontend/shared/src/i18n`), react-native-maps + pinler, Yeni buluşma tip/gruplu chip/elle konum, Mekanlar ekranı (tam ekran harita + şerit), Bireysel kurulum, Lobi/Bekle/Karar haritaları, Profil dil/tercih | `2026-09-02-plan13-mobile-parity-map.md` | Plan 13 | ready | **M-1, B-5, B-6, W-4** | — | W-4'ten sonra: dil dosyaları web'den shared'a taşınır (tek kaynak). Expo Go'da Google Maps yok → dev build. Maps SDK anahtarları `app.config.ts` env'den (kullanıcı) |
 
 ## I — Altyapı
 
 | Kimlik | Plan | Dosya | Eski # | Durum | Bağımlılık | Son adım | Not |
 |---|---|---|---|---|---|---|---|
-| I-1 | CI + Docker + K8s deploy | `2026-09-01-plan5-ci-deploy.md` | Plan 5 | ready | B-2 ✓, W-1 ✓ · *Task 4 için* `B-3` + `M-1:T7` | — | **Task 1-3 şimdi koşabilir.** Task 4 = yayın kontrol listesi; B-3 `done` ve retention CronJob uygulanmadan işaretlenmez (spec §6 GDPR). Postgres kullanıcının mevcut kümesinde — bu plan onu yönetmez |
+| I-1 | CI + Docker + K8s deploy | `2026-09-01-plan5-ci-deploy.md` | Plan 5 | ready | B-2 ✓, W-1 ✓ · *Task 4 için* `B-3` + `W-4` + `M-2:T5` | — | **Task 1–3 şimdi koşabilir.** **Ek A (2026-09-02):** web build-arg'ları (`VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_MAPS_KEY`, `VITE_GOOGLE_MAPS_MAP_ID`), Map ID + stil, referrer/paket kısıtlı anahtarlar, kota alarmı, yayın listesine SOLO uçtan uca. Task 4 = yayın kontrol listesi; B-3 `done` ve retention CronJob uygulanmadan işaretlenmez (spec §6 GDPR). Postgres kullanıcının mevcut kümesinde |
 
 ---
 
 ## Çapraz iz kilitleri
 
-Plan granülerliğinde döngü gibi görünen, gerçekte görev seviyesinde çözülen iki bağ:
+1. **Flyway sırası (kural 9).** B-5 (V3) → B-6 (V4) → B-3 (V5). B-3 artık B-6'dan önce koşamaz.
 
-1. **I-1 ⇄ B-3 (imaj/secret adları).**
-   Sıra: `I-1 Task 1-3` → `B-3 tümü` → `I-1 Task 4`.
-   `B-3:T5` K8s CronJob'ı `I-1:T3`'teki backend imajının ve secret adının aynısını kullanır;
-   `I-1:T4` yayın kontrol listesi ise B-3 `done` olmadan işaretlenmez.
+2. **I-1 ⇄ B-3 (imaj/secret adları).** Sıra: `I-1 Task 1-3` → `B-3 tümü` → `I-1 Task 4`.
+   `B-3:T5` K8s CronJob'ı `I-1:T3`'teki backend imajının ve secret adının aynısını kullanır.
 
-2. **M-1 → I-1:T4.** `I-1` yayın kontrol listesindeki EAS internal build (TestFlight/APK) kutusu
-   `M-1 Task 7`'nin çıktısıdır. M-1 ve I-1 bunun dışında paraleldir.
+3. **W-3 → B-6.** W-3 Task 4–7 (`/api/me`, liste, çıkış, `preview`, `viewer`) B-6'yı bekler; Task 1–3
+   (kabuk, i18n, iki bölge) beklemez.
 
-**B-4 açılırsa** (deferred): `B-4 T1-6` API sözleşmesini değiştirir → W-1/W-2/M-1 geriye dönük
-düzeltme gerektirir; `B-4 T7` ise `I-1:T3`'ten sonra koşar.
+4. **W-4 → B-5 + W-3.** Mekanlar/`shuffle`/`points`/`approxLocation`/`midpoint` B-5'ten; kabuk ve
+   `authStore` W-3'ten.
+
+5. **M-2 → W-4.** Dil dosyalarının `frontend/shared`'a taşınması web'i de değiştirir; W-4 kapanmadan
+   yapılırsa çakışır. M-1 ise yalnız B-6'yı bekler.
+
+6. **I-1:T4 ← B-3, W-4, M-2:T5.** Yayın kontrol listesi: retention CronJob, web uçtan uca (Grup +
+   Bireysel, gerçek Maps anahtarları), EAS internal build.
+
+**B-4 açılırsa** (deferred): API sözleşmesi değişir → W-1/W-2/W-3/W-4/M-1/M-2 geriye dönük düzeltme;
+`B-4 T7` `I-1:T3`'ten sonra koşar.
+
+---
+
+## Spec'te olmayan, planlama sırasında bulunan kalemler (kullanıcı bilgisi)
+
+- **`GET /api/sessions/{slug}/preview`** (B-6): Katıl ekranı katılmadan önce host adını, oturum adını
+  ve kişi sayısını gösteriyor; mevcut `GET /sessions/{slug}` 401 döndüğünden kamu önizlemesi şart.
+- **`SessionView.viewer`** (B-6): web sayfa yenilenince "host muyum / hangi katılımcıyım" bellekten
+  silinir; sunucu söyler.
+- **`runoffVotedParticipantIds`** (B-5): Runoff sağ bölgesi "kim kilitledi" ister (neyi seçtiği değil).
+- **Google butonu** (W-3): GIS politikası gereği Google'ın kendi pill'i; artboard'daki beyaz pill
+  kullanılamıyor.
+- **B-7 adayları** (yeni plan açılmadı): host'un kaydırmama seçeneği ("Ben de kaydıracağım"),
+  mekan açık/kapalı saati, BROWSING'de SOLO konum düzenleme, orta nokta için şehir adı (ters geocode),
+  Apple girişi.

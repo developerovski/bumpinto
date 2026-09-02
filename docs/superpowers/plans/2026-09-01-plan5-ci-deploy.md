@@ -10,6 +10,33 @@
 
 ---
 
+## Ek A — 2026-09-02 revizyonu (BAĞLAYICI)
+
+Spec rev 2 (web paritesi + Google Maps) bu plana şu kalemleri ekler; gövdedeki görevler bunlarla
+birlikte uygulanır.
+
+1. **Web build-arg'ları (Task 2 `frontend/web/Dockerfile`):** `ARG VITE_API_URL`, `ARG VITE_WS_URL`,
+   `ARG VITE_GOOGLE_CLIENT_ID`, `ARG VITE_GOOGLE_MAPS_KEY`, `ARG VITE_GOOGLE_MAPS_MAP_ID` — hepsi
+   `ENV` olarak build aşamasına geçer (`pnpm build:web` Vite'ın `VITE_*`'ı gömmesi için). GitHub
+   Actions web job'ı bunları `vars.*`'tan (sır değil: hepsi istemcide açık) `build-args` ile verir.
+   Maps anahtarı **HTTP referrer kısıtlı** (yalnız `bumpinto.app`, `preprod.bumpinto.app`,
+   `localhost:5173`) — kısıt Google Cloud Console'da, kullanıcı yapar.
+2. **Backend Secret (Task 3 README):** değişmez (Maps anahtarı backend'de kullanılmaz).
+3. **Google Cloud yapılandırması (Task 4 kontrol listesi, kullanıcı):**
+   - Maps JavaScript API + Places API açık; **Map ID** oluşturulmuş ve DS §4b stiliyle
+     (paper tonları, POI etiketleri kapalı, yalnız yol/yerleşim) ilişkilendirilmiş (Map Styles →
+     JSON içe aktar; `VITE_GOOGLE_MAPS_MAP_ID` bu kimliktir).
+   - Android/iOS Maps SDK anahtarları (M-2 react-native-maps): paket adı / bundle id kısıtlı.
+   - Kota alarmı: Dynamic Maps ve Places SKU'larında aylık ücretsiz eşiğin %80'i (Essentials:
+     SKU başına 10.000 çağrı/ay) — Cloud Monitoring bütçe uyarısı.
+   - Places içeriği Google dışı haritada gösterilmiyor (ToS) — web/mobil yalnız Google Maps.
+4. **Yayın kontrol listesine ek satırlar:** `[ ] Maps JS anahtarı referrer kısıtlı`,
+   `[ ] Map ID + stil uygulanmış`, `[ ] Kota alarmı kurulu`, `[ ] Bireysel akış (SOLO) prod'da uçtan
+   uca: kur → konum ekle → Mekanları bul → Bunu seç → yol tarifi`.
+5. **CI (Task 1):** web job'ında `pnpm test:web` + `tsc` zaten var; ek olarak
+   `grep -rn "className=\|style=" frontend/web/src/pages` → boş kontrolü (W-2/W-3 mimari kuralı)
+   bir adım olarak eklenir.
+
 ## Bu plana özel kurallar
 
 - **INDEX güncelle**; **git yazma YOK**; komutlar `rtk` ile.

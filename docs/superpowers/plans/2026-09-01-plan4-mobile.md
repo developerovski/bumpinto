@@ -12,6 +12,41 @@
 
 ---
 
+## Ek A — 2026-09-02 revizyonu (BAĞLAYICI, plan gövdesinden ÖNCE okunur)
+
+Spec `2026-09-01-web-parity-design.md` (rev 2) bu planı şu noktalarda değiştirir. Çelişkide
+**bu ek kazanır**; gövdede aynı konuya değen adımlar buna göre uygulanır. Harita, oturum tipi ve
+Mekanlar ekranı bu planda DEĞİL, **M-2**'dedir (`2026-09-02-plan13-mobile-parity-map.md`).
+
+1. **Ön koşul değişti:** `B-6 done` (oturum listesi + `/api/me` + çıkış). Task 4 Step 3'teki
+   `lib/localSessions.ts` **YAZILMAZ**; `app/sessions/index.tsx` listeyi `api.listSessions()`'dan
+   okur (`open` = artboard 02 üst kartlar, `past` = "Geçmiş buluşmalar"). Task 4 dosya listesinden
+   `localSessions.ts` düşer; Step 4/5'teki `rememberSession` çağrıları kaldırılır.
+2. **Apple girişi yok** (backend yalnız Google): artboard 01'deki "Apple ile devam et" butonu
+   uygulanmaz; INDEX notuna yazılır.
+3. **`createSession` gövdesi:** `sessionType: "GROUP"` gönderilir (M-2 tip seçimini ekler);
+   `locationLabel` (şehir adı) `expo-location` ters geocode'undan (`reverseGeocodeAsync` →
+   `city ?? subregion`) doldurulur. `join`/`updateLocation` çağrıları da `locationLabel`/`label` taşır.
+4. **Task 4 Step 5 (03 Yeni oturum) chip'leri:** 5 değil **15 tür, 4 grup** (Yeme-içme · Hareket ·
+   Kültür · Eğlence), ikonlu (`@phosphor-icons/react-native` → yoksa `phosphor-react-native`);
+   "Aktivite" chip'inin adı **"Bowling"**. Grup/tür Türkçe adları web `tr.json` `activity.*` ile aynı.
+   M-1 bulgu #1, #5, #6 böylece kapanır; #4 (Profil varsayılan etkinlik seçici) aynı deseni kullanır.
+5. **Fotoğrafsız kart gradyanı** oturumun etkinlik grubuna göre (pA/pB/pC/pD; pD =
+   `#FFE08A → #F2A93B`); aynı destede sırayla döner (bulgu #3).
+6. **Task 6 Step 8 (09 Profil):** satırlar sabit metin değil `api.me()`'den; "Dil" satırı
+   `api.updateMe({ language })` yazar ve uygulama dilini değiştirir (mobil i18n: web `tr/en/nl`
+   JSON'ları `frontend/shared`'a taşınmaz — mobil kendi kopyasını `src/i18n/` altında tutar; ilk
+   sürümde yalnız `tr`, en/nl M-2'de). "Çıkış yap" → `api.logout()` (no-op) + SecureStore temizliği.
+7. **Durum yönlendirici (Task 5 Step 3 `[slug].tsx`):** `BROWSING` durumu gelir; M-1'de bu durumda
+   "Mekanlar hazır — M-2'de harita" yer tutucu ekranı + host için "Karıştır ve kaydır" butonu
+   (`api.shuffle(slug)`) gösterilir; M-2 gerçek Mekanlar ekranını getirir. `find-venues` artık
+   `SWIPING` değil `BROWSING` döndürür — Lobi'deki "Mekanları bul" sonrası bu yer tutucuya geçilir.
+8. **"Gruba paylaş" (08):** metin + link (`Share.share`), görsel kart yok (spec §1).
+9. `SessionView` yeni alanları (`sessionType`, `viewer`, `midpoint`, `radiusKm`,
+   `participants[].approxLocation/locationLabel/manual`, `runoffVotedParticipantIds`) shared
+   codegen'den gelir; `ParticipantRow` şehir etiketini `locationLabel`'dan gösterir (bulgu: eski
+   tasarımda şehir adı API'de yoktu).
+
 ## UI Kaynağı: Claude Design (BAĞLAYICI)
 
 Bu plandaki ekranların görsel kaynağı Claude Design'dır. Plandaki kod işlevsel
