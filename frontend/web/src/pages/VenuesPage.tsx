@@ -42,7 +42,7 @@ export default function VenuesPage({ view }: { view: SessionView }) {
     );
 
   return (
-    <Page>
+    <Page wide>
       <SessionHeader
         title={view.name}
         meta={

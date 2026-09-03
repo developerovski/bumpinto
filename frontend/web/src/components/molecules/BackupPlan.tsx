@@ -3,31 +3,10 @@
    `venue.id` sözlük sırasına göre kararlı bir kazanan seçilir — herkes AYNI ikincil mekanı
    görür (code-review düzeltmesi: önceden `Array.sort` kararsız kalabiliyordu). */
 import { useTranslation } from "react-i18next";
-import type { SessionView as View, VenueDto as Venue } from "@bumpinto/shared";
-import { votersOf } from "../../lib/voters";
+import type { SessionView as View } from "@bumpinto/shared";
+import { backupOf } from "../../lib/backupPlan";
 import { Note, Overline } from "../atoms";
 import VenueThumb from "./VenueThumb";
-
-export function backupOf(view: View, winnerId: string): Venue | null {
-  const venues = view.venues ?? [];
-  const byId = (id: string) => venues.find((v) => v.id === id) ?? null;
-  const tally = view.voteTally;
-  if (tally && Object.keys(tally).length > 1) {
-    const second = Object.entries(tally)
-      .filter(([id]) => id !== winnerId)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "en"))[0];
-    if (second && second[1] > 0) return byId(second[0]);
-  }
-  const likes = view.likeCounts;
-  const people = votersOf(view.participants ?? []).length;
-  if (likes && people >= 3) {
-    const second = Object.entries(likes)
-      .filter(([id, n]) => id !== winnerId && n >= 2)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "en"))[0];
-    if (second) return byId(second[0]);
-  }
-  return null;
-}
 
 export default function BackupPlan(props: { view: View; winnerId: string; tint: number }) {
   const { t } = useTranslation();

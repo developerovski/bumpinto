@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ParticipantDto as Participant, SessionView as View } from "@bumpinto/shared";
-import BackupPlan, { backupOf } from "./BackupPlan";
+import BackupPlan from "./BackupPlan";
+import { backupOf } from "../../lib/backupPlan";
 
 const p1: Participant = { id: "p1", displayName: "Mehmet", hasLocation: true, manual: false };
 const p2: Participant = { id: "p2", displayName: "Ayşe", hasLocation: true, manual: false };

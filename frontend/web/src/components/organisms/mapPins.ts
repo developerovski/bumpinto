@@ -14,31 +14,40 @@ function el(className: string, text?: string) {
   return d;
 }
 
-/** Katılımcı pini: story-ring avatar; elle konum (manual) kesikli. Kuyruk 2×8px. */
+/** Katılımcı pini: büyük, kalın beyaz halkalı, gölgeli avatar + adlı etiket + kuyruk.
+    Elle konum (manual) kesikli halka. Mekan pinlerinden belirgin biçimde daha büyük ve daha
+    üstte (UI review 2026-09-03: küçük daireler haritada kayboluyordu). */
 export function participantPin(p: ParticipantDto, index: number, label?: string) {
   const wrap = el("flex flex-col items-center");
-  const ring = el(p.manual ? "" : "rounded-full bg-[image:var(--story-ring)] p-0.5");
+  const ring = el(
+    "rounded-full p-[3px] shadow-[0_6px_18px_rgba(39,32,59,0.35)] " +
+    (p.manual ? "border-2 border-dashed border-ink2 bg-white" : "bg-white"),
+  );
   const av = el(
-    "flex h-[1.875rem] w-[1.875rem] items-center justify-center rounded-full border-2 font-head text-[0.75rem] font-bold shadow-[0_2px_6px_rgba(39,32,59,0.2)] " +
-    (p.manual ? "border-dashed border-line-in bg-white text-ink2" : "border-white text-white"),
+    "flex h-[2.75rem] w-[2.75rem] items-center justify-center rounded-full font-head text-[1.0625rem] font-extrabold " +
+    (p.manual ? "border-2 border-line-in bg-sand text-ink" : "border-[3px] border-white text-white"),
     (p.displayName || "?")[0]?.toUpperCase(),
   );
   if (!p.manual) av.style.background = PALETTE[index % PALETTE.length];
   ring.appendChild(av);
   wrap.appendChild(ring);
-  wrap.appendChild(el("h-2 w-0.5 rounded-sm bg-ink2"));
-  if (label) wrap.appendChild(el("mt-0.5 rounded-full bg-[rgba(255,255,255,0.9)] px-1.5 text-[0.625rem] font-bold text-ink", label));
+  wrap.appendChild(el("h-2.5 w-[3px] rounded-sm bg-ink"));
+  const text = label ?? p.displayName ?? "";
+  if (text) {
+    wrap.appendChild(
+      el(
+        "mt-0.5 max-w-[10rem] truncate rounded-full border border-line bg-white px-2 py-0.5 text-[0.75rem] font-bold text-ink shadow-sh1",
+        text,
+      ),
+    );
+  }
   return wrap;
 }
 
-/** Orta nokta: alev iğne. */
-export function midpointPin() {
-  const wrap = el("flex flex-col items-center pb-2");
-  wrap.appendChild(el("h-[1.6875rem] w-[1.6875rem] rotate-45 rounded-[50%_50%_50%_0.1875rem] bg-[image:var(--grad)] shadow-[0_4px_14px_rgba(222,36,86,0.4),0_0_0_2.5px_#fff]"));
-  return wrap;
-}
-
-/** Mekan pini: rozet (puan ya da verilen metin) + tint swatch; seçili = alev dolgu + büyük. */
+/** Mekan pini: rozet (puan ya da verilen metin) + tint swatch; seçili = alev dolgu + büyük.
+    Tıklanabilir (MapView marker click listener) — imleç burada elle işaretlenir, `el()`
+    yalnız className/text alır ve bu düğümler Tailwind `cursor-pointer` taramasının dışında
+    kalan yalıtılmış DOM elemanlarıdır (AdvancedMarkerElement içeriği). */
 export function venuePin(v: VenueDto, tint: number, selected: boolean, text?: string) {
   const badge = el(
     "inline-flex items-center gap-1.5 rounded-full border-[1.5px] px-2 py-0.5 font-head font-extrabold shadow-sh1 " +
@@ -51,6 +60,7 @@ export function venuePin(v: VenueDto, tint: number, selected: boolean, text?: st
   const tail = el("mx-auto -mt-1 h-2 w-2 rotate-45 border-b-[1.5px] border-r-[1.5px] " +
     (selected ? "border-flame-deep bg-flame-deep" : "border-line2 bg-white"));
   const wrap = el("flex flex-col items-center");
+  wrap.style.cursor = "pointer";
   wrap.appendChild(badge);
   wrap.appendChild(tail);
   return wrap;

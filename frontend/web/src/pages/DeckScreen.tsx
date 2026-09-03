@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
+import { unionProvider } from "../lib/provider";
 import { Button, ErrorText, Page } from "../components/atoms";
-import Attribution, { unionProvider } from "../components/molecules/Attribution";
+import Attribution from "../components/molecules/Attribution";
 import DeckHeader, { HeaderButton } from "../components/molecules/DeckHeader";
 import DeckProgressNote from "../components/molecules/DeckProgressNote";
 import FinishedCard from "../components/molecules/FinishedCard";

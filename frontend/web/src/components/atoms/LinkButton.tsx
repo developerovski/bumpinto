@@ -1,6 +1,6 @@
 /* Kaynak: Button.tsx zincirleri (ui.css .a-btn* / a.a-btn--* renk ezmeleri) / DS v2 */
 import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { buttonAligns, buttonBase, buttonKinds } from "./Button";
+import { buttonAligns, buttonBase, buttonKinds } from "./buttonStyles";
 
 /** `<a>` gövdeli buton — dış bağlantılar (W4 "Yol tarifi al", viral CTA).
     `app.css @layer base`'deki `a` / `a:hover` renk + `underline` kuralları, kaskad katman

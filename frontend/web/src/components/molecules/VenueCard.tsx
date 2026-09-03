@@ -1,31 +1,21 @@
 /* Kaynak: ui.css .a-pol* / .a-pho* / .a-row-card* / .a-row-thumb* / .a-pick* / DS v2 */
+import { PHOTO_CLASSES, PHOTO_MONO } from "./photoStyles";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
+import { formatRating } from "../../lib/format";
+import { monogram } from "../../lib/monogram";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import Attribution from "./Attribution";
 import FairnessBadge from "./FairnessBadge";
 import FitLine from "./FitLine";
 import TravelChips from "./TravelChips";
-import { formatRating } from "./VenueMeta";
 
 /** Mekan kartı — iki artboard sunumu, tek bileşen:
     · "polaroid" (varsayılan) → Web W3/W4 `.pol`; deste, liste ve sonuç ekranları.
     · "row" → Mobil `07 Runoff` `.card`; 74px küçük görsel + seçim dairesi. */
 
-// Artboard .pA/.pB/.pC/.pD — fotoğrafsız kartın üç katmanlı ambient gradyanı.
-export const PHOTO_CLASSES = [
-  "bg-[image:radial-gradient(130%_100%_at_18%_8%,#ffd9a8_0%,transparent_62%),radial-gradient(110%_85%_at_88%_90%,#ff9e6b_0%,transparent_58%),linear-gradient(165deg,#f9c08a_0%,#e8794f_100%)]",
-  "bg-[image:radial-gradient(130%_100%_at_80%_6%,#b8f0d8_0%,transparent_60%),radial-gradient(110%_85%_at_12%_92%,#4fc79a_0%,transparent_55%),linear-gradient(165deg,#8fddbb_0%,#2f9e71_100%)]",
-  "bg-[image:radial-gradient(130%_100%_at_22%_10%,#d9c8ff_0%,transparent_60%),radial-gradient(110%_85%_at_85%_88%,#a47cff_0%,transparent_55%),linear-gradient(165deg,#c1a8f5_0%,#7c4dff_100%)]",
-  "bg-[image:radial-gradient(130%_100%_at_20%_10%,#fff0b8_0%,transparent_60%),radial-gradient(110%_85%_at_85%_90%,#ffc24a_0%,transparent_55%),linear-gradient(165deg,#ffe08a_0%,#f2a93b_100%)]",
-];
-
-// .pho-mono — punto dışındaki tüm değerler tüm varyantlarda ortak (PolaroidFan da kullanır).
-export const PHOTO_MONO =
-  "absolute left-1/2 top-[44%] transform-[translate(-50%,-50%)_rotate(-4deg)] " +
-  "font-head font-extrabold text-[rgba(255,255,255,0.5)]";
 
 // ui.css .a-pol-body(8px) + .a-pol--winner .a-pol-body(10px) — W4 kazanan kartı daha ferah.
 const BODY_GAPS = { sm: "gap-2", md: "gap-2.5" };
@@ -34,16 +24,6 @@ const BODY_GAPS = { sm: "gap-2", md: "gap-2.5" };
 const PICK_BASE = "h-[1.625rem] w-[1.625rem] flex-none rounded-full border-[1.5px]";
 const PICK = `${PICK_BASE} border-line-in`;
 const PICK_ON = `${PICK_BASE} flex items-center justify-center border-transparent bg-[image:var(--grad)]`;
-
-// Artboard: "Café Berlage" → "cb".
-export function monogram(name: string | undefined): string {
-  return (name ?? "")
-    .split(" ")
-    .map((w) => w[0] ?? "")
-    .slice(0, 2)
-    .join("")
-    .toLowerCase();
-}
 
 export default function VenueCard(props: {
   venue: VenueDto;

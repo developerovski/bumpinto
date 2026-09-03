@@ -74,6 +74,33 @@ describe("VenueBrowser", () => {
     expect(base.onPick).toHaveBeenCalledWith("v1");
   });
 
+  it("seçim listeyi seçili satıra yumuşakça kaydırır (harita pini de aynı yolu kullanır)", () => {
+    const calls: ScrollIntoViewOptions[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (arg?: boolean | ScrollIntoViewOptions) {
+      if (arg && typeof arg === "object") calls.push(arg);
+    };
+    try {
+      render(<VenueBrowser {...base} mode="host" />);
+      fireEvent.click(screen.getByRole("button", { name: /Puanlı Kahve/ }));
+      expect(calls).toContainEqual({ block: "nearest", behavior: "smooth" });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("pop kart: afiş fotoğraf + kapat düğmesi; kapatınca seçim bırakılır", async () => {
+    render(<VenueBrowser {...base} mode="host" />);
+    fireEvent.click(screen.getByRole("button", { name: "Haritada gör" }));
+    await screen.findByTestId("mapview");
+    const row = screen.getByRole("button", { name: /Adil Kahve/ });
+    fireEvent.mouseEnter(row);
+    const close = screen.getByRole("button", { name: "Kapat" });
+    fireEvent.click(close);
+    expect(screen.queryByRole("button", { name: "Kapat" })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0);
+  });
+
   it("gerçek lg genişlikte (matchMedia eşleşirse) harita ghost'a basılmadan mount olur", () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({
@@ -183,11 +210,14 @@ describe("VenueBrowser", () => {
     expect(screen.queryByText(/konumunu henüz paylaşmadı|Konumu olmayanlar/)).not.toBeInTheDocument();
   });
 
-  it("geç gelen veride seçim, mekanlar yüklenince ilk mekana oturur", () => {
+  it("varsayılan seçim YOK: veri gelince hiçbir satır seçili değil; hover seçer, ayrılınca bırakır", () => {
     const { rerender } = render(<VenueBrowser {...base} venues={[]} mode="host" />);
     rerender(<VenueBrowser {...base} mode="host" />);
-    const pressed = screen.getAllByRole("button", { pressed: true });
-    expect(pressed).toHaveLength(1);
-    expect(pressed[0]).toHaveTextContent("Adil Kahve");
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0);
+    const row = screen.getByRole("button", { name: /Adil Kahve/ });
+    fireEvent.mouseEnter(row);
+    expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1);
+    fireEvent.mouseLeave(row);
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0);
   });
 });

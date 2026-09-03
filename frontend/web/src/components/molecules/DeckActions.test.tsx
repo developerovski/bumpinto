@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import DeckActions, { ACTION_ICON } from "./DeckActions";
+import DeckActions from "./DeckActions";
+import { ACTION_ICON } from "../../lib/deckActions";
 
 describe("DeckActions", () => {
   // Eski el yapımı CSS glifleri 15 / 20 / 19px çiziyordu; satır dengesiz görünüyordu.

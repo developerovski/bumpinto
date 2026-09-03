@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 
 const cols = {
   default: "lg:grid-cols-[58fr_42fr]",
-  map: "lg:grid-cols-[42fr_58fr]",
+  // UI review: harita tarafına daha çok yer — masaüstünde harita bölgesi sabit min genişlikte
+  // başlar, kalanı harita doldurur (geniş masaüstü ekranda dar sabit oran yerine akışkan).
+  map: "lg:grid-cols-[minmax(24rem,2fr)_3fr]",
 };
 
 // .zone varsayılanı 16px; artboard Landing sol 18px / sağ 26px kullanır (yalnız ≥1024).

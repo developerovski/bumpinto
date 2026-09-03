@@ -3,14 +3,9 @@ import { CaretDown, Check, Globe } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
+import { LANGUAGES } from "../../lib/languages";
 import { useAuthStore } from "../../store/authStore";
 
-/* ProfilePrefs (dil radyo grubu) da kullanır. */
-export const LANGUAGES = [
-  { code: "tr", label: "Türkçe" },
-  { code: "en", label: "English" },
-  { code: "nl", label: "Nederlands" },
-] as const;
 
 const PILL =
   "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] border-line2 " +

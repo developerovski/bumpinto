@@ -4,7 +4,7 @@ import type { MeResponse } from "@bumpinto/shared";
 import { Button, ErrorText } from "../atoms";
 import { ACTIVITY_ICONS, groupOf } from "../../lib/activity";
 import { DEFAULT_TRAVEL_MODE, MODE_ICON, MODE_LABEL_KEY, type TravelMode } from "../../lib/travelMode";
-import { LANGUAGES } from "../molecules/LangMenu";
+import { LANGUAGES } from "../../lib/languages";
 import ActivityPicker from "../molecules/ActivityPicker";
 import LocationField from "../molecules/LocationField";
 import PrefRow from "../molecules/PrefRow";

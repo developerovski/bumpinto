@@ -4,7 +4,8 @@
     "title": "BumpInto — spreek af in het midden",
     "save": "Opslaan",
     "retry": "Probeer opnieuw",
-    "cancel": "Annuleren"
+    "cancel": "Annuleren",
+    "close": "Sluiten"
   },
   "shell": {
     "sessions": "Afspraken",

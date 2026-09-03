@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { SessionView } from "@bumpinto/shared";
-import MidpointCard, { nearestParticipant } from "./MidpointCard";
+import MidpointCard from "./MidpointCard";
+import { nearestParticipant } from "../../lib/midpoint";
 
 const base = {
   slug: "x7k2m",

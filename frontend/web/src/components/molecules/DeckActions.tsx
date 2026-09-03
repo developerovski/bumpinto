@@ -1,4 +1,5 @@
 /* Kaynak: artboard W3 aksiyon satırı; ikonlar Phosphor (el yapımı CSS glifleri değiştirdi) */
+import { ACTION_ICON } from "../../lib/deckActions";
 import { ArrowCounterClockwise, Heart, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../atoms";
@@ -7,7 +8,7 @@ import { Button } from "../atoms";
     Üç ikon da TEK ölçüde (ACTION_ICON): eski CSS glifleri 15/20/19px çiziyordu, satır
     dengesiz görünüyordu. Buton çapları artboard'daki gibi farklı kalır (48 / 60 / 60).
     aria-label metin karşılığıdır; ikonlar dekoratif. */
-export const ACTION_ICON = 24;
+
 
 export default function DeckActions(props: {
   onUndo: () => void;

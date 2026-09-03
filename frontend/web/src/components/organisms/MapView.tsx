@@ -6,7 +6,7 @@ import { MAP_ID, loadMaps, mapsConfigured } from "../../lib/maps";
 import { MAX_FIT_ZOOM, cameraFor, cameraSignature } from "../../lib/mapCamera";
 import type { LatLng } from "../../lib/geo";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { midpointPin, participantPin, venuePin } from "./mapPins";
+import { participantPin, venuePin } from "./mapPins";
 
 export type MapViewProps = {
   participants: ParticipantDto[];
@@ -28,17 +28,77 @@ export type MapViewProps = {
   lgOnly?: boolean;
 };
 
-/** Saf kamera kararını Google'a uygular. Yakın iki pinde fitBounds'un aşırı zoom'u kırpılır. */
-function applyCamera(map: google.maps.Map, camera: ReturnType<typeof cameraFor>) {
+/** Seçilen mekana yakınlaşma ölçeği (sokak/mahalle seviyesi). */
+const VENUE_ZOOM = 15;
+/** Kamera geçişi süresi (ms) — hover'la gezerken bunaltmayacak kadar kısa. */
+const CAMERA_MS = 500;
+/** Seçim oturmadan kamera oynamasın: listede fareyle hızla gezerken her satır için animasyon
+    başlatmak yerine seçim bu kadar sabit kalınca hareket edilir. */
+const SETTLE_MS = 200;
+
+type Cam = { center: LatLng; zoom: number };
+
+function easeInOut(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/** Kamerayı hedefe yumuşakça taşır (konum + ölçek birlikte). `moveCamera` kesirli zoom kabul
+    eder (vektör harita); yoksa tek adımda kurulur. Yeni çağrı öncekini iptal eder. */
+function animateCamera(map: google.maps.Map, to: Cam, instant: boolean, frame: { id: number | null }) {
+  if (frame.id != null) cancelAnimationFrame(frame.id);
+  frame.id = null;
+  const move = (center: LatLng, zoom: number) => {
+    const m = map as google.maps.Map & { moveCamera?: (o: { center: LatLng; zoom: number }) => void };
+    if (typeof m.moveCamera === "function") m.moveCamera({ center, zoom });
+    else {
+      map.setCenter(center);
+      map.setZoom(Math.round(zoom));
+    }
+  };
+  const c = map.getCenter();
+  const from: Cam = {
+    center: { lat: c?.lat() ?? to.center.lat, lng: c?.lng() ?? to.center.lng },
+    zoom: map.getZoom() ?? to.zoom,
+  };
+  if (instant || typeof requestAnimationFrame === "undefined" || typeof performance === "undefined") {
+    move(to.center, to.zoom);
+    return;
+  }
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const p = Math.min(1, (now - t0) / CAMERA_MS);
+    const e = easeInOut(p);
+    move(
+      {
+        lat: from.center.lat + (to.center.lat - from.center.lat) * e,
+        lng: from.center.lng + (to.center.lng - from.center.lng) * e,
+      },
+      from.zoom + (to.zoom - from.zoom) * e,
+    );
+    frame.id = p < 1 ? requestAnimationFrame(step) : null;
+  };
+  frame.id = requestAnimationFrame(step);
+}
+
+/** Saf kamera kararını Google'a uygular. Yakın iki pinde fitBounds'un aşırı zoom'u kırpılır.
+    `onSettled` kadraj oturunca çağrılır — seçim kalkınca dönülecek "ev" kamerası budur. */
+function applyCamera(map: google.maps.Map, camera: ReturnType<typeof cameraFor>, onSettled?: (home: Cam) => void) {
   if (!camera) return;
+  const settle = () => {
+    const c = map.getCenter();
+    if (c) onSettled?.({ center: { lat: c.lat(), lng: c.lng() }, zoom: map.getZoom() ?? 0 });
+  };
   if (camera.kind === "point") {
     map.setCenter(camera.center);
     map.setZoom(camera.zoom);
+    onSettled?.({ center: camera.center, zoom: camera.zoom });
     return;
   }
-  map.fitBounds(new google.maps.LatLngBounds(camera.sw, camera.ne), 48);
+  // Üstte pin gövdesi + etiket (~64px) noktanın ÜZERİNE çizilir; eşit 48px dolgu pini kırpıyordu.
+  map.fitBounds(new google.maps.LatLngBounds(camera.sw, camera.ne), { top: 88, right: 56, bottom: 56, left: 56 });
   google.maps.event.addListenerOnce(map, "idle", () => {
     if ((map.getZoom() ?? 0) > MAX_FIT_ZOOM) map.setZoom(MAX_FIT_ZOOM);
+    settle();
   });
 }
 
@@ -54,8 +114,13 @@ export default function MapView(props: MapViewProps) {
   const circleRef = useRef<google.maps.Circle | null>(null);
   /** Son sığdırılan coğrafi imza — aynı kaldığı sürece kullanıcının pan/zoom'una dokunulmaz. */
   const fittedRef = useRef<string | null>(null);
+  /** Seçim kalkınca dönülecek kadraj (herkesi + çemberi kapsayan "ev" kamerası). */
+  const homeRef = useRef<Cam | null>(null);
+  /** Süren kamera animasyonunun rAF kimliği — yeni hedef öncekini iptal eder. */
+  const frameRef = useRef<{ id: number | null }>({ id: null });
   // Reaktif — tek seferlik okumanın aksine pencere sonradan lg genişliğe geçerse de doğru davranır.
   const desktop = useMediaQuery("(min-width: 1024px)");
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
     if (!configured || !box.current) return;
@@ -124,12 +189,15 @@ export default function MapView(props: MapViewProps) {
           map,
           position: pos,
           content: participantPin(p, i, pinLabels?.[p.id ?? ""]),
+          zIndex: 5, // mekan pinlerinin (2–3) ve orta noktanın üstünde
           title: `${p.displayName ?? ""}${p.locationLabel ? " · " + p.locationLabel : ""}`,
         }),
       );
     });
+    // Orta nokta İĞNESİ çizilmez (UI review 2026-09-03: kalabalık haritada gürültü yapıyordu ve
+    // "bu pin ne?" sorusunu doğuruyordu). Alan yalnız yarıçap çemberiyle anlatılır; orta noktanın
+    // adı ve süreleri Lobi/Bekle'deki `MidpointCard`'da yazılı olarak zaten var.
     if (midpoint) {
-      markersRef.current.push(new AdvancedMarkerElement({ map, position: midpoint, content: midpointPin() }));
       if (radiusKm) {
         circleRef.current = new google.maps.Circle({
           map,
@@ -159,12 +227,68 @@ export default function MapView(props: MapViewProps) {
     // seçim/etiket değişiminde kullanıcının pan/zoom'u korunur.
     if (fittedRef.current !== camera) {
       fittedRef.current = camera;
-      applyCamera(map, cameraFor(points, midpoint, radiusKm));
+      applyCamera(map, cameraFor(points, midpoint, radiusKm), (home) => {
+        homeRef.current = home;
+      });
     }
     return detach;
     // içerik imzası: polling her 3 sn yeni dizi üretir, pinler yalnız veri değişince yeniden çizilir
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, signature, camera]);
+  }, [ready, signature, camera, t]);
+
+  // Kap boyutu değişince (lg'de harita viewport yüksekliğine geçer, pencere büyür/küçülür)
+  // kamera yeniden sığdırılır; aksi hâlde ilk küçük kadraja göre hesaplanan fit katılımcıları
+  // dışarıda bırakıyordu (UI review). Kullanıcının pan/zoom'u yalnız boyut değişiminde bozulur.
+  useEffect(() => {
+    if (!ready || !box.current || typeof ResizeObserver === "undefined") return;
+    let last = { w: box.current.clientWidth, h: box.current.clientHeight };
+    const ro = new ResizeObserver(() => {
+      const el = box.current;
+      const map = mapRef.current;
+      if (!el || !map) return;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w === last.w && h === last.h) return;
+      last = { w, h };
+      if (w === 0 || h === 0) return;
+      applyCamera(map, cameraFor(points, midpoint, radiusKm), (home) => {
+        homeRef.current = home;
+      });
+    });
+    ro.observe(box.current);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, camera]);
+
+  // Seçim varsa mekana yumuşakça yakınlaşılır; seçim kalkınca "ev" kadrajına aynı yumuşaklıkta
+  // dönülür (UI review 2026-09-03). Seçim SETTLE_MS boyunca sabit kalmadan kamera oynamaz —
+  // listede fareyle hızla gezerken harita zıplamaz.
+  const selVenue = venues.find((v) => v.id === selectedVenueId);
+  const selLat = selVenue?.lat ?? null;
+  const selLng = selVenue?.lng ?? null;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const home = homeRef.current;
+    const target: Cam | null =
+      selLat != null && selLng != null
+        ? { center: { lat: selLat, lng: selLng }, zoom: Math.max(home?.zoom ?? 0, VENUE_ZOOM) }
+        : home;
+    if (!target) return;
+    const timer = setTimeout(
+      () => animateCamera(map, target, reduceMotion, frameRef.current),
+      reduceMotion ? 0 : SETTLE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [ready, selectedVenueId, selLat, selLng, reduceMotion]);
+
+  // Bileşen kalkarken süren animasyonu bırak.
+  useEffect(() => {
+    const frame = frameRef.current;
+    return () => {
+      if (frame.id != null) cancelAnimationFrame(frame.id);
+    };
+  }, []);
 
   const summary = participants
     .filter((p) => p.approxLocation?.lat != null && p.approxLocation.lng != null)

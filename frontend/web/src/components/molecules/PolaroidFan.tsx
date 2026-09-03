@@ -4,7 +4,7 @@
    .pol iç boşluğu 8/8/22 — bu yüzden kart burada doğrudan kuruluyor, gradyanlar ortak. */
 import { useTranslation } from "react-i18next";
 import { Sticker } from "../atoms";
-import { PHOTO_CLASSES, PHOTO_MONO } from "./VenueCard";
+import { PHOTO_CLASSES, PHOTO_MONO } from "./photoStyles";
 
 // .pol — 24px köşe, 1px çizgi, beyaz.
 const CARD = "absolute flex flex-col rounded-3xl border border-line bg-white";

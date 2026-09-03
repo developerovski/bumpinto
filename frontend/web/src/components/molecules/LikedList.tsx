@@ -3,11 +3,11 @@ import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { byFairness } from "@bumpinto/shared";
+import { formatRating } from "../../lib/format";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Overline } from "../atoms";
 import FairnessBadge from "./FairnessBadge";
 import TravelChips from "./TravelChips";
-import { formatRating } from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
 
 export default function LikedList(props: {

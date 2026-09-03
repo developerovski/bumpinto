@@ -71,6 +71,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                     midpoint={midpoint}
                     radiusKm={radiusKm}
                     pinLabels={pinLabels}
+                    heightClass="h-[20rem] lg:h-[calc(100dvh-14rem)]"
                     lgOnly
                   />
                 </Suspense>

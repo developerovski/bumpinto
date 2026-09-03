@@ -30,7 +30,8 @@ export default function TravelChips(props: {
     <ul className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 tabular-nums">
       {f.entries.map((e) => {
         const self = !!props.travel.selfId && e.id === props.travel.selfId;
-        const longest = many && e.id === f.longestId;
+        // Beraberlikte (fark 0 dk) kimse "en uzun" değildir — ▲ hiçbir çipte basılmaz (§4.3 tie polish).
+        const longest = many && e.id === f.longestId && f.spread !== 0;
         return (
           <li key={e.id} className={chip}>
             <span className={self ? "font-extrabold text-ink" : undefined}>

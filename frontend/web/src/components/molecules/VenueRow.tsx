@@ -22,6 +22,8 @@ const VenueRow = forwardRef<
     /** Yalnız fare/klavye ODAKLANMASI (hover/focus) — haritadaki pin/pop kartı vurgular,
         SOLO onay kartını AÇMAZ (kod-review bulgusu: hover'da da açılıyordu). */
     onHover: () => void;
+    /** Hover/odak bitince odağı bırakır — harita seçimi hover ile sınırlı kalır. */
+    onLeave?: () => void;
     /** Gerçek seçim — tık ya da Enter/Space. SOLO onay kartını bu açar. */
     onSelect: () => void;
   }
@@ -43,7 +45,9 @@ const VenueRow = forwardRef<
       tabIndex={0}
       aria-pressed={props.selected}
       onMouseEnter={props.onHover}
+      onMouseLeave={props.onLeave}
       onFocus={props.onHover}
+      onBlur={props.onLeave}
       onClick={props.onSelect}
       onKeyDown={onKeyDown}
       className={[

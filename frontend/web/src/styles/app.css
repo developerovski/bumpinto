@@ -203,6 +203,21 @@
       transition: none !important;
     }
   }
+  /* UI review — her tıklanabilir alan cursor: pointer göstermeli (Tailwind v4 preflight
+     button { cursor: default } atar; burada geri açılıyor). jsdom bu kuralı uygulamaz —
+     bileşen testleri role="button"/native eleman varlığını doğrular, imleci doğrulayamaz. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {

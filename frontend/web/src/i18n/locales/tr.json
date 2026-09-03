@@ -4,7 +4,8 @@
     "title": "BumpInto — ortada buluşun",
     "save": "Kaydet",
     "retry": "Tekrar dene",
-    "cancel": "Vazgeç"
+    "cancel": "Vazgeç",
+    "close": "Kapat"
   },
   "shell": {
     "sessions": "Oturumlar",

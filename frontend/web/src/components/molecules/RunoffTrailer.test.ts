@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDeciding } from "./RunoffTrailer";
+import { isDeciding } from "../../lib/runoffTrailer";
 
 function venue(id: string, minutesA: number, minutesB: number, rating?: number) {
   return { id, rating, travelMinutes: { a: minutesA, b: minutesB } };

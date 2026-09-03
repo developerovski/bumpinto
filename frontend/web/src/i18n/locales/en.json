@@ -4,7 +4,8 @@
     "title": "BumpInto — meet in the middle",
     "save": "Save",
     "retry": "Try again",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "shell": {
     "sessions": "Meetups",

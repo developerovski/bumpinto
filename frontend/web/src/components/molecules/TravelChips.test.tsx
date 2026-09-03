@@ -44,6 +44,17 @@ describe("TravelChips", () => {
 
   // Viewer travelMinutes'ta hiç yoksa (ör. konumsuz/manuel katılımcı görüntülüyor) çipler
   // hâlâ mevcut herkesi gösterir, çökmez ve "Sen" hiçbir çipte görünmez.
+  it("beraberlikte (fark 0 dk) hiçbir çipte ▲ basılmaz", () => {
+    render(
+      <TravelChips
+        venue={{ id: "v1", travelMinutes: { p1: 30, p2: 30, p3: 30 } }}
+        travel={{ labels, selfId: "p1" }}
+      />,
+    );
+    expect(screen.queryByText("▲")).not.toBeInTheDocument();
+    expect(screen.queryByText("en uzun yol")).not.toBeInTheDocument();
+  });
+
   it("viewer travelMinutes'ta yoksa çip herkesi gösterir, çökmez, 'Sen' düşmez", () => {
     render(
       <TravelChips

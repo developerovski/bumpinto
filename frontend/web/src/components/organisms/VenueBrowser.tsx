@@ -1,10 +1,11 @@
-import { Fragment, Suspense, lazy, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useMediaQuery } from "../../lib/useMediaQuery";
+import { unionProvider } from "../../lib/provider";
 import { Button, HandNote, Note } from "../atoms";
-import Attribution, { unionProvider } from "../molecules/Attribution";
+import Attribution from "../molecules/Attribution";
 import LazyBoundary from "../molecules/LazyBoundary";
 import SelectionCard from "../molecules/SelectionCard";
 import VenuePopCard from "../molecules/VenuePopCard";
@@ -51,7 +52,9 @@ export default function VenueBrowser(props: {
     () => [...props.venues].sort(sort === "fair" ? byFairness : byRating),
     [props.venues, sort],
   );
-  const selected = sel ?? venues[0]?.id ?? null;
+  // Varsayılan seçim YOK: pop kart ve büyük pin yalnız hover/odak (masaüstü) ya da dokunma
+  // (mobil) ile; hiçbir şey hover'lanmıyorsa harita nötr kalır (UI review 2026-09-03).
+  const selected = sel ?? picked ?? null;
   const selectedVenue = venues.find((v) => v.id === selected);
   // Sağlayıcı atfı (§4.9, §5.B.9) — listede TEK sağlayıcı varsa ona özgü metin, karışık
   // (ya da bilinmeyen) sağlayıcılı listede politika gereği ikisi de basılır (union — Attribution.tsx).
@@ -89,6 +92,18 @@ export default function VenueBrowser(props: {
     if (id) rowRefs.current.get(id)?.focus();
   }
 
+  // Haritadan bir pin seçilince listedeki satır kendiliğinden görünür olur (UI review
+  // 2026-09-03): sol sütun `overflow-y-auto` olduğu için kaydırma sayfayı değil listeyi taşır.
+  // `block: "nearest"` — satır zaten görünürse (satır hover'ı) hiç kaydırma olmaz.
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  useEffect(() => {
+    if (!selected) return;
+    rowRefs.current.get(selected)?.scrollIntoView?.({
+      block: "nearest",
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [selected, reduceMotion]);
+
   // Gerçek tarayıcıda lg genişlikte ghost'a basılmadan da mount olur (masaüstü sağ kolon
   // her zaman görünür); jsdom `matchMedia` uygulamıyor → test-setup.ts'teki güdük varsayılan
   // `false` döner, testler ghost'a basmadan haritanın mount olmadığını doğrulayabilir.
@@ -106,7 +121,7 @@ export default function VenueBrowser(props: {
           onSelectVenue={pick}
           pinLabels={props.pinLabels}
           tint={tint}
-          heightClass="h-[35rem]"
+          heightClass="h-[60dvh] lg:h-full"
         />
         {selectedVenue && (
           <VenuePopCard
@@ -114,6 +129,10 @@ export default function VenueBrowser(props: {
             tint={tint}
             travel={props.travel}
             midpointLabel={props.midpointLabel}
+            onClose={() => {
+              setSel(null);
+              setPicked(null);
+            }}
             action={
               // `selectedVenue` hover'ı (`sel`) izler, `picked` ise gerçek tıkı — ikisi
               // ayrışabilir (A'yı seç, B'yi hover'la): pop kart yalnız GERÇEKTEN seçili
@@ -135,7 +154,8 @@ export default function VenueBrowser(props: {
   );
 
   return (
-    <div>
+    // lg: Page'in kalan yüksekliğini doldurur; sayfa kaymaz, yalnız sol liste kayar (UI review).
+    <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div className="mb-3 flex items-center justify-between gap-3">
         <VenueSort value={sort} onChange={setSort} />
         {/* 390: sekme anahtarı yerine tek ghost — harita ancak basılınca yüklenir. */}
@@ -147,8 +167,8 @@ export default function VenueBrowser(props: {
           </div>
         )}
       </div>
-      <div className="lg:grid lg:grid-cols-[42fr_58fr] lg:gap-10 lg:items-start">
-        <div className={`${mapOpen ? "hidden lg:flex" : "flex"} flex-col gap-1.5`}>
+      <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(26rem,32rem)_1fr] lg:gap-10">
+        <div className={`${mapOpen ? "hidden lg:flex" : "flex"} flex-col gap-1.5 lg:min-h-0 lg:overflow-y-auto lg:pr-2`}>
           {venues.map((v, i) => (
             <Fragment key={v.id ?? `row-${i}`}>
               <VenueRow
@@ -163,6 +183,7 @@ export default function VenueBrowser(props: {
                 travel={props.travel}
                 midpointLabel={props.midpointLabel}
                 onHover={() => setSel(v.id ?? null)}
+                onLeave={() => setSel((cur) => (cur === v.id ? null : cur))}
                 onSelect={() => pick(v.id ?? null)}
               />
               {/* Artboard `.f-selcard` — SOLO'da seçili satırın ALTINDA satır-içi onay. */}
@@ -182,7 +203,7 @@ export default function VenueBrowser(props: {
           {noLocationNote && <Note>{noLocationNote}</Note>}
           <Attribution provider={listProvider} />
         </div>
-        <div className={`relative ${mapOpen ? "" : "hidden"} lg:block`}>
+        <div className={`relative ${mapOpen ? "" : "hidden"} lg:block lg:min-h-0`}>
           {/* lg'de sağ kolon CSS ile her zaman görünür; Maps JS yine yalnız gerçekten
               lg genişlikte ya da ghost'a basılınca mount edilir (tembel chunk). */}
           {(mapOpen || desktop) && map}

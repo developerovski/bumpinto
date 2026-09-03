@@ -1,17 +1,8 @@
 import type { VenueDto } from "@bumpinto/shared";
-import i18n from "../../i18n";
+import { formatRating } from "../../lib/format";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import FairnessBadge from "./FairnessBadge";
 import TravelChips from "./TravelChips";
-
-/** Puan biçimi tek atomda yaşar (§4.9 "rating format unified") — VenueMeta VE VenueCard bunu okur.
-    Kullanıcının diline göre biçimlenir (tr/nl ondalık virgül, en nokta). */
-export function formatRating(rating: number): string {
-  return new Intl.NumberFormat(i18n.resolvedLanguage, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(rating);
-}
 
 /** Mekan meta satırı (★ puan · fiyat · semt) + adalet rozeti + seyahat çipleri — VenueRow/VenuePopCard ortak.
     `ratingCount` kasıtlı olarak YOK — hiçbir artboard'da yer almıyor (§4.9). */

@@ -166,6 +166,7 @@ Kritik yol (güncel): **B-7 → W-6b → M-1 → M-2 → M-3 → I-1:T4**. W-6a,
 | K-W9 | TravelRange (≥ 4 katılımcıda min–max çubuk) | done | W-6 | **Alınmadı** (2026-09-03): artboard yok, mock'lar 3 kişi; TravelChips satır sarar. ≥ 4 kişilik gruplar ölçülünce yeniden değerlendirilir |
 | K-W10 | Bireysel akışta mevcut manuel noktanın ulaşım türünü düzenleme | aday | B-8/W-7 | W-6:T6b — `PointsEditor` yeni noktada modu gönderir; var olan katılımcının modunu değiştiren backend ucu yok (`LocationRequest` lat/lng zorunlu, manuel nokta için ayrı uç yok) |
 | K-W11 | Artboard–kod görünüm uzlaşması (W-6 kalıntıları) | aday | W-7 | TravelModeField `.f-seg` ✓ ama `.f-mp` 22px kompakt seçici yok; ActivityStrip kart görünümü vs artboard düz satır; SessionSteps numaralı daire vs kalın metin; EBIKE ikonu [Lightning, Bicycle] vs bisiklet+rozet; Segmented radiogroup'ta roving tabindex yok (ActivityPicker'da da) |
+| K-W12 | Masaüstü genişlik: artboard 1280 çerçevesinden bilinçli sapma (kullanıcı incelemesi 2026-09-03) | done | W-6 | `Page` tavanı 70rem → 80rem (lg) / 96rem (xl), `wide` prop ile tavansız; Mekanlar: liste `minmax(26rem,32rem)` + harita kalan genişlik, `sticky`, `calc(100dvh-7rem)`; 390'da açılan harita 60dvh; Lobi haritası viewport yüksekliği. Global `cursor: pointer` kuralı (`app.css` @layer base) + harita pini. ▲ fark 0'da gizli. Artboard'lar/DS §07 (58/42 grid) bu kararla güncellenmeli (Claude Design limiti dolunca ertelendi) |
 
 ## M — Mobil
 
