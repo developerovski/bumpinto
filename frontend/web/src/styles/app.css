@@ -152,6 +152,22 @@
 }
 
 @layer base {
+  /* Harita sayfaları (`Page wide`) masaüstünde TAM bir ekran eder: kabuk kesin yükseklik alır,
+     `flex-1` olan <main> kalan alanı birebir doldurur, kaydırma yalnız mekan listesinde kalır.
+     `min-height` yetmiyordu: kap belirsiz ölçülü kalınca `flex-basis: 0%` içerikle çözülüyor ve
+     sayfa içerik boyunca uzuyordu (ölçüldü — UI review 2026-09-03). Kural yalnız bu sayfalara
+     uygulanır; diğer sayfalar normal biçimde kayar. */
+  @media (min-width: 1024px) {
+    [data-app-shell]:has(> main[data-wide]) {
+      height: 100dvh;
+      /* `overflow: clip` — kabuk TAM ekran olduğu için hiçbir torunun sayfayı uzatmasına izin
+         verilmez: gövdenin kaydırma yüksekliği kesin olarak 100dvh'de kalır. Bu ekranda sayfa
+         kaydırması artık yapısal olarak imkânsız. `hidden` DEĞİL: `clip` kaydırma kabı
+         yaratmaz, böylece üst çubuğun `sticky` davranışı görüntü alanına göre çözülmeye
+         devam eder. */
+      overflow: clip;
+    }
+  }
   body {
     margin: 0;
     background: var(--color-paper);
