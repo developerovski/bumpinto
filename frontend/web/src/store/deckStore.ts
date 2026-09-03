@@ -8,6 +8,7 @@ type DeckState = {
   liked: Record<string, boolean>;
   listMode: boolean;
   sending: boolean;
+  sent: boolean;
   start: (slug: string, venueCount: number) => void;
   decide: (venueId: string, like: boolean) => Promise<void>;
   setLike: (venueId: string, like: boolean) => Promise<void>;
@@ -23,10 +24,12 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   liked: {},
   listMode: false,
   sending: false,
+  sent: false,
 
   start: (slug, venueCount) => {
     if (get().slug === slug) return; // yeniden mount'ta ilerlemeyi koru
-    set({ slug, index: 0, liked: {}, listMode: venueCount < 6 }); // az sonuç → liste (spec §4)
+    // az sonuç → liste (spec §4); sent de sıfırlanır — yeni deste yeniden gönderilebilir.
+    set({ slug, index: 0, liked: {}, listMode: venueCount < 6, sending: false, sent: false });
   },
 
   decide: async (venueId, like) => {
@@ -50,10 +53,12 @@ export const useDeckStore = create<DeckState>((set, get) => ({
 
   setListMode: (on) => set({ listMode: on }),
 
+  // Başarıda sent=true — buton bir daha basılamaz (karar dokümanı §1 bulgusu: çift gönderim).
   finish: async () => {
     set({ sending: true });
     try {
       await api.deckDone(get().slug);
+      set({ sent: true });
     } finally {
       set({ sending: false });
     }

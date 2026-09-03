@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Spec §6/§9: hesap listesi, profil tercihleri ve web cikisi — ApiHappyPathTest'le ayni baglami paylasir. */
@@ -97,12 +98,13 @@ class AccountApiTest {
 
         JsonNode updated = json.readTree(mvc.perform(put("/api/me").cookie(at).contentType(JSON)
                         .content("{\"displayName\":\"Mehmet Ş.\",\"language\":\"nl\","
-                                + "\"defaultActivity\":\"BAR\","
+                                + "\"defaultActivity\":\"BAR\",\"defaultTravelMode\":\"BIKE\","
                                 + "\"defaultLocation\":{\"lat\":51.69,\"lng\":5.30,\"label\":\"Den Bosch\"}}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(updated.get("displayName").asString()).isEqualTo("Mehmet Ş.");
         assertThat(updated.get("language").asString()).isEqualTo("nl");
         assertThat(updated.get("defaultLocation").get("label").asString()).isEqualTo("Den Bosch");
+        assertThat(updated.get("defaultTravelMode").asString()).isEqualTo("BIKE");
 
         mvc.perform(put("/api/me").cookie(at).contentType(JSON).content("{\"language\":\"de\"}"))
                 .andExpect(status().isBadRequest());
@@ -114,6 +116,7 @@ class AccountApiTest {
         assertThat(cleared.get("displayName").asString()).isEqualTo("Mehmet Ş.");
         assertThat(cleared.get("defaultLocation").isNull()).isTrue();
         assertThat(cleared.get("defaultActivity").isNull()).isTrue();
+        assertThat(cleared.get("defaultTravelMode").isNull()).isTrue();
 
         MvcResult logout = mvc.perform(post("/api/auth/logout").cookie(at))
                 .andExpect(status().isNoContent()).andReturn();
@@ -199,5 +202,22 @@ class AccountApiTest {
         JsonNode asOther = json.readTree(mvc.perform(get("/api/sessions/" + slug).cookie(otherAt))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(asOther.get("viewer").isNull()).isTrue();
+    }
+
+    @Test
+    void meRoundTripsDefaultTravelMode() throws Exception {
+        when(google.verify("gid-travel"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("travel@bumpinto.test", "Mehmet"));
+        JsonNode login = json.readTree(mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-travel\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String token = login.get("accessToken").asString();
+
+        mvc.perform(put("/api/me").header("Authorization", "Bearer " + token)
+                        .contentType(JSON).content("{\"defaultTravelMode\":\"EBIKE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.defaultTravelMode").value("EBIKE"));
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.defaultTravelMode").value("EBIKE"));
     }
 }

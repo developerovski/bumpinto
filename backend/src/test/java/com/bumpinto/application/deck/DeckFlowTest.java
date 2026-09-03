@@ -8,7 +8,9 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
@@ -38,9 +40,11 @@ class DeckFlowTest {
     FakeStores.InMemorySessionStore store;
     FakeStores.InMemoryDeckStore deck;
     FakeStores.RecordingEvents events;
+    FakeStores.FakeReverseGeocoder geocoder;
     List<Double> requestedRadii;
     List<VenueCandidate> providerResult;
     DeckFlow flow;
+    Clock clock;
     UUID hostUser;
     Session session;
     Participant host;
@@ -51,19 +55,25 @@ class DeckFlowTest {
                 new GeoPoint(51.5 + i * 0.001, 5.5), rating, 2, null, "https://maps/" + i);
     }
 
+    static VenueCandidate candAt(int i, double rating, GeoPoint at) {
+        return new VenueCandidate("foursquare", "x" + i, "Mekan " + i, at, rating, 2, null,
+                "https://maps/" + i);
+    }
+
     @BeforeEach
     void setUp() {
         store = new FakeStores.InMemorySessionStore();
         deck = new FakeStores.InMemoryDeckStore();
         events = new FakeStores.RecordingEvents();
+        geocoder = new FakeStores.FakeReverseGeocoder();
         requestedRadii = new ArrayList<>();
         providerResult = new ArrayList<>();
         VenueProviderPort provider = (center, radiusKm, type, limit) -> {
             requestedRadii.add(radiusKm);
             return List.copyOf(providerResult);
         };
-        flow = new DeckFlow(store, deck, provider, events, new DecisionEngine(),
-                Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC));
+        clock = Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC);
+        flow = new DeckFlow(store, deck, provider, events, new DecisionEngine(), clock, geocoder);
 
         hostUser = UUID.randomUUID();
         // Sabit id: shuffle tohumu session.id()'den gelir, rastgele id testi kimlik
@@ -79,36 +89,71 @@ class DeckFlowTest {
     }
 
     @Test
-    void findVenuesBuildsDeckSortedByRatingAndPublishes() {
-        providerResult.addAll(IntStream.range(0, 8).mapToObj(i -> cand(i, 3.0 + i * 0.2)).toList());
+    void findVenuesOrdersDeckByFairnessNotRating() {
+        // host Den Bosch (51.6978, 5.3037), ayse Someren (51.3855, 5.7120) — ikisi de CAR.
+        // "adil" ikisinin ortasinda, "uzak" Den Bosch'un kuzeyinde; puanlar TERS verildi.
+        providerResult.addAll(List.of(
+                candAt(0, 3.0, new GeoPoint(51.54, 5.51)),   // adil, dusuk puan
+                candAt(1, 4.9, new GeoPoint(51.95, 5.30)),   // uzak, yuksek puan
+                candAt(2, 4.5, new GeoPoint(51.52, 5.49)),
+                candAt(3, 4.4, new GeoPoint(51.55, 5.53)),
+                candAt(4, 4.3, new GeoPoint(51.53, 5.52)),
+                candAt(5, 4.2, new GeoPoint(51.56, 5.50))));
+        flow.findVenues("s1", hostUser);
 
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-
-        assertThat(venues).hasSize(8);
-        assertThat(venues.get(0).name()).isEqualTo("Mekan 7"); // en yüksek rating önce
-        assertThat(venues.get(0).deckOrder()).isZero();
-        assertThat(store.sessionBySlug("s1").orElseThrow().status()).isEqualTo(SessionStatus.BROWSING);
-        assertThat(events.published).extracting(p -> p.event().type()).containsExactly("venues_ready");
-        assertThat(requestedRadii).hasSize(1);
+        List<Venue> deckOrder = deck.venuesOf(session.id());
+        assertThat(deckOrder.get(deckOrder.size() - 1).externalId()).isEqualTo("x1"); // uzak sonda
+        assertThat(deckOrder.stream().map(Venue::deckOrder).toList())
+                .containsExactly(0, 1, 2, 3, 4, 5);
     }
 
     @Test
-    void shuffleOpensDeckWithSameRandomOrderForEveryoneAndPublishesDeckReady() {
+    void shuffleKeepsFairnessOrderForEveryoneAndPublishesDeckReady() {
         providerResult.addAll(IntStream.range(0, 8).mapToObj(i -> cand(i, 3.0 + i * 0.2)).toList());
-        List<Venue> browsing = flow.findVenues("s1", hostUser);
-        List<UUID> ratingOrder = browsing.stream().map(Venue::id).toList();
+        flow.findVenues("s1", hostUser);
+        List<UUID> browsingOrder = deck.venuesOf(session.id()).stream().map(Venue::id).toList();
 
         flow.shuffle("s1", hostUser);
 
         Session s = store.sessionBySlug("s1").orElseThrow();
         assertThat(s.status()).isEqualTo(SessionStatus.SWIPING);
-        List<UUID> deckOrder = deck.venuesOf(s.id()).stream().map(Venue::id).toList();
-        assertThat(deckOrder).containsExactlyInAnyOrderElementsOf(ratingOrder);
-        assertThat(deckOrder).isNotEqualTo(ratingOrder); // 8 kart, sabit tohum: sira degisir
+        // Sira ADALET tarafindan belirlenir; shuffle onu yeniden uygular (konumlar degismis
+        // olabilir) — herkes ayni sirayi gorur, tekrar cagirmak sirayi degistirmez.
+        assertThat(deck.venuesOf(s.id()).stream().map(Venue::id).toList())
+                .isEqualTo(browsingOrder);
         assertThat(deck.venuesOf(s.id()).stream().map(Venue::deckOrder).toList())
                 .containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
         assertThat(events.published).extracting(p -> p.event().type())
                 .containsExactly("venues_ready", "deck_ready");
+    }
+
+    /**
+     * Esit puanli mekanlarda ayirt edici TEK sey sabit kimlik (externalId) siralamasidir.
+     * Saglayici sonucu ALFABETIK OLMAYAN sirada gelir (x3,x1,x4,x2) — findVenues ile shuffle
+     * AYNI kanonik sirayi (canonicalOrder) kurmazsa, ilk shuffle browsing destesinden sapar ve
+     * tekrar tekrar cagirmak da kendi cikisini surukleyip her seferinde baska sira uretir.
+     */
+    @Test
+    void shuffleStaysIdempotentWhenRatingsTieAndProviderOrderIsNotAlphabetical() {
+        providerResult.addAll(List.of(
+                candAt(3, 4.0, new GeoPoint(51.501, 5.500)),
+                candAt(1, 4.0, new GeoPoint(51.502, 5.500)),
+                candAt(4, 4.0, new GeoPoint(51.503, 5.500)),
+                candAt(2, 4.0, new GeoPoint(51.504, 5.500))));
+
+        flow.findVenues("s1", hostUser);
+        List<UUID> browsingOrder = deck.venuesOf(session.id()).stream().map(Venue::id).toList();
+
+        flow.shuffle("s1", hostUser);
+        assertThat(deck.venuesOf(session.id()).stream().map(Venue::id).toList())
+                .isEqualTo(browsingOrder);
+
+        // Ikinci "Karistir ve kaydir": host BROWSING'e donmus gibi tekrar tetikler — sonuc
+        // yine AYNI olmali (idempotent), rastgele bir baska permutasyona kaymamali.
+        store.saveSession(store.sessionBySlug("s1").orElseThrow().withStatus(SessionStatus.BROWSING));
+        flow.shuffle("s1", hostUser);
+        assertThat(deck.venuesOf(session.id()).stream().map(Venue::id).toList())
+                .isEqualTo(browsingOrder);
     }
 
     @Test
@@ -212,7 +257,7 @@ class DeckFlowTest {
         assertThat(decided.status()).isEqualTo(SessionStatus.DECIDED);
         assertThat(decided.decidedVenueId()).isEqualTo(v0);
         assertThat(deck.votesByParticipant(session.id()))
-                .containsExactly(Map.entry(host.id(), v0), Map.entry(ayse.id(), v1));
+                .containsExactlyInAnyOrderEntriesOf(Map.of(host.id(), v0, ayse.id(), v1));
     }
 
     @Test
@@ -370,5 +415,90 @@ class DeckFlowTest {
                 .map(p -> p.event().payload().get("total")).toList()).containsOnly(2L);
         assertThatThrownBy(() -> flow.swipe("s1", manual.id(), fav, true))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void unanimousDecisionRecordsKindAndTimestamp() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        flow.findVenues("s1", hostUser);
+        flow.shuffle("s1", hostUser);
+        UUID fav = deck.venuesOf(session.id()).get(0).id();
+        for (Participant p : List.of(host, ayse)) {
+            flow.swipe("s1", p.id(), fav, true);
+            flow.finishDeck("s1", p.id());
+        }
+        Session s = store.sessionBySlug("s1").orElseThrow();
+        assertThat(s.status()).isEqualTo(SessionStatus.DECIDED);
+        assertThat(s.decisionKind()).isEqualTo(DecisionKind.UNANIMOUS);
+        assertThat(s.decidedAt()).isEqualTo(clock.instant());
+    }
+
+    @Test
+    void runoffRecordsItsReasonAndTheWinningVoteIsKindRunoff() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1), cand(2, 4.0)));
+        flow.findVenues("s1", hostUser);
+        flow.shuffle("s1", hostUser);
+        List<Venue> venues = deck.venuesOf(session.id());
+        // Ortak nokta yok → FALLBACK runoff
+        flow.swipe("s1", host.id(), venues.get(0).id(), true);
+        flow.swipe("s1", ayse.id(), venues.get(1).id(), true);
+        flow.finishDeck("s1", host.id());
+        flow.finishDeck("s1", ayse.id());
+
+        Session inRunoff = store.sessionBySlug("s1").orElseThrow();
+        assertThat(inRunoff.status()).isEqualTo(SessionStatus.RUNOFF);
+        assertThat(inRunoff.runoffReason()).isEqualTo(RunoffReason.FALLBACK);
+        assertThat(inRunoff.decisionKind()).isNull();
+
+        UUID finalist = inRunoff.runoffVenueIds().get(0);
+        flow.runoffVote("s1", host.id(), finalist);
+        flow.runoffVote("s1", ayse.id(), finalist);
+
+        Session decided = store.sessionBySlug("s1").orElseThrow();
+        assertThat(decided.decisionKind()).isEqualTo(DecisionKind.RUNOFF);
+        assertThat(decided.runoffReason()).isEqualTo(RunoffReason.FALLBACK); // iz korunur
+        assertThat(decided.decidedAt()).isEqualTo(clock.instant());
+    }
+
+    @Test
+    void hostPickWhileBrowsingRecordsForcedKind() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        List<Venue> venues = flow.findVenues("s1", hostUser);
+        flow.forceDecision("s1", hostUser, venues.get(0).id());
+        assertThat(store.sessionBySlug("s1").orElseThrow().decisionKind())
+                .isEqualTo(DecisionKind.FORCED);
+    }
+
+    @Test
+    void forcedPartialEvaluationIsMarkedPartial() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        flow.findVenues("s1", hostUser);
+        flow.shuffle("s1", hostUser);
+        UUID fav = deck.venuesOf(session.id()).get(0).id();
+        flow.swipe("s1", host.id(), fav, true);
+        flow.finishDeck("s1", host.id());     // ayse bitirmedi
+        flow.forceDecision("s1", hostUser, null);
+        Session s = store.sessionBySlug("s1").orElseThrow();
+        assertThat(s.status()).isEqualTo(SessionStatus.DECIDED);
+        assertThat(s.decisionKind()).isEqualTo(DecisionKind.PARTIAL);
+    }
+
+    @Test
+    void findVenuesResolvesMidpointLabelOnceAndSurvivesGeocoderFailure() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        flow.findVenues("s1", hostUser);
+        assertThat(store.sessionBySlug("s1").orElseThrow().midpointLabel()).isEqualTo("Eindhoven");
+        assertThat(geocoder.calls).isEqualTo(1);
+
+        flow.shuffle("s1", hostUser);
+        assertThat(geocoder.calls).isEqualTo(1); // etiket bir kez cozulur
+    }
+
+    @Test
+    void midpointLabelStaysNullWhenGeocoderCannotResolve() {
+        geocoder.label = null;
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        flow.findVenues("s1", hostUser);
+        assertThat(store.sessionBySlug("s1").orElseThrow().midpointLabel()).isNull();
     }
 }

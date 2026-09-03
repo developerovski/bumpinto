@@ -20,7 +20,8 @@ http:
           "label": "'s-Hertogenbosch"
         },
         "defaultActivity": "COFFEE",
-        "language": "tr"
+        "language": "tr",
+        "defaultTravelMode": "EBIKE"
       }
   auth:
     type: bearer
@@ -46,5 +47,8 @@ docs:
 
     Limitler: `displayName` <= 40, `defaultLocation.label` <= 80, `lat` -90..90,
     `lng` -180..180. `language`: yalniz `tr`|`en`|`nl`, aksi 400.
+
+    `defaultTravelMode` null = tercihi temizle. `GET /api/me` ayni alani doner; istemci
+    Katil formunu bununla on-doldurur.
 
     Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

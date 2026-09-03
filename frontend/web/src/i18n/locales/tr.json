@@ -3,7 +3,8 @@
     "wordmark": "BumpInto",
     "title": "BumpInto — ortada buluşun",
     "save": "Kaydet",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "cancel": "Vazgeç"
   },
   "shell": {
     "sessions": "Oturumlar",
@@ -45,8 +46,8 @@
   },
   "waiting": {
     "joined": "Katıldın!",
-    "preparing": "Deste hazırlanıyor…",
-    "copy": "Mekanlar gelince buradan kaydıracaksın — sayfayı kapatma yeter.",
+    "preparing": "Mekanlar geliyor",
+    "copy": "Önce liste, sonra oylama. Sayfayı kapatma yeter.",
     "who": "Kimler var",
     "readyCount": "{{ready}} / {{total}} hazır",
     "host": "Kuran",
@@ -54,23 +55,18 @@
     "waitingBadge": "Bekliyor",
     "waitingLocation": "Konum bekleniyor…",
     "you": "(sen)",
-    "changeLocation": "Konumumu değiştir",
-    "errUpdate": "Konum güncellenemedi — tekrar dene."
+    "errUpdate": "Konum güncellenemedi — tekrar dene.",
+    "changeLocationAndMode": "Konum ve ulaşım",
+    "modeHint": "Kaydetmek için konumunu yeniden vermen gerekir."
   },
   "deck": {
     "seeAll": "Hepsini gör",
-    "photoTag": "foto · Places",
     "pass": "geç",
     "like": "beğen",
     "ariaUndo": "Geri al",
     "ariaPass": "Geç",
     "ariaLike": "Beğen",
-    "travel": "{{who}} {{min}} dk",
-    "travelShort": "{{who}} {{min}}′",
     "travelSelf": "Sen",
-    "travelFriend": "Arkadaşın",
-    "travelFallback": "Yol",
-    "finishedTitle": "Deste <0>bitti!</0>",
     "send": "Beğenilerimi gönder",
     "backToList": "Listeye dön, düzelt",
     "listTitle": "Hangisi olsun?",
@@ -84,16 +80,49 @@
     "finishedCopy": "{{count}} mekanı beğendin. Herkes bitirince sonuç açıklanır.",
     "backToDeck": "Desteye dön",
     "likesN": "{{count}} beğeni",
-    "progressDone": "{{names}} bitirdi.",
-    "progressWaiting": "{{names}} hâlâ kaydırıyor; herkes bitirince sonuç açıklanır.",
     "swipeHand": "kaydır gitsin — butonlar da aynı işi yapar",
-    "travelSelfTo": "Sana",
-    "minutes": "{{min}} dk"
+    "likedTitle": "{{count}} mekan beğendin",
+    "sentCopy": "Herkes bitirince sonuç açıklanır.",
+    "rowDone": "Bitirdi",
+    "rowSwiping": "Kaydırıyor",
+    "nudge": "Bekleyenleri dürt",
+    "nudgeText": "{{activity}} için {{count}} mekan hazır, seni bekliyoruz:",
+    "continueWithout": "{{names}} olmadan devam et",
+    "allDoneHand": "herkes bitirdi — sonuç birazdan →",
+    "emptyWarn": "Hiç beğeni seçmedin. Kimse ortak beğenmezse sonuç boş kalır.",
+    "sendAnyway": "Yine de gönder",
+    "sentBadge": "Beğenilerin gönderildi",
+    "sentTitleWaiting": "Şimdi bekliyoruz · {{name}} kaydırıyor",
+    "sentTitleAllDone": "Herkes bitirdi — sonuç birazdan açıklanır",
+    "sentCopyExtra": "Sayfayı açık bırakman yeter.",
+    "othersLabel": "diğerleri",
+    "laggardHand": "{{name}}, herkes seni bekliyor — {{count}} kart kaldı",
+    "progressLine_one": "<0>{{done}} bitirdi.</0> {{name}} hâlâ kaydırıyor; herkes bitirince sonuç açıklanır.",
+    "progressLine_other": "<0>{{done}} bitirdi.</0> {{name}} hâlâ kaydırıyor; herkes bitirince sonuç açıklanır.",
+    "errSend": "Beğenilerin gönderilemedi — tekrar dene.",
+    "errForce": "Karar başlatılamadı — tekrar dene.",
+    "calibrateHand": "hiç beğenmedin — kimse ortak beğenmezse sonuç boş kalır"
+  },
+  "travel": {
+    "min": "~{{min}} dk",
+    "gap": "fark {{min}} dk",
+    "self": "Sen",
+    "friend": "Arkadaşın",
+    "longest": "en uzun yol"
+  },
+  "fairness": {
+    "same": "Herkese ~aynı",
+    "far": "{{name}} için uzak",
+    "farSelf": "Senin için uzak"
   },
   "runoff": {
-    "sticker": "Son düzlük",
-    "title": "İkisi de güzel,<0/>biri kazanacak",
+    "overline": "{{activity}} · {{count}} KİŞİ · ORTA NOKTA ÇEVRESİ",
+    "titleTwo": "İkisi de güzel, biri seçilecek",
+    "titleMany": "Hepsi güzel, biri seçilecek",
+    "titleSent": "Seçimini yaptın, biri seçilecek",
     "copy": "Herkes ikisini de beğendi. Tek seçim hakkın var — sonuç herkes seçince açıklanır.",
+    "copyFallback": "Henüz ortak nokta yok — en çok beğenilen mekanlar finalde.",
+    "trailer": "toplam ~{{total}} dk · fark ~{{gap}} dk",
     "note": "kim neyi seçti, sonuçta belli olur",
     "lockIn": "Seçimimi kilitle",
     "who": "Kim seçti",
@@ -101,20 +130,25 @@
     "lockedBadge": "Kilitledi",
     "lockedTitle": "Seçimin kilitli",
     "lockedCopy": "diğerlerini bekliyoruz — sonuç herkes seçince açıklanır",
+    "lockedCopyName": "{{name}} seçiyor — herkes kilitleyince sonuç açıklanır",
     "countOf": "{{done}} / {{total}}",
     "votedCount": "{{done}}/{{total}} seçti",
+    "remind": "Hatırlatma gönder",
+    "remindText": "Seçim seni bekliyor, tek tıkla kilitle:",
+    "tallyTitle": "Oylar",
     "tieNote": "Herkes seçti ve berabere kaldı.",
     "tieTitle": "Berabere",
     "tieHostCopy": "Buluşmayı sen kurdun, son sözü sen söylüyorsun.",
     "tieGuestCopy": "{{host}} son kararı veriyor.",
     "tieDecide": "Kararı ver",
+    "tieFair": "Adil olana bırak",
     "errDecide": "Karar kaydedilemedi — tekrar dene.",
     "errVote": "Seçim gönderilemedi — tekrar dene."
   },
   "result": {
     "overline": "Ortak nokta",
     "sticker": "Karar verildi!",
-    "directions": "Yol tarifi al",
+    "decidedAtSticker": "Karar verildi · {{time}}",
     "viralTitle": "Sıradaki buluşma senden mi?",
     "viralCopy": "30 saniyede kur — arkadaşların linkle katılır.",
     "viralCta": "Buluşma kur",
@@ -123,7 +157,24 @@
     "copied": "Kopyalandı",
     "shareText": "{{name}}: {{venue}} — BumpInto ile ortada buluştuk.",
     "viralHostTitle": "Bir sonrakini de sen mi kuracaksın?",
-    "viralHostCta": "Yeni buluşma kur"
+    "viralHostCta": "Yeni buluşma kur",
+    "whyTitle": "Neden burası?",
+    "axisFair": "Adalet",
+    "axisFit": "Uyum",
+    "axisPlace": "Yer",
+    "fairLine": "Herkes ~{{min}}–{{max}} dk · en uzun yol {{name}}",
+    "fairLineNoName": "Herkes ~{{min}}–{{max}} dk",
+    "midpointMeters": "Herkesin ortasına ~{{m}} m",
+    "midpointExact": "Tam ortada",
+    "leaveEarlyHand": "{{name}} en uzaktan geliyor — ~{{min}} dk önce çıkarsa herkes aynı anda varır",
+    "eyebrowUnanimous": "HEPİNİZ AYNI YERİ BEĞENDİ",
+    "eyebrowRunoff": "Oylamayla {{a}}–{{b}}",
+    "eyebrowPartial": "{{names}} olmadan",
+    "openInMaps": "Google Maps'te aç",
+    "backup": "Yedek plan",
+    "backupNote": "ikinci sırada",
+    "likedSticker": "{{n}}/{{total}} beğendi!",
+    "partialOthers": "{{name}} ve diğerleri"
   },
   "landing": {
     "title": "<0>Ortada</0><1/>buluşalım.",
@@ -209,7 +260,8 @@
     "retention": "Buluşmalar 24 saatte kapanır, 30 günde silinir. Katılanlardan yalnızca ad + konum tutulur — o kadar.",
     "langHint": "Davet linkiyle gelenler kendi tarayıcı dilini görür; senin seçimin yalnız senin hesabın için.",
     "logout": "Çıkış yap",
-    "errSave": "Kaydedilemedi — tekrar dene."
+    "errSave": "Kaydedilemedi — tekrar dene.",
+    "defaultTravelMode": "Varsayılan ulaşım"
   },
   "error": {
     "hmm": "Hmm.",
@@ -221,12 +273,52 @@
   },
   "map": {
     "notConfigured": "Harita bu ortamda yapılandırılmadı.",
-    "midpoint": "Orta nokta · ≤ {{km}} km",
+    "loading": "Harita yükleniyor…",
     "midpointOnly": "Orta nokta",
     "midpointPending": "Orta nokta sen katılınca netleşir",
-    "joinToSee": "Katılınca konumlar haritada görünür.",
     "you": "sen",
     "youPending": "sen · katılınca"
+  },
+  "midpoint": {
+    "overline": "Orta nokta",
+    "title": "Orta nokta",
+    "near": "{{label}} civarı",
+    "meta": "≤ {{km}} km · herkes ~{{min}}–{{max}} dk",
+    "metaKm": "≤ {{km}} km",
+    "pending": "Herkes konumunu atınca netleşir",
+    "sideNote": "Orta nokta {{name}} tarafında · {{mode}}"
+  },
+  "steps": {
+    "locations": "Konumlar",
+    "venues": "Mekanlar",
+    "vote": "Oylama",
+    "decide": "Karar",
+    "aria": "Oturum adımları"
+  },
+  "travelMode": {
+    "WALK": {
+      "name": "Yürüyerek",
+      "coming": "yürüyerek geliyor"
+    },
+    "BIKE": {
+      "name": "Bisikletle",
+      "coming": "bisikletle geliyor"
+    },
+    "EBIKE": {
+      "name": "E-bisikletle",
+      "coming": "e-bisikletle geliyor"
+    },
+    "TRANSIT": {
+      "name": "Toplu taşımayla",
+      "coming": "toplu taşımayla geliyor"
+    },
+    "CAR": {
+      "name": "Arabayla",
+      "coming": "arabayla geliyor"
+    },
+    "question": "Nasıl geliyorsun?",
+    "forName": "{{name}} nasıl geliyor?",
+    "selected": "{{mode}} seçili"
   },
   "newSession": {
     "back": "Oturumlar",
@@ -269,21 +361,40 @@
     "collecting": "konumlar toplanıyor",
     "late": "{{name}} yetişemezse sonradan katılır, sorun olmaz.",
     "errFind": "Mekanlar bulunamadı — tekrar dene.",
-    "errPoint": "Konum kaydedilemedi — tekrar dene."
+    "errPoint": "Konum kaydedilemedi — tekrar dene.",
+    "openMap": "Haritayı aç",
+    "meetingFor": "{{activity}} için buluşuyoruz",
+    "promise": "Orta nokta çevresinde {{activity}} mekanları aranacak.",
+    "promiseKm": "Orta nokta çevresinde {{activity}} mekanları aranacak (≤ {{km}} km)."
   },
   "venues": {
     "meta": "{{count}} mekan · orta noktadan ≤ {{km}} km",
     "metaNoRadius": "{{count}} mekan",
-    "pick": "Bunu seç",
     "shuffle": "Karıştır ve kaydır",
     "everyoneSees": "Herkes bu listeyi görüyor. Karıştırınca deste açılır; kim neyi beğendi, sonuçta belli olur.",
     "guestWait": "host karıştırınca deste açılır",
     "soloBadge": "Bireysel · {{count}} konum",
-    "soloHand": "kaydırmak yok, beğendiğini seç →",
-    "list": "Liste",
-    "map": "Harita",
-    "view": "Görünüm",
     "errShuffle": "Deste açılamadı — tekrar dene.",
-    "errPick": "Seçim kaydedilemedi — tekrar dene."
+    "errPick": "Seçim kaydedilemedi — tekrar dene.",
+    "sort": "Sıralama",
+    "sortFair": "Herkese adil",
+    "sortRating": "Puan",
+    "showOnMap": "Haritada gör",
+    "selectionTitle": "Seçimin",
+    "lockIn": "Kilitle",
+    "cancel": "Vazgeç",
+    "fairHand": "önce herkese en adil olanlar →",
+    "noLocationOne": "{{name}} konumunu henüz paylaşmadı — süreler o gelince güncellenir",
+    "noLocationMany": "Konumu olmayanlar gelince süreler güncellenir"
+  },
+  "attribution": {
+    "google": "Google Maps",
+    "foursquare": "Powered by Foursquare",
+    "osm": "© OpenStreetMap contributors"
+  },
+  "venue": {
+    "fitOk": "{{activity}} için: {{category}}",
+    "fitOff": "{{activity}} değil: {{category}}",
+    "hoursToday": "Bugün {{hours}}"
   }
 }

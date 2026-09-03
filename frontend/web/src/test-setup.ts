@@ -25,3 +25,20 @@ if (typeof window.PointerEvent === "undefined") {
   }
   window.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
 }
+
+// jsdom `window.matchMedia` uygulamıyor — `useMediaQuery`/`MapView` bunu çağırdığında
+// throw eder. Varsayılan olarak HİÇBİR sorgu eşleşmez (`matches: false`); genişlik-bağımlı
+// davranışı test eden yerler `window.matchMedia`'yı testin kendi içinde geçici olarak değiştirir.
+if (typeof window.matchMedia !== "function") {
+  window.matchMedia = ((query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList) as typeof window.matchMedia;
+}

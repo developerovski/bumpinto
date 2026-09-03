@@ -61,16 +61,16 @@ Plan 5'in yayın kontrol listesi bu plan `done` olmadan işaretlenmez (kapı sat
 
 ---
 
-> **2026-09-02 revizyonu (INDEX):** Bu planın migration numarası **V5**'tir — V3 B-5'e
+> **2026-09-03 revizyonu (INDEX):** Bu planın migration numarası **V6**'dır (V5 = B-7) — V3 B-5'e
 > (oturum tipi / elle konum), V4 B-6'ya (kullanıcı tercihleri) verildi. Flyway `outOfOrder`
-> kapalı; bu plan B-5 ve B-6'dan SONRA koşar. Aşağıdaki `V3__` geçen her yer `V5__` okunur.
+> kapalı; bu plan B-5 ve B-6'dan SONRA koşar. Aşağıdaki `V3__` geçen her yer `V6__` okunur.
 
-### Task 1: V5 migration + cascade davranışının kanıtı
+### Task 1: V6 migration + cascade davranışının kanıtı
 
-- Create: `backend/src/main/resources/db/migration/V5__session_retention.sql`
+- Create: `backend/src/main/resources/db/migration/V6__session_retention.sql`
 - Modify: `backend/src/test/java/com/bumpinto/SchemaMigrationTest.java` (index doğrulaması)
 
-- [ ] **Step 1: V5__session_retention.sql**
+- [ ] **Step 1: V6__session_retention.sql**
 
 ```sql
 create index idx_sessions_expires_at on sessions (expires_at);

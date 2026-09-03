@@ -14,10 +14,14 @@ export function HeaderButton(props: { onClick: () => void; children: ReactNode }
   );
 }
 
-/** Artboard W3 · başlık + meta satırı + ilerleme çubuğu + "Hepsini gör". */
+/** Artboard W3 · başlık + meta satırı + ilerleme çubuğu + "Hepsini gör".
+    1280'de meta yalnız kart sayısı/orta nokta metnidir (artboard "4 / 12 kart · Eindhoven civarı");
+    beğeni sayacı yalnız 390'da görünür (§4.8 — 1280'de zaten sağ kolonda "Beğendiklerin" var). */
 export default function DeckHeader(props: {
   title: string;
   meta: string;
+  /** Yalnız 390'da meta'ya eklenen "N beğeni" — plan16 T3 coordinator düzeltmesi. */
+  likesMeta?: string;
   progress: number;
   onSeeAll?: () => void;
 }) {
@@ -26,7 +30,12 @@ export default function DeckHeader(props: {
     <div className="mb-3 flex flex-none flex-col gap-3">
       <SessionHeader
         title={props.title}
-        meta={props.meta}
+        meta={
+          <>
+            {props.meta}
+            {props.likesMeta && <span className="lg:hidden"> · {props.likesMeta}</span>}
+          </>
+        }
         action={
           props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>
         }

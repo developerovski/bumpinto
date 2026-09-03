@@ -42,6 +42,12 @@ public class DeckStoreAdapter implements DeckStorePort {
             e.photoUrl = v.photoUrl();
             e.mapsUrl = v.mapsUrl();
             e.deckOrder = v.deckOrder();
+            e.category = v.category();
+            e.address = v.address();
+            e.locality = v.locality();
+            e.ratingCount = v.ratingCount();
+            e.hoursToday = v.hoursToday();
+            e.placeLink = v.placeLink();
             return e;
         }).toList());
         return list;
@@ -51,7 +57,8 @@ public class DeckStoreAdapter implements DeckStorePort {
         return venues.findBySessionIdOrderByDeckOrder(sessionId).stream()
                 .map(e -> new Venue(e.id, e.sessionId, e.provider, e.externalId, e.name,
                         new GeoPoint(e.lat, e.lng), e.rating, e.priceLevel, e.photoUrl,
-                        e.mapsUrl, e.deckOrder))
+                        e.mapsUrl, e.deckOrder, e.category, e.address, e.locality, e.ratingCount,
+                        e.hoursToday, e.placeLink))
                 .toList();
     }
 

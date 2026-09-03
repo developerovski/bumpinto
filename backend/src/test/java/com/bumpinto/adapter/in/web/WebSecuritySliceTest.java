@@ -67,7 +67,8 @@ class WebSecuritySliceTest {
                     new AppProps.Cors(List.of("http://localhost:5173")),
                     new AppProps.Cookies(false, ""),
                     new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
         }
 
         @Bean
@@ -133,7 +134,7 @@ class WebSecuritySliceTest {
 
     @Test
     void webJoinPutsTokenOnlyInHttpOnlyCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any())).thenReturn(ayse());
+        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any())).thenReturn(ayse());
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .header("X-Client", "web")
@@ -152,7 +153,7 @@ class WebSecuritySliceTest {
 
     @Test
     void mobileJoinReturnsTokenInBodyWithoutCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any())).thenReturn(ayse());
+        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any())).thenReturn(ayse());
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .contentType("application/json")
@@ -185,7 +186,7 @@ class WebSecuritySliceTest {
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, "tok-h", null, false, null);
-        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any()))
+        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
@@ -205,7 +206,7 @@ class WebSecuritySliceTest {
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, "tok-h", null, false, null);
-        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any()))
+        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         MvcResult result = mvc.perform(post("/api/sessions")
@@ -282,7 +283,8 @@ class WebSecuritySliceTest {
         participantTokenIsValidForAbc();
         Session session = session(UUID.randomUUID());
         when(queries.snapshot("abc")).thenReturn(new SessionQueries.SessionSnapshot(
-                session, List.of(ayse()), List.of(), java.util.Map.of(), java.util.Map.of()));
+                session, List.of(ayse()), List.of(), java.util.Map.of(), java.util.Map.of(),
+                java.util.Map.of()));
 
         mvc.perform(get("/api/sessions/abc").header(ParticipantTokenFilter.HEADER, "tok-a"))
                 .andExpect(status().isOk())

@@ -36,14 +36,8 @@ class SchemaMigrationTest {
 
     @Test
     void v3AddsSessionTypeAndManualParticipantColumns() {
-        List<String> sessionCols = jdbc.queryForList(
-                "select column_name from information_schema.columns where table_name = 'sessions'",
-                String.class);
-        assertThat(sessionCols).contains("session_type");
-        List<String> participantCols = jdbc.queryForList(
-                "select column_name from information_schema.columns where table_name = 'participants'",
-                String.class);
-        assertThat(participantCols).contains("is_manual", "location_label");
+        assertThat(columnsOf("sessions")).contains("session_type");
+        assertThat(columnsOf("participants")).contains("is_manual", "location_label");
         String tokenNullable = jdbc.queryForObject(
                 "select is_nullable from information_schema.columns "
                         + "where table_name = 'participants' and column_name = 'token'", String.class);
@@ -52,10 +46,34 @@ class SchemaMigrationTest {
 
     @Test
     void v4AddsUserPreferenceColumns() {
-        List<String> cols = jdbc.queryForList(
-                "select column_name from information_schema.columns where table_name = 'users'",
+        assertThat(columnsOf("users")).contains("default_lat", "default_lng",
+                "default_location_label", "default_activity", "language");
+    }
+
+    @Test
+    void v5AddsTravelModeFairnessAndProviderColumns() {
+        assertThat(columnsOf("participants")).contains("travel_mode");
+        assertThat(columnsOf("users")).contains("default_travel_mode");
+        assertThat(columnsOf("sessions"))
+                .contains("decided_at", "decision_kind", "runoff_reason", "midpoint_label");
+        assertThat(columnsOf("venues"))
+                .contains("category", "address", "locality", "rating_count", "place_link",
+                        "hours_today");
+        String def = jdbc.queryForObject(
+                "select column_default from information_schema.columns "
+                        + "where table_name = 'participants' and column_name = 'travel_mode'",
                 String.class);
-        assertThat(cols).contains("default_lat", "default_lng", "default_location_label",
-                "default_activity", "language");
+        assertThat(def).contains("CAR");
+        String nullable = jdbc.queryForObject(
+                "select is_nullable from information_schema.columns "
+                        + "where table_name = 'participants' and column_name = 'travel_mode'",
+                String.class);
+        assertThat(nullable).isEqualTo("NO");
+    }
+
+    private List<String> columnsOf(String table) {
+        return jdbc.queryForList(
+                "select column_name from information_schema.columns where table_name = ?",
+                String.class, table);
     }
 }

@@ -24,7 +24,13 @@ export default function TwoZone(props: {
   /** ≥1024 bölge içi boşluk — artboard bölge bazında 18/26px isteyebilir. */
   leftGap?: keyof typeof zoneGaps;
   rightGap?: keyof typeof zoneGaps;
+  /** Artboard Lobi/Bekle 390: `.f-mid` (sağ bölgede) roster'dan (sol bölgede) ÖNCE görünür.
+      Yalnız GÖRSEL sırayı değiştirir (`order-*`, ≥1024'te `lg:order-none` ile sıfırlanır) —
+      DOM/okuma sırası AYNI kalır, bileşen tek yerde kalır (kopyalanmaz). */
+  mobileFirst?: "right";
 }) {
+  const leftOrder = props.mobileFirst === "right" ? "order-2 lg:order-none" : "";
+  const rightOrder = props.mobileFirst === "right" ? "order-1 lg:order-none" : "";
   return (
     <div
       className={[
@@ -33,12 +39,16 @@ export default function TwoZone(props: {
         props.centerY ? "lg:items-center" : "lg:items-start",
       ].join(" ")}
     >
-      <div className={`flex min-w-0 flex-col gap-4 ${zoneGaps[props.leftGap ?? "default"]}`}>
+      <div
+        data-testid="zone-left"
+        className={`flex min-w-0 flex-col gap-4 ${leftOrder} ${zoneGaps[props.leftGap ?? "default"]}`}
+      >
         {props.left}
       </div>
       <div
+        data-testid="zone-right"
         className={
-          `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ` +
+          `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ${rightOrder} ` +
           zoneGaps[props.rightGap ?? "default"]
         }
       >

@@ -26,7 +26,8 @@ class RateLimitFilterTest {
                 new AppProps.Cors(List.of()),
                 new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(trustForwardedFor),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
     static MockHttpServletRequest post(String ip) {

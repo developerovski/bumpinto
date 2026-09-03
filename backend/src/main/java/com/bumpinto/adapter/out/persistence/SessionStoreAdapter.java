@@ -1,9 +1,12 @@
 package com.bumpinto.adapter.out.persistence;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.DecisionKind;
+import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -47,6 +50,10 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.decidedVenueId = s.decidedVenueId();
         e.runoffVenueIds = s.runoffVenueIds().isEmpty() ? null
                 : s.runoffVenueIds().stream().map(UUID::toString).collect(Collectors.joining(","));
+        e.decidedAt = s.decidedAt();
+        e.decisionKind = s.decisionKind() == null ? null : s.decisionKind().name();
+        e.runoffReason = s.runoffReason() == null ? null : s.runoffReason().name();
+        e.midpointLabel = s.midpointLabel();
         sessions.save(e);
         return s;
     }
@@ -67,6 +74,7 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.isHost = p.host();
         e.isManual = p.manual();
         e.locationLabel = p.locationLabel();
+        e.travelMode = p.travelMode().name();
         participants.save(e);
         return p;
     }
@@ -129,12 +137,17 @@ public class SessionStoreAdapter implements SessionStorePort {
                 : Arrays.stream(e.runoffVenueIds.split(",")).map(UUID::fromString).toList();
         return new Session(e.id, e.slug, e.hostId, e.name, ActivityType.valueOf(e.activityType),
                 SessionType.valueOf(e.sessionType), SessionStatus.valueOf(e.status), e.expiresAt,
-                e.decidedVenueId, runoff);
+                e.decidedVenueId, runoff, e.decidedAt,
+                e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
+                e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
+                e.midpointLabel);
     }
 
     static Participant toParticipant(ParticipantEntity e) {
         GeoPoint loc = (e.lat == null || e.lng == null) ? null : new GeoPoint(e.lat, e.lng);
+        // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost, e.token,
-                e.deckDoneAt, e.isManual, e.locationLabel);
+                e.deckDoneAt, e.isManual, e.locationLabel,
+                e.travelMode == null ? null : TravelMode.valueOf(e.travelMode));
     }
 }

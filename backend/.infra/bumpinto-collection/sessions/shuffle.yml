@@ -25,5 +25,10 @@ docs:
   type: text/markdown
   content: |-
     Host JWT gerekir. Yalniz `BROWSING` durumunda ve `sessionType=GROUP` icin (aksi 409).
-    `deckOrder` herkes icin ayni rastgele siraya yazilir; `deck_ready` olayi yayinlanir.
+    `deckOrder` adalet sirasina yeniden yazilir (idempotent); konum/ulasim modu degistiyse sira
+    tazelenir. `deck_ready` olayi yayinlanir.
     Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).
+
+    Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir — `venues[]` alanlari
+    (`fairness`, `travelMinutes`, `provider`, `category`, `address`, `locality`, `ratingCount`,
+    `hoursToday`, `placeLink`) DEGISMEDEN korunur; yalniz siralama/`deckOrder` yeniden hesaplanir.

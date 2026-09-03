@@ -110,11 +110,13 @@ test izolasyonu).
 
 ### Coğrafi hesaplar
 
-- **Orta nokta:** küresel centroid (lat/lng → 3B vektör ortalaması → geri).
+- **Orta nokta:** küresel centroid (lat/lng → 3B vektör ortalaması → geri); **rev 2026-09-03:**
+  katılımcı ulaşım türüne göre hıza ters ağırlıklı (ağırlık = 1/hız) — yavaş gelen kişiye kayar.
 - **Yarıçap:** katılımcı yayılımından türetilir; min 1 km. Sonuç 0 ise ×2
   genişletme, en fazla 3 kez; hâlâ 0 ise kullanıcıya "kategori değiştir" önerisi.
-- **Yol süresi:** MVP'de haversine × 1.3 heuristiği (dış API yok, ücretsiz).
-  v1.1'de bare-metal K8s üzerinde self-host OSRM.
+- **Yol süresi:** MVP'de haversine × 1.3 heuristiği (dış API yok, ücretsiz); **rev 2026-09-03:**
+  katılımcı `travelMode` ile mod hızı (yürüyüş 5 · bisiklet 16 · e-bisiklet 24 · toplu taşıma ~20 ·
+  araba 72 km/sa, varsayılan araba). v1.1'de bare-metal K8s üzerinde self-host OSRM.
 - **Geocoding (adres → koordinat):** Nominatim (ücretsiz, kullanım
   politikasına uygun oranda, sonuçlar cache'lenir).
 
@@ -127,7 +129,8 @@ kalır ve hangisinin öldüğü ölçülemez.
 
 ### Etkileşim
 
-- Deste herkese aynı sırada sunulur (`venues.deck_order`).
+- Deste herkese aynı sırada sunulur (`venues.deck_order`); **rev 2026-09-03:** sıra adalet öncelikli
+  (en uzun yol → fark → 5 dk bant içi oturum tohumlu rastgele), bkz. `2026-09-03-map-free-group-decision-ux.md` §4.5.
 - Her kart için iki eylem: **beğen** veya **geç**.
 - Kaydırma jesti tek yol değildir: her kartta görünür beğen/geç butonları
   bulunur. WCAG 2.2 `dragging-alternative` gereği her sürükleme eyleminin

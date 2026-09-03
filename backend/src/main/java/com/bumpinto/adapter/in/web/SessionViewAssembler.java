@@ -1,17 +1,18 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.domain.geo.Fairness;
 import com.bumpinto.domain.geo.GeoMath;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
-import com.bumpinto.domain.geo.TravelEstimate;
+import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
+import com.bumpinto.domain.venue.Venue;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,36 +22,55 @@ import java.util.stream.Collectors;
 public class SessionViewAssembler {
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
-        List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
-                .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
-                        p.hasLocation(), p.deckDone(), p.manual(), p.locationLabel(),
-                        p.hasLocation() ? approx(p.location()) : null))
-                .toList();
         List<Participant> located = snap.participants().stream()
                 .filter(Participant::hasLocation).toList();
-        // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
-        List<ApiDtos.VenueDto> venues = snap.venues().stream().map(v -> {
-            Map<UUID, Integer> travel = new LinkedHashMap<>();
-            located.forEach(p -> travel.put(p.id(),
-                    TravelEstimate.fromCrowKm(GeoMath.distanceKm(p.location(), v.location())).minutes()));
-            return new ApiDtos.VenueDto(v.id(), v.name(), v.location().lat(), v.location().lng(),
-                    v.rating(), v.priceLevel(), v.photoUrl(), v.mapsUrl(), v.deckOrder(), travel);
-        }).toList();
+
+        // Orta nokta ONCE: katilimci satirlarindaki midpointMinutes buna dayanir.
         ApiDtos.GeoPointDto midpoint = null;
         Double radiusKm = null;
+        GeoPoint center = null;
         if (located.size() >= 2) {
             List<GeoPoint> points = located.stream().map(Participant::location).toList();
-            GeoPoint center = GeoMath.centroid(points);
+            // Hiza TERS agirlik (spec §4.5b): yavas gelen orta noktayi kendine ceker.
+            List<Double> weights = located.stream().map(p -> p.travelMode().weight()).toList();
+            center = GeoMath.centroid(points, weights);
             midpoint = approx(center);
             radiusKm = Math.round(SearchRadius.baseKm(points, center) * 10) / 10.0;
         }
+        GeoPoint midpointFor = center;
+
+        List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
+                .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
+                        p.hasLocation(), p.deckDone(), p.manual(), p.locationLabel(),
+                        p.hasLocation() ? approx(p.location()) : null, p.travelMode(),
+                        // Orta nokta yoksa ya da kisinin konumu yoksa satir cizilmez → null.
+                        midpointFor == null || !p.hasLocation() ? null
+                                : TravelMinutes.between(p.location(), p.travelMode(), midpointFor)))
+                .toList();
+
+        // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
+        List<ApiDtos.VenueDto> venues = snap.venues().stream().map(v -> {
+            // Konumu olan HERKES (viewer ve elle konumlar dahil): 3. kisi asla dusmez (§4.3),
+            // dakika yuvarlanmis konumdan gelir (§4.4) — TravelMinutes.byParticipant DeckFlow
+            // ile AYNI kod yolu (tek kaynak, kopya kayma riski yok).
+            Map<UUID, Integer> travel = TravelMinutes.byParticipant(located, v.location());
+            // Hic konumlu katilimci yoksa (0,0,null) degil null: "herkes esit" YALANI yazilmaz.
+            ApiDtos.FairnessDto fairness = located.isEmpty() ? null : toFairnessDto(Fairness.of(travel));
+            return new ApiDtos.VenueDto(v.id(), v.name(), v.location().lat(), v.location().lng(),
+                    v.rating(), v.priceLevel(), v.photoUrl(), directionsUrl(v), v.deckOrder(),
+                    travel, fairness,
+                    v.provider(), v.category(), v.address(), v.locality(), v.ratingCount(),
+                    v.hoursToday(), v.placeLink());
+        }).toList();
         return new ApiDtos.SessionView(snap.session().slug(), snap.session().name(),
                 snap.session().activityType(), snap.session().sessionType(),
                 snap.session().status(), snap.session().expiresAt(),
                 participants, venues, snap.session().runoffVenueIds(),
                 snap.session().decidedVenueId(), snap.voteTally(), midpoint, radiusKm,
                 snap.runoffVotes().keySet().stream().sorted().toList(),
-                WebPrincipals.viewerOf(snap, auth));
+                WebPrincipals.viewerOf(snap, auth),
+                snap.session().midpointLabel(), snap.session().decisionKind(),
+                snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts());
     }
 
     /** Katilmadan once: koordinat, katilimci id'si ve mekan YOK — yalniz ad + host + hasLocation. */
@@ -82,9 +102,22 @@ public class SessionViewAssembler {
                 s.doneCount(), s.decidedVenueName(), s.decidedVenuePhotoUrl());
     }
 
-    /** 2 ondalik = ~1.1 km enlem hassasiyeti. */
+    /** 2 ondalik = ~1.1 km enlem hassasiyeti (tek kaynak: TravelMinutes.approx). */
     static ApiDtos.GeoPointDto approx(GeoPoint p) {
-        return new ApiDtos.GeoPointDto(Math.round(p.lat() * 100) / 100.0,
-                Math.round(p.lng() * 100) / 100.0);
+        GeoPoint rounded = TravelMinutes.approx(p);
+        return new ApiDtos.GeoPointDto(rounded.lat(), rounded.lng());
+    }
+
+    /** Saglayici mapsUrl vermediyse API'siz yol tarifi adresi (spec §5.A.6). */
+    private static String directionsUrl(Venue v) {
+        if (v.mapsUrl() != null && !v.mapsUrl().isBlank()) {
+            return v.mapsUrl();
+        }
+        return "https://www.google.com/maps/dir/?api=1&destination="
+                + v.location().lat() + "," + v.location().lng();
+    }
+
+    private static ApiDtos.FairnessDto toFairnessDto(Fairness f) {
+        return new ApiDtos.FairnessDto(f.maxMinutes(), f.spreadMinutes(), f.longestParticipantId());
     }
 }

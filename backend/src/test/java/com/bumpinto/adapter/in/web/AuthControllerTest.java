@@ -54,7 +54,8 @@ class AuthControllerTest {
                     new AppProps.Cors(List.of("http://localhost:5173")),
                     new AppProps.Cookies(false, ""),
                     new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
         }
 
         @Bean

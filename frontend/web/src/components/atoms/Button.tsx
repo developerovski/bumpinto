@@ -28,6 +28,8 @@ export const buttonKinds = {
     "shadow-[0_10px_26px_rgba(222,36,86,0.35)]",
   /** DS .b-dg — tehlikeli aksiyon (çıkış yap). */
   danger: "bg-transparent text-[#c0392b] border-[#efc9c2]",
+  /** Artboard `.b-gh` — Karar 1280 "Google Maps'te aç": inline ghost bağlantı. */
+  ghost: "bg-transparent text-ink border-line2",
 };
 
 /** `round-sm` tek başına tamdır — eski `.a-btn--round` + `.a-btn--round-sm` bileşimi katlandı. */

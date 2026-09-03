@@ -24,4 +24,8 @@ class SessionEntity {
     @Generated(event = EventType.INSERT) @Column(updatable = false) Instant createdAt;
     UUID decidedVenueId;
     String runoffVenueIds; // csv
+    Instant decidedAt;
+    String decisionKind;
+    String runoffReason;
+    String midpointLabel;
 }

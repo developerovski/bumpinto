@@ -1,6 +1,7 @@
-/* Kaynak: artboard Karar 1280 sağ kart — katılımcı başına yol süresi */
+/* Kaynak: artboard Karar 1280 sağ kart — katılımcı başına yol süresi (herkes, davetli dahil). */
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto, VenueDto } from "@bumpinto/shared";
+import { roundTravel } from "@bumpinto/shared";
 import { Avatar } from "../atoms";
 
 export default function TravelList(props: {
@@ -14,7 +15,7 @@ export default function TravelList(props: {
     .sort((a, b) => Number(b.id === props.selfId) - Number(a.id === props.selfId));
 
   return (
-    <div className="rounded-card border border-line bg-card py-1.5 shadow-sh1">
+    <div data-testid="travel-list" className="rounded-card border border-line bg-card py-1.5 shadow-sh1">
       {rows.map((p, i) => (
         <div key={p.id}>
           {i > 0 && <div className="mx-4 h-px bg-line" />}
@@ -24,7 +25,7 @@ export default function TravelList(props: {
               {p.id === props.selfId ? t("deck.travelSelf") : p.displayName}
             </span>
             <span className="text-[0.8125rem] font-bold text-ink tabular-nums">
-              {t("deck.minutes", { min: props.venue.travelMinutes![p.id!] })}
+              {t("travel.min", { min: roundTravel(props.venue.travelMinutes![p.id!]) })}
             </span>
           </div>
         </div>

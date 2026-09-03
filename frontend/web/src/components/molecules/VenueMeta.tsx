@@ -1,33 +1,40 @@
-import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
-import { Badge } from "../atoms";
+import i18n from "../../i18n";
+import type { TravelInfo } from "../../lib/useTravelLabels";
+import FairnessBadge from "./FairnessBadge";
+import TravelChips from "./TravelChips";
 
-/** Mekan meta satırı (★ puan · fiyat) + seyahat rozetleri — VenueRow/VenuePopCard ortak. */
-export default function VenueMeta(props: { venue: VenueDto; travelLabels: Record<string, string> }) {
-  const { t } = useTranslation();
+/** Puan biçimi tek atomda yaşar (§4.9 "rating format unified") — VenueMeta VE VenueCard bunu okur.
+    Kullanıcının diline göre biçimlenir (tr/nl ondalık virgül, en nokta). */
+export function formatRating(rating: number): string {
+  return new Intl.NumberFormat(i18n.resolvedLanguage, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(rating);
+}
+
+/** Mekan meta satırı (★ puan · fiyat · semt) + adalet rozeti + seyahat çipleri — VenueRow/VenuePopCard ortak.
+    `ratingCount` kasıtlı olarak YOK — hiçbir artboard'da yer almıyor (§4.9). */
+export default function VenueMeta(props: { venue: VenueDto; travel: TravelInfo; midpointLabel?: string }) {
   const v = props.venue;
   const hasPrice = v.priceLevel != null && v.priceLevel > 0;
-  const hasMeta = v.rating != null || hasPrice;
-  const travel = Object.entries(v.travelMinutes ?? {});
+  // Semt YALNIZ orta nokta etiketinden farklıysa (§4.9) — VenueCard'daki aynı kural (reviewer bulgusu).
+  const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
+  const hasMeta = v.rating != null || hasPrice || !!locality;
 
   return (
     <>
       {hasMeta && (
         <span className="text-[0.75rem] text-ink2">
-          {v.rating != null && `★ ${v.rating.toFixed(1)}`}
+          {v.rating != null && <span>★ {formatRating(v.rating)}</span>}
           {v.rating != null && hasPrice && " · "}
-          {hasPrice && "€".repeat(v.priceLevel!)}
+          {hasPrice && <span>{"€".repeat(v.priceLevel!)}</span>}
+          {(v.rating != null || hasPrice) && locality && " · "}
+          {locality && <span>{locality}</span>}
         </span>
       )}
-      {travel.length > 0 && (
-        <div className="flex flex-wrap items-center gap-[0.3125rem] tabular-nums">
-          {travel.map(([who, min]) => (
-            <Badge key={who} size="sm">
-              {t("deck.travelShort", { who: props.travelLabels[who] ?? t("deck.travelFallback"), min })}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <FairnessBadge venue={v} travel={props.travel} />
+      <TravelChips venue={v} travel={props.travel} size="sm" />
     </>
   );
 }

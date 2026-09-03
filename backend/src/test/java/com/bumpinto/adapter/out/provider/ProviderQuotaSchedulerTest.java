@@ -25,7 +25,7 @@ class ProviderQuotaSchedulerTest {
     static AppProps props() {
         AppProps base = FoursquareVenueProviderTest.props();
         return new AppProps(base.security(), base.providers(), base.cors(), base.cookies(),
-                base.rateLimit(), new AppProps.Quota(REFRESH, 5000));
+                base.rateLimit(), new AppProps.Quota(REFRESH, 5000, 5000), base.geocode());
     }
 
     static QuotaAwareVenueProvider provider(String id, ProviderQuota measured) {

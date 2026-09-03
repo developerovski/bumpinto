@@ -4,9 +4,10 @@
   "packageManager": "pnpm@11.4.0",
   "scripts": {
     "codegen": "curl -sf http://localhost:8060/v3/api-docs -o frontend/shared/openapi.json && pnpm --filter @bumpinto/shared generate",
-    "dev:web": "pnpm --filter @bumpinto/web dev",
-    "build:web": "pnpm --filter @bumpinto/web build",
-    "build:web:preprod": "pnpm --filter @bumpinto/web build --mode preprod",
-    "test:web": "pnpm --filter @bumpinto/web test --run"
+    "dev:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web dev",
+    "build:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build",
+    "build:web:preprod": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build --mode preprod",
+    "test:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web test --run",
+    "i18n:check": "source ./init-nvm.sh &&  node scripts/i18n-parity.mjs"
   }
 }

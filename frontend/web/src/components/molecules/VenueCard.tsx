@@ -3,7 +3,12 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
-import { Badge } from "../atoms";
+import type { TravelInfo } from "../../lib/useTravelLabels";
+import Attribution from "./Attribution";
+import FairnessBadge from "./FairnessBadge";
+import FitLine from "./FitLine";
+import TravelChips from "./TravelChips";
+import { formatRating } from "./VenueMeta";
 
 /** Mekan kartı — iki artboard sunumu, tek bileşen:
     · "polaroid" (varsayılan) → Web W3/W4 `.pol`; deste, liste ve sonuç ekranları.
@@ -54,15 +59,25 @@ export default function VenueCard(props: {
   variant?: "polaroid" | "row";
   /** 07 Runoff: seçili finalist — flame kenarlık + tikli daire. */
   selected?: boolean;
-  /** Katılımcı id → etiket ("Sana", "Mehmet"). travelMinutes UUID ile anahtarlıdır. */
-  travelLabels?: Record<string, string>;
+  /** `useTravelLabels` çıktısı (labels + selfId TEK nesne) — TravelChips/FairnessBadge'e aynen geçer. */
+  travel?: TravelInfo;
   /** Gradyan başlangıç ofseti (ör. aktivite grubuna göre GROUP_TINT) — deckOrder ile toplanır. */
   tint?: 0 | 1 | 2 | 3;
+  /** SessionView.activityType — verilmezse uyum satırı hiç çizilmez (§4.6). */
+  activity?: string;
+  /** Destedeki TÜM kategoriler — `FitLine`'ın çeşitlilik denetimine geçilir. */
+  categories?: string[];
+  /** SessionView.midpointLabel — semt bununla AYNIYSA meta satırında tekrar edilmez (§4.9). */
+  midpointLabel?: string;
+  /** Kart altında sağlayıcı atfı — varsayılan `true`. Liste modu (`VenueCheckRow`) `false` geçer:
+      12 satır × 2 satır atıf yerine listenin altında TEK birleşik atıf (reviewer bulgusu). */
+  attribution?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
   const { t } = useTranslation();
   const v = props.venue;
+  const travel = props.travel ?? { labels: {} };
   const photoClass = PHOTO_CLASSES[((props.tint ?? 0) + (v.deckOrder ?? 0)) % PHOTO_CLASSES.length];
   const mono = monogram(v.name);
   // Tek yüklem: boş photoUrl da "fotoğraf yok" sayılır — gradyan/monogram ile
@@ -75,9 +90,10 @@ export default function VenueCard(props: {
   // (hayalet görsel) SwipeCard'ın pointer olaylarını iptal ediyor, kart kaydırılamıyordu.
   const [broken, setBroken] = useState(false);
   const showPhoto = hasPhoto && !broken;
-  const travel = Object.entries(v.travelMinutes ?? {});
   const hasPrice = v.priceLevel != null && v.priceLevel > 0;
   const hasMeta = v.rating != null || hasPrice;
+  // Semt YALNIZ orta nokta şehrinden farklıysa gösterilir — aynıysa tekrar (§4.9).
+  const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
 
   // Artboard 07 Runoff: iki finalist ters yönde eğik duruyor (-2° / +2°).
   if (props.variant === "row") {
@@ -124,26 +140,18 @@ export default function VenueCard(props: {
           </div>
           <div className="flex flex-1 flex-col gap-1">
             <h3>{v.name}</h3>
-            {hasMeta && (
-              // Artboard: tek satır .mi — "★ 4.6 · €€".
-              <span className="text-[0.75rem] text-ink2">
-                {v.rating != null && `★ ${v.rating}`}
-                {v.rating != null && hasPrice && " · "}
-                {hasPrice && "€".repeat(v.priceLevel!)}
-              </span>
-            )}
-            {travel.length > 0 && (
-              <div className="mt-0.5 flex flex-wrap items-center gap-[0.3125rem] tabular-nums">
-                {travel.map(([who, min]) => (
-                  <Badge key={who} size="sm">
-                    {t("deck.travelShort", {
-                      who: props.travelLabels?.[who] ?? t("deck.travelFallback"),
-                      min,
-                    })}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            {/* Artboard `Liste modu 390` `.row.wr` — puan/fiyat satırı + tek adalet rozeti. */}
+            <div className="flex flex-wrap items-center gap-2">
+              {hasMeta && (
+                <span className="text-[0.75rem] text-ink2">
+                  {v.rating != null && `★ ${v.rating}`}
+                  {v.rating != null && hasPrice && " · "}
+                  {hasPrice && "€".repeat(v.priceLevel!)}
+                </span>
+              )}
+              <FairnessBadge venue={v} travel={travel} />
+            </div>
+            <TravelChips venue={v} travel={travel} size="sm" />
           </div>
           <span className={props.selected ? PICK_ON : PICK} aria-hidden>
             {props.selected && (
@@ -184,35 +192,44 @@ export default function VenueCard(props: {
         )}
         {/* Arka kartlar (d2/d3) artboard'da çıplak gradyan — içinde hiçbir şey yok.
             DS kuralı: fotoğraf yoksa ambient gradyan + monogram — asla çizgili kutu.
-            Tasarım denetimi bulgusu (2026-09-01): rozet YALNIZ gerçek foto varken. */}
-        {!props.photoOnly &&
-          (showPhoto ? (
-            <span
-              className={
-                "absolute right-2.5 top-2.5 rounded-full bg-[rgba(39,32,59,0.35)] " +
-                "px-2 py-[0.1875rem] font-[family-name:ui-monospace,Menlo,monospace] " +
-                "text-[0.625rem] text-[rgba(255,255,255,0.85)]"
-              }
-            >
-              {t("deck.photoTag")}
-            </span>
-          ) : (
-            <span className={`${PHOTO_MONO} text-[2.25rem]`} aria-hidden>
-              {mono}
-            </span>
-          ))}
+            Sağlayıcı atfı artık kart altında (`Attribution`) — foto üstü rozet YOK (§4.9). */}
+        {!props.photoOnly && !showPhoto && (
+          <span className={`${PHOTO_MONO} text-[2.25rem]`} aria-hidden>
+            {mono}
+          </span>
+        )}
       </div>
       {!props.photoOnly && (
         <div className={`flex flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]} px-2 pt-3 pb-2`}>
           <div className="flex items-start justify-between gap-2">
             <div className={`flex flex-1 flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]}`}>
               {!props.hideTitle && <h2 className="text-[1.25rem]">{v.name}</h2>}
-              {hasMeta && (
+              {props.activity && (
+                <FitLine venue={v} activity={props.activity} categories={props.categories ?? []} />
+              )}
+              {(hasMeta || locality) && (
                 <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
-                  {v.rating != null && <strong className="font-bold text-ink">★ {v.rating}</strong>}
-                  {v.rating != null && hasPrice && <span aria-hidden>·</span>}
-                  {hasPrice && <span>{"€".repeat(v.priceLevel!)}</span>}
+                  {v.rating != null && (
+                    <strong className="font-bold text-ink">★ {formatRating(v.rating)}</strong>
+                  )}
+                  {hasPrice && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{"€".repeat(v.priceLevel!)}</span>
+                    </>
+                  )}
+                  {locality && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{locality}</span>
+                    </>
+                  )}
                 </div>
+              )}
+              {v.hoursToday && (
+                <span className="text-[0.75rem] text-ink2">
+                  {t("venue.hoursToday", { hours: v.hoursToday })}
+                </span>
               )}
             </div>
             {isPick && (
@@ -223,18 +240,11 @@ export default function VenueCard(props: {
               </span>
             )}
           </div>
-          {travel.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 tabular-nums">
-              {travel.map(([who, min]) => (
-                <Badge key={who}>
-                  {t("deck.travel", {
-                    who: props.travelLabels?.[who] ?? t("deck.travelFallback"),
-                    min,
-                  })}
-                </Badge>
-              ))}
-            </div>
-          )}
+          {/* Badge (`../atoms/Badge`) zaten inline-flex — sarmalayıcı div rozet null iken
+              boş kalıp `flex-col gap-*`'in boşluğunu yerdi (SOLO / travelMinutes yok). */}
+          <FairnessBadge venue={v} travel={travel} />
+          <TravelChips venue={v} travel={travel} />
+          {(props.attribution ?? true) && <Attribution provider={v.provider} />}
         </div>
       )}
     </div>

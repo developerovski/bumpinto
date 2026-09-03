@@ -6,6 +6,7 @@ import AvatarRow from "../components/molecules/AvatarRow";
 import SessionHeader from "../components/molecules/SessionHeader";
 import VenueBrowser from "../components/organisms/VenueBrowser";
 import { GROUP_TINT, groupOf, sessionActivity } from "../lib/activity";
+import { track } from "../lib/analytics";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { isHost, mapProps, useSessionStore } from "../store/sessionStore";
 import { useSessionAction } from "../store/useSessionAction";
@@ -19,11 +20,12 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   const shuffle = useSessionStore((s) => s.shuffle);
   const pick = useSessionStore((s) => s.pick);
   const { run, busy, error } = useSessionAction();
-  const travelLabels = useTravelLabels(view);
+  const travel = useTravelLabels(view);
   const activity = sessionActivity(view);
   const tint = GROUP_TINT[groupOf(activity)];
   const mp = mapProps(view, t("map.you"), solo ? t("newSession.manual") : undefined);
-  const venues = [...(view.venues ?? [])].sort((a, b) => (a.deckOrder ?? 0) - (b.deckOrder ?? 0));
+  // Sıralama artık sayfada yapılmaz — VenueBrowser saf fonksiyonlarla (byFairness/byRating) sıralar.
+  const venues = view.venues ?? [];
   const participants = view.participants ?? [];
 
   const action =
@@ -58,11 +60,12 @@ export default function VenuesPage({ view }: { view: SessionView }) {
         midpoint={mp.midpoint}
         radiusKm={mp.radiusKm}
         mode={mode}
-        travelLabels={travelLabels}
+        travel={travel}
         onPick={(id) => void run(() => pick(id), "venues.errPick")}
         tint={tint}
         pinLabels={mp.pinLabels}
-        initialTab={mode === "guest" ? "map" : "list"}
+        midpointLabel={view.midpointLabel}
+        onMapOpen={() => track("map_open", { screen: "venues" })}
       />
     </Page>
   );

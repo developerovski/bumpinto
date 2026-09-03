@@ -17,7 +17,8 @@ http:
       {
         "lat": 51.5719,
         "lng": 5.0672,
-        "label": "Someren"
+        "label": "Someren",
+        "travelMode": "BIKE"
       }
 
 runtime:
@@ -36,3 +37,5 @@ docs:
     Katilimci token'i FAIL-CLOSED dogrulanir: yalnizca `/api/sessions/{slug}/...`
     yollarinda gecerlidir ve token'in ait oldugu oturum ile URL'deki slug eslesmeli.
     Baska oturumun slug'i ile denerseniz 401 alirsiniz.
+
+    `travelMode` null gonderilirse mevcut tercih KORUNUR; konum guncellemesi modu silmez.

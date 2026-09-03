@@ -55,7 +55,7 @@ class SessionController {
                 WebPrincipals.hostUserId(jwt), request.name(), request.activityType(),
                 request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
                 new GeoPoint(request.lat(), request.lng()), request.displayName(),
-                request.locationLabel());
+                request.locationLabel(), request.travelMode());
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, result.session().slug(),

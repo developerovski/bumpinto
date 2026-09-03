@@ -41,6 +41,7 @@ docs:
 
     Yeni alanlar: `sessionType`, `midpoint{lat,lng}` + `radiusKm` (konumlu >=2 nokta varsa),
     `participants[].approxLocation` (2 ondalik), `locationLabel`, `manual`,
+    `participants[].travelMode` (`WALK|BIKE|EBIKE|TRANSIT|CAR`, varsayilan `CAR`),
     `runoffVotedParticipantIds` (yalniz RUNOFF'ta dolu; kimin kilitledigi, ne sectigi degil).
     Durum listesine `BROWSING` eklendi.
 
@@ -49,3 +50,35 @@ docs:
 
     `viewer{participantId, host}`: istegi yapanin oturumdaki satiri — katilimci token'i kendi
     satiri, host JWT host satiri; uye degilse null. Sayfa yenilemede 'ben kimim' bunu kullanir.
+
+    `venues[].travelMinutes`: katilimci id -> ~dakika (5 dk basamagi, yuvarlanmis konumdan,
+    kisinin `travelMode`'una gore). KONUMU OLAN HERKES icindir — istegi yapan dahil.
+    `venues[].fairness`: `{ maxMinutes, spreadMinutes, longestParticipantId }` (spec §4.1).
+    `participants[].midpointMinutes`: kisinin yuvarlanmis konumundan agirlikli ORTA NOKTAYA,
+    kendi `travelMode`'uyla, 5 dk basamaginda; konumu yoksa ya da konumlu katilimci 2'den azsa null.
+    Lobi/Bekle karti "herkes ~min–max dk" araligini bu alandan yazar.
+    **Alan adlari W-6 ile sozlesme:** katilimci/oturum uclarinda `travelMode`
+    (`POST /participants`, `PUT /location`, `POST /sessions`), profil ucunda `defaultTravelMode`
+    (`GET`/`PUT /api/me`). Baska bir ad kullanilmaz.
+    `venues[]` sirasi (`deckOrder`) ADALET onceliklidir: en uzun yol artan → fark artan →
+    esitlerde oturum tohumlu sabit karisim. Herkes ayni sirayi gorur.
+
+    `decisionKind`: `UNANIMOUS|SINGLE_LIKE|RUNOFF|FORCED|PARTIAL` (yalniz DECIDED'da dolu).
+    `decidedAt`: karar ani (ISO-8601, yalniz DECIDED).
+    `runoffReason`: `INTERSECTION|FALLBACK` — runoff'a neden dusuldugu; karar sonrasi da korunur.
+    `likeCounts`: mekan -> begeni sayisi, YALNIZ DECIDED sonrasi dolu (oylama surerken gizli).
+    `voteTally`: DECIDED'da ya da oy verecek HERKES oy verdiginde dolar; aksi halde bos —
+    "kim kilitledi" bilgisi `runoffVotedParticipantIds`'ten, kendi secimin `viewer.runoffVoteVenueId`'den
+    okunur. Baskasinin ne sectigi API'de HIC yoktur.
+
+    `midpointLabel`: orta noktanin kasaba/semt kelimesi (null olabilir).
+
+    `venues[].provider`: `google` | `foursquare` — kart altindaki atif satirini belirler
+    ("Google Maps" / "Powered by Foursquare"; saglayici puanlari KARISTIRILMAZ).
+    `venues[].category` / `address` / `locality` / `ratingCount` / `hoursToday` / `placeLink`:
+    hepsi opsiyonel; null gelen alanin satiri UI'da HIC cizilmez. `locality` YALNIZ kasaba/semt
+    kelimesidir (kart meta satiri); `address` tam kisa adrestir (Karar ekrani YER ekseni).
+    Foursquare oturumlarinda `rating`, `priceLevel`, `photoUrl` ve `ratingCount` null'dur
+    (Premium alanlar acilis maliyet modelinde istenmez).
+    `mapsUrl` saglayici vermezse `https://www.google.com/maps/dir/?api=1&destination=lat,lng`
+    olarak turetilir.

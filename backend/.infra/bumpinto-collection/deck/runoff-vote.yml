@@ -31,3 +31,5 @@ docs:
     tekrar oy vermek mevcut oyu degistirir (anahtar: sessionId + participantId).
 
     Beraberlik host'un Force Decision cagrisiyla cozulur.
+
+    Yanit sayimi ancak son oy dustugunde acilir (bandwagon onlemi); o ana dek `voteTally` bos gelir.

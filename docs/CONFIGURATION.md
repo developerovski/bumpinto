@@ -19,7 +19,10 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Postgres | — | Parola **evet** |
 | `TRUST_FORWARDED_FOR` | XFF'e güven bayrağı | — | Hayır |
 | `PROVIDER_QUOTA_REFRESH` | Kota scheduler aralığı (ISO süre, varsayılan `PT5M`) | — | Hayır |
-| `GOOGLE_MONTHLY_BUDGET` | Google için aylık `searchNearby` bütçesi (varsayılan `5000`); Google kota telemetrisi vermediği için kota = bütçe − yerel sayaç | Cloud Console → Maps Platform → Quotas'taki ücretsiz hakkına ya da harcamak istediğine göre | Hayır |
+| `GOOGLE_MONTHLY_BUDGET` | Nearby Search için **sert** aylık tavan (varsayılan `1000` — açılış maliyet modeli §5.A.5: Google'ın ücretsiz aylık katmanı, sonrası $35/1000). Google kota telemetrisi vermediği için kota = bütçe − yerel sayaç; aşılırsa istek atılmaz, orkestratör Foursquare'e düşer | Cloud Console → Maps Platform → Quotas'taki ücretsiz hakkına ya da harcamak istediğine göre | Hayır |
+| `GOOGLE_PHOTO_MONTHLY_BUDGET` | Place Photo medya çağrıları için **ayrı SKU**'lu sert tavan (varsayılan `1000` — 1.000 ücretsiz/ay, sonrası $7/1000). Bitince foto çözülmez, `photoUrl` null gelir, kart monograma düşer; arama etkilenmez | Cloud Console → Maps Platform → Quotas | Hayır |
+| `NOMINATIM_CONTACT` | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi (varsayılan `dev@bumpinto.test`) | Preprod/prod'da gerçek bir adres verin | Hayır |
+| `NOMINATIM_MIN_INTERVAL` | Nominatim'e en fazla 1 istek/saniye (ISO süre, varsayılan `PT1S`) | — | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —
 kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local ≠ preprod ≠ prod.

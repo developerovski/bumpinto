@@ -18,6 +18,7 @@ class UserEntity {
     String defaultLocationLabel;
     String defaultActivity;
     String language;
+    String defaultTravelMode;
 
     static UserEntity of(UUID id, String email, String name, String provider) {
         UserEntity u = new UserEntity();

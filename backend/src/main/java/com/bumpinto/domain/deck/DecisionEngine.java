@@ -1,5 +1,8 @@
 package com.bumpinto.domain.deck;
 
+import com.bumpinto.domain.session.DecisionKind;
+import com.bumpinto.domain.session.RunoffReason;
+
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -11,6 +14,12 @@ import java.util.stream.Collectors;
 public final class DecisionEngine {
 
     public static final int FALLBACK_RUNOFF_SIZE = 3;
+    /**
+     * Kesisim runoff'unda finalist tavani (spec §4 notu): herkesin begendigi 9 mekan varsa
+     * 9 kartlik bir oylama ekrani karar degil ikinci bir deste olurdu. Elemenin olcusu
+     * DEGISMEDI: begeni sayisi → PUAN → id.
+     */
+    public static final int INTERSECTION_RUNOFF_MAX = 4;
 
     public DeckOutcome decide(List<ParticipantLikes> participants, Map<UUID, Double> venueRatings) {
         List<ParticipantLikes> finishers = participants.stream()
@@ -36,10 +45,13 @@ public final class DecisionEngine {
                 .thenComparing(UUID::compareTo);
 
         if (intersection.size() == 1) {
-            return new DeckOutcome.Decided(intersection.iterator().next());
+            return new DeckOutcome.Decided(intersection.iterator().next(), DecisionKind.UNANIMOUS);
         }
         if (intersection.size() >= 2) {
-            return new DeckOutcome.Runoff(intersection.stream().sorted(byLikesThenRating).toList());
+            return new DeckOutcome.Runoff(intersection.stream()
+                    .sorted(byLikesThenRating)
+                    .limit(INTERSECTION_RUNOFF_MAX)
+                    .toList(), RunoffReason.INTERSECTION);
         }
 
         List<UUID> top = likeCounts.keySet().stream()
@@ -50,8 +62,8 @@ public final class DecisionEngine {
             return new DeckOutcome.NoLikes();
         }
         if (top.size() == 1) {
-            return new DeckOutcome.Decided(top.get(0));
+            return new DeckOutcome.Decided(top.get(0), DecisionKind.SINGLE_LIKE);
         }
-        return new DeckOutcome.Runoff(top);
+        return new DeckOutcome.Runoff(top, RunoffReason.FALLBACK);
     }
 }

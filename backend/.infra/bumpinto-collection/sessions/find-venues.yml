@@ -36,3 +36,14 @@ docs:
     Yalnizca KONUMU OLAN katilimcilar deste akisina girer.
 
     Rate limit: 3/dk — bu ucta en dar limit, saglayici kotasini korur.
+
+    Orta noktanin kasaba kelimesi burada BIR KEZ cozulur (Nominatim, `zoom=10`, yuvarlanmis
+    koordinattan) ve `sessions.midpoint_label`'a yazilir; `GET /api/sessions/{slug}` bunu
+    `midpointLabel` olarak doner. Cozulemezse null — akis etkilenmez.
+    Atif: bu alani gosteren her ekranda "© OpenStreetMap contributors".
+
+    Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir (ayni `SessionViewAssembler`) —
+    `venues[]` burada ilk kez `travelMinutes`, `fairness{maxMinutes,spreadMinutes,longestParticipantId}`,
+    `provider`, `category`, `address`, `locality`, `ratingCount`, `hoursToday`, `placeLink` dolu
+    olarak doner (alan detaylari icin `get-session.yml` docs). `deckOrder` adalet siralamasiyla
+    burada ilk kez yazilir.

@@ -63,7 +63,9 @@ Rol çözümü: `SessionView.participants[].host` + kişinin kendi katılımcı 
 token'ı zaten oturum kurarken çerezle teslim ediliyor (`SessionController.create`).
 
 **Karıştır (shuffle):** yalnız host, `BROWSING → SWIPING`; `Venue.deckOrder` herkes için aynı
-rastgele sıraya yeniden yazılır, `deckReady` olayı yayınlanır. Listede puan sırası kalır.
+sıraya yeniden yazılır, `deckReady` olayı yayınlanır. **Sıra (rev 3, 2026-09-03): adalet öncelikli** —
+en uzun yol artan, fark artan, 5 dk bantları içinde `Random(session.id)`; liste de aynı sırayı
+kullanır (Segmented "Herkese adil · Puan"). Tanım: `2026-09-03-map-free-group-decision-ux.md` §4.5.
 
 **Bireysel oturum:** `sessionType = SOLO`. Host kendi konumu + elle eklediği konumlarla ("Ayşe ·
 Someren") ≥2 nokta sağlar; elle konumlar `manual=true` katılımcıdır (token yok, kaydırmaz). Davet

@@ -21,7 +21,8 @@ http:
         "lat": 51.6978,
         "lng": 5.3037,
         "displayName": "Mehmet",
-        "locationLabel": "'s-Hertogenbosch"
+        "locationLabel": "'s-Hertogenbosch",
+        "travelMode": "CAR"
       }
   auth:
     type: bearer
@@ -64,5 +65,8 @@ docs:
 
     `sessionType`: `GROUP` (varsayilan) | `SOLO`. SOLO'da davet linki calismaz, konumlar
     `points` ile eklenir.
+
+    `travelMode`: `WALK|BIKE|EBIKE|TRANSIT|CAR`; alan yoksa `CAR`. Yol suresi bu moda gore
+    hesaplanir.
 
     Rate limit: 10/dk.

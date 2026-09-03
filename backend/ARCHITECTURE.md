@@ -1,6 +1,7 @@
 # BumpInto Backend — Mimari
 
-Son güncelleme: 2026-09-02 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 `done`, 149/149 test yeşil.
+Son güncelleme: 2026-09-03 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 + Plan 15 (B-7)
+`done`, 230/230 test yeşil.
 
 ## Bu belge ne değildir
 
@@ -250,6 +251,30 @@ tavan 40 km**. `DeckFlow` en az 6, en çok 20 mekanlık deste hedefler.
 Konumsuz katılımcı üyedir ama her iki kümenin de dışındadır (409, 403 değil; çözümü
 `PUT /location`).
 
+### Alan modeli özeti (Plan 15 / B-7)
+
+```
+TravelMode     WALK 5 · BIKE 16 · EBIKE 24 · TRANSIT 20 · CAR 72 (km/sa) ; yol = kuş uçuşu × 1,3
+Participant    + travelMode (varsayılan CAR: elle konumlar ve geç katılanlar da CAR)
+UserProfile    + defaultTravelMode (null = tercih yok)
+GeoMath        centroid(points, weights) ; weight = 1/hız  → iki kişide TAM eşit süre noktası
+TravelMinutes  between(from, mode, to) = round5( fromCrowKm( distance(approx(from), to), mode ) )
+Fairness       { maxMinutes (minimax, birincil), spreadMinutes (max−min, ikincil), longestParticipantId }
+DeckOrdering   maxMinutes ↑ → spreadMinutes ↑ → eşitlerde Random(seedOf(session)) ile karışık
+               (seedOf = session.id() MSB ^ LSB — 128 bitin ikisi XOR'lanır, id değişmedikçe sabit)
+Session        + decidedAt, decisionKind, runoffReason, midpointLabel
+DecisionKind   UNANIMOUS | SINGLE_LIKE | RUNOFF | FORCED | PARTIAL
+RunoffReason   INTERSECTION | FALLBACK      (INTERSECTION finalist tavanı = 4)
+Venue          + category, address, locality, ratingCount, hoursToday, placeLink
+SessionView    + midpointLabel, decisionKind, decidedAt, runoffReason, likeCounts (yalnız DECIDED)
+ParticipantDto + travelMode, midpointMinutes
+VenueDto       + provider, category, address, locality, ratingCount, hoursToday, placeLink, fairness
+```
+
+`DecisionEngine` beraberliği hâlâ **puanla** kırar (spec §4.5) — adalet yalnız `venues[]`
+sırasını belirler, karar motorunun girdisine girmez (bkz. §14 borç tablosu değil, Plan 15
+öz-denetimi: bu iki cümle plan dokümanında çelişiyordu, §4.5 kazandı).
+
 ### `SessionType` ve elle konum
 
 `SessionType`: `GROUP` (davet linki + deste, varsayılan) | `SOLO` (yalnız host, davet linki
@@ -438,7 +463,18 @@ STOMP, `/ws` uç noktası, konu `/topic/session/{slug}`.
 ## 12. Yapılandırma ve sırlar
 
 `AppProps` (`@ConfigurationProperties("bumpinto")`) — `security`, `providers`, `cors`, `cookies`,
-`rateLimit`. Sır taşıyan alanlar `toString()`'de maskelenir.
+`rateLimit`, `quota`, `geocode`. Sır taşıyan alanlar `toString()`'de maskelenir.
+
+**`bumpinto.geocode`** (`NominatimReverseGeocoder`, `adapter/out/geocode`) — orta noktanın kasaba
+kelimesi (spec §5.A.4). `contact` (`NOMINATIM_CONTACT`, varsayılan `dev@bumpinto.test`) Nominatim
+politikasının zorunlu kıldığı User-Agent iletişim adresidir; `min-interval` (`NOMINATIM_MIN_INTERVAL`,
+varsayılan `PT1S`) saniyede en fazla 1 istek kuralını besler. Sonuç Caffeine ile (~1 km yuvarlanmış
+konum anahtarlı, 30 gün) önbelleklenir — başarılı ama adressiz yanıt da (nameless box) MISS olarak
+önbelleğe girer; transport/HTTP hatası girmez (kesinti geçicidir, bir sonraki çağrı yeniden dener).
+Başarısızlık `Optional.empty()` döner. Çağrı süresi `min-interval` (1 sn throttle) + HTTP timeout
+ile sınırlıdır — **bilinen sınır:** throttle bloklayıcıdır (`Thread.sleep`), findVenues'i çağıran
+thread'i bu kadar bekletebilir; takip: async çözüm ya da `tryAcquire` ile zaman aşımında pes etme.
+Atıf yükümlülüğü: bu veriyi gösteren her yüzeyde "© OpenStreetMap contributors" (W-6a.9 borcu).
 
 **Fail-closed açılış.** `application.yml`'de `GOOGLE_CLIENT_ID`, `TOKEN_SECRET`,
 `FOURSQUARE_API_KEY`, `GOOGLE_PLACES_API_KEY` için **default yoktur**; local default'lar yalnız
@@ -450,11 +486,24 @@ yalnız uzunluk kontrolü olsaydı, adı uzun bir env değişkeni eksik olduğun
 Sır **değerleri** hiçbir dosyaya yazılmaz. Manifest'ler yalnız isim referanslar; `kubectl create
 secret` komutlarını kullanıcı çalıştırır.
 
+### Sağlayıcı bütçeleri (B-7, açılış maliyet modeli)
+
+| Ayar | Varsayılan | Ne yapar |
+|---|---|---|
+| `bumpinto.quota.google-monthly-budget` (`GOOGLE_MONTHLY_BUDGET`) | 1000 | Nearby Search için **sert** aylık tavan. Aşılırsa istek atılmaz, `QuotaExceededException` ile orkestratör Foursquare'e düşer. Maske `rating`+`priceLevel` içerdiği için çağrı Enterprise katmanındadır (1.000 ücretsiz/ay, sonrası $35/1000). |
+| `bumpinto.quota.google-photo-monthly-budget` (`GOOGLE_PHOTO_MONTHLY_BUDGET`) | 1000 | Place Photo medya çağrıları — **ayrı SKU** (1.000 ücretsiz/ay, sonrası $7/1000). Bitince foto çözülmez, `photoUrl` null gelir, kart monograma düşer; arama etkilenmez. |
+| `bumpinto.geocode.contact` (`NOMINATIM_CONTACT`) | dev@bumpinto.test | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi. Preprod/prod'da gerçek adres verilmelidir. |
+| `bumpinto.geocode.min-interval` (`NOMINATIM_MIN_INTERVAL`) | PT1S | Nominatim'e en fazla 1 istek/saniye. |
+
+Sayaçlar süreç içidir: pod yeniden başlarsa sıfırlanır ve ay içinde **eksik** sayabilir (borç).
+Foursquare tarafında Premium alanlar (`rating`, `price`, `photos`) istenmez; FSQ oturumlarında
+puan/fiyat/foto **yoktur** ve kart bunu açıkça söyler.
+
 ---
 
 ## 13. Test mimarisi
 
-149 test. Katman katman:
+230 test. Katman katman:
 
 | Tür | Kapsam | Örnek |
 |---|---|---|

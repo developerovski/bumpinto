@@ -50,4 +50,28 @@ describe("VenueDeck jesti (plan 14)", () => {
     expect(useDeckStore.getState().index).toBe(0);
     expect(screen.getByText("Café Berlage")).toBeInTheDocument();
   });
+
+  // §5.C "Deste" — kalan kart ≤ 2 ve hiç beğeni yoksa TEK kalibrasyon notu.
+  it("kalan ≤2 kart ve hiç beğeni yokken kalibrasyon notu çıkar", () => {
+    useDeckStore.setState({ slug: "s", index: 1, liked: {}, listMode: false, sending: false });
+    render(<VenueDeck venues={venues} />);
+    expect(
+      screen.getByText("hiç beğenmedin — kimse ortak beğenmezse sonuç boş kalır"),
+    ).toBeInTheDocument();
+  });
+
+  it("en az bir beğeni varsa kalibrasyon notu çıkmaz", () => {
+    useDeckStore.setState({ slug: "s", index: 1, liked: { a: true }, listMode: false, sending: false });
+    render(<VenueDeck venues={venues} />);
+    expect(
+      screen.queryByText("hiç beğenmedin — kimse ortak beğenmezse sonuç boş kalır"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("kalan kart >2 iken beğeni olmasa bile kalibrasyon notu çıkmaz", () => {
+    render(<VenueDeck venues={venues} />); // index 0 → remaining 3
+    expect(
+      screen.queryByText("hiç beğenmedin — kimse ortak beğenmezse sonuç boş kalır"),
+    ).not.toBeInTheDocument();
+  });
 });

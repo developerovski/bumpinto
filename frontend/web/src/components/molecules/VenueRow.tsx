@@ -1,18 +1,31 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import { forwardRef, type KeyboardEvent } from "react";
 import type { VenueDto } from "@bumpinto/shared";
+import type { TravelInfo } from "../../lib/useTravelLabels";
+import { Overline } from "../atoms";
 import VenueMeta from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
 
-/** Mekan satırı (artboard `.vrow`) — liste görünümünün her satırı. */
-export default function VenueRow(props: {
-  venue: VenueDto;
-  selected: boolean;
-  tint: number;
-  travelLabels: Record<string, string>;
-  onHover: () => void;
-  onSelect: () => void;
-  action?: ReactNode;
-}) {
+/** Mekan satırı (artboard `.vrow`) — liste görünümünün her satırı. Grup modunda satır
+    aksiyonu yok (karar dokümanı §5.B.1); SOLO'da seçim satırın altına `SelectionCard`
+    ile eklenir (bkz. `VenueBrowser`), satırın kendisinde buton yok.
+    `ref` — `VenueBrowser`, SOLO onay kartı "Vazgeç" ile kapanınca odağı satıra geri
+    verebilsin diye ileri iletir (kod-review bulgusu). */
+const VenueRow = forwardRef<
+  HTMLDivElement,
+  {
+    venue: VenueDto;
+    selected: boolean;
+    tint: number;
+    travel: TravelInfo;
+    /** SessionView.midpointLabel — semt bununla AYNIYSA meta satırında tekrar edilmez (§4.9). */
+    midpointLabel?: string;
+    /** Yalnız fare/klavye ODAKLANMASI (hover/focus) — haritadaki pin/pop kartı vurgular,
+        SOLO onay kartını AÇMAZ (kod-review bulgusu: hover'da da açılıyordu). */
+    onHover: () => void;
+    /** Gerçek seçim — tık ya da Enter/Space. SOLO onay kartını bu açar. */
+    onSelect: () => void;
+  }
+>(function VenueRow(props, ref) {
   const v = props.venue;
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -25,6 +38,7 @@ export default function VenueRow(props: {
 
   return (
     <div
+      ref={ref}
       role="button"
       tabIndex={0}
       aria-pressed={props.selected}
@@ -39,10 +53,12 @@ export default function VenueRow(props: {
     >
       <VenueThumb venue={v} tint={props.tint} size={64} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {v.category && <Overline>{v.category}</Overline>}
         <h3 className="font-head text-[1.0625rem] font-bold">{v.name}</h3>
-        <VenueMeta venue={v} travelLabels={props.travelLabels} />
+        <VenueMeta venue={v} travel={props.travel} midpointLabel={props.midpointLabel} />
       </div>
-      {props.action && <div onClick={(e) => e.stopPropagation()}>{props.action}</div>}
     </div>
   );
-}
+});
+
+export default VenueRow;

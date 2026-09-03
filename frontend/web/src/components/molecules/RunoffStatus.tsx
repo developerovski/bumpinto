@@ -1,8 +1,11 @@
-/* Kaynak: artboard Runoff 1280 sağ kart / Runoff 390 kilitli */
+/* Kaynak: artboard Runoff 1280 sağ kart / Runoff 390 kilitli / Runoff 1280 kilitli */
 import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
-import { Avatar, Badge, Button, ErrorText, Overline, Progress } from "../atoms";
+import { votersOf } from "../../lib/voters";
+import { Badge, Button, ErrorText, Overline, Progress } from "../atoms";
+import PersonRow from "./PersonRow";
+import ShareButton from "./ShareButton";
 
 export default function RunoffStatus(props: {
   participants: ParticipantDto[];
@@ -13,11 +16,22 @@ export default function RunoffStatus(props: {
   onLock: () => void;
   selfId?: string;
   error?: string | null;
+  shareText: string;
+  shareUrl: string;
 }) {
   const { t } = useTranslation();
-  const voters = props.participants.filter((p) => p.hasLocation && !p.manual);
+  const voters = votersOf(props.participants);
   const total = voters.length;
   const done = voters.filter((p) => props.votedIds.includes(p.id!)).length;
+  // "Herkes kilitledi" durumu RunoffScreen yönlendirmesinde her zaman RunoffTie'ye düşer (`tie`
+  // AYNI oy kümesini kullanır) — bu dal buraya `sent` ile ulaştığında `unlocked` HER ZAMAN ≥1'dir,
+  // dolayısıyla "herkes seçti" kopyası/sayım burada YOKTUR (code-review: ölü kod kaldırıldı,
+  // bkz. RunoffTie). Kalan tam bir kişiyse §4.8 gereği ADLI ve OLUMLU not.
+  const unlocked = voters.filter((p) => !props.votedIds.includes(p.id!));
+  const lockedNote =
+    unlocked.length === 1
+      ? t("runoff.lockedCopyName", { name: unlocked[0].displayName ?? "" })
+      : t("runoff.lockedCopy");
 
   if (props.sent) {
     return (
@@ -32,9 +46,10 @@ export default function RunoffStatus(props: {
           </span>
           <div className="flex flex-col gap-0.5">
             <span className="text-[0.875rem] font-bold text-grass">{t("runoff.lockedTitle")}</span>
-            <span className="text-[0.75rem] text-ink2">{t("runoff.lockedCopy")}</span>
+            <span className="text-[0.75rem] text-ink2">{lockedNote}</span>
           </div>
         </div>
+        <ShareButton text={props.shareText} url={props.shareUrl} label={t("runoff.remind")} kind="white" />
       </>
     );
   }
@@ -48,17 +63,13 @@ export default function RunoffStatus(props: {
         </span>
       </div>
       <Progress value={done / Math.max(total, 1)} />
-      <div className="flex flex-col">
+      <div role="list" className="flex flex-col">
         {voters.map((p, i) => {
           const locked = props.votedIds.includes(p.id!);
           return (
             <div key={p.id}>
               {i > 0 && <div className="h-px bg-line" />}
-              <div className="flex items-center gap-3 py-2.5">
-                <Avatar name={p.displayName ?? "?"} index={i} ring />
-                <span className="flex-1 text-[0.875rem] font-semibold">
-                  {p.id === props.selfId ? t("deck.travelSelf") : p.displayName}
-                </span>
+              <PersonRow participant={p} index={i} isSelf={p.id === props.selfId} ring>
                 {locked ? (
                   <Badge tone="grass">
                     <Check size={12} aria-hidden />
@@ -67,7 +78,7 @@ export default function RunoffStatus(props: {
                 ) : (
                   <Badge tone="amber">{t("runoff.choosing")}</Badge>
                 )}
-              </div>
+              </PersonRow>
             </div>
           );
         })}

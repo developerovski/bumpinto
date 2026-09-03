@@ -23,4 +23,28 @@ describe("SoloSetupPage", () => {
     expect(screen.getByText("1 / en az 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeDisabled();
   });
+
+  it("390'da harita hiç mount edilmez (§4.7)", () => {
+    useSessionStore.setState({ slug: "s9k2m", view: view as never });
+    render(<SoloSetupPage view={view as never} />);
+    expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
+  });
+
+  it("gerçek lg genişlikte (matchMedia eşleşirse) harita mount olur (§4.7)", async () => {
+    useSessionStore.setState({ slug: "s9k2m", view: view as never });
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(min-width: 1024px)",
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+    render(<SoloSetupPage view={view as never} />);
+    expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+    window.matchMedia = original;
+  });
 });

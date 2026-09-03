@@ -40,3 +40,5 @@ docs:
 
     **BROWSING'de dogrudan secim:** `venueId` verilir; SOLO'nun tek karar yolu, GROUP'ta host
     kisayolu (mekan oturumda olmali, aksi 409).
+
+    `venueId` verilirse `decisionKind=FORCED`; `venueId` null (kismi degerlendirme) ise `PARTIAL`.

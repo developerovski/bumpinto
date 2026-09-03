@@ -2,16 +2,23 @@
 import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
+import { byFairness } from "@bumpinto/shared";
+import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Overline } from "../atoms";
+import FairnessBadge from "./FairnessBadge";
+import TravelChips from "./TravelChips";
+import { formatRating } from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
 
 export default function LikedList(props: {
   venues: VenueDto[];
   liked: Record<string, boolean>;
-  selfId?: string;
+  travel?: TravelInfo;
 }) {
   const { t } = useTranslation();
-  const liked = props.venues.filter((v) => props.liked[v.id!]);
+  // Minimax sıra (§4.9) — en adil (en kısa en-uzun-yol) önce, VenueBrowser'la aynı sıralayıcı.
+  const liked = props.venues.filter((v) => props.liked[v.id!]).sort(byFairness);
+  const travel = props.travel ?? { labels: {} };
 
   return (
     <div className="rounded-card border border-line bg-card py-1 shadow-sh1">
@@ -30,12 +37,11 @@ export default function LikedList(props: {
             <VenueThumb venue={v} tint={0} size={48} />
             <div className="flex flex-1 flex-col gap-0.5">
               <h3>{v.name}</h3>
-              <span className="text-[0.75rem] text-ink2">
-                {v.rating != null && `★ ${v.rating}`}
-                {props.selfId && v.travelMinutes?.[props.selfId] != null
-                  ? ` · ${t("deck.travel", { who: t("deck.travelSelf"), min: v.travelMinutes[props.selfId] })}`
-                  : ""}
-              </span>
+              {v.rating != null && (
+                <span className="text-[0.75rem] text-ink2">★ {formatRating(v.rating)}</span>
+              )}
+              <FairnessBadge venue={v} travel={travel} />
+              <TravelChips venue={v} travel={travel} size="sm" />
             </div>
             <span
               className="flex h-[1.625rem] w-[1.625rem] flex-none items-center justify-center rounded-full bg-[image:var(--grad)] text-white"

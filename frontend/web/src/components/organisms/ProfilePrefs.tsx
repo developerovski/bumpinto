@@ -3,25 +3,31 @@ import { useTranslation } from "react-i18next";
 import type { MeResponse } from "@bumpinto/shared";
 import { Button, ErrorText } from "../atoms";
 import { ACTIVITY_ICONS, groupOf } from "../../lib/activity";
+import { DEFAULT_TRAVEL_MODE, MODE_ICON, MODE_LABEL_KEY, type TravelMode } from "../../lib/travelMode";
 import { LANGUAGES } from "../molecules/LangMenu";
 import ActivityPicker from "../molecules/ActivityPicker";
 import LocationField from "../molecules/LocationField";
 import PrefRow from "../molecules/PrefRow";
+import TravelModeField from "../molecules/TravelModeField";
 import { useOwnLocation } from "../../store/useOwnLocation";
 
-type Panel = "location" | "activity" | "language" | null;
+type Panel = "location" | "activity" | "language" | "travelMode" | null;
 
-/** Artboard W9 · Profil tercihler kartı — konum, etkinlik ve dil düzenlenebilir açılır panelli. */
+/** Artboard W9 · Profil tercihler kartı — konum, etkinlik, ulaşım ve dil düzenlenebilir açılır
+    panelli. `defaultTravelMode` yalnız Katıl formunu İSTEMCİ tarafında ön-doldurur (backend
+    okumaz) — PUT /api/me tam değişim yaptığından `onTravelMode` diğer alanları korur. */
 export default function ProfilePrefs({
   me,
   onLanguage,
   onLocation,
   onActivity,
+  onTravelMode,
 }: {
   me: MeResponse;
   onLanguage: (code: string) => Promise<void>;
   onLocation: (loc: { lat: number; lng: number; label?: string }) => Promise<void>;
   onActivity: (a: string) => Promise<void>;
+  onTravelMode: (mode: TravelMode) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState<Panel>(null);
@@ -116,6 +122,32 @@ export default function ProfilePrefs({
             ariaLabel={t("profile.defaultActivity")}
           />
           {open === "activity" && errorNode}
+        </div>
+      </PrefRow>
+      <div className="mx-[1.125rem] h-px bg-line" />
+      <PrefRow
+        label={t("profile.defaultTravelMode")}
+        value={me.defaultTravelMode ? t(MODE_LABEL_KEY[me.defaultTravelMode].name) : null}
+        aside={
+          me.defaultTravelMode ? (
+            <span className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-flame-deep bg-flame-wash px-3 py-1.5 text-[0.875rem] font-semibold text-flame-deep">
+              {MODE_ICON[me.defaultTravelMode].map((I, i) => (
+                <I key={i} size={18} aria-hidden />
+              ))}
+              {t(MODE_LABEL_KEY[me.defaultTravelMode].name)}
+            </span>
+          ) : undefined
+        }
+        open={open === "travelMode"}
+        onToggle={() => toggle("travelMode")}
+      >
+        <div className="mx-[1.125rem] mb-3.5 flex flex-col gap-3">
+          <TravelModeField
+            value={me.defaultTravelMode ?? DEFAULT_TRAVEL_MODE}
+            onChange={(mode) => void onTravelMode(mode).catch(() => setError(t("profile.errSave")))}
+            label={t("profile.defaultTravelMode")}
+          />
+          {open === "travelMode" && errorNode}
         </div>
       </PrefRow>
       <div className="mx-[1.125rem] h-px bg-line" />

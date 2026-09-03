@@ -1,8 +1,11 @@
 package com.bumpinto.adapter.out.persistence;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -78,10 +81,43 @@ class StoreAdapterTest {
         assertThat(deck.voteTally(s.id())).containsEntry(v.id(), 1L);
         assertThat(deck.votersCount(s.id())).isEqualTo(1);
 
-        Session runoff = sessions.saveSession(s.inRunoff(List.of(v.id())));
+        Session runoff = sessions.saveSession(s.inRunoff(List.of(v.id()), RunoffReason.FALLBACK));
         assertThat(sessions.sessionBySlug("slugtest").orElseThrow().runoffVenueIds())
                 .containsExactly(v.id());
         assertThat(runoff.status()).isEqualTo(SessionStatus.RUNOFF);
+    }
+
+    @Test
+    void travelModeRoundTripsThroughParticipant() {
+        Session s = newSession("travelm");
+        Participant biker = join(s, "Biker", "tok-biker", false, TravelMode.BIKE);
+        Participant defaulted = join(s, "Defaulted", "tok-def", false);
+
+        assertThat(sessions.participantByToken("tok-biker").orElseThrow().travelMode())
+                .isEqualTo(TravelMode.BIKE);
+        assertThat(sessions.participantByToken("tok-def").orElseThrow().travelMode())
+                .isEqualTo(TravelMode.CAR);
+    }
+
+    @Test
+    void decisionMetadataRoundTrips() {
+        Session s = newSession("meta");
+        Venue v = venue(s, "meta-venue", 0);
+        deck.saveVenues(List.of(v));
+        UUID venueId = v.id();
+        Instant when = Instant.parse("2026-09-03T18:20:00Z");
+        sessions.saveSession(s.withMidpointLabel("Eindhoven")
+                .decided(venueId, DecisionKind.RUNOFF, when));
+
+        Session back = sessions.sessionBySlug("meta").orElseThrow();
+        assertThat(back.decidedAt()).isEqualTo(when);
+        assertThat(back.decisionKind()).isEqualTo(DecisionKind.RUNOFF);
+        assertThat(back.midpointLabel()).isEqualTo("Eindhoven");
+        assertThat(back.runoffReason()).isNull();
+
+        sessions.saveSession(back.inRunoff(List.of(venueId), RunoffReason.FALLBACK));
+        assertThat(sessions.sessionBySlug("meta").orElseThrow().runoffReason())
+                .isEqualTo(RunoffReason.FALLBACK);
     }
 
     /**
@@ -197,14 +233,16 @@ class StoreAdapterTest {
         UUID id = users.upsertByEmail("pref@bumpinto.test", "Mehmet");
         UserProfile before = users.profileOf(id).orElseThrow();
         assertThat(before.language()).isNull();
+        assertThat(before.defaultTravelMode()).isNull();
         users.saveProfile(before.withPreferences("Mehmet Ş.", new GeoPoint(51.6978, 5.3037),
-                "'s-Hertogenbosch", ActivityType.COFFEE, "tr"));
+                "'s-Hertogenbosch", ActivityType.COFFEE, "tr", TravelMode.EBIKE));
         UserProfile after = users.profileOf(id).orElseThrow();
         assertThat(after.name()).isEqualTo("Mehmet Ş.");
         assertThat(after.defaultLocation()).isEqualTo(new GeoPoint(51.6978, 5.3037));
         assertThat(after.defaultLocationLabel()).isEqualTo("'s-Hertogenbosch");
         assertThat(after.defaultActivity()).isEqualTo(ActivityType.COFFEE);
         assertThat(after.language()).isEqualTo("tr");
+        assertThat(after.defaultTravelMode()).isEqualTo(TravelMode.EBIKE);
     }
 
     /**
@@ -243,7 +281,7 @@ class StoreAdapterTest {
 
         Venue decidedVenue = venue(session2, "smry-venue", 0);
         deck.saveVenues(List.of(decidedVenue));
-        sessions.saveSession(session2.decided(decidedVenue.id()));
+        sessions.saveSession(session2.decided(decidedVenue.id(), DecisionKind.UNANIMOUS, Instant.now()));
 
         List<SessionSummary> summaries = sessions.summariesOfHost(hostA, 10);
         assertThat(summaries).extracting(s -> s.session().id())
@@ -268,6 +306,17 @@ class StoreAdapterTest {
         assertThat(sessions.distinctGuestsOfHost(hostA)).isEqualTo(4); // Ayşe, Kerem, Zeynep, Mert
     }
 
+    @Test
+    void venueProviderFieldsRoundTrip() {
+        UUID sessionId = newSession("venue-fields").id();
+        Venue v = new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Espresso Bar",
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, "https://maps/g1", 0,
+                "Espresso bar", "Kleine Berg 16, Eindhoven", "Eindhoven", 312,
+                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1");
+        deck.saveVenues(List.of(v));
+        assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
+    }
+
     private Session newSession(String slug) {
         UUID host = users.upsertByEmail(slug + "@x.dev", "Host " + slug);
         return sessions.saveSession(new Session(UUID.randomUUID(), slug, host, "Cuma",
@@ -278,6 +327,11 @@ class StoreAdapterTest {
     private Participant join(Session s, String name, String token, boolean host) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
                 new GeoPoint(51.6978, 5.3037), host, token, null, false, null));
+    }
+
+    private Participant join(Session s, String name, String token, boolean host, TravelMode mode) {
+        return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
+                new GeoPoint(51.6978, 5.3037), host, token, null, false, null, mode));
     }
 
     private Venue venue(Session s, String externalId, int order) {

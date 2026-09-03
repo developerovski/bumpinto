@@ -33,7 +33,7 @@ değiştirebilir. Kısıtlar:
 
 ## 3. Veri
 
-Migration **V5** — `place_photos`:
+Migration **V7** — `place_photos` (2026-09-03: V5 = B-7, V6 = B-3):
 
 ```sql
 create table place_photos (
@@ -51,8 +51,7 @@ create table place_photos (
 );
 ```
 
-- **B-3 (veri saklama) planı V5 → V6'ya kayar.** INDEX B-3 satırı ve plan6 dosyasındaki
-  "V5" notu güncellenir. (Flyway `outOfOrder` kapalı; sıra korunmalı.)
+- **Flyway sicili (2026-09-03):** V5 = B-7, V6 = B-3, bu iş **V7**. INDEX kural 9 güncel. (Flyway `outOfOrder` kapalı; sıra korunmalı.)
 - `venues.photo_url` **kalır** ve idx 0'ın URL'sini taşımaya devam eder: mobil, karar kartı,
   geçmiş oturum listesi (`decidedVenuePhotoUrl`) kırılmaz.
 - `place_photos` satırları oturumdan bağımsızdır; oturum silinince (B-3) silinmez. 30 günden
@@ -180,7 +179,7 @@ liste satırı, karar kartı, geçmiş listesi **değişmez** (ilk foto).
 - Uç: kimliksiz 302 + `Location` + `Cache-Control`; `PUBLIC_ENDPOINTS` kapsamı (`WebSecuritySliceTest`).
 - Orkestratör `resolve`: doğru sağlayıcıya yönlendirir, 429 → `EXHAUSTED`.
 - `DeckFlow.findVenues`: `upsert` çağrılır; store hatası kurulumu düşürmez.
-- Migration testi (mevcut `SchemaMigrationTest`) V5'i görür.
+- Migration testi (mevcut `SchemaMigrationTest`) V7'yi görür.
 
 **Frontend**
 - Tek foto: bölge/segment yok. Çoklu: dokunma ilerletir, uçta durur, segment aktifliği.

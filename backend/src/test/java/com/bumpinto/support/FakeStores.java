@@ -1,6 +1,8 @@
 package com.bumpinto.support;
 
+import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.DeckStorePort;
+import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
@@ -141,10 +143,7 @@ public class FakeStores {
             for (int i = 0; i < orderedVenueIds.size(); i++) {
                 UUID id = orderedVenueIds.get(i);
                 int order = i;
-                venues.replaceAll(v -> v.id().equals(id)
-                        ? new Venue(v.id(), v.sessionId(), v.provider(), v.externalId(), v.name(),
-                                v.location(), v.rating(), v.priceLevel(), v.photoUrl(), v.mapsUrl(), order)
-                        : v);
+                venues.replaceAll(v -> v.id().equals(id) ? v.withDeckOrder(order) : v);
             }
         }
 
@@ -183,6 +182,17 @@ public class FakeStores {
         @Override public Map<UUID, UUID> votesByParticipant(UUID sessionId) {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId))
                     .collect(Collectors.toMap(Vote::participantId, Vote::venueId));
+        }
+    }
+
+    /** Sabit etiket; testler `label` alanini degistirerek "cozulemedi" halini kurar. */
+    public static class FakeReverseGeocoder implements ReverseGeocodePort {
+        public String label = "Eindhoven";
+        public int calls;
+
+        @Override public Optional<String> label(GeoPoint point) {
+            calls++;
+            return Optional.ofNullable(label);
         }
     }
 

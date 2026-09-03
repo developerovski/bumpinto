@@ -42,7 +42,8 @@ class SecurityPolicyTest {
                 new AppProps.Cors(origins),
                 new AppProps.Cookies(secureCookies, domain),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
     /**
@@ -58,7 +59,8 @@ class SecurityPolicyTest {
                 new AppProps.Cors(List.of("https://bumpinto.app")),
                 new AppProps.Cookies(true, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
 
         String printed = props.toString();
 

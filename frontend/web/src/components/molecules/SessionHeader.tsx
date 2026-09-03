@@ -2,7 +2,8 @@
 import type { ReactNode } from "react";
 export default function SessionHeader(props: {
   title: ReactNode;
-  meta?: string;
+  /** Genelde string; Deste 390'da yalnız-mobil "· N beğeni" eki için ReactNode'a genişledi. */
+  meta?: ReactNode;
   action?: ReactNode;
   /** Aktivite/durum rozetleri — başlık altında, meta üstünde. */
   badges?: ReactNode;

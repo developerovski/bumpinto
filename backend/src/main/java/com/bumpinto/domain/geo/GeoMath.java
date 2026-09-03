@@ -19,24 +19,39 @@ public final class GeoMath {
         return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
     }
 
-    public static GeoPoint centroid(List<GeoPoint> points) {
+    /**
+     * Agirlikli kuresel merkez. {@code weights} null ise esit agirlik (eski davranis).
+     * Agirlik = 1/hiz (bkz. {@link TravelMode#weight()}): yavas gelen orta noktayi kendine
+     * ceker. Iki noktada sonuc TAM esit sure noktasidir; uc ve fazlasinda yaklasiktir
+     * (spec §4.5b bunu boyle kabul ediyor).
+     */
+    public static GeoPoint centroid(List<GeoPoint> points, List<Double> weights) {
         if (points == null || points.isEmpty()) {
             throw new IllegalArgumentException("points must not be empty");
+        }
+        if (weights != null && weights.size() != points.size()) {
+            throw new IllegalArgumentException("weights must match points");
         }
         double x = 0;
         double y = 0;
         double z = 0;
-        for (GeoPoint p : points) {
+        double total = 0;
+        for (int i = 0; i < points.size(); i++) {
+            GeoPoint p = points.get(i);
+            double w = weights == null ? 1.0 : weights.get(i);
+            if (!Double.isFinite(w) || w <= 0) {
+                throw new IllegalArgumentException("weights must be finite and > 0");
+            }
             double lat = Math.toRadians(p.lat());
             double lng = Math.toRadians(p.lng());
-            x += Math.cos(lat) * Math.cos(lng);
-            y += Math.cos(lat) * Math.sin(lng);
-            z += Math.sin(lat);
+            x += w * Math.cos(lat) * Math.cos(lng);
+            y += w * Math.cos(lat) * Math.sin(lng);
+            z += w * Math.sin(lat);
+            total += w;
         }
-        int n = points.size();
-        x /= n;
-        y /= n;
-        z /= n;
+        x /= total;
+        y /= total;
+        z /= total;
         double lng = Math.atan2(y, x);
         double hyp = Math.sqrt(x * x + y * y);
         double lat = Math.atan2(z, hyp);

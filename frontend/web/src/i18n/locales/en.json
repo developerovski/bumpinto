@@ -1,10 +1,10 @@
 {
-  "_status": "tasarım onayı bekliyor (2026-09-01)",
   "common": {
     "wordmark": "BumpInto",
     "title": "BumpInto — meet in the middle",
     "save": "Save",
-    "retry": "Try again"
+    "retry": "Try again",
+    "cancel": "Cancel"
   },
   "shell": {
     "sessions": "Meetups",
@@ -47,8 +47,8 @@
   },
   "waiting": {
     "joined": "You're in!",
-    "preparing": "Getting the deck ready…",
-    "copy": "You'll swipe here once the places land — just keep this page open.",
+    "preparing": "Venues are on the way",
+    "copy": "First the list, then the vote. Just keep this page open.",
     "who": "Who's here",
     "readyCount": "{{ready}} / {{total}} ready",
     "host": "Host",
@@ -56,23 +56,18 @@
     "waitingBadge": "Waiting",
     "waitingLocation": "Waiting for a location…",
     "you": "(you)",
-    "changeLocation": "Change my location",
-    "errUpdate": "Couldn't update your location — try again."
+    "errUpdate": "Couldn't update your location — try again.",
+    "changeLocationAndMode": "Location and travel",
+    "modeHint": "You'll need to share your location again to save."
   },
   "deck": {
     "seeAll": "See all",
-    "photoTag": "photo · Places",
     "pass": "pass",
     "like": "like",
     "ariaUndo": "Undo",
     "ariaPass": "Pass",
     "ariaLike": "Like",
-    "travel": "{{who}} {{min}} min",
-    "travelShort": "{{who}} {{min}}′",
     "travelSelf": "You",
-    "travelFriend": "Your friend",
-    "travelFallback": "Trip",
-    "finishedTitle": "Deck <0>done!</0>",
     "send": "Send my likes",
     "backToList": "Back to the list, edit",
     "listTitle": "Which one?",
@@ -89,16 +84,52 @@
     "backToDeck": "Back to the deck",
     "likesN_one": "{{count}} like",
     "likesN_other": "{{count}} likes",
-    "progressDone": "{{names}} finished.",
-    "progressWaiting": "{{names}} still swiping; the result shows once everyone's done.",
     "swipeHand": "swipe away — the buttons do the same",
-    "travelSelfTo": "You",
-    "minutes": "{{min}} min"
+    "sentCopy": "The result shows once everyone's done.",
+    "rowDone": "Done",
+    "rowSwiping": "Swiping",
+    "nudge": "Nudge the ones waiting",
+    "nudgeText": "{{count}} places ready for {{activity}}, we're waiting on you:",
+    "continueWithout": "Continue without {{names}}",
+    "allDoneHand": "everyone's done — result coming up →",
+    "emptyWarn": "You didn't like anything. If no one has a shared like, the result stays empty.",
+    "sendAnyway": "Send anyway",
+    "likedTitle_one": "You liked {{count}} place",
+    "likedTitle_other": "You liked {{count}} places",
+    "sentBadge": "Likes sent",
+    "sentTitleWaiting": "Now we wait · {{name}} is still swiping",
+    "sentTitleAllDone": "Everyone's done — result coming up",
+    "sentCopyExtra": "Just keep this page open.",
+    "othersLabel": "the others",
+    "laggardHand_one": "{{name}}, everyone's waiting on you — {{count}} card left",
+    "laggardHand_other": "{{name}}, everyone's waiting on you — {{count}} cards left",
+    "progressLine_one": "<0>{{done}} finished.</0> {{name}} is still swiping; the result shows once everyone's done.",
+    "progressLine_other": "<0>{{done}} finished.</0> {{name}} is still swiping; the result shows once everyone's done.",
+    "errSend": "Couldn't send your likes — try again.",
+    "errForce": "Couldn't start the decision — try again.",
+    "calibrateHand": "you haven't liked anything yet — if no one overlaps, the result stays empty"
+  },
+  "travel": {
+    "min": "~{{min}} min",
+    "gap": "{{min}} min apart",
+    "self": "You",
+    "friend": "Friend",
+    "longest": "longest trip"
+  },
+  "fairness": {
+    "same": "About equal for all",
+    "far": "Far for {{name}}",
+    "farSelf": "Far for you"
   },
   "runoff": {
-    "sticker": "Home stretch",
-    "title": "Both are great,<0/>one will win",
+    "overline_one": "{{activity}} · {{count}} PERSON · NEAR THE MIDPOINT",
+    "overline_other": "{{activity}} · {{count}} PEOPLE · NEAR THE MIDPOINT",
+    "titleTwo": "Both are great, one gets picked",
+    "titleMany": "All are great, one gets picked",
+    "titleSent": "You're locked in, one gets picked",
     "copy": "Everyone liked both. You get one pick — the result shows once everyone has chosen.",
+    "copyFallback": "No overlap yet — the most-liked spots made the final round.",
+    "trailer": "total ~{{total}} min · gap ~{{gap}} min",
     "note": "who picked what shows in the result",
     "lockIn": "Lock in my pick",
     "who": "Who picked",
@@ -106,20 +137,25 @@
     "lockedBadge": "Locked in",
     "lockedTitle": "Your pick is locked",
     "lockedCopy": "waiting on the others — the result shows once everyone has picked",
+    "lockedCopyName": "{{name}} is choosing — the result shows once everyone has locked in",
     "countOf": "{{done}} / {{total}}",
     "votedCount": "{{done}}/{{total}} picked",
+    "remind": "Send a reminder",
+    "remindText": "Your pick is waiting — lock it in with one tap:",
+    "tallyTitle": "Votes",
     "tieNote": "Everyone picked and it came out level.",
     "tieTitle": "It's a tie",
     "tieHostCopy": "You set this meetup up, so you get the final call.",
     "tieGuestCopy": "{{host}} is making the final call.",
     "tieDecide": "Make it official",
+    "tieFair": "Defer to the fairest",
     "errDecide": "Couldn't set the result — try again.",
     "errVote": "Couldn't send your pick — try again."
   },
   "result": {
     "overline": "Common ground",
     "sticker": "Decided!",
-    "directions": "Get directions",
+    "decidedAtSticker": "Decided · {{time}}",
     "viralTitle": "Is the next meetup on you?",
     "viralCopy": "Set one up in 30 seconds — friends join with a link.",
     "viralCta": "Start a meetup",
@@ -128,7 +164,24 @@
     "copied": "Copied",
     "shareText": "{{name}}: {{venue}} — we met in the middle with BumpInto.",
     "viralHostTitle": "Setting up the next one too?",
-    "viralHostCta": "Start a new meetup"
+    "viralHostCta": "Start a new meetup",
+    "whyTitle": "Why here?",
+    "axisFair": "Fairness",
+    "axisFit": "Fit",
+    "axisPlace": "Place",
+    "fairLine": "Everyone ~{{min}}–{{max}} min · longest trip {{name}}",
+    "fairLineNoName": "Everyone ~{{min}}–{{max}} min",
+    "midpointMeters": "~{{m}} m from the midpoint",
+    "midpointExact": "Right in the middle",
+    "leaveEarlyHand": "{{name}} has the longest way — leaving ~{{min}} min early gets everyone there together",
+    "eyebrowUnanimous": "YOU ALL PICKED THE SAME PLACE",
+    "eyebrowRunoff": "Decided by vote {{a}}–{{b}}",
+    "eyebrowPartial": "without {{names}}",
+    "openInMaps": "Open in Google Maps",
+    "backup": "Backup plan",
+    "backupNote": "second place",
+    "likedSticker": "{{n}}/{{total}} liked it!",
+    "partialOthers": "{{name}} and others"
   },
   "landing": {
     "title": "<0>Meet</0><1/>in the middle.",
@@ -215,7 +268,8 @@
     "retention": "Meetups close after 24 hours and are deleted after 30 days. Only name + location are kept for participants — that's it.",
     "langHint": "People who join via an invite link see their own browser language; your choice only applies to your account.",
     "logout": "Sign out",
-    "errSave": "Couldn't save — try again."
+    "errSave": "Couldn't save — try again.",
+    "defaultTravelMode": "Default travel mode"
   },
   "error": {
     "hmm": "Hmm.",
@@ -227,12 +281,52 @@
   },
   "map": {
     "notConfigured": "The map isn't configured in this environment.",
-    "midpoint": "Midpoint · ≤ {{km}} km",
+    "loading": "Loading map…",
     "midpointOnly": "Midpoint",
     "midpointPending": "The midpoint settles once you join",
-    "joinToSee": "Locations appear on the map once you join.",
     "you": "you",
     "youPending": "you · once you join"
+  },
+  "midpoint": {
+    "overline": "Midpoint",
+    "title": "Midpoint",
+    "near": "Near {{label}}",
+    "meta": "≤ {{km}} km · everyone ~{{min}}–{{max}} min",
+    "metaKm": "≤ {{km}} km",
+    "pending": "Settles once everyone drops a location",
+    "sideNote": "Midpoint is toward {{name}} · {{mode}}"
+  },
+  "steps": {
+    "locations": "Locations",
+    "venues": "Venues",
+    "vote": "Vote",
+    "decide": "Decide",
+    "aria": "Session steps"
+  },
+  "travelMode": {
+    "WALK": {
+      "name": "Walk",
+      "coming": "walking over"
+    },
+    "BIKE": {
+      "name": "Bike",
+      "coming": "coming by bike"
+    },
+    "EBIKE": {
+      "name": "E-bike",
+      "coming": "coming by e-bike"
+    },
+    "TRANSIT": {
+      "name": "Transit",
+      "coming": "coming by transit"
+    },
+    "CAR": {
+      "name": "Car",
+      "coming": "coming by car"
+    },
+    "question": "How are you getting there?",
+    "forName": "How is {{name}} getting there?",
+    "selected": "{{mode}} selected"
   },
   "newSession": {
     "back": "Meetups",
@@ -275,21 +369,40 @@
     "collecting": "collecting locations",
     "late": "If {{name}} can't make it in time, they can join later — no problem.",
     "errFind": "Couldn't find venues — try again.",
-    "errPoint": "Couldn't save the location — try again."
+    "errPoint": "Couldn't save the location — try again.",
+    "openMap": "Open map",
+    "meetingFor": "Meeting up for {{activity}}",
+    "promise": "We'll look for {{activity}} spots around the midpoint.",
+    "promiseKm": "We'll look for {{activity}} spots around the midpoint (≤ {{km}} km)."
   },
   "venues": {
     "meta": "{{count}} venues · ≤ {{km}} km from the midpoint",
     "metaNoRadius": "{{count}} venues",
-    "pick": "Pick this",
     "shuffle": "Shuffle and swipe",
     "everyoneSees": "Everyone sees this list. Shuffling opens the deck; who liked what shows up in the result.",
     "guestWait": "the deck opens when the host shuffles",
     "soloBadge": "Solo · {{count}} locations",
-    "soloHand": "no swiping, pick what you like →",
-    "list": "List",
-    "map": "Map",
-    "view": "View",
     "errShuffle": "Couldn't open the deck — try again.",
-    "errPick": "Couldn't save the pick — try again."
+    "errPick": "Couldn't save the pick — try again.",
+    "sort": "Sort",
+    "sortFair": "Fair for all",
+    "sortRating": "Rating",
+    "showOnMap": "Show on map",
+    "selectionTitle": "Your pick",
+    "lockIn": "Lock in",
+    "cancel": "Cancel",
+    "fairHand": "fairest for everyone first →",
+    "noLocationOne": "{{name}} hasn't shared a location yet — times update once they do",
+    "noLocationMany": "Times update once everyone without a location joins in"
+  },
+  "attribution": {
+    "google": "Google Maps",
+    "foursquare": "Powered by Foursquare",
+    "osm": "© OpenStreetMap contributors"
+  },
+  "venue": {
+    "fitOk": "For {{activity}}: {{category}}",
+    "fitOff": "Not {{activity}}: {{category}}",
+    "hoursToday": "Today {{hours}}"
   }
 }

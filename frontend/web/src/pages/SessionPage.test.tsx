@@ -25,7 +25,7 @@ describe("SessionPage yönlendirme", () => {
   });
   it("COLLECTING + davetli → Bekle", () => {
     at({ ...base, status: "COLLECTING", viewer: { participantId: "a", host: false } });
-    expect(screen.getByText("Deste hazırlanıyor…")).toBeInTheDocument();
+    expect(screen.getByText("Mekanlar geliyor")).toBeInTheDocument();
   });
   it("COLLECTING + SOLO host → konum düzenleme", () => {
     at({ ...base, status: "COLLECTING", sessionType: "SOLO", viewer: { participantId: "h", host: true } });

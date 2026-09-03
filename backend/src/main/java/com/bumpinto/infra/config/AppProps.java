@@ -7,7 +7,7 @@ import java.util.List;
 
 @ConfigurationProperties(prefix = "bumpinto")
 public record AppProps(Security security, Providers providers, Cors cors, Cookies cookies,
-                       RateLimit rateLimit, Quota quota) {
+                       RateLimit rateLimit, Quota quota, Geocode geocode) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -59,12 +59,27 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
     /**
      * Saglayici kota takibi.
      *
-     * @param refresh             scheduler araligi; cache bundan tazeyse prob atilmaz
-     * @param googleMonthlyBudget Google'in kota telemetrisi yok (header yok, Cloud Monitoring
-     *                            gecikmeli ve servis hesabi ister); kota = bu butce − yerel
-     *                            sayac. Aylik ucretsiz Nearby Search hakkina ya da harcamak
-     *                            istedigin cagri sayisina gore ayarla.
+     * @param refresh                  scheduler araligi; cache bundan tazeyse prob atilmaz
+     * @param googleMonthlyBudget      Nearby Search icin SERT aylik tavan. Google'in kota
+     *                                 telemetrisi yok (header yok, Cloud Monitoring gecikmeli
+     *                                 ve servis hesabi ister); kota = bu butce − yerel sayac.
+     *                                 Acilis modeli (spec §5.A.5): 1.000/ay = ucretsiz katman,
+     *                                 sonrasi $35/1000 (maske Enterprise). Asilirsa arama
+     *                                 yapilmaz, orkestrator Foursquare'e duser.
+     * @param googlePhotoMonthlyBudget Place Photo medya cagrilari icin AYRI sert tavan
+     *                                 (farkli SKU: 1.000 ucretsiz/ay, sonrasi $7/1000 —
+     *                                 oturum basina en buyuk kalem). Bitince foto cozulmez,
+     *                                 photoUrl null gelir ve kart monograma duser.
      */
-    public record Quota(Duration refresh, int googleMonthlyBudget) {
+    public record Quota(Duration refresh, int googleMonthlyBudget, int googlePhotoMonthlyBudget) {
+    }
+
+    /**
+     * Nominatim kullanim politikasi (operations.osmfoundation.org/policies/nominatim):
+     * uygulamayi ve ILETISIM ADRESINI tasiyan bir User-Agent ZORUNLU, saniyede en fazla 1
+     * istek, sonuclar onbelleklenir. Ucu de burada: {@code contact} User-Agent'a girer,
+     * {@code minInterval} throttle'i besler, onbellek adapterdedir.
+     */
+    public record Geocode(String contact, Duration minInterval) {
     }
 }

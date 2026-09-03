@@ -3,18 +3,25 @@ import { Plus, X } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { geocode } from "../../lib/geocode";
+import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../../lib/travelMode";
 import { pointCount, type LocalPoint } from "../../store/newSessionStore";
 import { Avatar, Badge, Button, ErrorText, Overline, TextInput } from "../atoms";
+import TravelModeField from "../molecules/TravelModeField";
 
-/** SOLO sağ bölge kartı — kendi konum + elle eklenen noktalar + ekleme formu. */
+/** SOLO sağ bölge kartı — kendi konum + elle eklenen noktalar + ekleme formu. Yeni nokta formunun
+    ulaşım varsayılanı CAR (§5b). `onModeChange` verilirse satırlar da düzenlenebilir (yerel taslak
+    — NewSessionPage); SoloSetupPage'de sunucudaki mevcut katılımcının modunu değiştiren bir uç
+    olmadığından o çağrı yeri `onModeChange`'i GEÇMEZ, satırlar salt-bilgi kalır. */
 export default function PointsEditor(props: {
   own: { label: string | null } | null;
-  points: { displayName: string; locationLabel: string | null }[];
+  points: { displayName: string; locationLabel: string | null; travelMode?: TravelMode }[];
   onAdd: (p: LocalPoint) => void | Promise<void>;
   onRemove: (index: number) => void | Promise<void>;
+  onModeChange?: (index: number, mode: TravelMode) => void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
+  const [draftMode, setDraftMode] = useState<TravelMode>(DEFAULT_TRAVEL_MODE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const count = pointCount(props.own, props.points);
@@ -33,8 +40,15 @@ export default function PointsEditor(props: {
         setError(t("join.errGeocode"));
         return;
       }
-      await props.onAdd({ displayName: name, locationLabel: found.label, lat: found.lat, lng: found.lng });
+      await props.onAdd({
+        displayName: name,
+        locationLabel: found.label,
+        lat: found.lat,
+        lng: found.lng,
+        travelMode: draftMode,
+      });
       setDraft("");
+      setDraftMode(DEFAULT_TRAVEL_MODE);
     } finally {
       setBusy(false);
     }
@@ -75,20 +89,33 @@ export default function PointsEditor(props: {
                 <X size={16} aria-hidden />
               </button>
             </div>
+            {props.onModeChange && (
+              <div className="px-4 pb-[0.6875rem]">
+                <TravelModeField
+                  value={p.travelMode ?? DEFAULT_TRAVEL_MODE}
+                  onChange={(mode) => props.onModeChange?.(i, mode)}
+                  label={t("travelMode.forName", { name: p.displayName })}
+                  hideLabel
+                />
+              </div>
+            )}
           </div>
         ))}
         <div className="mx-4 h-px bg-line" />
-        <form onSubmit={add} className="flex items-center gap-2 px-3 py-2.5">
-          <TextInput
-            aria-label={t("newSession.pointPlaceholder")}
-            placeholder={t("newSession.pointPlaceholder")}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          <Button type="submit" kind="white" size="sm" disabled={busy}>
-            <Plus size={18} aria-hidden />
-            {t("newSession.add")}
-          </Button>
+        <form onSubmit={add} className="flex flex-col gap-2.5 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <TextInput
+              aria-label={t("newSession.pointPlaceholder")}
+              placeholder={t("newSession.pointPlaceholder")}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <Button type="submit" kind="white" size="sm" disabled={busy}>
+              <Plus size={18} aria-hidden />
+              {t("newSession.add")}
+            </Button>
+          </div>
+          <TravelModeField value={draftMode} onChange={setDraftMode} />
         </form>
       </div>
       {error && <ErrorText>{error}</ErrorText>}

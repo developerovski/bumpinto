@@ -2,6 +2,14 @@ import type { ParticipantDto, Schemas, SessionPreview, SessionView } from "@bump
 import { AxiosError } from "axios";
 import { create } from "zustand";
 import { api } from "../lib/api";
+import { trackStatus } from "../lib/analytics";
+
+/** Analitik: aşama geçişi oturum+durum başına bir kez (Task 8) — `view` taşıyan HER `set`
+    burayı çağırır; tek çıkış noktası. `view` değişmeden döner (kimlik fonksiyonu). */
+function withStatusTrack(view: SessionView): SessionView {
+  if (view.slug && view.status) trackStatus(view.slug, view.status);
+  return view;
+}
 
 // refresh(): mutasyondan önce başlayan GET yanıtı bayat sayılır
 let mutations = 0;
@@ -65,6 +73,8 @@ type SessionState = {
   findVenues: () => Promise<void>;
   shuffle: () => Promise<void>;
   pick: (venueId: string) => Promise<void>;
+  /** Host mekân seçmeden karar: sunucu kalanları dışarıda bırakıp motoru koşturur (aynı uç, gövde boş). */
+  decideWithout: () => Promise<void>;
   addPoint: (body: Schemas["PointRequest"]) => Promise<void>;
   removePoint: (participantId: string) => Promise<void>;
 };
@@ -99,7 +109,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       const view = await api.getSession(slug);
       if (at !== mutations) return;
-      set({ view, needsJoin: false, error: null });
+      set({ view: withStatusTrack(view), needsJoin: false, error: null });
     } catch (e) {
       if (at !== mutations) return;
       const status = e instanceof AxiosError ? e.response?.status : undefined;
@@ -129,17 +139,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   findVenues: async () => {
     await mutate(async () => {
-      set({ view: await api.findVenues(get().slug) });
+      set({ view: withStatusTrack(await api.findVenues(get().slug)) });
     });
   },
   shuffle: async () => {
     await mutate(async () => {
-      set({ view: await api.shuffle(get().slug) });
+      set({ view: withStatusTrack(await api.shuffle(get().slug)) });
     });
   },
   pick: async (venueId) => {
     await mutate(async () => {
-      set({ view: await api.forceDecision(get().slug, { venueId }) });
+      set({ view: withStatusTrack(await api.forceDecision(get().slug, { venueId })) });
+    });
+  },
+  decideWithout: async () => {
+    await mutate(async () => {
+      set({ view: withStatusTrack(await api.forceDecision(get().slug, {})) });
     });
   },
   addPoint: async (body) => {

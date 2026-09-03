@@ -21,4 +21,10 @@ class VenueEntity {
     String photoUrl;
     String mapsUrl;
     int deckOrder;
+    String category;
+    String address;
+    String locality;
+    Integer ratingCount;
+    String hoursToday;
+    String placeLink;
 }

@@ -1,21 +1,26 @@
 import type { Schemas } from "@bumpinto/shared";
 import { ArrowLeft } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, ErrorText, HandNote, Heading, Note, Overline, Page } from "../components/atoms";
 import ActivityPicker from "../components/molecules/ActivityPicker";
 import Field from "../components/molecules/Field";
 import InvitePreview from "../components/molecules/InvitePreview";
+import LazyBoundary from "../components/molecules/LazyBoundary";
 import LocationField from "../components/molecules/LocationField";
+import TravelModeField from "../components/molecules/TravelModeField";
 import TwoZone from "../components/molecules/TwoZone";
 import TypeSelector from "../components/molecules/TypeSelector";
-import MapView from "../components/organisms/MapView";
 import PointsEditor from "../components/organisms/PointsEditor";
 import { centroid } from "../lib/geo";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useAuthStore } from "../store/authStore";
 import { pointCount, previewParticipants, useNewSessionStore } from "../store/newSessionStore";
 import { useOwnLocation } from "../store/useOwnLocation";
+
+/* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
+const MapView = lazy(() => import("../components/organisms/MapView"));
 
 type Activity = Schemas["CreateSessionRequest"]["activityType"];
 
@@ -28,13 +33,16 @@ export default function NewSessionPage() {
   const activity = useNewSessionStore((s) => s.activity);
   const name = useNewSessionStore((s) => s.name);
   const points = useNewSessionStore((s) => s.points);
+  const travelMode = useNewSessionStore((s) => s.travelMode);
   const busy = useNewSessionStore((s) => s.busy);
   const error = useNewSessionStore((s) => s.error);
   const setType = useNewSessionStore((s) => s.setType);
   const setActivity = useNewSessionStore((s) => s.setActivity);
   const setName = useNewSessionStore((s) => s.setName);
+  const setTravelMode = useNewSessionStore((s) => s.setTravelMode);
   const addLocalPoint = useNewSessionStore((s) => s.addLocalPoint);
   const removeLocalPoint = useNewSessionStore((s) => s.removeLocalPoint);
+  const setLocalPointTravelMode = useNewSessionStore((s) => s.setLocalPointTravelMode);
   const submit = useNewSessionStore((s) => s.submit);
   const reset = useNewSessionStore((s) => s.reset);
 
@@ -51,7 +59,8 @@ export default function NewSessionPage() {
   useEffect(() => {
     reset();
     if (me?.defaultActivity) setActivity(me.defaultActivity);
-    // yalnız ilk mount'ta — reset ve varsayılan etkinlik
+    if (me?.defaultTravelMode) setTravelMode(me.defaultTravelMode);
+    // yalnız ilk mount'ta — reset ve varsayılan etkinlik/ulaşım
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,6 +97,12 @@ export default function NewSessionPage() {
   );
   const count = pointCount(own, points);
   const errorMessage = localError ?? (error ? t(error) : null);
+  // 390'da harita hiç mount edilmez (§4.7) — SOLO'da sağ bölge ve harita yalnız gerçek lg
+  // genişlikte (JoinForm deseni: `lgOnly` + `TwoZone.rightLgOnly`); jsdom `matchMedia`
+  // uygulamıyor → test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz
+  // haritanın mount olmadığını doğrulayabilir. GRUP'ta sağ bölge (davet önizlemesi) 390'da
+  // görünür kalır — yalnız SOLO'nun harita kolonu gizlenir.
+  const desktop = useMediaQuery("(min-width: 1024px)");
 
   return (
     <Page>
@@ -122,6 +137,7 @@ export default function NewSessionPage() {
               inputId="session-address"
               busy={loc.busy}
             />
+            <TravelModeField value={travelMode} onChange={setTravelMode} />
             {type === "GROUP" ? (
               <Button onClick={create} disabled={busy || submitting}>
                 {t("newSession.createGroup")}
@@ -140,21 +156,35 @@ export default function NewSessionPage() {
         right={
           type === "SOLO" ? (
             <>
-              <PointsEditor own={own} points={points} onAdd={addLocalPoint} onRemove={removeLocalPoint} />
-              <MapView
-                participants={previewList}
-                venues={[]}
-                midpoint={mid}
-                radiusKm={null}
-                pinLabels={labels}
-                caption={mid ? t("map.midpointOnly") : undefined}
+              <PointsEditor
+                own={own}
+                points={points}
+                onAdd={addLocalPoint}
+                onRemove={removeLocalPoint}
+                onModeChange={setLocalPointTravelMode}
               />
+              {desktop && (
+                <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                  <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                    <MapView
+                      participants={previewList}
+                      venues={[]}
+                      midpoint={mid}
+                      radiusKm={null}
+                      pinLabels={labels}
+                      caption={mid ? t("map.midpointOnly") : undefined}
+                      lgOnly
+                    />
+                  </Suspense>
+                </LazyBoundary>
+              )}
               <HandNote>{t("newSession.soloHand")}</HandNote>
             </>
           ) : (
             <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activity={activity} />
           )
         }
+        rightLgOnly={type === "SOLO"}
       />
     </Page>
   );

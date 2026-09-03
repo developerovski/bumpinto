@@ -21,5 +21,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
+    // Adalet modülü paylaşımlı pakette (M-3 aynı kodu tüketir); testi burada koşar.
+    include: ["src/**/*.test.{ts,tsx}", "../shared/src/**/*.test.ts"],
   },
 });

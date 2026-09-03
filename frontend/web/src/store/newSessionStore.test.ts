@@ -13,11 +13,11 @@ describe("newSessionStore", () => {
     vi.mocked(api.findVenues).mockResolvedValueOnce({ slug: "q9d4p", status: "BROWSING" } as never);
     const s = useNewSessionStore.getState();
     s.setType("SOLO"); s.setActivity("COFFEE");
-    s.addLocalPoint({ displayName: "Ayşe", locationLabel: "Someren", lat: 51.3855, lng: 5.712 });
+    s.addLocalPoint({ displayName: "Ayşe", locationLabel: "Someren", lat: 51.3855, lng: 5.712, travelMode: "BIKE" });
     const slug = await useNewSessionStore.getState().submit("Mehmet", { lat: 51.6978, lng: 5.3037, label: "'s-Hertogenbosch" });
     expect(slug).toBe("q9d4p");
-    expect(api.createSession).toHaveBeenCalledWith(expect.objectContaining({ sessionType: "SOLO", locationLabel: "'s-Hertogenbosch" }));
-    expect(api.addPoint).toHaveBeenCalledWith("q9d4p", expect.objectContaining({ displayName: "Ayşe" }));
+    expect(api.createSession).toHaveBeenCalledWith(expect.objectContaining({ sessionType: "SOLO", locationLabel: "'s-Hertogenbosch", travelMode: "CAR" }));
+    expect(api.addPoint).toHaveBeenCalledWith("q9d4p", expect.objectContaining({ displayName: "Ayşe", travelMode: "BIKE" }));
     expect(api.findVenues).toHaveBeenCalledWith("q9d4p");
   });
 
@@ -41,7 +41,7 @@ describe("newSessionStore", () => {
     vi.mocked(api.addPoint).mockRejectedValueOnce(new Error("409"));
     const s = useNewSessionStore.getState();
     s.setType("SOLO"); s.setActivity("COFFEE");
-    s.addLocalPoint({ displayName: "Ayşe", locationLabel: "Someren", lat: 51.3855, lng: 5.712 });
+    s.addLocalPoint({ displayName: "Ayşe", locationLabel: "Someren", lat: 51.3855, lng: 5.712, travelMode: "BIKE" });
     await expect(useNewSessionStore.getState().submit("Mehmet", { lat: 51.6978, lng: 5.3037, label: "'s-Hertogenbosch" })).resolves.toBe("q9d4p");
     expect(useNewSessionStore.getState().error).toBeNull();
     expect(useNewSessionStore.getState().busy).toBe(false);
@@ -51,5 +51,14 @@ describe("newSessionStore", () => {
     vi.mocked(api.createSession).mockResolvedValueOnce({ sessionId: "s" } as never);
     await expect(useNewSessionStore.getState().submit("Mehmet", { lat: 51.7, lng: 5.3, label: null })).rejects.toThrow();
     expect(useNewSessionStore.getState().error).toBe("newSession.errCreate");
+  });
+
+  it("setTravelMode + setLocalPointTravelMode: kendi ve nokta ulaşım türü ayrı güncellenir", () => {
+    const s = useNewSessionStore.getState();
+    s.setTravelMode("TRANSIT");
+    expect(useNewSessionStore.getState().travelMode).toBe("TRANSIT");
+    s.addLocalPoint({ displayName: "Ayşe", locationLabel: "Someren", lat: 51.3855, lng: 5.712, travelMode: "CAR" });
+    s.setLocalPointTravelMode(0, "WALK");
+    expect(useNewSessionStore.getState().points[0].travelMode).toBe("WALK");
   });
 });

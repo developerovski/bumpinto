@@ -3,6 +3,7 @@ package com.bumpinto.adapter.out.provider;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.VenueCandidate;
+import com.bumpinto.infra.config.AppProps;
 import kong.unirest.core.HttpMethod;
 import kong.unirest.core.MockClient;
 import kong.unirest.core.Unirest;
@@ -11,6 +12,7 @@ import kong.unirest.core.json.JSONArray;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -26,6 +28,15 @@ class GooglePlacesVenueProviderTest {
     static GooglePlacesVenueProvider provider(UnirestInstance http) {
         return new GooglePlacesVenueProvider(http, FoursquareVenueProviderTest.props(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    static AppProps budget(int searches, int photos) {
+        return new AppProps(new AppProps.Security("cid", "secret", Duration.ofHours(12)),
+                new AppProps.Providers("fsq-key", "g-key"),
+                new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
+                new AppProps.RateLimit(false),
+                new AppProps.Quota(Duration.ofMinutes(5), searches, photos),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
     @Test
@@ -173,15 +184,151 @@ class GooglePlacesVenueProviderTest {
         mock.expect(HttpMethod.POST, NEARBY_URL).thenReturn("{}");
         GooglePlacesVenueProvider p = provider(http);
 
-        assertThat(p.measureQuota().remaining()).isEqualTo(5000);
+        assertThat(p.measureQuota().remaining()).isEqualTo(1000);
         p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
         p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
 
         ProviderQuota q = p.measureQuota();
-        assertThat(q.remaining()).isEqualTo(4998);
-        assertThat(q.limit()).isEqualTo(5000);
+        assertThat(q.remaining()).isEqualTo(998);
+        assertThat(q.limit()).isEqualTo(1000);
         assertThat(q.source()).isEqualTo(ProviderQuota.Source.BUDGET);
-        assertThat(q.resetAt()).isEqualTo(Instant.parse("2026-10-01T00:00:00Z"));
+        // Reset Pasifik takvim ayi basidir (Google'in faturalama saati): 1 Ekim 00:00 PDT (UTC-7).
+        assertThat(q.resetAt()).isEqualTo(Instant.parse("2026-10-01T07:00:00Z"));
+    }
+
+    @Test
+    void mapsSameTierEnterpriseFieldsToCandidate() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g1","displayName":{"text":"Espresso Bar"},
+                          "location":{"latitude":51.44,"longitude":5.47},
+                          "rating":4.6,"userRatingCount":312,
+                          "businessStatus":"OPERATIONAL",
+                          "primaryTypeDisplayName":{"text":"Espresso bar"},
+                          "shortFormattedAddress":"Kleine Berg 16, Eindhoven",
+                          "regularOpeningHours":{"weekdayDescriptions":[
+                            "Monday: 8:00 AM – 6:00 PM","Tuesday: 8:00 AM – 6:00 PM",
+                            "Wednesday: 8:00 AM – 6:00 PM","Thursday: 8:00 AM – 6:00 PM",
+                            "Friday: 8:00 AM – 10:00 PM","Saturday: 9:00 AM – 10:00 PM",
+                            "Sunday: 10:00 AM – 6:00 PM"]},
+                          "addressComponents":[
+                            {"longText":"16","types":["street_number"]},
+                            {"longText":"Strijp-S","types":["sublocality_level_1","sublocality"]},
+                            {"longText":"Eindhoven","types":["locality","political"]}],
+                          "googleMapsUri":"https://maps/g1"}]}
+                        """);
+
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+
+        assertThat(c.category()).isEqualTo("Espresso bar");
+        assertThat(c.address()).isEqualTo("Kleine Berg 16, Eindhoven");
+        assertThat(c.locality()).isEqualTo("Eindhoven"); // locality, sublocality'yi yener
+        assertThat(c.ratingCount()).isEqualTo(312);
+        // NOW = 2026-09-02 = carsamba (Wednesday) → weekdayDescriptions[2]
+        assertThat(c.hoursToday()).isEqualTo("Wednesday: 8:00 AM – 6:00 PM");
+        assertThat(c.placeLink()).isEqualTo("https://maps/g1");
+
+        // Unirest MockClient'in Assert arayuzu yalniz TAM esit header degeri dogrular
+        // (hasHeaderContaining yok) — o yuzden maskenin butununu tek satirda kontrol ediyoruz.
+        mock.assertThat(HttpMethod.POST, NEARBY_URL)
+                .hadHeader("X-Goog-FieldMask",
+                        "places.id,places.displayName,places.location,places.rating,"
+                                + "places.priceLevel,places.googleMapsUri,places.photos,"
+                                + "places.primaryTypeDisplayName,places.businessStatus,"
+                                + "places.shortFormattedAddress,places.userRatingCount,"
+                                + "places.regularOpeningHours,places.addressComponents");
+    }
+
+    /**
+     * Google'in siralama garantisi yok (dil bagimli); dizi PAZAR ile baslasa bile gun adi
+     * eslesmesi dogru satiri bulmali, sabit "Pazartesi=index0" varsayimina duselmemeli.
+     */
+    @Test
+    void hoursTodayMatchesByDayNamePrefixWhenArrayIsSundayFirst() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g1","displayName":{"text":"Espresso Bar"},
+                          "location":{"latitude":51.44,"longitude":5.47},
+                          "businessStatus":"OPERATIONAL",
+                          "regularOpeningHours":{"weekdayDescriptions":[
+                            "Sunday: 10:00 AM – 6:00 PM","Monday: 8:00 AM – 6:00 PM",
+                            "Tuesday: 8:00 AM – 6:00 PM","Wednesday: 8:00 AM – 6:00 PM",
+                            "Thursday: 8:00 AM – 6:00 PM","Friday: 8:00 AM – 10:00 PM",
+                            "Saturday: 9:00 AM – 10:00 PM"]}}]}
+                        """);
+
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+
+        // NOW = 2026-09-02 = carsamba (Wednesday); dizi Pazar-ilk, index-tabanli okuma yanlis
+        // gunu (Tuesday) dondururdu — isim eslesmesi dogru satiri bulur.
+        assertThat(c.hoursToday()).isEqualTo("Wednesday: 8:00 AM – 6:00 PM");
+    }
+
+    @Test
+    void localityFallsBackToSublocalityWhenGoogleOmitsTheCity() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g3","displayName":{"text":"Kiosk"},
+                          "location":{"latitude":51.44,"longitude":5.47},
+                          "addressComponents":[
+                            {"longText":"Strijp-S","types":["sublocality_level_1","sublocality"]}]}]}
+                        """);
+
+        assertThat(provider(http).search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10)
+                .get(0).locality()).isEqualTo("Strijp-S");
+    }
+
+    @Test
+    void closedPlacesAreDroppedSilentlyAndPhotosStayAligned() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[
+                          {"id":"kapali","displayName":{"text":"Kapanmis"},
+                           "location":{"latitude":51.44,"longitude":5.47},
+                           "businessStatus":"CLOSED_PERMANENTLY",
+                           "photos":[{"name":"places/kapali/photos/REF0"}]},
+                          {"id":"acik","displayName":{"text":"Acik"},
+                           "location":{"latitude":51.45,"longitude":5.48},
+                           "businessStatus":"OPERATIONAL",
+                           "photos":[{"name":"places/acik/photos/REF1"}]}]}
+                        """);
+        mock.expect(HttpMethod.GET, "https://places.googleapis.com/v1/places/acik/photos/REF1/media")
+                .thenReturn("""
+                        {"photoUri":"https://lh3/acik=w1000"}
+                        """);
+
+        List<VenueCandidate> out = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+
+        assertThat(out).hasSize(1);
+        assertThat(out.get(0).externalId()).isEqualTo("acik");
+        assertThat(out.get(0).photoUrl()).isEqualTo("https://lh3/acik=w1000");
+    }
+
+    @Test
+    void placeLinkFallsBackToPlaceIdSearchUrlWhenGoogleOmitsTheUri() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g9","displayName":{"text":"Café Berlage"},
+                          "location":{"latitude":51.44,"longitude":5.47}}]}
+                        """);
+
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+        assertThat(c.placeLink()).isEqualTo(
+                "https://www.google.com/maps/search/?api=1&query=Caf%C3%A9+Berlage&query_place_id=g9");
     }
 
     /** Ay donunce sayac sifirlanir — eski ayin harcamasi yeni butceyi yemez. */
@@ -200,9 +347,94 @@ class GooglePlacesVenueProviderTest {
                 FoursquareVenueProviderTest.props(), clock);
 
         p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
-        assertThat(p.measureQuota().remaining()).isEqualTo(4999);
+        assertThat(p.measureQuota().remaining()).isEqualTo(999);
 
-        now.set(Instant.parse("2026-10-01T00:00:01Z"));
-        assertThat(p.measureQuota().remaining()).isEqualTo(5000);
+        // Sinir Pasifik takvim ayidir: 1 Ekim 00:00 PDT (UTC-7) = 07:00 UTC, saat degil.
+        now.set(Instant.parse("2026-10-01T07:00:01Z"));
+        assertThat(p.measureQuota().remaining()).isEqualTo(1000);
+    }
+
+    @Test
+    void nearbyBudgetIsAHardCapNotJustAReport() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g1","displayName":{"text":"Tek"},
+                          "location":{"latitude":51.44,"longitude":5.47}}]}
+                        """);
+        GooglePlacesVenueProvider provider = new GooglePlacesVenueProvider(http, budget(1, 10),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        assertThat(provider.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+                .hasSize(1);
+        // Butce bitti: ikinci arama aga CIKMAZ, orkestrator baska saglayiciya gecsin diye
+        // QuotaExceededException atilir.
+        assertThatThrownBy(() -> provider.search(new GeoPoint(51.5, 5.5), 5.0,
+                ActivityType.COFFEE, 10))
+                .isInstanceOf(QuotaExceededException.class);
+        mock.assertThat(HttpMethod.POST, NEARBY_URL).wasInvokedTimes(1);
+        assertThat(provider.measureQuota().remaining()).isZero();
+    }
+
+    @Test
+    void photoBudgetExhaustionLeavesVenuesWithoutPhotosButKeepsTheSearch() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[
+                          {"id":"g1","displayName":{"text":"Bir"},
+                           "location":{"latitude":51.44,"longitude":5.47},
+                           "photos":[{"name":"places/g1/photos/REF1"}]},
+                          {"id":"g2","displayName":{"text":"Iki"},
+                           "location":{"latitude":51.45,"longitude":5.48},
+                           "photos":[{"name":"places/g2/photos/REF2"}]}]}
+                        """);
+        mock.expect(HttpMethod.GET, "https://places.googleapis.com/v1/places/g1/photos/REF1/media")
+                .thenReturn("""
+                        {"photoUri":"https://lh3/g1=w1000"}
+                        """);
+        GooglePlacesVenueProvider provider = new GooglePlacesVenueProvider(http, budget(10, 1),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        List<VenueCandidate> out = provider.search(new GeoPoint(51.5, 5.5), 5.0,
+                ActivityType.COFFEE, 10);
+
+        assertThat(out).hasSize(2);
+        assertThat(out.get(0).photoUrl()).isEqualTo("https://lh3/g1=w1000");
+        assertThat(out.get(1).photoUrl()).isNull(); // butce bitti → monogram fallback
+    }
+
+    /** Foto sayaci SUREC ICI kalir: ikinci arama, ilk aramanin harcadigi butceyi gorur. */
+    @Test
+    void photoCounterPersistsAcrossTwoSearchesInTheSameMonth() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("""
+                        {"places":[{"id":"g1","displayName":{"text":"Bir"},
+                          "location":{"latitude":51.44,"longitude":5.47},
+                          "photos":[{"name":"places/g1/photos/REF1"}]}]}
+                        """);
+        mock.expect(HttpMethod.GET, "https://places.googleapis.com/v1/places/g1/photos/REF1/media")
+                .thenReturn("""
+                        {"photoUri":"https://lh3/g1=w1000"}
+                        """);
+        GooglePlacesVenueProvider provider = new GooglePlacesVenueProvider(http, budget(10, 1),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        List<VenueCandidate> first = provider.search(new GeoPoint(51.5, 5.5), 5.0,
+                ActivityType.COFFEE, 10);
+        assertThat(first.get(0).photoUrl()).isEqualTo("https://lh3/g1=w1000");
+
+        // Ikinci arama AYNI aydadir: tek birimlik foto butcesi ilk aramada tukendi, sayac
+        // ikinci aramada SIFIRLANMAZ — venue fotosuz kalir.
+        List<VenueCandidate> second = provider.search(new GeoPoint(51.5, 5.5), 5.0,
+                ActivityType.COFFEE, 10);
+        assertThat(second.get(0).photoUrl()).isNull();
+        mock.assertThat(HttpMethod.GET,
+                "https://places.googleapis.com/v1/places/g1/photos/REF1/media")
+                .wasInvokedTimes(1);
     }
 }

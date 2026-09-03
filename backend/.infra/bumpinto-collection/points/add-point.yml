@@ -16,7 +16,8 @@ http:
         "displayName": "Ayşe",
         "locationLabel": "Someren",
         "lat": 51.3855,
-        "lng": 5.7120
+        "lng": 5.7120,
+        "travelMode": "BIKE"
       }
   auth:
     type: bearer
@@ -44,3 +45,5 @@ docs:
     Host JWT gerekir. Yalniz `sessionType=SOLO` ve `COLLECTING` durumunda (aksi 409).
     Token'siz, oy vermeyen katilimci olusturur; orta nokta ve yaricapa dahildir.
     `displayName` max 40, `locationLabel` max 80, lat/lng aralik disi 400.
+
+    `travelMode: WALK|BIKE|EBIKE|TRANSIT|CAR, opsiyonel, varsayılan CAR` (spec §5.A.7).

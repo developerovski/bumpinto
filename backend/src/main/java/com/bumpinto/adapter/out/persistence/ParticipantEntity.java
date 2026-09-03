@@ -24,4 +24,7 @@ class ParticipantEntity {
     boolean isHost;
     boolean isManual;
     String locationLabel;
+    /** DB kolonu `not null default 'CAR'`; Java tarafinda ayni varsayilani tutar (bkz.
+     * PersistenceSliceTest gibi entity'yi dogrudan olusturan testler). */
+    String travelMode = "CAR";
 }

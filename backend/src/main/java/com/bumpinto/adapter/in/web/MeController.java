@@ -40,7 +40,7 @@ class MeController {
         prefs.update(id, request.displayName(),
                 location == null ? null : new GeoPoint(location.lat(), location.lng()),
                 location == null ? null : location.label(),
-                request.defaultActivity(), request.language());
+                request.defaultActivity(), request.language(), request.defaultTravelMode());
         return toResponse(queries.me(id));
     }
 
@@ -50,7 +50,7 @@ class MeController {
                 : new ApiDtos.LocationPrefDto(profile.defaultLocation().lat(),
                         profile.defaultLocation().lng(), profile.defaultLocationLabel());
         return new ApiDtos.MeResponse(profile.id(), profile.email(), profile.name(), location,
-                profile.defaultActivity(), profile.language(),
+                profile.defaultActivity(), profile.language(), profile.defaultTravelMode(),
                 new ApiDtos.StatsDto(me.stats().sessionsHosted(), me.stats().friendsMet()));
     }
 }

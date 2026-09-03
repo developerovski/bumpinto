@@ -31,4 +31,10 @@ bumpinto:
     trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}
   quota:
     refresh: ${PROVIDER_QUOTA_REFRESH:PT5M}
-    google-monthly-budget: ${GOOGLE_MONTHLY_BUDGET:5000}
+    # Acilis maliyet modeli (spec §5.A.5): ikisi de Google'in ucretsiz aylik katmani.
+    google-monthly-budget: ${GOOGLE_MONTHLY_BUDGET:1000}
+    google-photo-monthly-budget: ${GOOGLE_PHOTO_MONTHLY_BUDGET:1000}
+  geocode:
+    # Nominatim politikasi: User-Agent'ta gercek bir iletisim adresi ZORUNLU.
+    contact: ${NOMINATIM_CONTACT:dev@bumpinto.test}
+    min-interval: ${NOMINATIM_MIN_INTERVAL:PT1S}

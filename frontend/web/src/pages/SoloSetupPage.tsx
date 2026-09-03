@@ -1,15 +1,20 @@
+import { Suspense, lazy } from "react";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, HandNote, Note, Page } from "../components/atoms";
 import ActivityBadge from "../components/molecules/ActivityBadge";
+import LazyBoundary from "../components/molecules/LazyBoundary";
 import SessionHeader from "../components/molecules/SessionHeader";
 import TwoZone from "../components/molecules/TwoZone";
-import MapView from "../components/organisms/MapView";
 import PointsEditor from "../components/organisms/PointsEditor";
 import { sessionActivity } from "../lib/activity";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { pointCount } from "../store/newSessionStore";
 import { mapProps, useSessionStore } from "../store/sessionStore";
 import { useSessionAction } from "../store/useSessionAction";
+
+/* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
+const MapView = lazy(() => import("../components/organisms/MapView"));
 
 /** SOLO host: sunucu taraflı nokta editörü + harita önizlemesi + "Mekanları bul". */
 export default function SoloSetupPage({ view }: { view: SessionView }) {
@@ -24,6 +29,11 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
   const manual = participants.filter((p) => p.manual);
   const count = pointCount(host?.hasLocation ? { label: host.locationLabel } : null, manual);
   const activity = sessionActivity(view);
+  // 390'da harita hiç mount edilmez (§4.7) — sağ bölge ve harita yalnız gerçek lg genişlikte
+  // (JoinForm deseni: `lgOnly` + `TwoZone.rightLgOnly`); jsdom `matchMedia` uygulamıyor →
+  // test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz haritanın mount
+  // olmadığını doğrulayabilir.
+  const desktop = useMediaQuery("(min-width: 1024px)");
 
   return (
     <Page>
@@ -42,10 +52,21 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
           <>
             <PointsEditor
               own={host?.hasLocation ? { label: host.locationLabel ?? null } : null}
-              points={manual.map((p) => ({ displayName: p.displayName ?? "", locationLabel: p.locationLabel ?? null }))}
+              points={manual.map((p) => ({
+                displayName: p.displayName ?? "",
+                locationLabel: p.locationLabel ?? null,
+                travelMode: p.travelMode,
+              }))}
               onAdd={(p) =>
                 run(
-                  () => addPoint({ displayName: p.displayName, locationLabel: p.locationLabel ?? undefined, lat: p.lat, lng: p.lng }),
+                  () =>
+                    addPoint({
+                      displayName: p.displayName,
+                      locationLabel: p.locationLabel ?? undefined,
+                      lat: p.lat,
+                      lng: p.lng,
+                      travelMode: p.travelMode,
+                    }),
                   "lobby.errPoint",
                 )
               }
@@ -63,10 +84,22 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
         }
         right={
           <>
-            <MapView {...mapProps(view, t("map.you"), t("newSession.manual"))} venues={[]} caption={t("map.midpointOnly")} />
+            {desktop && (
+              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                  <MapView
+                    {...mapProps(view, t("map.you"), t("newSession.manual"))}
+                    venues={[]}
+                    caption={t("map.midpointOnly")}
+                    lgOnly
+                  />
+                </Suspense>
+              </LazyBoundary>
+            )}
             <HandNote>{t("newSession.soloHand")}</HandNote>
           </>
         }
+        rightLgOnly
       />
     </Page>
   );

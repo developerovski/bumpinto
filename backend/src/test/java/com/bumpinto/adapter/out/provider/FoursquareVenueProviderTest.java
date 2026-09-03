@@ -38,7 +38,8 @@ class FoursquareVenueProviderTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 1000, 1000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
     /**
@@ -64,29 +65,86 @@ class FoursquareVenueProviderTest {
     }
 
     @Test
-    void parsesSearchResponseAndConvertsRatingToFiveScale() {
+    void requestsOnlyProFieldsAndMapsCategoryAndLocality() {
         UnirestInstance http = Unirest.spawnInstance();
         MockClient mock = MockClient.register(http);
+        // Unirest 4.10'un Assert arayuzunde queryParam dogrulayan bir metot yok (yalniz
+        // hadHeader/hadBody/hadField/wasInvokedTimes) — eslesme mock.expect(...).queryString(...)
+        // ile KURULUR, sonda verifyAll() ile dogrulanir.
         mock.expect(HttpMethod.GET, SEARCH_URL)
+                .queryString("fields",
+                        "fsq_place_id,name,latitude,longitude,categories,location,website")
                 .thenReturn("""
                         {"results":[{"fsq_place_id":"f1","name":"Café Berlage",
                           "latitude":51.44,"longitude":5.47,
+                          "categories":[{"name":"Coffee Shop"},{"name":"Café"}],
+                          "location":{"locality":"Eindhoven","neighborhood":["Bergen"]},
+                          "website":"https://berlage.nl",
                           "rating":9.2,"price":2,
                           "photos":[{"prefix":"https://p/","suffix":"/x.jpg"}]}]}
                         """);
 
-        List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
 
-        assertThat(out).hasSize(1);
-        VenueCandidate c = out.get(0);
-        assertThat(c.provider()).isEqualTo("foursquare");
-        assertThat(c.externalId()).isEqualTo("f1");
-        assertThat(c.name()).isEqualTo("Café Berlage");
-        assertThat(c.rating()).isEqualTo(4.6);
-        assertThat(c.priceLevel()).isEqualTo(2);
-        assertThat(c.photoUrl()).isEqualTo("https://p/original/x.jpg");
-        assertThat(c.mapsUrl()).isEqualTo("https://maps.google.com/?q=51.44,5.47");
+        assertThat(c.category()).isEqualTo("Coffee Shop");
+        assertThat(c.address()).isEqualTo("Eindhoven");
+        assertThat(c.locality()).isEqualTo("Eindhoven");
+        assertThat(c.placeLink()).isEqualTo("https://berlage.nl");
+        // Premium alanlar YANITTA VAR ama biz istemedigimiz icin ayristirilmiyor — sahte
+        // "bos yanit oldugu icin null" degil, gercek bir ignore kaniti.
+        assertThat(c.rating()).isNull();
+        assertThat(c.priceLevel()).isNull();
+        assertThat(c.photoUrl()).isNull();
+        assertThat(c.ratingCount()).isNull();
+
+        mock.verifyAll();
+    }
+
+    /**
+     * FSQ yaniti bazen `location.neighborhood`'u bir dizi degil duz metin olarak, ya da
+     * `categories`'i bos dizi olarak doner — tip uyusmazligi tum sayfayi degil SADECE
+     * o alanlari dusurmeli (opt* koruması).
+     */
+    @Test
+    void malformedCategoryAndScalarNeighbourhoodDropOnlyThoseFieldsNotTheWholeCandidate() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.GET, SEARCH_URL)
+                .thenReturn("""
+                        {"results":[{"fsq_place_id":"f3","name":"Malformed Spot",
+                          "latitude":51.44,"longitude":5.47,
+                          "categories":[],
+                          "location":{"neighborhood":"not-an-array"}}]}
+                        """);
+
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+
+        assertThat(c.externalId()).isEqualTo("f3");
+        assertThat(c.name()).isEqualTo("Malformed Spot");
+        assertThat(c.category()).isNull();
+        assertThat(c.locality()).isNull();
+        assertThat(c.address()).isNull();
+    }
+
+    @Test
+    void addressFallsBackToNeighbourhoodWhenLocalityIsMissing() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.GET, SEARCH_URL)
+                .thenReturn("""
+                        {"results":[{"fsq_place_id":"f2","name":"Kiosk",
+                          "latitude":51.44,"longitude":5.47,
+                          "location":{"neighborhood":["Strijp-S"]}}]}
+                        """);
+
+        VenueCandidate c = provider(http)
+                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+        assertThat(c.address()).isEqualTo("Strijp-S");
+        assertThat(c.locality()).isEqualTo("Strijp-S");
+        assertThat(c.category()).isNull();
+        assertThat(c.placeLink()).isNull();
     }
 
     /**

@@ -31,4 +31,6 @@ docs:
     olmayan katilimcilarin isim bazinda ayrik sayisi. `stats.sessionsHosted`: toplam
     bastirilan oturum sayisi.
 
+    Yanit `defaultTravelMode` alanini tasir (null = tercih yok).
+
     Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).

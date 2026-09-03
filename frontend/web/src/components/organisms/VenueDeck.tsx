@@ -1,9 +1,10 @@
 /* Kaynak: ui.css .a-deck / .a-pol--d1..d3 (.a-deck > .a-pol konumu) / .a-kbd / .a-mi · jest: plan 14 */
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import type { SwipeDir } from "../../lib/swipeMath";
+import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useDeckStore } from "../../store/deckStore";
 import { HandNote } from "../atoms";
 import DeckActions from "../molecules/DeckActions";
@@ -47,10 +48,19 @@ function reducedMotion(): boolean {
     çıkan kart ayrı katmanda uçar; buton, klavye ve jest aynı `commit` yolundan geçer. */
 export default function VenueDeck(props: {
   venues: VenueDto[];
-  travelLabels?: Record<string, string>;
+  travel?: TravelInfo;
+  /** SessionView.activityType — kart anatomisi §4.9 uyum satırı için. */
+  activity?: string;
+  /** SessionView.midpointLabel — kart anatomisi §4.9 semt satırı için. */
+  midpointLabel?: string;
 }) {
   const { t } = useTranslation();
   const venues = props.venues;
+  // Uyum satırının "destede tek kategori varsa çizilmez" kuralı (§4.6) için TÜM kart kategorileri.
+  const categories = useMemo(
+    () => venues.map((v) => v.category).filter((c): c is string => !!c),
+    [venues],
+  );
   const index = useDeckStore((s) => s.index);
   const liked = useDeckStore((s) => s.liked);
   const decide = useDeckStore((s) => s.decide);
@@ -59,6 +69,8 @@ export default function VenueDeck(props: {
   const next = venues[index + 1];
   const third = venues[index + 2];
   const previous = venues[index - 1];
+  const remaining = venues.length - index;
+  const likedCount = Object.values(liked).filter(Boolean).length;
 
   const deck = useRef<HTMLDivElement>(null);
   const flyKey = useRef(0);
@@ -108,7 +120,14 @@ export default function VenueDeck(props: {
         {third && <VenueCard key={third.id} venue={third} photoOnly className={D3} />}
         {next && <VenueCard key={next.id} venue={next} photoOnly className={D2} style={D2_STYLE} />}
         <SwipeCard key={current.id} className="z-2" enter={enter} onSwipe={commit} onProgress={setProgress}>
-          <VenueCard venue={current} className={D1} travelLabels={props.travelLabels} />
+          <VenueCard
+            venue={current}
+            className={D1}
+            travel={props.travel}
+            activity={props.activity}
+            categories={categories}
+            midpointLabel={props.midpointLabel}
+          />
         </SwipeCard>
         {flying.map((f) => (
           <div
@@ -129,7 +148,14 @@ export default function VenueDeck(props: {
               if (e.target === e.currentTarget) setFlying((list) => list.filter((x) => x.key !== f.key));
             }}
           >
-            <VenueCard venue={f.venue} className={D1} travelLabels={props.travelLabels} />
+            <VenueCard
+              venue={f.venue}
+              className={D1}
+              travel={props.travel}
+              activity={props.activity}
+              categories={categories}
+              midpointLabel={props.midpointLabel}
+            />
           </div>
         ))}
         {bursts.map((b) => (
@@ -158,6 +184,12 @@ export default function VenueDeck(props: {
       <div className="mt-3 lg:hidden">
         <HandNote center>{t("deck.swipeHand")}</HandNote>
       </div>
+      {/* Kalan kart ≤ 2 ve hiç beğeni yoksa TEK kalibrasyon notu (§5.C "Deste"). */}
+      {remaining <= 2 && likedCount === 0 && (
+        <div className="mt-3">
+          <HandNote center>{t("deck.calibrateHand")}</HandNote>
+        </div>
+      )}
     </div>
   );
 }

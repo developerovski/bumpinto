@@ -1,6 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.DecisionKind;
+import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import jakarta.validation.Valid;
@@ -40,7 +43,9 @@ public final class ApiDtos {
                                        @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
                                        @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
                                        @NotBlank @Size(max = 40) String displayName,
-                                       @Size(max = 80) String locationLabel) {
+                                       @Size(max = 80) String locationLabel,
+                                       /** null → CAR (spec §4.5b varsayilani). */
+                                       TravelMode travelMode) {
     }
 
     public record CreateSessionResponse(String slug, UUID sessionId, UUID participantId,
@@ -58,7 +63,9 @@ public final class ApiDtos {
     public record JoinRequest(@NotBlank @Size(max = 40) String displayName,
                               @DecimalMin("-90") @DecimalMax("90") Double lat,
                               @DecimalMin("-180") @DecimalMax("180") Double lng,
-                              @Size(max = 80) String locationLabel) {
+                              @Size(max = 80) String locationLabel,
+                              /** null → CAR (spec §4.5b varsayilani). */
+                              TravelMode travelMode) {
     }
 
     public record JoinResponse(UUID participantId, String participantToken) {
@@ -70,16 +77,19 @@ public final class ApiDtos {
         }
     }
 
+    /** travelMode null = mevcut tercihi KORU (konum guncellemesi modu silmez). */
     public record LocationRequest(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
                                   @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
-                                  @Size(max = 80) String label) {
+                                  @Size(max = 80) String label,
+                                  TravelMode travelMode) {
     }
 
     /** SOLO: host'un elle ekledigi konum. */
     public record PointRequest(@NotBlank @Size(max = 40) String displayName,
                                @Size(max = 80) String locationLabel,
                                @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
-                               @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {
+                               @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
+                               TravelMode travelMode) {
     }
 
     public record SwipeRequest(@NotNull UUID venueId, @NotNull Boolean liked) {
@@ -94,15 +104,42 @@ public final class ApiDtos {
     public record GeoPointDto(double lat, double lng) {
     }
 
-    /** approxLocation: 2 ondalik (~1 km) — tam koordinat API'den asla cikmaz (spec §8 gizlilik). */
-    public record ParticipantDto(UUID id, String displayName, boolean host, boolean hasLocation,
-                                 boolean deckDone, boolean manual, String locationLabel,
-                                 GeoPointDto approxLocation) {
+    /**
+     * Mekanin adalet ozeti (spec §4.1–4.2). {@code spreadMinutes} ekranda yazilan sayidir
+     * ("fark N dk"); rozet kurali: fark <= 10 → "Herkese ~aynı".
+     *
+     * <p>{@code fairness} kendisi (venue seviyesinde) hic konumlu katilimci yoksa {@code null}
+     * olur — {@code (0,0,null)} ile karistirilmasin, o durum "herkes tam esit" gibi okunur ve
+     * yanlis rozet gosterir. Esitlikte {@code longestParticipantId} haritanin ILK max degeridir
+     * (bkz. {@link com.bumpinto.domain.geo.Fairness#of}) — cagiran LinkedHashMap verirse
+     * deterministiktir.
+     */
+    public record FairnessDto(int maxMinutes, int spreadMinutes, UUID longestParticipantId) {
     }
 
+    /**
+     * approxLocation: 2 ondalik (~1 km) — tam koordinat API'den asla cikmaz (spec §8 gizlilik).
+     *
+     * <p>midpointMinutes: kisinin YUVARLANMIS konumundan agirlikli orta noktaya, kendi
+     * {@code travelMode}'uyla, 5 dk basamaginda. Konumu yoksa ya da konumlu katilimci
+     * 2'den azsa (orta nokta yok) null. Lobi/Bekle orta nokta karti "herkes ~25–35 dk"
+     * araligini bu degerlerin min/max'indan yazar (spec §5.C).
+     */
+    public record ParticipantDto(UUID id, String displayName, boolean host, boolean hasLocation,
+                                 boolean deckDone, boolean manual, String locationLabel,
+                                 GeoPointDto approxLocation, TravelMode travelMode,
+                                 Integer midpointMinutes) {
+    }
+
+    /**
+     * mapsUrl: saglayici vermezse yol tarifi adresine duser (spec §5.A.6) — "Yol tarifi al"
+     * butonu hicbir oturumda olu kalmaz. placeLink: mekanin kendi sayfasi (Maps ya da site).
+     */
     public record VenueDto(UUID id, String name, double lat, double lng, Double rating,
                            Integer priceLevel, String photoUrl, String mapsUrl, int deckOrder,
-                           Map<UUID, Integer> travelMinutes) {
+                           Map<UUID, Integer> travelMinutes, FairnessDto fairness,
+                           String provider, String category, String address, String locality,
+                           Integer ratingCount, String hoursToday, String placeLink) {
     }
 
     public record SessionView(String slug, String name, ActivityType activityType,
@@ -114,7 +151,13 @@ public final class ApiDtos {
                               GeoPointDto midpoint, Double radiusKm,
                               List<UUID> runoffVotedParticipantIds,
                               /** Istegi yapanin bu oturumdaki satiri; uye degilse null. */
-                              ViewerDto viewer) {
+                              ViewerDto viewer,
+                              /** Orta noktanin kasaba kelimesi; yoksa null (Task 3). */
+                              String midpointLabel,
+                              DecisionKind decisionKind, Instant decidedAt,
+                              RunoffReason runoffReason,
+                              /** Mekan -> begeni sayisi; YALNIZ DECIDED'da dolu. */
+                              Map<UUID, Long> likeCounts) {
     }
 
     /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si, mekan YOK. */
@@ -156,13 +199,14 @@ public final class ApiDtos {
 
     public record MeResponse(UUID id, String email, String displayName,
                              LocationPrefDto defaultLocation, ActivityType defaultActivity,
-                             String language, StatsDto stats) {
+                             String language, TravelMode defaultTravelMode, StatsDto stats) {
     }
 
     /** Tam degistirme: null = o tercihi temizle (displayName haric: null = degistirme). */
     public record UpdateMeRequest(@Size(max = 40) String displayName,
                                   @Valid LocationPrefDto defaultLocation,
                                   ActivityType defaultActivity,
-                                  String language) {
+                                  String language,
+                                  TravelMode defaultTravelMode) {
     }
 }

@@ -1,6 +1,7 @@
 package com.bumpinto;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -64,6 +65,9 @@ class ApiHappyPathTest {
     @Autowired RateLimitFilter rateLimit;
     @MockitoBean VenueProviderPort provider;   // @Primary ResilientVenueProvider yerine
     @MockitoBean GoogleIdVerifier google;      // dış Google çağrısı yok
+    // Mockito varsayilan yaniti Optional donen metotlarda Optional.empty() — gercek Nominatim
+    // adapteri baglamda kalsaydi find-venues her cagrida aga cikardi (yasak: gercek ag cagrisi).
+    @MockitoBean ReverseGeocodePort geocoder;
 
     private static final String JSON = "application/json";
 
@@ -126,6 +130,10 @@ class ApiHappyPathTest {
         assertThat(view.get("status").asString()).isEqualTo("BROWSING");
         assertThat(view.get("sessionType").asString()).isEqualTo("GROUP");
         assertThat(view.get("venues").size()).isEqualTo(6);
+        JsonNode firstVenue = view.get("venues").get(0);
+        assertThat(firstVenue.get("provider").asString()).isEqualTo("foursquare");
+        assertThat(firstVenue.get("mapsUrl").isNull()).isFalse();
+        assertThat(firstVenue.get("fairness").get("maxMinutes").asInt()).isPositive();
         assertThat(view.get("midpoint").get("lat").asDouble()).isBetween(51.38, 51.70);
         assertThat(view.get("radiusKm").asDouble()).isBetween(1.0, 10.0);
         // katilimci konumu 2 ondalikla doner (yaklasik ~1 km) — tam koordinat sizmaz
@@ -275,11 +283,16 @@ class ApiHappyPathTest {
         mvc.perform(post("/api/sessions/" + slug + "/deck-done").cookie(ayseCookie))
                 .andExpect(status().isOk());
 
-        JsonNode decided = json.readTree(mvc.perform(get("/api/sessions/" + slug)
+        String decidedBody = mvc.perform(get("/api/sessions/" + slug)
                         .cookie(ayseCookie))
-                .andReturn().getResponse().getContentAsString());
+                .andReturn().getResponse().getContentAsString();
+        JsonNode decided = json.readTree(decidedBody);
         assertThat(decided.get("status").asString()).isEqualTo("DECIDED");
         assertThat(decided.get("decidedVenueId").asString()).isEqualTo(favoriteId);
+        assertThat(decided.get("decisionKind").asString()).isEqualTo("UNANIMOUS");
+        assertThat(decided.get("decidedAt").isTextual()).isTrue(); // ISO-8601 dizgi
+        assertThat(decided.get("likeCounts").size()).isGreaterThan(0);
+        assertThat(decidedBody).doesNotContain("runoffVotes");
     }
 
     @Test
@@ -312,10 +325,11 @@ class ApiHappyPathTest {
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(JSON)
                         .content("{\"displayName\":\"Ayşe\",\"locationLabel\":\"Someren\","
-                                + "\"lat\":51.3855,\"lng\":5.7120}"))
+                                + "\"lat\":51.3855,\"lng\":5.7120,\"travelMode\":\"BIKE\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         assertThat(json.readTree(pointBody).get("manual").asBoolean()).isTrue();
+        assertThat(json.readTree(pointBody).get("travelMode").asString()).isEqualTo("BIKE");
 
         String browsing = mvc.perform(post("/api/sessions/" + slug + "/find-venues")
                         .header("Authorization", "Bearer " + accessToken))
@@ -336,5 +350,6 @@ class ApiHappyPathTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(json.readTree(decided).get("status").asString()).isEqualTo("DECIDED");
         assertThat(json.readTree(decided).get("decidedVenueId").asString()).isEqualTo(venueId);
+        assertThat(json.readTree(decided).get("decisionKind").asString()).isEqualTo("FORCED");
     }
 }

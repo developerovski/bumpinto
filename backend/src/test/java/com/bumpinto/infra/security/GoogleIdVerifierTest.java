@@ -53,7 +53,8 @@ class GoogleIdVerifierTest {
                 new AppProps.Cors(List.of()),
                 new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000));
+                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
     static GoogleIdVerifier verifier() {

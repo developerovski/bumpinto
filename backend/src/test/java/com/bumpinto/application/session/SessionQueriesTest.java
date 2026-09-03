@@ -3,7 +3,9 @@ package com.bumpinto.application.session;
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
@@ -45,6 +47,55 @@ class SessionQueriesTest {
     void venueIn(Session session) {
         deck.saveVenues(List.of(new Venue(UUID.randomUUID(), session.id(), "fsq", "e1", "Kafe",
                 new GeoPoint(51.7, 5.3), 4.5, 2, null, null, 0)));
+    }
+
+    Session session;
+    Participant host;
+    Participant ayse;
+    /** Elle konum: votes()=false, deckDoneAt=null — "herkes bitirdi/oy verdi" sayimina HIC girmez. */
+    Participant nonFinisher;
+    UUID finalistA;
+    UUID finalistB;
+    UUID likedVenueId;
+
+    Participant manualPointIn(Session session) {
+        return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(), "Kerem",
+                new GeoPoint(51.48, 5.66), false, null, null, true, "Helmond"));
+    }
+
+    /**
+     * RUNOFF'ta iki finalist, deste'yi bitirmis iki katilimci (henuz oy yok) VE bitirmemis/oy
+     * vermeyen bir elle konum — sayim kapisinin gercekten `finishers`i (deckDone && votes)
+     * filtreledigini, toplam katilimci sayisini kullanmadigini kanitlar (2 finisher, 3 katilimci).
+     */
+    void seedRunoffWithTwoFinishers() {
+        session = stored(SessionStatus.RUNOFF, NOW.plusSeconds(3600));
+        finalistA = UUID.randomUUID();
+        finalistB = UUID.randomUUID();
+        session = sessions.saveSession(session.inRunoff(List.of(finalistA, finalistB),
+                RunoffReason.FALLBACK));
+        host = sessions.saveParticipant(participantIn(session, true).doneAt(NOW));
+        ayse = sessions.saveParticipant(participantIn(session, false).doneAt(NOW));
+        nonFinisher = manualPointIn(session);
+    }
+
+    /**
+     * SWIPING'te bir mekani iki katilimci da begenmis, ikisi de desteyi bitirmis; ayrica
+     * desteyi bitirmemis/oy popülasyonu disi bir elle konum AYNI mekani begenmis — likeCounts
+     * bu begeniyi saymamali (yalniz finishers sayilir).
+     */
+    void seedSwipingWithLikes() {
+        session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
+        host = sessions.saveParticipant(participantIn(session, true).doneAt(NOW));
+        ayse = sessions.saveParticipant(participantIn(session, false).doneAt(NOW));
+        nonFinisher = manualPointIn(session);
+        Venue venue = new Venue(UUID.randomUUID(), session.id(), "fsq", "e1", "Kafe",
+                new GeoPoint(51.7, 5.3), 4.5, 2, null, null, 0);
+        deck.saveVenues(List.of(venue));
+        likedVenueId = venue.id();
+        deck.saveSwipe(session.id(), likedVenueId, host.id(), true);
+        deck.saveSwipe(session.id(), likedVenueId, ayse.id(), true);
+        deck.saveSwipe(session.id(), likedVenueId, nonFinisher.id(), true);
     }
 
     @Test
@@ -110,5 +161,30 @@ class SessionQueriesTest {
 
         assertThat(queries.hostParticipantId("x7k2m", UUID.randomUUID())).isEmpty();
         assertThat(queries.hostParticipantId("yok", session.hostId())).isEmpty();
+    }
+
+    @Test
+    void voteTallyIsHiddenUntilEveryFinisherHasVoted() {
+        // 3 katilimci, yalniz 2'si finisher (3.'su elle konum: deckDone=false, votes()=false) —
+        // kapi TOPLAM katilimciyi degil dogru finishers sayisini kullanmali, yoksa asla acilmaz.
+        seedRunoffWithTwoFinishers();
+        deck.castVote(session.id(), finalistA, host.id());
+        assertThat(queries.snapshot("x7k2m").voteTally()).isEmpty();
+
+        // Iki finisher de oy verdi (nonFinisher hic oy vermedi, vermesi de beklenmiyor) →
+        // sayim acilir: kapi 2/2 finisher'a bakiyor, 2/3 toplam katilimciya degil.
+        deck.castVote(session.id(), finalistA, ayse.id());
+        assertThat(queries.snapshot("x7k2m").voteTally()).isNotEmpty();
+    }
+
+    @Test
+    void likeCountsAppearOnlyAfterDecisionAndExcludeNonFinishers() {
+        seedSwipingWithLikes();
+        assertThat(queries.snapshot("x7k2m").likeCounts()).isEmpty();
+        sessions.saveSession(sessions.sessionBySlug("x7k2m").orElseThrow()
+                .decided(likedVenueId, DecisionKind.UNANIMOUS, Instant.parse("2026-09-03T18:00:00Z")));
+        // 3 swipe kaydedildi (host, ayse, nonFinisher) ama sayim 2: elle konumun begenisi
+        // desteyi bitirmedigi/oy popülasyonu disi oldugu icin likeCounts'a hic girmez.
+        assertThat(queries.snapshot("x7k2m").likeCounts()).containsEntry(likedVenueId, 2L);
     }
 }

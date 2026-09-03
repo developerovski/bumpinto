@@ -1,4 +1,5 @@
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
+import { track } from "./analytics";
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
 export const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
@@ -15,7 +16,9 @@ export function loadMaps(language: string): Promise<void> {
   if (!loading) {
     setOptions({ key: KEY, v: "weekly", language });
     loading = Promise.all([importLibrary("maps"), importLibrary("marker")])
-      .then(() => undefined)
+      .then(() => {
+        track("maps_js_load"); // tekil `loading` promise'ı zaten bir kez koşuyor — çift sayım yok
+      })
       .catch((e: unknown) => {
         loading = null; // sonraki MapView yeniden dener
         throw e;

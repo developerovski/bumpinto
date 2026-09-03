@@ -37,7 +37,7 @@ class ParticipantController {
         GeoPoint location = request.lat() == null || request.lng() == null ? null
                 : new GeoPoint(request.lat(), request.lng());
         Participant joined = commands.join(slug, request.displayName(), location,
-                request.locationLabel());
+                request.locationLabel(), request.travelMode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, slug, joined.token());
         return response.body(new ApiDtos.JoinResponse(joined.id(), bodyToken));
@@ -47,6 +47,6 @@ class ParticipantController {
     void location(Authentication auth, @PathVariable String slug,
             @Valid @RequestBody ApiDtos.LocationRequest request) {
         commands.updateLocation(slug, me.of(auth, slug),
-                new GeoPoint(request.lat(), request.lng()), request.label());
+                new GeoPoint(request.lat(), request.lng()), request.label(), request.travelMode());
     }
 }

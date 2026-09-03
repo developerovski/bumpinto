@@ -47,7 +47,15 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
 
     private static final String SEARCH_URL = "https://places-api.foursquare.com/places/search";
     private static final String API_VERSION = "2025-06-17";
-    private static final String FIELDS = "fsq_place_id,name,latitude,longitude,rating,price,photos";
+
+    /**
+     * Pro alanlari (spec §5.A.5, acilis maliyet modeli): `rating`, `price` ve `photos`
+     * PREMIUM'du ve her aramayi pahali kiliyordu — cikarildi. Puan/fiyat/foto artik FSQ
+     * oturumlarinda NULL'dur; kart "puan yok" haliyle cizilir. `categories` uyum satirini,
+     * `location` semt kelimesini, `website` tek dokunusluk cikisi verir.
+     */
+    private static final String FIELDS =
+            "fsq_place_id,name,latitude,longitude,categories,location,website";
 
     private final UnirestInstance http;
     private final String apiKey;
@@ -160,18 +168,61 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
             JSONObject r = results.getJSONObject(i);
             double lat = r.getDouble("latitude");
             double lng = r.getDouble("longitude");
-            Double rating = r.has("rating")
-                    ? Math.round(r.getDouble("rating") / 2.0 * 10) / 10.0 : null; // 0-10 -> 0-5
-            Integer price = r.has("price") ? r.getInt("price") : null;
-            String photo = null;
-            if (r.has("photos") && r.getJSONArray("photos").length() > 0) {
-                JSONObject p = r.getJSONArray("photos").getJSONObject(0);
-                photo = p.getString("prefix") + "original" + p.getString("suffix");
-            }
+            String website = r.optString("website", "");
+            // Bir kez hesapla: address ve locality AYNI degeri tasir (asagida iki kez kullanilir).
+            String locality = locality(r);
             out.add(new VenueCandidate("foursquare", r.getString("fsq_place_id"),
-                    r.getString("name"), new GeoPoint(lat, lng), rating, price, photo,
-                    "https://maps.google.com/?q=" + lat + "," + lng));
+                    r.getString("name"), new GeoPoint(lat, lng),
+                    null, null, null,
+                    "https://maps.google.com/?q=" + lat + "," + lng,
+                    // FSQ tam sokak adresi Premium'da; elimizdeki tek yer kelimesi locality.
+                    // address ve locality AYNI degeri tasir — UI ikisini de kart meta'sinda kullanir.
+                    firstCategory(r), locality, locality, null, null,
+                    website.isBlank() ? null : website));
         }
         return out;
+    }
+
+    /**
+     * Ilk kategori uyum satirini besler ("Kahve icin: Coffee Shop"). {@code opt*} kullanir:
+     * `categories[0]` beklenmedik sekilde skaler/eksik gelirse SADECE bu alan null olur,
+     * satirin tamami (ya da sayfanin geri kalani) dusmez.
+     */
+    private static String firstCategory(JSONObject place) {
+        JSONArray categories = place.optJSONArray("categories");
+        if (categories == null || categories.isEmpty()) {
+            return null;
+        }
+        JSONObject first = categories.optJSONObject(0);
+        if (first == null) {
+            return null;
+        }
+        String name = first.optString("name", "");
+        return name.isBlank() ? null : name;
+    }
+
+    /**
+     * Semt kelimesi: once `locality` (sehir), yoksa ilk `neighborhood`. Sokak adresi
+     * ISTEMIYORUZ — kartta yer alan sey "neresi" degil "hangi semt".
+     *
+     * <p>{@code opt*} kullanir: `location` skaler geldiginde ya da `neighborhood` bir dizi
+     * degil de duz metin oldugunda (gozlemlenmis FSQ tutarsizligi) tip uyusmazligi SESSIZCE
+     * null'a duser — istisna firlatip tum FSQ sayfasini dusurmez.
+     */
+    private static String locality(JSONObject place) {
+        JSONObject location = place.optJSONObject("location");
+        if (location == null) {
+            return null;
+        }
+        String city = location.optString("locality", "");
+        if (!city.isBlank()) {
+            return city;
+        }
+        JSONArray neighborhood = location.optJSONArray("neighborhood");
+        if (neighborhood == null || neighborhood.isEmpty()) {
+            return null;
+        }
+        String hood = neighborhood.optString(0, "");
+        return hood.isBlank() ? null : hood;
     }
 }

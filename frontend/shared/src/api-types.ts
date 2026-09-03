@@ -289,6 +289,8 @@ export interface components {
             /** Format: double */
             lng: number;
             label?: string;
+            /** @enum {string} */
+            travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
         };
         LocationPrefDto: {
             /** Format: double */
@@ -303,6 +305,8 @@ export interface components {
             /** @enum {string} */
             defaultActivity?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
             language?: string;
+            /** @enum {string} */
+            defaultTravelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
         };
         MeResponse: {
             /** Format: uuid */
@@ -313,6 +317,8 @@ export interface components {
             /** @enum {string} */
             defaultActivity?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
             language?: string;
+            /** @enum {string} */
+            defaultTravelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
             stats?: components["schemas"]["StatsDto"];
         };
         StatsDto: {
@@ -333,6 +339,8 @@ export interface components {
             lng: number;
             displayName: string;
             locationLabel?: string;
+            /** @enum {string} */
+            travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
         };
         CreateSessionResponse: {
             slug?: string;
@@ -348,6 +356,14 @@ export interface components {
             /** Format: uuid */
             venueId: string;
             liked: boolean;
+        };
+        FairnessDto: {
+            /** Format: int32 */
+            maxMinutes?: number;
+            /** Format: int32 */
+            spreadMinutes?: number;
+            /** Format: uuid */
+            longestParticipantId?: string;
         };
         GeoPointDto: {
             /** Format: double */
@@ -365,6 +381,10 @@ export interface components {
             manual?: boolean;
             locationLabel?: string;
             approxLocation?: components["schemas"]["GeoPointDto"];
+            /** @enum {string} */
+            travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
+            /** Format: int32 */
+            midpointMinutes?: number;
         };
         SessionView: {
             slug?: string;
@@ -390,6 +410,16 @@ export interface components {
             radiusKm?: number;
             runoffVotedParticipantIds?: string[];
             viewer?: components["schemas"]["ViewerDto"];
+            midpointLabel?: string;
+            /** @enum {string} */
+            decisionKind?: "UNANIMOUS" | "SINGLE_LIKE" | "RUNOFF" | "FORCED" | "PARTIAL";
+            /** Format: date-time */
+            decidedAt?: string;
+            /** @enum {string} */
+            runoffReason?: "INTERSECTION" | "FALLBACK";
+            likeCounts?: {
+                [key: string]: number;
+            };
         };
         VenueDto: {
             /** Format: uuid */
@@ -410,6 +440,15 @@ export interface components {
             travelMinutes?: {
                 [key: string]: number;
             };
+            fairness?: components["schemas"]["FairnessDto"];
+            provider?: string;
+            category?: string;
+            address?: string;
+            locality?: string;
+            /** Format: int32 */
+            ratingCount?: number;
+            hoursToday?: string;
+            placeLink?: string;
         };
         ViewerDto: {
             /** Format: uuid */
@@ -429,6 +468,8 @@ export interface components {
             lat: number;
             /** Format: double */
             lng: number;
+            /** @enum {string} */
+            travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
         };
         JoinRequest: {
             displayName: string;
@@ -437,6 +478,8 @@ export interface components {
             /** Format: double */
             lng?: number;
             locationLabel?: string;
+            /** @enum {string} */
+            travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
         };
         JoinResponse: {
             /** Format: uuid */

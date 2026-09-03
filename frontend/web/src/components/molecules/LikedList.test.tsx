@@ -39,4 +39,18 @@ describe("LikedList", () => {
     );
     expect(screen.getByText("cb")).toBeInTheDocument();
   });
+
+  // Regresyon: DeckScreen deste modunda `travel` geçmeyi unutmuştu — viewer kendi çipinde
+  // "Arkadaşın" düşüyordu, "Sen" değil (bkz. DeckScreen.tsx satır 112).
+  it("travel geçildiğinde viewer'ın kendi çipi 'Sen' der, 'Arkadaşın' düşmez", () => {
+    render(
+      <LikedList
+        venues={[{ id: "a", name: "Café Berlage", travelMinutes: { p1: 10, p2: 20 } }]}
+        liked={{ a: true }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getByText("Sen")).toBeInTheDocument();
+    expect(screen.queryByText("Arkadaşın")).not.toBeInTheDocument();
+  });
 });

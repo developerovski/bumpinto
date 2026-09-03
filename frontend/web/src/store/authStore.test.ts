@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../lib/api", () => ({ api: { me: vi.fn(), loginGoogle: vi.fn(), logout: vi.fn() } }));
+vi.mock("../lib/api", () => ({ api: { me: vi.fn(), loginGoogle: vi.fn(), logout: vi.fn(), updateMe: vi.fn() } }));
 
 import { api } from "../lib/api";
 import i18n from "../i18n";
@@ -43,5 +43,13 @@ describe("authStore", () => {
     await useAuthStore.getState().load();
     expect(document.documentElement.lang).toBe("tr");
     window.history.replaceState({}, "", "/");
+  });
+
+  it("updatePrefs: PUT tam değişim yapar — defaultTravelMode ilgisiz bir güncellemede TEMİZLENMEZ", async () => {
+    const meWithMode = { ...me, defaultTravelMode: "BIKE" as const };
+    useAuthStore.setState({ status: "signed", me: meWithMode });
+    vi.mocked(api.updateMe).mockResolvedValueOnce({ ...meWithMode, displayName: "Mehmet S." });
+    await useAuthStore.getState().updatePrefs({ displayName: "Mehmet S." });
+    expect(api.updateMe).toHaveBeenCalledWith(expect.objectContaining({ defaultTravelMode: "BIKE", displayName: "Mehmet S." }));
   });
 });

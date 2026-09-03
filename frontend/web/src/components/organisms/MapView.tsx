@@ -5,6 +5,7 @@ import { Note } from "../atoms";
 import { MAP_ID, loadMaps, mapsConfigured } from "../../lib/maps";
 import { MAX_FIT_ZOOM, cameraFor, cameraSignature } from "../../lib/mapCamera";
 import type { LatLng } from "../../lib/geo";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { midpointPin, participantPin, venuePin } from "./mapPins";
 
 export type MapViewProps = {
@@ -53,10 +54,12 @@ export default function MapView(props: MapViewProps) {
   const circleRef = useRef<google.maps.Circle | null>(null);
   /** Son sığdırılan coğrafi imza — aynı kaldığı sürece kullanıcının pan/zoom'una dokunulmaz. */
   const fittedRef = useRef<string | null>(null);
+  // Reaktif — tek seferlik okumanın aksine pencere sonradan lg genişliğe geçerse de doğru davranır.
+  const desktop = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
     if (!configured || !box.current) return;
-    if (lgOnly && !window.matchMedia("(min-width: 1024px)").matches) return;
+    if (lgOnly && !desktop) return;
     let alive = true;
     loadMaps(i18n.language)
       .then(() => {
@@ -77,7 +80,7 @@ export default function MapView(props: MapViewProps) {
     return () => {
       alive = false;
     };
-  }, [configured, lgOnly]);
+  }, [configured, lgOnly, desktop]);
 
   const points: LatLng[] = participants
     .filter((p) => p.approxLocation?.lat != null && p.approxLocation?.lng != null)
@@ -169,7 +172,10 @@ export default function MapView(props: MapViewProps) {
     .join(", ");
 
   return (
-    <div className={`relative overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7] ${heightClass ?? "h-[20rem]"} ${lgOnly ? "hidden lg:block" : ""}`}>
+    <div
+      data-testid="mapview"
+      className={`relative overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7] ${heightClass ?? "h-[20rem]"} ${lgOnly ? "hidden lg:block" : ""}`}
+    >
       {configured && !failed && <div ref={box} className="h-full w-full" />}
       {(!configured || failed) && (
         <div className="flex h-full items-center justify-center p-6">

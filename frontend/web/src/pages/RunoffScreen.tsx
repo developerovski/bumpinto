@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
+import { fairestOf } from "@bumpinto/shared";
 import { Note, Page } from "../components/atoms";
 import RunoffIntro from "../components/molecules/RunoffIntro";
 import RunoffStatus from "../components/molecules/RunoffStatus";
@@ -8,8 +9,10 @@ import RunoffTie from "../components/molecules/RunoffTie";
 import TwoZone from "../components/molecules/TwoZone";
 import RunoffList from "../components/organisms/RunoffList";
 import { useTravelLabels } from "../lib/useTravelLabels";
+import { allVoted, votersOf } from "../lib/voters";
 import { useDeckStore } from "../store/deckStore";
 import { isHost, useSessionStore } from "../store/sessionStore";
+import { useSessionAction } from "../store/useSessionAction";
 
 /** Kaynak: mobil `07 Runoff` artboard'u, webe birebir uyarlandı
     (durum çubuğu gibi mobil kabuk çıkarıldı, seçim + kilitleme iki kolona ayrıldı). */
@@ -17,58 +20,61 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
   const { t } = useTranslation();
   const vote = useDeckStore((s) => s.vote);
   const pick = useSessionStore((s) => s.pick);
-  const selfId = props.view.viewer?.participantId;
+  const v = props.view;
+  const selfId = v.viewer?.participantId;
   const [choice, setChoice] = useState<string | null>(null);
   const [localSent, setLocalSent] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error } = useSessionAction();
 
   const finalists = useMemo(
-    () => (props.view.venues ?? []).filter((v) => props.view.runoffVenueIds?.includes(v.id!)),
-    [props.view.venues, props.view.runoffVenueIds],
+    () => (v.venues ?? []).filter((venue) => v.runoffVenueIds?.includes(venue.id!)),
+    [v.venues, v.runoffVenueIds],
   );
   // travelMinutes katılımcı UUID'siyle anahtarlı; artboard "Sen 34′ · Ayşe 28′" diyor.
-  const travelLabels = useTravelLabels(props.view);
+  const travel = useTravelLabels(props.view);
 
-  const voted = props.view.runoffVotedParticipantIds ?? [];
+  const voted = v.runoffVotedParticipantIds ?? [];
   const sent = localSent || (!!selfId && voted.includes(selfId));
   // Kendi oyu sunucudan gelir; `choice` yalnız HENÜZ gönderilmemiş seçimi tutar. Tersi olsaydı
   // (sadece useState) sayfa yenilenince kişi "kilitli" yazısını görür, neyi kilitlediğini göremezdi.
-  const selected = choice ?? props.view.viewer?.runoffVoteVenueId ?? null;
+  const selected = choice ?? v.viewer?.runoffVoteVenueId ?? null;
 
   // Beraberlik = "oy verebilecek herkes oy verdi ama oturum hâlâ RUNOFF". Tek kazanan çıksaydı
   // sunucu DECIDED'a geçerdi (DeckFlow.runoffVote), dolayısıyla bu koşul tam olarak beraberliktir
   // ve ayrı bir alan gerektirmez. Karar host'a geçer; kalan tek çıkış force-decision'dır.
-  const voters = (props.view.participants ?? []).filter((p) => p.hasLocation && !p.manual);
-  const tie = voters.length > 0 && voters.every((p) => !!p.id && voted.includes(p.id));
+  const voters = votersOf(v.participants ?? []);
+  const tie = allVoted(voters, voted);
   const host = isHost(props.view);
   const hostName = voters.find((p) => p.host)?.displayName ?? "";
+  // Sunucu-kapılı sayım: voteTally yalnız herkes kilitleyince ya da DECIDED'da dolu gelir (B-7:T2).
+  // Yalnız RunoffTie'de gösterilir — `tie` ile aynı oy kümesini kullandığından RunoffStatus'un
+  // sent dalına bu veriyle hiç ulaşılmaz (code-review bulgusu, bkz. RunoffStatus.tsx).
+  const tally = v.voteTally && Object.keys(v.voteTally).length > 0 ? v.voteTally : undefined;
 
-  async function decide() {
+  const shareUrl = `${location.origin}/j/${v.slug ?? ""}`;
+  const shareText = t("runoff.remindText");
+
+  function decide() {
     if (!selected) return;
-    setSending(true);
-    setError(null);
-    try {
-      await pick(selected); // force-decision: RUNOFF'ta yalnız finalistleri kabul eder
-    } catch {
-      setError(t("runoff.errDecide"));
-    } finally {
-      setSending(false);
-    }
+    // force-decision: RUNOFF'ta yalnız finalistleri kabul eder
+    void run(() => pick(selected), "runoff.errDecide");
   }
 
-  async function lock() {
+  // Beraberlikte host'un ikinci çıkışı: en adil finalisti (min fark → min toplam → puan → id,
+  // fairestOf @bumpinto/shared) istemcide seçip mevcut force-decision ile gönder — B-7'de ayrı
+  // bir uç yok.
+  function decideFair() {
+    const target = fairestOf(finalists);
+    if (!target?.id) return;
+    void run(() => pick(target.id!), "runoff.errDecide");
+  }
+
+  function lock() {
     if (!selected) return;
-    setSending(true);
-    setError(null);
-    try {
+    void run(async () => {
       await vote(props.slug, selected);
       setLocalSent(true);
-    } catch {
-      setError(t("runoff.errVote"));
-    } finally {
-      setSending(false);
-    }
+    }, "runoff.errVote");
   }
 
   return (
@@ -76,14 +82,22 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
       <TwoZone
         left={
           <>
-            <RunoffIntro />
-            <Note>{tie ? t("runoff.tieNote") : t("runoff.copy")}</Note>
+            <RunoffIntro
+              activity={v.activityType ?? ""}
+              people={voters.length}
+              finalists={finalists.length}
+              reason={v.runoffReason}
+              sent={sent}
+            />
+            {/* Beraberlik durumu, "neden runoff" kopyasına EK bir durum notudur — reason kopyası
+                RunoffIntro içinde zaten görünür. */}
+            {tie && <Note>{t("runoff.tieNote")}</Note>}
             <RunoffList
               finalists={finalists}
               choice={selected}
               onChoose={setChoice}
               disabled={tie ? !host : sent}
-              travelLabels={travelLabels}
+              travel={travel}
             />
           </>
         }
@@ -92,20 +106,25 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
             host={host}
             hostName={hostName}
             choice={selected}
-            sending={sending}
-            onDecide={() => void decide()}
+            sending={busy}
+            onDecide={decide}
+            onFair={decideFair}
             error={error}
+            tally={tally}
+            finalists={finalists}
           />
         ) : (
           <RunoffStatus
-            participants={props.view.participants ?? []}
+            participants={v.participants ?? []}
             votedIds={voted}
             choice={selected}
             sent={sent}
-            sending={sending}
-            onLock={() => void lock()}
+            sending={busy}
+            onLock={lock}
             selfId={selfId}
             error={error}
+            shareText={shareText}
+            shareUrl={shareUrl}
           />
         )}
       />

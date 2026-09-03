@@ -32,10 +32,10 @@ class PointsController {
             @PathVariable String slug, @Valid @RequestBody ApiDtos.PointRequest request) {
         Participant point = commands.addPoint(slug, WebPrincipals.hostUserId(jwt),
                 request.displayName(), request.locationLabel(),
-                new GeoPoint(request.lat(), request.lng()));
+                new GeoPoint(request.lat(), request.lng()), request.travelMode());
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiDtos.ParticipantDto(
                 point.id(), point.displayName(), false, true, false, true, point.locationLabel(),
-                SessionViewAssembler.approx(point.location())));
+                SessionViewAssembler.approx(point.location()), point.travelMode(), null));
     }
 
     @DeleteMapping("/{participantId}")

@@ -9,13 +9,19 @@ import kong.unirest.core.JsonNode;
 import kong.unirest.core.UnirestInstance;
 import kong.unirest.core.json.JSONArray;
 import kong.unirest.core.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -63,10 +69,13 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
     /** Deste karti ~500px genisliginde cizilir; retina icin iki kati istenir. */
     private static final int PHOTO_WIDTH_PX = 1000;
 
+    private static final Logger log = LoggerFactory.getLogger(GooglePlacesVenueProvider.class);
+
     private final UnirestInstance http;
     private final String apiKey;
     private final Clock clock;
     private final int monthlyBudget;
+    private final int photoMonthlyBudget;
     /**
      * Yerel sayac: Google kota telemetrisi vermez (header yok; Cloud Monitoring gecikmeli ve
      * servis hesabi ister). Yalniz searchNearby sayilir — foto medya cagrilari ayri SKU.
@@ -74,12 +83,15 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
      */
     private final AtomicReference<YearMonth> period = new AtomicReference<>();
     private final AtomicLong calls = new AtomicLong();
+    /** AYRI SKU: foto medya cagrilari searchNearby kotasindan sayilmaz. */
+    private final AtomicLong photoCalls = new AtomicLong();
 
     public GooglePlacesVenueProvider(UnirestInstance http, AppProps props, Clock clock) {
         this.http = http;
         this.apiKey = AppProps.required("GOOGLE_PLACES_API_KEY", props.providers().googleKey());
         this.clock = clock;
         this.monthlyBudget = props.quota().googleMonthlyBudget();
+        this.photoMonthlyBudget = props.quota().googlePhotoMonthlyBudget();
     }
 
     @Override
@@ -87,13 +99,19 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
         return ID;
     }
 
+    /** Google'in ucretsiz aylik katmani Pasifik takvim ayinda doner (faturalama saati burasi). */
+    private static final ZoneId BILLING_ZONE = ZoneId.of("America/Los_Angeles");
+
     /** Kota = aylik butce − bu ay yapilan arama; ay donunce sayac sifirlanir. */
     @Override
     public ProviderQuota measureQuota() {
         Instant now = clock.instant();
-        YearMonth month = YearMonth.from(now.atZone(ZoneOffset.UTC));
+        // Ay siniri UTC DEGIL Pasifik: Google'in faturalama ayi oradan doner, UTC kullansaydik
+        // sayac Google'dan saatler once/sonra sifirlanirdi.
+        YearMonth month = YearMonth.from(now.atZone(BILLING_ZONE));
         if (!month.equals(period.getAndSet(month))) {
             calls.set(0);
+            photoCalls.set(0);
         }
         long used = calls.get();
         return new ProviderQuota(ID, monthlyBudget, Math.max(0, monthlyBudget - used),
@@ -101,21 +119,31 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
     }
 
     private static Instant nextMonth(YearMonth month) {
-        return month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        return month.plusMonths(1).atDay(1).atStartOfDay(BILLING_ZONE).toInstant();
     }
 
     @Override
     public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
                                        int limit) {
         JSONObject body = requestBody(center, radiusKm, type, limit);
-        measureQuota(); // ay donduyse sayaci sifirlar
+        ProviderQuota quota = measureQuota(); // ay donduyse sayaclari sifirlar
+        if (quota.remaining() <= 0) {
+            // Butce SERT tavandir: istek hic atilmaz, orkestrator siradaki saglayiciya gecer.
+            log.info("quota {}: {}/{} (0%) resets {} [{}]", ID, 0L, monthlyBudget,
+                    quota.resetAt(), ProviderQuota.Source.BUDGET);
+            throw new QuotaExceededException("google nearby monthly budget spent",
+                    quota.resetAt());
+        }
         calls.incrementAndGet();
         HttpResponse<JsonNode> response = http.post(NEARBY_URL)
                 .header("Content-Type", "application/json")
                 .header("X-Goog-Api-Key", apiKey)
                 .header("X-Goog-FieldMask",
                         "places.id,places.displayName,places.location,places.rating,"
-                                + "places.priceLevel,places.googleMapsUri,places.photos")
+                                + "places.priceLevel,places.googleMapsUri,places.photos,"
+                                + "places.primaryTypeDisplayName,places.businessStatus,"
+                                + "places.shortFormattedAddress,places.userRatingCount,"
+                                + "places.regularOpeningHours,places.addressComponents")
                 .body(body.toString())
                 .asJson();
         if (response.getStatus() == 429) {
@@ -134,27 +162,44 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
             return List.of();
         }
         JSONArray places = root.getJSONArray("places");
-        // Foto adresleri ONCE toplu cozulur: her mekan icin ayri bir medya cagrisi gerekiyor,
-        // seri gitseydi 20 mekanlik aramaya birkac saniye eklerdi.
-        List<String> photos = resolvePhotos(places);
-        List<VenueCandidate> out = new ArrayList<>();
+        // businessStatus OPERATIONAL degilse mekan SESSIZCE elenir (spec §5.A.5): kapanmis
+        // bir kafeyi listelemek urunun tek isini — bulusmayi — bozar. Alan yoksa kabul edilir.
+        List<JSONObject> open = new ArrayList<>(places.length());
         for (int i = 0; i < places.length(); i++) {
             JSONObject p = places.getJSONObject(i);
+            String status = p.optString("businessStatus", "OPERATIONAL");
+            if ("OPERATIONAL".equals(status)) {
+                open.add(p);
+            }
+        }
+        // Foto adresleri ONCE toplu cozulur: her mekan icin ayri bir medya cagrisi gerekiyor,
+        // seri gitseydi 20 mekanlik aramaya birkac saniye eklerdi.
+        List<String> photos = resolvePhotos(open);
+        List<VenueCandidate> out = new ArrayList<>(open.size());
+        for (int i = 0; i < open.size(); i++) {
+            JSONObject p = open.get(i);
             JSONObject loc = p.getJSONObject("location");
-            out.add(new VenueCandidate("google", p.getString("id"),
-                    p.getJSONObject("displayName").getString("text"),
+            String id = p.getString("id");
+            String name = p.getJSONObject("displayName").getString("text");
+            String mapsUri = p.has("googleMapsUri") ? p.getString("googleMapsUri") : null;
+            out.add(new VenueCandidate("google", id, name,
                     new GeoPoint(loc.getDouble("latitude"), loc.getDouble("longitude")),
                     p.has("rating") ? p.getDouble("rating") : null,
                     p.has("priceLevel") ? priceLevel(p.getString("priceLevel")) : null,
-                    photos.get(i),
-                    p.has("googleMapsUri") ? p.getString("googleMapsUri") : null));
+                    photos.get(i), mapsUri,
+                    text(p, "primaryTypeDisplayName"),
+                    p.has("shortFormattedAddress") ? p.getString("shortFormattedAddress") : null,
+                    locality(p),
+                    p.has("userRatingCount") ? p.getInt("userRatingCount") : null,
+                    hoursToday(p),
+                    mapsUri != null ? mapsUri : placeIdLink(id, name)));
         }
         return out;
     }
 
     /**
      * Her mekanin ILK fotosu icin imzali CDN adresi — {@code places[i]} ile ayni sirada,
-     * fotosuz/cozulemeyen mekanda {@code null}.
+     * fotosuz/cozulemeyen/BUTCESI KALMAYAN mekanda {@code null} (istemcide monogram).
      *
      * <p>Neden aramada cozuluyor: {@code searchNearby} dogrudan kullanilabilir bir resim adresi
      * DEGIL yalnizca bir foto referansi dondurur, referansi resme cevirmek API anahtari ister
@@ -163,10 +208,38 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
      * gidis-donus olurdu. Adresin omru sinirli — suresi dolarsa kart monograma duser
      * (istemcide img onError).
      */
-    private List<String> resolvePhotos(JSONArray places) {
-        List<CompletableFuture<String>> pending = new ArrayList<>(places.length());
-        for (int i = 0; i < places.length(); i++) {
-            pending.add(resolveFirstPhoto(places.getJSONObject(i)));
+    private List<String> resolvePhotos(List<JSONObject> places) {
+        long remaining = Math.max(0, photoMonthlyBudget - photoCalls.get());
+        List<CompletableFuture<String>> pending = new ArrayList<>(places.size());
+        boolean consumedThisSearch = false;
+        boolean blockedByBudget = false;
+        for (JSONObject place : places) {
+            if (firstPhotoName(place) == null) {
+                pending.add(CompletableFuture.completedFuture(null));
+                continue;
+            }
+            if (remaining <= 0) {
+                pending.add(CompletableFuture.completedFuture(null));
+                blockedByBudget = true;
+                continue;
+            }
+            remaining--;
+            photoCalls.incrementAndGet();
+            consumedThisSearch = true;
+            pending.add(resolveFirstPhoto(place));
+        }
+        // Gurultu azaltma: fotosuz aramada (hicbir mekanin fotosu yok) sayac degismez ve
+        // butce durumu etkilenmez — bu aramada log YOK.
+        if (consumedThisSearch || blockedByBudget) {
+            long used = photoCalls.get();
+            if (used >= photoMonthlyBudget) {
+                log.info("quota google-photos: 0/{} (0%) — venues fall back to monogram",
+                        photoMonthlyBudget);
+            } else {
+                log.info("quota google-photos: {}/{} ({}%)", photoMonthlyBudget - used,
+                        photoMonthlyBudget,
+                        Math.round((photoMonthlyBudget - used) * 100.0 / photoMonthlyBudget));
+            }
         }
         return pending.stream().map(CompletableFuture::join).toList();
     }
@@ -216,6 +289,90 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
                         .put("center", new JSONObject()
                                 .put("latitude", center.lat()).put("longitude", center.lng()))
                         .put("radius", Math.min(radiusKm * 1000, 50000))));
+    }
+
+    /** {"text": "..."} sarmalayicili Google alanlari (displayName, primaryTypeDisplayName). */
+    private static String text(JSONObject place, String field) {
+        if (!place.has(field)) {
+            return null;
+        }
+        String value = place.getJSONObject(field).optString("text", "");
+        return value.isBlank() ? null : value;
+    }
+
+    /**
+     * Kasaba/semt kelimesi: {@code addressComponents} icinde {@code locality} tipini arar,
+     * yoksa {@code sublocality}. Kart meta satirinda TAM adres degil bu kelime yazilir
+     * (spec §4.9); tam adres {@code shortFormattedAddress} olarak ayrica tasinir.
+     */
+    static String locality(JSONObject place) {
+        if (!place.has("addressComponents")) {
+            return null;
+        }
+        JSONArray components = place.getJSONArray("addressComponents");
+        String sublocality = null;
+        for (int i = 0; i < components.length(); i++) {
+            JSONObject component = components.getJSONObject(i);
+            if (!component.has("types")) {
+                continue;
+            }
+            JSONArray types = component.getJSONArray("types");
+            String name = component.optString("longText", "");
+            if (name.isBlank()) {
+                continue;
+            }
+            for (int t = 0; t < types.length(); t++) {
+                String type = types.getString(t);
+                if ("locality".equals(type)) {
+                    return name;
+                }
+                if (sublocality == null && type.startsWith("sublocality")) {
+                    sublocality = name;
+                }
+            }
+        }
+        return sublocality;
+    }
+
+    /**
+     * weekdayDescriptions genelde PAZARTESI ile baslar (Places API New) ama Google'in kendi
+     * dokumani sirayi DIL BAGIMLI sayiyor — sabit index kirilgan. Once bugunun Ingilizce gun
+     * adiyla ESLESEN satiri ariyoruz (guvenilir); hicbiri eslesmezse (beklenmeyen dil/bicim)
+     * Pazartesi-ilk varsayimina duseriz — hic satir donmemekten iyi.
+     */
+    private String hoursToday(JSONObject place) {
+        if (!place.has("regularOpeningHours")) {
+            return null;
+        }
+        JSONObject hours = place.getJSONObject("regularOpeningHours");
+        if (!hours.has("weekdayDescriptions")) {
+            return null;
+        }
+        JSONArray descriptions = hours.getJSONArray("weekdayDescriptions");
+        String todayName = clock.instant().atZone(ZoneOffset.UTC).getDayOfWeek()
+                .getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        for (int i = 0; i < descriptions.length(); i++) {
+            String value = descriptions.getString(i);
+            if (value.startsWith(todayName)) {
+                return value.isBlank() ? null : value;
+            }
+        }
+        int index = clock.instant().atZone(ZoneOffset.UTC).getDayOfWeek().getValue() - 1;
+        if (index < 0 || index >= descriptions.length()) {
+            return null;
+        }
+        String value = descriptions.getString(index);
+        return value.isBlank() ? null : value;
+    }
+
+    /**
+     * API'siz, kalici Maps baglantisi. Place ID SURESIZ saklanabilir (Google Service Terms),
+     * bu yuzden bu adres bir onbellek ihlali degildir.
+     */
+    static String placeIdLink(String placeId, String name) {
+        return "https://www.google.com/maps/search/?api=1&query="
+                + URLEncoder.encode(name, StandardCharsets.UTF_8)
+                + "&query_place_id=" + URLEncoder.encode(placeId, StandardCharsets.UTF_8);
     }
 
     private static Integer priceLevel(String level) {

@@ -1,6 +1,7 @@
 package com.bumpinto.adapter.out.persistence;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.user.UserProfile;
@@ -56,6 +57,7 @@ public class UserStoreAdapter implements UserStorePort {
         u.defaultLocationLabel = p.defaultLocationLabel();
         u.defaultActivity = p.defaultActivity() == null ? null : p.defaultActivity().name();
         u.language = p.language();
+        u.defaultTravelMode = p.defaultTravelMode() == null ? null : p.defaultTravelMode().name();
         users.save(u);
         return toProfile(u);
     }
@@ -65,6 +67,7 @@ public class UserStoreAdapter implements UserStorePort {
                 : new GeoPoint(u.defaultLat, u.defaultLng);
         return new UserProfile(u.id, u.email, u.name, loc, u.defaultLocationLabel,
                 u.defaultActivity == null ? null : ActivityType.valueOf(u.defaultActivity),
-                u.language);
+                u.language,
+                u.defaultTravelMode == null ? null : TravelMode.valueOf(u.defaultTravelMode));
     }
 }

@@ -1,10 +1,19 @@
-/* Kaynak: artboard Karar 1280 "Gruba paylaş" — Web Share API, yoksa panoya kopyala */
+/* Kaynak: artboard Karar 1280 "Gruba paylaş" — Web Share API, yoksa panoya kopyala.
+   Deste bitti bekleme lobisi "Bekleyenleri dürt" için etiket/görünüm prop'larıyla genişledi. */
 import { ShareNetwork } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../atoms";
 
-export default function ShareButton(props: { text: string; url: string }) {
+export default function ShareButton(props: {
+  text: string;
+  url: string;
+  /** Varsayılan "Gruba paylaş"; dürtme/hatırlatma için ayrı etiket. */
+  label?: string;
+  copiedLabel?: string;
+  kind?: "white" | "flame";
+  size?: "md" | "sm" | "fit";
+}) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -28,9 +37,12 @@ export default function ShareButton(props: { text: string; url: string }) {
   }
 
   return (
-    <Button type="button" kind="white" onClick={share}>
+    <Button type="button" kind={props.kind ?? "white"} size={props.size} onClick={share}>
       <ShareNetwork size={18} aria-hidden />
-      {copied ? t("result.copied") : t("result.share")}
+      {/* Kopyalandı geçişi ekran okuyucuya duyurulur (coordinator düzeltmesi). */}
+      <span aria-live="polite">
+        {copied ? (props.copiedLabel ?? t("result.copied")) : (props.label ?? t("result.share"))}
+      </span>
     </Button>
   );
 }

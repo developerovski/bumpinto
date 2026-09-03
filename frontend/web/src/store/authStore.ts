@@ -56,11 +56,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updatePrefs: async (patch) => {
     const me = get().me;
     if (!me) return;
+    // PUT /api/me tam değişim yapar: alan eksik gönderilirse SUNUCUDA temizlenir — bu yüzden
+    // mevcut `me`'nin TÜM alanları taşınır, `patch` yalnız değişeni ezer (defaultTravelMode dahil).
     const body: UpdateMeRequest = {
       displayName: me.displayName,
       defaultLocation: me.defaultLocation,
       defaultActivity: me.defaultActivity,
       language: me.language,
+      defaultTravelMode: me.defaultTravelMode,
       ...patch,
     };
     const result = await api.updateMe(body);

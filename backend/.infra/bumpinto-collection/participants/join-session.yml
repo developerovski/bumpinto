@@ -18,7 +18,8 @@ http:
         "displayName": "Ayse",
         "lat": 51.5719,
         "lng": 5.0672,
-        "locationLabel": "Someren"
+        "locationLabel": "Someren",
+        "travelMode": "EBIKE"
       }
 
 runtime:
@@ -49,5 +50,7 @@ docs:
 
     `X-Client: web` gonderilirse token govdede DONMEZ, `bumpinto_pt_{slug}` HttpOnly
     cookie'sine yazilir (`Path=/api/sessions/{slug}` — coklu oturum cakismaz).
+
+    `travelMode` opsiyonel; verilmezse `CAR` (gec katilan da CAR — spec §4.5b).
 
     Rate limit: 10/dk.

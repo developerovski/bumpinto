@@ -50,6 +50,7 @@ export default function ProfilePage() {
             onLanguage={(language) => updatePrefs({ language })}
             onLocation={(defaultLocation) => updatePrefs({ defaultLocation })}
             onActivity={(defaultActivity) => updatePrefs({ defaultActivity: defaultActivity as MeResponse["defaultActivity"] })}
+            onTravelMode={(defaultTravelMode) => updatePrefs({ defaultTravelMode })}
           />
           <Note>{t("profile.langHint")}</Note>
         </>}

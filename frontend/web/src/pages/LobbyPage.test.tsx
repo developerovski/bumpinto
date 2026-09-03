@@ -16,7 +16,8 @@ describe("LobbyPage", () => {
     expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeDisabled();
     expect(screen.getByText(/\/j\/x7k2m/)).toBeInTheDocument();
     expect(screen.getByText(/Kerem yetişemezse/)).toBeInTheDocument();
-    expect(screen.getByText("Orta nokta · ≤ 4 km")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Orta nokta" })).toBeInTheDocument();
+    expect(screen.getByText("≤ 4 km")).toBeInTheDocument();
   });
   it("2 konum: CTA açık", () => {
     const view = { ...base, participants: [host, ayse] };
