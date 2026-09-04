@@ -1,8 +1,5 @@
 package com.bumpinto.infra.security;
 
-import com.bumpinto.domain.port.SessionStorePort;
-import com.bumpinto.domain.session.Participant;
-import com.bumpinto.domain.session.Session;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -13,46 +10,47 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Bean DEĞİL: Boot her Filter bean'ini servlet zincirine de kaydeder, o da bu filtreyi
- * istek başına iki kez (iki DB okuması) çalıştırırdı. Yalnızca SecurityConfig kurar.
+ * istek başına iki kez çalıştırırdı. Yalnızca SecurityConfig kurar.
  *
- * <p>Bearer filtresinden SONRA kurulur ve gerektiğinde hesap kimliğinin ÜSTÜNE yazar.
- * Sıra tersi olamaz: Spring'in {@code BearerTokenAuthenticationFilter}'ı context'i koşulsuz
- * değiştirir, ondan önce konan katılımcı principal'i hiçbir zaman hayatta kalmazdı. Aynı
- * tarayıcıda iki çerez birden bulunabilir (bumpinto_at + bumpinto_pt_{slug}) ve Google ile
- * girmiş bir davetli katıldıktan sonra KENDİ konumunu bile kaydedemiyordu: yazma tarafı
- * JWT'yi görüp host eşleştirmesine düşüyor, davetli host olmadığı için 403 "participant token
- * required" dönüyordu (2026-09-03).
+ * <p>Katılımcı token'ı İMZALI bir JWT'dir ve doğrulaması tamamen bellekte biter: imza +
+ * claim karşılaştırması, SIFIR DB okuması. Önceden opak bir sırdı ve her istekte
+ * {@code participants} tablosundan okunuyordu (istek başına iki sorgu, üstelik DB'de düz metin
+ * bir bearer sırrı). İptal yeteneği kaybolmaz: uygulama katmanı her yazmada katılımcıyı zaten
+ * DB'den doğruluyor ({@code DeckFlow.requireMember}, {@code SessionCommands.updateLocation}),
+ * yani silinmiş katılımcının token'ı imzası geçerli olsa da hiçbir şey yazamaz.
  *
- * <p>Tek istisna, oturumun HOST'una ait JWT: o yerinde kalır. Host uçları
- * ({@code @AuthenticationPrincipal Jwt}) ona bağlıdır ve host'un katılımcı kimliği zaten
- * JWT'den türetilir ({@code SessionQueries.hostParticipantId}) — host'un tarayıcısında iki
- * çerez de vardır, dar kimlik oraya uygulanırsa "Mekanları bul" 403 döner.
+ * <p>Bearer filtresinden SONRA kurulur ve gerektiğinde hesap kimliğinin ÜSTÜNE yazar. Sıra
+ * tersi olamaz: Spring'in {@code BearerTokenAuthenticationFilter}'ı context'i koşulsuz
+ * değiştirir, ondan önce konan katılımcı principal'i hiçbir zaman hayatta kalmazdı — Google
+ * ile girmiş bir davetli katıldıktan sonra kendi konumunu bile kaydedemiyordu (2026-09-03).
  *
- * <p>Ters yönde de bir kapı var: HOST'un katılımcı çerezi, tarayıcıda BAŞKA bir hesap açıkken
- * kabul edilmez. O çerez oturumu kuran hesaba aittir; tarayıcı artık başka biriyse çerez
- * devralınmıştır (çıkışta/hesap değişiminde {@code AuthCookies.clearParticipants} temizler,
- * ama zaten tarayıcıda duranı da geçersiz saymak gerekir). Davetli çerezleri bir hesaba bağlı
- * olmadığı için bu kural yalnız host çerezine uygulanır.
+ * <p>Tek istisna: HOST'un katılımcı token'ı, tarayıcıda BAŞKA bir hesap açıkken kabul edilmez.
+ * O token oturumu kuran hesaba aittir; tarayıcı artık başka biriyse devralınmıştır. Host'un
+ * kendi tarayıcısında ise hesap JWT'si zaten context'te kalır ve host uçları çalışmaya devam
+ * eder ({@code @AuthenticationPrincipal Jwt}).
  */
 public class ParticipantTokenFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Participant-Token";
     private static final Pattern SLUG = Pattern.compile("^/api/sessions/([^/]+)");
 
-    private final SessionStorePort store;
+    private final JwtDecoder decoder;
 
-    public ParticipantTokenFilter(SessionStorePort store) {
-        this.store = store;
+    public ParticipantTokenFilter(JwtDecoder decoder) {
+        this.decoder = decoder;
     }
 
     @Override
@@ -64,49 +62,56 @@ public class ParticipantTokenFilter extends OncePerRequestFilter {
         String slug = slugOf(request);
         String token = slug == null ? null : resolveToken(request, slug);
         if (token != null) {
-            // Oturum TEK okumayla gelir: hem "JWT bu oturumun host'u mu" hem de token'in
-            // dogru oturuma ait olup olmadigi ayni kayittan cevaplanir.
-            store.sessionBySlug(slug)
-                    .filter(session -> !signedInAsHostOf(session))
-                    .flatMap(session -> store.participantByToken(token)
-                            .filter(p -> p.sessionId().equals(session.id()))
-                            // Buraya gelen JWT (varsa) bu oturumun host'u DEGIL: yanindaki host
-                            // katilimci cerezi devralinmis demektir, kabul edilmez.
-                            .filter(p -> !p.host() || !signedInWithAnAccount()))
-                    .ifPresent(ParticipantTokenFilter::authenticate);
+            participantOf(token, slug).ifPresent(ParticipantTokenFilter::authenticate);
         }
         chain.doFilter(request, response);
     }
 
-    private static void authenticate(Participant participant) {
-        var auth = new UsernamePasswordAuthenticationToken(
-                new ParticipantPrincipal(participant.id(), participant.sessionId(),
-                        participant.host()), null,
+    /** Gecersiz/baska oturuma ait/yanlis turde token: kimlik YOK (401 degil — istek anonim sayilir). */
+    private Optional<ParticipantPrincipal> participantOf(String token, String slug) {
+        try {
+            Jwt jwt = decoder.decode(token);
+            if (!TokenService.PARTICIPANT_TYPE.equals(jwt.getClaimAsString(TokenService.TYPE_CLAIM))
+                    || !slug.equals(jwt.getClaimAsString(TokenService.SLUG_CLAIM))) {
+                return Optional.empty();
+            }
+            String sessionOwner = jwt.getClaimAsString(TokenService.HOST_USER_CLAIM);
+            boolean host = Boolean.TRUE.equals(jwt.getClaim(TokenService.HOST_CLAIM));
+            if (accountIs(sessionOwner)) {
+                return Optional.empty(); // oturumun sahibi: hesap kimligi yerinde kalir
+            }
+            if (host && signedInWithAnAccount()) {
+                return Optional.empty(); // devralinmis host cerezi
+            }
+            return Optional.of(new ParticipantPrincipal(
+                    UUID.fromString(jwt.getSubject()),
+                    UUID.fromString(jwt.getClaimAsString(TokenService.SESSION_CLAIM)),
+                    host));
+        } catch (JwtException | IllegalArgumentException | NullPointerException invalid) {
+            return Optional.empty();
+        }
+    }
+
+    private static void authenticate(ParticipantPrincipal participant) {
+        var auth = new UsernamePasswordAuthenticationToken(participant, null,
                 List.of(new SimpleGrantedAuthority("ROLE_PARTICIPANT")));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     /** İstek bir hesap kimliği taşıyor mu (bumpinto_at / Bearer). */
     private static boolean signedInWithAnAccount() {
-        Authentication current = SecurityContextHolder.getContext().getAuthentication();
-        return current != null && current.getPrincipal() instanceof Jwt;
+        return account() != null;
     }
 
-    /** İsteği yapan hesap bu oturumun kurucusu mu — JWT'yi bearer filtresi zaten doğruladı. */
-    private static boolean signedInAsHostOf(Session session) {
+    /** Tarayıcıdaki hesap, verilen kullanıcı id'si mi — token claim'i ile karşılaştırılır, DB'siz. */
+    private static boolean accountIs(String userId) {
+        Jwt account = account();
+        return account != null && userId != null && userId.equals(account.getSubject());
+    }
+
+    private static Jwt account() {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
-        if (current == null || !(current.getPrincipal() instanceof Jwt jwt)) {
-            return false;
-        }
-        String subject = jwt.getSubject();
-        if (subject == null) {
-            return false;
-        }
-        try {
-            return session.hostId().equals(UUID.fromString(subject));
-        } catch (IllegalArgumentException notAUuid) {
-            return false; // sub bir userId degilse host sayilmaz (fail-closed)
-        }
+        return current != null && current.getPrincipal() instanceof Jwt jwt ? jwt : null;
     }
 
     private static String slugOf(HttpServletRequest request) {

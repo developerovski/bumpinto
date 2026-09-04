@@ -17,6 +17,8 @@ import com.bumpinto.infra.security.ParticipantTokenFilter;
 import com.bumpinto.infra.security.RateLimitFilter;
 import com.bumpinto.infra.security.SecurityConfig;
 import com.bumpinto.infra.security.TokenService;
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.security.oauth2.jwt.Jwt;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,9 +112,11 @@ class WebSecuritySliceTest {
                 Instant.EPOCH).toString()).doesNotContain("pt-secret-value").contains("x7k2m");
     }
 
+    static final UUID AYSE_ID = UUID.randomUUID();
+
     static Participant ayse() {
-        return new Participant(UUID.randomUUID(), SESSION_ID, "Ayşe",
-                new GeoPoint(51.3855, 5.7120), false, "tok-a", null, false, null);
+        return new Participant(AYSE_ID, SESSION_ID, "Ayşe",
+                new GeoPoint(51.3855, 5.7120), false, null, false, null, null);
     }
 
     static Session session(UUID hostId) {
@@ -121,10 +125,12 @@ class WebSecuritySliceTest {
                 List.of());
     }
 
-    /** Katılımcı token'ı "abc" oturumunda geçerli olsun diye filtrenin gördüğü depoyu kurar. */
-    void participantTokenIsValidForAbc() {
-        when(store.sessionBySlug("abc")).thenReturn(Optional.of(session(UUID.randomUUID())));
-        when(store.participantByToken("tok-a")).thenReturn(Optional.of(ayse()));
+    /**
+     * "abc" oturumu için geçerli bir katılımcı token'ı üretir. Filtre artık DB'ye BAKMAZ:
+     * kimlik token'ın imzasından ve claim'lerinden çıkar, o yüzden depo kurulumuna gerek yok.
+     */
+    String participantTokenForAbc() {
+        return tokens.issueParticipantToken(AYSE_ID, SESSION_ID, "abc", false, UUID.randomUUID());
     }
 
     @Test
@@ -134,7 +140,8 @@ class WebSecuritySliceTest {
 
     @Test
     void webJoinPutsTokenOnlyInHttpOnlyCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any())).thenReturn(ayse());
+        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any()))
+                .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .header("X-Client", "web")
@@ -145,21 +152,27 @@ class WebSecuritySliceTest {
 
         Cookie cookie = result.getResponse().getCookie("bumpinto_pt_abc");
         assertThat(cookie).isNotNull();
-        assertThat(cookie.getValue()).isEqualTo("tok-a");
         assertThat(cookie.isHttpOnly()).isTrue();
+        // Cerezdeki deger, KATILAN katilimciya ve BU oturuma baglı imzalı bir token olmalı.
+        Jwt delivered = tokens.decoder().decode(cookie.getValue());
+        assertThat(delivered.getSubject()).isEqualTo(AYSE_ID.toString());
+        assertThat(delivered.getClaimAsString(TokenService.SLUG_CLAIM)).isEqualTo("abc");
+        assertThat(delivered.getClaimAsString(TokenService.TYPE_CLAIM))
+                .isEqualTo(TokenService.PARTICIPANT_TYPE);
         assertThat(result.getResponse().getContentAsString())
                 .contains("\"participantToken\":null"); // web'e token sızmaz
     }
 
     @Test
     void mobileJoinReturnsTokenInBodyWithoutCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any())).thenReturn(ayse());
+        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any()))
+                .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .contentType("application/json")
                         .content("{\"displayName\":\"Ayşe\"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.participantToken").value("tok-a"))
+                .andExpect(jsonPath("$.participantToken").isNotEmpty())
                 .andReturn();
 
         assertThat(result.getResponse().getCookie("bumpinto_pt_abc")).isNull();
@@ -185,18 +198,25 @@ class WebSecuritySliceTest {
         UUID hostId = UUID.randomUUID();
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
-                new GeoPoint(51.7, 5.3), true, "tok-h", null, false, null);
+                new GeoPoint(51.7, 5.3), true, null, false, null, null);
         when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
-        mvc.perform(post("/api/sessions")
+        MvcResult created = mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + bearer)
                         .contentType("application/json")
                         .content("{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.slug").value("abc"))
-                .andExpect(jsonPath("$.participantToken").value("tok-h"));
+                .andExpect(jsonPath("$.participantToken").isNotEmpty())
+                .andReturn();
+
+        // Govdedeki deger host katilimcisina ve bu oturuma bagli imzali bir token olmali.
+        String body = created.getResponse().getContentAsString();
+        Jwt delivered = tokens.decoder().decode(JsonPath.read(body, "$.participantToken"));
+        assertThat(delivered.getSubject()).isEqualTo(host.id().toString());
+        assertThat(delivered.getClaimAsBoolean(TokenService.HOST_CLAIM)).isTrue();
     }
 
     /** Host da katılımcıdır: web'de onun token'ı da gövdeye değil cookie'ye gider. */
@@ -205,7 +225,7 @@ class WebSecuritySliceTest {
         UUID hostId = UUID.randomUUID();
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
-                new GeoPoint(51.7, 5.3), true, "tok-h", null, false, null);
+                new GeoPoint(51.7, 5.3), true, null, false, null, null);
         when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
@@ -220,17 +240,17 @@ class WebSecuritySliceTest {
 
         Cookie cookie = result.getResponse().getCookie("bumpinto_pt_abc");
         assertThat(cookie).isNotNull();
-        assertThat(cookie.getValue()).isEqualTo("tok-h");
         assertThat(cookie.isHttpOnly()).isTrue();
+        Jwt delivered = tokens.decoder().decode(cookie.getValue());
+        assertThat(delivered.getSubject()).isEqualTo(host.id().toString());
+        assertThat(delivered.getClaimAsBoolean(TokenService.HOST_CLAIM)).isTrue();
     }
 
     /** Katılımcı token'ı kimlik doğrular ama host ucunu AÇMAZ: 403, 500 değil. */
     @Test
     void participantTokenCannotDriveHostEndpoints() throws Exception {
-        participantTokenIsValidForAbc();
-
         mvc.perform(post("/api/sessions/abc/find-venues")
-                        .header(ParticipantTokenFilter.HEADER, "tok-a"))
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
                 .andExpect(status().isForbidden());
     }
 
@@ -269,24 +289,36 @@ class WebSecuritySliceTest {
     /** Filtre fail-closed: katılımcı token'ı /api/sessions/{slug} dışında kimlik doğrulamaz. */
     @Test
     void participantTokenDoesNotOpenSessionCreation() throws Exception {
-        participantTokenIsValidForAbc();
+        String participantToken = participantTokenForAbc();
+        String body = "{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}";
 
         mvc.perform(post("/api/sessions")
-                        .header(ParticipantTokenFilter.HEADER, "tok-a")
-                        .contentType("application/json")
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
+                        .header(ParticipantTokenFilter.HEADER, participantToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized());
+
+        // Ayni sir iki tur token'i da imzaliyor: katilimci token'i HESAP kimligi olarak da
+        // sunulabilir. typ=pt kapisi olmasa bir davetlinin oturum token'i "oturum kur" ucunu
+        // acardi (SecurityConfig.apiJwtDecoder).
+        mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + participantToken)
+                        .contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/sessions")
+                        .cookie(new Cookie(AuthCookies.ACCESS, participantToken))
+                        .contentType("application/json").content(body))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void participantTokenOpensItsOwnSessionView() throws Exception {
-        participantTokenIsValidForAbc();
         Session session = session(UUID.randomUUID());
         when(queries.snapshot("abc")).thenReturn(new SessionQueries.SessionSnapshot(
                 session, List.of(ayse()), List.of(), java.util.Map.of(), java.util.Map.of(),
                 java.util.Map.of()));
 
-        mvc.perform(get("/api/sessions/abc").header(ParticipantTokenFilter.HEADER, "tok-a"))
+        mvc.perform(get("/api/sessions/abc")
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.slug").value("abc"))
                 .andExpect(jsonPath("$.participants[0].displayName").value("Ayşe"));

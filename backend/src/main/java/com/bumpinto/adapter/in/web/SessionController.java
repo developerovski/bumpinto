@@ -59,8 +59,8 @@ class SessionController {
                 request.locationLabel(), request.travelMode());
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
-        String bodyToken = tokens.deliver(response, client, result.session().slug(),
-                result.hostParticipant().token());
+        String bodyToken = tokens.deliver(response, client, result.session(),
+                result.hostParticipant());
         return response.body(new ApiDtos.CreateSessionResponse(result.session().slug(),
                 result.session().id(), result.hostParticipant().id(), bodyToken,
                 result.session().expiresAt()));

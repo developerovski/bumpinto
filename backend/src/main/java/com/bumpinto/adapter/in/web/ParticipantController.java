@@ -36,11 +36,11 @@ class ParticipantController {
             @Valid @RequestBody ApiDtos.JoinRequest request) {
         GeoPoint location = request.lat() == null || request.lng() == null ? null
                 : new GeoPoint(request.lat(), request.lng());
-        Participant joined = commands.join(slug, request.displayName(), location,
+        SessionCommands.JoinResult joined = commands.join(slug, request.displayName(), location,
                 request.locationLabel(), request.travelMode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
-        String bodyToken = tokens.deliver(response, client, slug, joined.token());
-        return response.body(new ApiDtos.JoinResponse(joined.id(), bodyToken));
+        String bodyToken = tokens.deliver(response, client, joined.session(), joined.participant());
+        return response.body(new ApiDtos.JoinResponse(joined.participant().id(), bodyToken));
     }
 
     @PutMapping("/location")

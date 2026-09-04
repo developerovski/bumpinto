@@ -49,7 +49,6 @@ class SessionCommandsTest {
         assertThat(r.session().expiresAt()).isEqualTo(Instant.parse("2026-09-02T10:00:00Z"));
         assertThat(r.hostParticipant().host()).isTrue();
         assertThat(r.hostParticipant().hasLocation()).isTrue();
-        assertThat(r.hostParticipant().token()).isNotBlank();
     }
 
     @Test
@@ -57,9 +56,9 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
-        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, null, null);
+        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, null, null).participant();
 
-        assertThat(ayse.token()).isNotEqualTo(r.hostParticipant().token());
+        assertThat(ayse.id()).isNotEqualTo(r.hostParticipant().id());
         assertThat(store.participantsOf(r.session().id())).hasSize(2);
         assertThat(events.published).hasSize(1);
         assertThat(events.published.get(0).event().type()).isEqualTo("participant_joined");
@@ -75,7 +74,7 @@ class SessionCommandsTest {
     void updateLocationSetsCoordinates() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null);
+        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null).participant();
         assertThat(kerem.hasLocation()).isFalse();
 
         commands.updateLocation(r.session().slug(), kerem.id(), SOMEREN, "Someren", null);
@@ -92,7 +91,7 @@ class SessionCommandsTest {
     void updateLocationWithoutLabelKeepsExistingLabel() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", SOMEREN, "Someren", null);
+        Participant kerem = commands.join(r.session().slug(), "Kerem", SOMEREN, "Someren", null).participant();
 
         commands.updateLocation(r.session().slug(), kerem.id(), DEN_BOSCH, null, null);
 
@@ -115,7 +114,7 @@ class SessionCommandsTest {
     void updateLocationRejectsSessionPastItsExpiry() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null);
+        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null).participant();
 
         assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z")
                 .updateLocation(r.session().slug(), kerem.id(), SOMEREN, null, null))
@@ -144,7 +143,8 @@ class SessionCommandsTest {
         Participant ayse = commands.addPoint(solo.session().slug(), solo.session().hostId(),
                 "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.manual()).isTrue();
-        assertThat(ayse.token()).isNull();
+        // Elle konumun token'i olmaz: token yalniz ParticipantTokenDelivery'de uretilir ve
+        // addPoint o yoldan GECMEZ — yani manuel nokta hicbir zaman kimlik tasiyamaz.
         assertThat(ayse.host()).isFalse();
         assertThat(ayse.locationLabel()).isEqualTo("Someren");
         assertThat(store.participantsOf(solo.session().id())).hasSize(2);
@@ -188,11 +188,11 @@ class SessionCommandsTest {
         assertThat(r.hostParticipant().travelMode()).isEqualTo(TravelMode.BIKE);
 
         Participant kerem = commands.join(r.session().slug(), "Kerem", SOMEREN, "Someren",
-                TravelMode.EBIKE);
+                TravelMode.EBIKE).participant();
         assertThat(kerem.travelMode()).isEqualTo(TravelMode.EBIKE);
 
         // Mod verilmeyen katilim CAR: "gec katilanlar da CAR" (spec §4.5b)
-        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, "Someren", null);
+        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, "Someren", null).participant();
         assertThat(ayse.travelMode()).isEqualTo(TravelMode.CAR);
     }
 
@@ -200,7 +200,7 @@ class SessionCommandsTest {
     void updateLocationCanChangeTravelModeAndNullKeepsIt() {
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, TravelMode.WALK);
+        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, TravelMode.WALK).participant();
 
         commands.updateLocation(r.session().slug(), kerem.id(), SOMEREN, "Someren", null);
         assertThat(store.participants.get(kerem.id()).travelMode()).isEqualTo(TravelMode.WALK);

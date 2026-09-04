@@ -1,6 +1,5 @@
 package com.bumpinto.infra.security;
 
-import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.infra.config.AppProps;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +10,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
@@ -36,7 +37,7 @@ public class SecurityConfig {
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"));
 
     @Bean
-    SecurityFilterChain apiChain(HttpSecurity http, SessionStorePort sessions,
+    SecurityFilterChain apiChain(HttpSecurity http, TokenService tokens,
                                  BearerTokenResolver bearerTokenResolver) throws Exception {
         // CSRF token bilinçli olarak yok: cookie'ler SameSite=Lax + origin-kısıtlı
         // credentialed CORS; API'de tarayıcı form-post akışı bulunmuyor.
@@ -52,14 +53,31 @@ public class SecurityConfig {
                 .jwt(jwt -> {}))
             // SONRA: bearer filtresi context'i kosulsuz ezer, once konan katilimci
             // principal'i hayatta kalmazdi (bkz. ParticipantTokenFilter javadoc).
-            .addFilterAfter(new ParticipantTokenFilter(sessions),
+            .addFilterAfter(new ParticipantTokenFilter(tokens.decoder()),
                     BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
+    /**
+     * HESAP kimligi dogrulayicisi. Tek {@code TOKEN_SECRET} hem hesap hem katilimci token'ini
+     * imzaladigi icin tur kapisi burada: katilimci token'i {@code Authorization: Bearer} ya da
+     * {@code bumpinto_at} olarak sunulursa hesap kimligi SAYILMAZ. Kapi olmasa bir davetlinin
+     * oturum token'i "oturum kur", "profilimi guncelle" gibi hesap uclarini acardi.
+     *
+     * <p>Sarmalayici kullanilir, {@code NimbusJwtDecoder.setJwtValidator} DEGIL: dogrulayici
+     * paylasilan ornekte mutasyon yapar ve katilimci dogrulamasini da kirardi.
+     */
     @Bean
     JwtDecoder apiJwtDecoder(TokenService tokens) {
-        return tokens.decoder();
+        JwtDecoder decoder = tokens.decoder();
+        return token -> {
+            Jwt jwt = decoder.decode(token);
+            if (TokenService.PARTICIPANT_TYPE
+                    .equals(jwt.getClaimAsString(TokenService.TYPE_CLAIM))) {
+                throw new BadJwtException("participant token is not an account token");
+            }
+            return jwt;
+        };
     }
 
     @Bean

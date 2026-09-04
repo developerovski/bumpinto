@@ -69,7 +69,6 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.displayName = p.displayName();
         e.lat = p.location() == null ? null : p.location().lat();
         e.lng = p.location() == null ? null : p.location().lng();
-        e.token = p.token();
         e.deckDoneAt = p.deckDoneAt();
         e.isHost = p.host();
         e.isManual = p.manual();
@@ -84,9 +83,6 @@ public class SessionStoreAdapter implements SessionStorePort {
                 .map(SessionStoreAdapter::toParticipant).toList();
     }
 
-    @Override public Optional<Participant> participantByToken(String token) {
-        return participants.findByToken(token).map(SessionStoreAdapter::toParticipant);
-    }
 
     @Override public void deleteParticipant(UUID participantId) {
         participants.deleteById(participantId);
@@ -146,7 +142,7 @@ public class SessionStoreAdapter implements SessionStorePort {
     static Participant toParticipant(ParticipantEntity e) {
         GeoPoint loc = (e.lat == null || e.lng == null) ? null : new GeoPoint(e.lat, e.lng);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
-        return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost, e.token,
+        return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost,
                 e.deckDoneAt, e.isManual, e.locationLabel,
                 e.travelMode == null ? null : TravelMode.valueOf(e.travelMode));
     }

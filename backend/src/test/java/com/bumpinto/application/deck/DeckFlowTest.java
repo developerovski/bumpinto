@@ -83,9 +83,9 @@ class DeckFlowTest {
                 ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-02T10:00:00Z"), null, List.of()));
         host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                "Mehmet", DEN_BOSCH, true, "tok-h", null, false, null));
+                "Mehmet", DEN_BOSCH, true, null, false, null, null));
         ayse = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                "Ayşe", SOMEREN, false, "tok-a", null, false, null));
+                "Ayşe", SOMEREN, false, null, false, null, null));
     }
 
     @Test
@@ -289,9 +289,9 @@ class DeckFlowTest {
                 ActivityType.COFFEE, SessionType.SOLO, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-02T10:00:00Z"), null, List.of()));
         store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(), "Mehmet", DEN_BOSCH,
-                true, "tok-s", null, false, "'s-Hertogenbosch"));
+                true, null, false, "'s-Hertogenbosch", null));
         store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(), "Ayşe", SOMEREN,
-                false, null, null, true, "Someren"));
+                false, null, true, "Someren", null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
         List<Venue> venues = flow.findVenues("solo", hostUser);
         assertThat(store.sessionBySlug("solo").orElseThrow().status()).isEqualTo(SessionStatus.BROWSING);
@@ -309,7 +309,7 @@ class DeckFlowTest {
     @Test
     void participantWithoutLocationNeitherCountsNorFinishesTheDeck() {
         Participant kerem = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                "Kerem", null, false, "tok-k", null, false, null));
+                "Kerem", null, false, null, false, null, null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
         List<Venue> venues = flow.findVenues("s1", hostUser);
         flow.shuffle("s1", hostUser);
@@ -400,7 +400,7 @@ class DeckFlowTest {
     @Test
     void manualPointsCountForGeometryButNotForVoting() {
         Participant manual = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                "Kerem", new GeoPoint(51.48, 5.66), false, null, null, true, "Helmond"));
+                "Kerem", new GeoPoint(51.48, 5.66), false, null, true, "Helmond", null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
         flow.findVenues("s1", hostUser);
         flow.shuffle("s1", hostUser);

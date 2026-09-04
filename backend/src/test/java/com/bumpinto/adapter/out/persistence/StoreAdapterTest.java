@@ -61,11 +61,11 @@ class StoreAdapterTest {
                 "Cuma", ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
         Participant host = sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(),
-                "Mehmet", new GeoPoint(51.6978, 5.3037), true, "tok-h", null, false, null));
+                "Mehmet", new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
 
         Session read = sessions.sessionBySlug("slugtest").orElseThrow();
         assertThat(read).isEqualTo(s);
-        Participant readHost = sessions.participantByToken("tok-h").orElseThrow();
+        Participant readHost = participantNamed(s.id(), "Mehmet");
         assertThat(readHost).isEqualTo(host);
 
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "fsq1", "Café Berlage",
@@ -90,13 +90,11 @@ class StoreAdapterTest {
     @Test
     void travelModeRoundTripsThroughParticipant() {
         Session s = newSession("travelm");
-        Participant biker = join(s, "Biker", "tok-biker", false, TravelMode.BIKE);
-        Participant defaulted = join(s, "Defaulted", "tok-def", false);
+        Participant biker = join(s, "Biker", false, TravelMode.BIKE);
+        Participant defaulted = join(s, "Defaulted", false);
 
-        assertThat(sessions.participantByToken("tok-biker").orElseThrow().travelMode())
-                .isEqualTo(TravelMode.BIKE);
-        assertThat(sessions.participantByToken("tok-def").orElseThrow().travelMode())
-                .isEqualTo(TravelMode.CAR);
+        assertThat(participantNamed(s.id(), "Biker").travelMode()).isEqualTo(TravelMode.BIKE);
+        assertThat(participantNamed(s.id(), "Defaulted").travelMode()).isEqualTo(TravelMode.CAR);
     }
 
     @Test
@@ -128,9 +126,9 @@ class StoreAdapterTest {
     @Test
     void likesByParticipantKeepsDislikeOnlyParticipantWithEmptySet() {
         Session s = newSession("dislk");
-        Participant liker = join(s, "Liker", "tok-liker", true);
-        Participant disliker = join(s, "Disliker", "tok-disliker", false);
-        Participant silent = join(s, "Silent", "tok-silent", false);
+        Participant liker = join(s, "Liker", true);
+        Participant disliker = join(s, "Disliker", false);
+        Participant silent = join(s, "Silent", false);
         Venue v = venue(s, "fsq-a", 0);
         deck.saveVenues(List.of(v));
 
@@ -147,8 +145,8 @@ class StoreAdapterTest {
     void queriesAreScopedToSession() {
         Session a = newSession("scopa");
         Session b = newSession("scopb");
-        Participant pa = join(a, "A", "tok-a", true);
-        Participant pb = join(b, "B", "tok-b", true);
+        Participant pa = join(a, "A", true);
+        Participant pb = join(b, "B", true);
         Venue va = venue(a, "fsq-a", 0);
         Venue vb = venue(b, "fsq-b", 0);
         deck.saveVenues(List.of(va, vb));
@@ -186,8 +184,8 @@ class StoreAdapterTest {
     @Test
     void compositeKeysScopeSwipeDeleteAndVoteReplace() {
         Session s = newSession("compk");
-        Participant p1 = join(s, "P1", "tok-p1", true);
-        Participant p2 = join(s, "P2", "tok-p2", false);
+        Participant p1 = join(s, "P1", true);
+        Participant p2 = join(s, "P2", false);
         Venue v1 = venue(s, "fsq-1", 0);
         Venue v2 = venue(s, "fsq-2", 1);
         deck.saveVenues(List.of(v1, v2));
@@ -262,20 +260,20 @@ class StoreAdapterTest {
                 Instant.now().plusSeconds(600), null, List.of()));
 
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayla",
-                new GeoPoint(51.6978, 5.3037), true, "tok-s1-host", null, false, null));
+                new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayşe",
-                new GeoPoint(51.7, 5.3), false, "tok-s1-ayse", Instant.now(), false, null));
+                new GeoPoint(51.7, 5.3), false, Instant.now(), false, null, null));
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Kerem",
-                null, false, "tok-s1-kerem", null, false, null));
+                null, false, null, false, null, null));
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Nokta",
-                new GeoPoint(51.71, 5.31), false, null, null, true, "Manuel nokta"));
+                new GeoPoint(51.71, 5.31), false, null, true, "Manuel nokta", null));
 
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Ayla",
-                new GeoPoint(51.6978, 5.3037), true, "tok-s2-host", null, false, null));
+                new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Zeynep",
-                new GeoPoint(51.72, 5.32), false, "tok-s2-zeynep", Instant.now(), false, null));
+                new GeoPoint(51.72, 5.32), false, Instant.now(), false, null, null));
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Mert",
-                new GeoPoint(51.73, 5.33), false, "tok-s2-mert", null, false, null));
+                new GeoPoint(51.73, 5.33), false, null, false, null, null));
 
         Venue decidedVenue = venue(session2, "smry-venue", 0);
         deck.saveVenues(List.of(decidedVenue));
@@ -322,14 +320,20 @@ class StoreAdapterTest {
                 Instant.now().plusSeconds(600), null, List.of()));
     }
 
-    private Participant join(Session s, String name, String token, boolean host) {
-        return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
-                new GeoPoint(51.6978, 5.3037), host, token, null, false, null));
+    /** Token yok: katilimci artik imzali JWT ile taninir, satir adiyla okunur. */
+    private Participant participantNamed(java.util.UUID sessionId, String name) {
+        return sessions.participantsOf(sessionId).stream()
+                .filter(p -> p.displayName().equals(name)).findFirst().orElseThrow();
     }
 
-    private Participant join(Session s, String name, String token, boolean host, TravelMode mode) {
+    private Participant join(Session s, String name, boolean host) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
-                new GeoPoint(51.6978, 5.3037), host, token, null, false, null, mode));
+                new GeoPoint(51.6978, 5.3037), host, null, false, null, null));
+    }
+
+    private Participant join(Session s, String name, boolean host, TravelMode mode) {
+        return sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
+                new GeoPoint(51.6978, 5.3037), host, null, false, null, mode));
     }
 
     private Venue venue(Session s, String externalId, int order) {

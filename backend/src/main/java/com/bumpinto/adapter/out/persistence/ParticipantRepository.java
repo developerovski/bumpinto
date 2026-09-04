@@ -12,7 +12,6 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
     /** joinedAt sirasi: liste her istekte ayni; host ilk. ORDER BY yoksa satir guncellemesi
      *  (konum girisi) satiri heap'te sona tasiyip sirayi degistiriyordu. */
     List<ParticipantEntity> findBySessionIdOrderByJoinedAtAscIdAsc(UUID sessionId);
-    Optional<ParticipantEntity> findByToken(String token);
 
     List<ParticipantEntity> findBySessionIdIn(Collection<UUID> sessionIds);
 

@@ -18,9 +18,4 @@ public final class Ids {
         return sb.toString();
     }
 
-    public static String participantToken() {
-        byte[] bytes = new byte[32];
-        RANDOM.nextBytes(bytes);
-        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
 }

@@ -41,6 +41,10 @@ public class SessionCommands {
     public record CreateSessionResult(Session session, Participant hostParticipant) {
     }
 
+    /** Katilim sonucu oturumu da tasir: token'a yazilacak host kimligi oradan gelir. */
+    public record JoinResult(Session session, Participant participant) {
+    }
+
     @Transactional
     public CreateSessionResult createSession(UUID hostUserId, String name, ActivityType type,
                                              SessionType sessionType, GeoPoint hostLocation,
@@ -52,14 +56,13 @@ public class SessionCommands {
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(hostDisplayName), hostLocation, true,
-                Ids.participantToken(), null, false, Texts.label(hostLocationLabel),
-                hostTravelMode));
+                null, false, Texts.label(hostLocationLabel), hostTravelMode));
         return new CreateSessionResult(session, host);
     }
 
     @Transactional
-    public Participant join(String slug, String displayName, GeoPoint location,
-                            String locationLabel, TravelMode travelMode) {
+    public JoinResult join(String slug, String displayName, GeoPoint location,
+                           String locationLabel, TravelMode travelMode) {
         Session session = required(slug);
         if (session.isSolo()) {
             throw new ConflictException("solo session has no invite link");
@@ -69,10 +72,10 @@ public class SessionCommands {
         }
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant joined = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                Texts.displayName(displayName), location, false, Ids.participantToken(), null,
+                Texts.displayName(displayName), location, false, null,
                 false, Texts.label(locationLabel), travelMode));
         events.publish(slug, SessionEvent.participantJoined(store.participantsOf(session.id()).size()));
-        return joined;
+        return new JoinResult(session, joined);
     }
 
     @Transactional
@@ -104,7 +107,7 @@ public class SessionCommands {
             throw new ConflictException("points are frozen after venues are found");
         }
         Participant point = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                Texts.displayName(displayName), location, false, null, null, true,
+                Texts.displayName(displayName), location, false, null, true,
                 Texts.label(locationLabel), travelMode));
         events.publish(slug, SessionEvent.participantJoined(store.participantsOf(session.id()).size()));
         return point;

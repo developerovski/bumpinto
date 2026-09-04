@@ -18,7 +18,6 @@ class ParticipantEntity {
     String displayName;
     Double lat;
     Double lng;
-    String token;
     @Generated(event = EventType.INSERT) @Column(updatable = false) Instant joinedAt;
     Instant deckDoneAt;
     boolean isHost;

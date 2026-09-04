@@ -33,8 +33,7 @@ class SessionViewAssemblerTest {
     }
 
     Participant person(UUID sessionId, GeoPoint at, String label, boolean manual) {
-        return new Participant(UUID.randomUUID(), sessionId, "P", at, false,
-                manual ? null : "tok", null, manual, label);
+        return new Participant(UUID.randomUUID(), sessionId, "P", at, false, null, manual, label, null);
     }
 
     Venue venue(UUID sessionId, GeoPoint at) {
@@ -62,8 +61,8 @@ class SessionViewAssemblerTest {
         Session s = session(SessionType.GROUP);
         Participant a = person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false);
         Participant b = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
-        Participant none = new Participant(UUID.randomUUID(), s.id(), "K", null, false, "t", null,
-                false, null);
+        Participant none = new Participant(UUID.randomUUID(), s.id(), "K", null, false, null,
+                false, null, null);
 
         ApiDtos.SessionView one = assembler.toView(
                 new SessionQueries.SessionSnapshot(s, List.of(a, none), List.of(), Map.of(), Map.of(),
@@ -83,10 +82,10 @@ class SessionViewAssemblerTest {
     void everyParticipantGetsRoundedMinutesFromTheirApproxLocationAndMode() {
         Session s = session(SessionType.GROUP);
         Participant walker = new Participant(UUID.randomUUID(), s.id(), "Yaya",
-                new GeoPoint(51.44123, 5.47456), false, "t1", null, false, "Eindhoven",
+                new GeoPoint(51.44123, 5.47456), false, null, false, "Eindhoven",
                 TravelMode.WALK);
         Participant driver = new Participant(UUID.randomUUID(), s.id(), "Suruc",
-                new GeoPoint(51.69781, 5.30374), false, "t2", null, false, "Den Bosch",
+                new GeoPoint(51.69781, 5.30374), false, null, false, "Den Bosch",
                 TravelMode.CAR);
         Venue v = venue(s.id(), new GeoPoint(51.44, 5.47));
 
@@ -114,8 +113,8 @@ class SessionViewAssemblerTest {
     @Test
     void venueFairnessIsNullWhenNobodyIsLocated() {
         Session s = session(SessionType.GROUP);
-        Participant nowhere = new Participant(UUID.randomUUID(), s.id(), "K", null, false, "t",
-                null, false, null);
+        Participant nowhere = new Participant(UUID.randomUUID(), s.id(), "K", null, false,
+                null, false, null, null);
         Venue v = venue(s.id(), new GeoPoint(51.44, 5.47));
 
         ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
@@ -132,9 +131,9 @@ class SessionViewAssemblerTest {
         Session s = session(SessionType.GROUP);
         Venue v = venue(s.id(), new GeoPoint(51.44, 5.47));
         Participant exact = new Participant(UUID.randomUUID(), s.id(), "A",
-                new GeoPoint(51.6978, 5.3037), false, "t1", null, false, null, TravelMode.CAR);
+                new GeoPoint(51.6978, 5.3037), false, null, false, null, TravelMode.CAR);
         Participant nudged = new Participant(UUID.randomUUID(), s.id(), "B",
-                new GeoPoint(51.7019, 5.2962), false, "t2", null, false, null, TravelMode.CAR);
+                new GeoPoint(51.7019, 5.2962), false, null, false, null, TravelMode.CAR);
 
         Map<UUID, Integer> minutes = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(exact, nudged), List.of(v), Map.of(), Map.of(), Map.of()), null)
@@ -151,9 +150,9 @@ class SessionViewAssemblerTest {
     void midpointMinutesAreEqualForTwoPeopleWithDifferentSpeeds() {
         Session s = session(SessionType.GROUP);
         Participant slow = new Participant(UUID.randomUUID(), s.id(), "E-bisiklet",
-                new GeoPoint(51.30, 5.50), false, "t1", null, false, null, TravelMode.EBIKE);
+                new GeoPoint(51.30, 5.50), false, null, false, null, TravelMode.EBIKE);
         Participant fast = new Participant(UUID.randomUUID(), s.id(), "Araba",
-                new GeoPoint(51.70, 5.50), false, "t2", null, false, null, TravelMode.CAR);
+                new GeoPoint(51.70, 5.50), false, null, false, null, TravelMode.CAR);
 
         List<ApiDtos.ParticipantDto> rows = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(slow, fast), List.of(), Map.of(), Map.of(), Map.of()), null)
@@ -168,8 +167,8 @@ class SessionViewAssemblerTest {
     void midpointMinutesIsNullWithoutAMidpointOrWithoutALocation() {
         Session s = session(SessionType.GROUP);
         Participant lonely = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
-        Participant nowhere = new Participant(UUID.randomUUID(), s.id(), "K", null, false, "t",
-                null, false, null);
+        Participant nowhere = new Participant(UUID.randomUUID(), s.id(), "K", null, false,
+                null, false, null, null);
 
         // Tek konumlu katilimci → orta nokta yok → dakika yok
         assertThat(assembler.toView(new SessionQueries.SessionSnapshot(

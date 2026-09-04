@@ -7,27 +7,23 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * manual=true: host'un elle ekledigi konum (SOLO). Token'i YOK, kaydirmaz, oy popülasyonuna
+ * Token TASIMAZ: katilimci kimligi imzali bir JWT'dir ve yalniz istemcide yasar
+ * (TokenService.issueParticipantToken). Sir domain'e de DB'ye de girmez — bu yuzden bu record
+ * icin toString maskesi de gerekmez.
+ *
+ * <p>manual=true: host'un elle ekledigi konum (SOLO). Token'i YOK, kaydirmaz, oy popülasyonuna
  * girmez; yalniz orta nokta / yaricap / deste geometrisine dahildir.
  *
  * <p>travelMode: spec §4.5b. Varsayilan CAR — elle konumlar ve gec katilanlar da CAR sayilir.
  */
 public record Participant(UUID id, UUID sessionId, String displayName, GeoPoint location,
-                          boolean host, String token, Instant deckDoneAt,
+                          boolean host, Instant deckDoneAt,
                           boolean manual, String locationLabel, TravelMode travelMode) {
 
     public Participant {
         if (travelMode == null) {
             travelMode = TravelMode.CAR;
         }
-    }
-
-    /** Eski imza: mod verilmeyen her yer CAR'dir. */
-    public Participant(UUID id, UUID sessionId, String displayName, GeoPoint location,
-                       boolean host, String token, Instant deckDoneAt,
-                       boolean manual, String locationLabel) {
-        this(id, sessionId, displayName, location, host, token, deckDoneAt, manual, locationLabel,
-                TravelMode.CAR);
     }
 
     public boolean hasLocation() {
@@ -44,25 +40,13 @@ public record Participant(UUID id, UUID sessionId, String displayName, GeoPoint 
     }
 
     public Participant locatedAt(GeoPoint newLocation, String newLabel, TravelMode newMode) {
-        return new Participant(id, sessionId, displayName, newLocation, host, token, deckDoneAt,
+        return new Participant(id, sessionId, displayName, newLocation, host, deckDoneAt,
                 manual, newLabel, newMode == null ? travelMode : newMode);
     }
 
     public Participant doneAt(Instant when) {
-        return new Participant(id, sessionId, displayName, location, host, token, when,
+        return new Participant(id, sessionId, displayName, location, host, when,
                 manual, locationLabel, travelMode);
     }
 
-    /**
-     * token bir sirdir: default record toString'i onu log'a ve hata mesajina sizdirir
-     * (bir gun biri log.debug("p={}", participant) yazar). Saf Java — domain saf kalir.
-     */
-    @Override
-    public String toString() {
-        return "Participant[id=" + id + ", sessionId=" + sessionId
-                + ", displayName=" + displayName + ", location=" + location
-                + ", host=" + host + ", token=" + (token == null ? "null" : "***")
-                + ", deckDoneAt=" + deckDoneAt + ", manual=" + manual
-                + ", locationLabel=" + locationLabel + ", travelMode=" + travelMode + "]";
-    }
 }

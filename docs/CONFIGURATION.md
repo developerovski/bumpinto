@@ -154,9 +154,12 @@ Prod'a çıkmadan:
 
 1. **Google Places:** Keys & Credentials → anahtarı sil, yenisini üret, kısıtla. Eski anahtar anında ölür.
 2. **Foursquare:** Console → Service API Keys → revoke → yeni üret.
-3. **`TOKEN_SECRET`:** yenisini üretip Secret'ı güncelleyin. **Tüm oturumlar düşer** —
-   mevcut JWT'ler doğrulanamaz. Kullanıcılar yeniden giriş yapar; katılımcı token'ları
-   DB'de olduğu için etkilenmez.
+3. **`TOKEN_SECRET`:** yenisini üretip Secret'ı güncelleyin. **Tüm kimlikler düşer** —
+   aynı sır hem hesap hem KATILIMCI token'larını imzalar (V6'dan beri katılımcı token'ı da
+   imzalı bir JWT'dir, DB'de saklanmaz). Hesap sahipleri yeniden giriş yapıp toparlanır;
+   canlı bir oturumdaki davetlilerin ise yeniden KATILMASI gerekir ve katılım mükerrer
+   satır açar (orta noktayı bozar). Bu yüzden rotasyonu canlı oturum yokken yapın —
+   oturum TTL'i 24 saat.
 4. Her durumda: `kubectl rollout restart deployment/bumpinto-backend`.
 
 ---

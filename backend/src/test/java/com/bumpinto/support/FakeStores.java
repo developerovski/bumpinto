@@ -53,9 +53,6 @@ public class FakeStores {
                     .filter(p -> p.sessionId().equals(sessionId)).toList();
         }
 
-        @Override public Optional<Participant> participantByToken(String token) {
-            return participants.values().stream().filter(p -> token.equals(p.token())).findFirst();
-        }
 
         @Override public void deleteParticipant(UUID participantId) {
             participants.remove(participantId);

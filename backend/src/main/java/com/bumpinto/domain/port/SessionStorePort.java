@@ -13,7 +13,6 @@ public interface SessionStorePort {
     Optional<Session> sessionBySlug(String slug);
     Participant saveParticipant(Participant participant);
     List<Participant> participantsOf(UUID sessionId);
-    Optional<Participant> participantByToken(String token);
     void deleteParticipant(UUID participantId);
 
     /** Hostu verilen kullanici olan oturumlar, en yeniden eskiye, en fazla limit. */

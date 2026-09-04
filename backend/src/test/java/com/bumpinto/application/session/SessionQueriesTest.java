@@ -40,8 +40,7 @@ class SessionQueriesTest {
 
     Participant participantIn(Session session, boolean host) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                host ? "Mehmet" : "Ayşe", new GeoPoint(51.7, 5.3), host,
-                host ? "tok-h" : "tok-a", null, false, null));
+                host ? "Mehmet" : "Ayşe", new GeoPoint(51.7, 5.3), host, null, false, null, null));
     }
 
     void venueIn(Session session) {
@@ -60,7 +59,7 @@ class SessionQueriesTest {
 
     Participant manualPointIn(Session session) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(), "Kerem",
-                new GeoPoint(51.48, 5.66), false, null, null, true, "Helmond"));
+                new GeoPoint(51.48, 5.66), false, null, true, "Helmond", null));
     }
 
     /**

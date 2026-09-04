@@ -46,12 +46,10 @@ class PersistenceSliceTest {
         p.displayName = "Mehmet";
         p.lat = 51.6978;
         p.lng = 5.3037;
-        p.token = "tok-1";
         p.isHost = true;
         participants.save(p);
 
         assertThat(sessions.findBySlug("x7k2m")).isPresent();
-        assertThat(participants.findByToken("tok-1")).isPresent();
         assertThat(participants.findBySessionIdOrderByJoinedAtAscIdAsc(s.id)).hasSize(1);
     }
 }

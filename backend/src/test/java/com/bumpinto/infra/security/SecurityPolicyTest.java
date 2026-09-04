@@ -93,20 +93,6 @@ class SecurityPolicyTest {
                 "trustForwardedFor=false");
     }
 
-    /** Sir tasiyan son tip: Participant.token da default record toString'i ile sizardi. */
-    @Test
-    void participantToStringMasksTokenButKeepsDiagnostics() {
-        UUID id = UUID.randomUUID();
-        Participant participant = new Participant(id, UUID.randomUUID(), "Ayse", null, true,
-                "pt-secret-value", null, false, null);
-
-        assertThat(participant.toString())
-                .doesNotContain("pt-secret-value")
-                .contains(id.toString(), "Ayse", "host=true");
-        assertThat(participant.doneAt(Instant.EPOCH).toString())
-                .doesNotContain("pt-secret-value");
-    }
-
     @Test
     void accessCookieIsHttpOnlyLaxAndScopedToApi() {
         ResponseCookie cookie = new AuthCookies(props(false, "", List.of()))
@@ -186,7 +172,7 @@ class SecurityPolicyTest {
                 ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plus(6, ChronoUnit.HOURS), null, List.of()));
         STORE.saveParticipant(new Participant(UUID.randomUUID(), SESSION_ID, "Ayse", null,
-                false, "pt-ok", null, false, null));
+                false, null, false, null, null));
     }
 
     @Configuration
@@ -348,12 +334,16 @@ class SecurityPolicyTest {
     /** Katilimci filtresi zincire gercekten bagli: dogru slug gecer, baska oturumun ucu gecmez. */
     @Test
     void participantTokenIsScopedToItsOwnSessionInTheRealChain() throws Exception {
+        String token = CONTEXT.getBean(TokenService.class).issueParticipantToken(
+                UUID.randomUUID(), UUID.randomUUID(), "x7k2m", false, UUID.randomUUID());
+
         MockHttpServletRequest own = request("POST", "/api/sessions/x7k2m/swipes");
-        own.addHeader(ParticipantTokenFilter.HEADER, "pt-ok");
+        own.addHeader(ParticipantTokenFilter.HEADER, token);
         assertThat(reachesApp(own)).isTrue();
 
+        // Slug claim'i URL ile eslesmeyen token hicbir sey acmaz — DB'ye bakilmadan, claim'den.
         MockHttpServletRequest foreign = request("POST", "/api/sessions/q3n8p/swipes");
-        foreign.addHeader(ParticipantTokenFilter.HEADER, "pt-ok");
+        foreign.addHeader(ParticipantTokenFilter.HEADER, token);
         assertThat(reachesApp(foreign)).isFalse();
     }
 }

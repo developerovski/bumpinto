@@ -62,8 +62,7 @@ class UserProfileQueriesTest {
 
     void join(Session session, String name, boolean isHost, boolean manual) {
         sessions.saveParticipant(new com.bumpinto.domain.session.Participant(UUID.randomUUID(),
-                session.id(), name, new GeoPoint(51.7, 5.3), isHost, isHost ? "tok-" + name : null,
-                null, manual, null));
+                session.id(), name, new GeoPoint(51.7, 5.3), isHost, null, manual, null, null));
     }
 
     @Test

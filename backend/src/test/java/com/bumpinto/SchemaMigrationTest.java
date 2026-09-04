@@ -38,10 +38,15 @@ class SchemaMigrationTest {
     void v3AddsSessionTypeAndManualParticipantColumns() {
         assertThat(columnsOf("sessions")).contains("session_type");
         assertThat(columnsOf("participants")).contains("is_manual", "location_label");
-        String tokenNullable = jdbc.queryForObject(
-                "select is_nullable from information_schema.columns "
-                        + "where table_name = 'participants' and column_name = 'token'", String.class);
-        assertThat(tokenNullable).isEqualTo("YES");
+    }
+
+    /**
+     * V6: katilimci token'i imzali JWT oldu, sir artik yalniz istemcide yasar. Kolon duz metin
+     * bir bearer sirri tutuyordu — bir DB dokumu tum canli oturum kimlikleri demekti.
+     */
+    @Test
+    void v6DropsThePlaintextParticipantTokenColumn() {
+        assertThat(columnsOf("participants")).doesNotContain("token");
     }
 
     @Test
