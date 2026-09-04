@@ -9,8 +9,8 @@ import type { ReactNode } from "react";
 const variants = {
   default: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
   deck: "gap-0 px-[1.125rem] pt-4 lg:gap-4 lg:px-8 xl:px-12 lg:pt-[2.125rem]",
-  result: "gap-3.5 px-[1.125rem] pt-5 relative lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
-  landing: "gap-[0.9375rem] px-[1.125rem] pt-5 relative lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
+  result: "gap-3.5 px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
+  landing: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
 };
 
 /** Mobil alt boşluk — Deste ekranı kartı ekranın dibine yaslar, diğerleri nefes alır. */
@@ -40,7 +40,11 @@ export default function Page(props: {
         // main yalnız kalanı alır (`flex-1`). Daha önce main kendi `min-h-[calc(100dvh-3.5rem)]`
         // ölçüsünü de taşıyordu; üst çubuk + main + atıf altbilgisi toplamı bir ekranı 33px
         // aşıyor ve HER sayfada sahte bir kaydırma bırakıyordu (ölçüldü — UI review 2026-09-03).
-        "mx-auto flex w-full max-w-[30rem] flex-1 flex-col",
+        // `relative`: sayfa kutusu, mutlak konumlu torunlara kap olur. Yoksa `sr-only`
+        // (position:absolute) etiketler ilk kapa çakılır, kabuğun `overflow: clip`'ini aşar
+        // ve belgeyi listenin kaydırılmamış boyuna kadar uzatır — haritanın altında ~2360px
+        // ölü kaydırma (ölçüldü 2026-09-04).
+        "relative mx-auto flex w-full max-w-[30rem] flex-1 flex-col",
         // wide: `min-h-0` içeriğin kabı büyütmesini keser — sayfa kaymaz, yalnız sol liste kayar
         // (VenueBrowser), harita sağ sütunu tam boy doldurur.
         props.wide ? "lg:max-w-none lg:min-h-0 lg:overflow-hidden" : "lg:max-w-[80rem] xl:max-w-[96rem]",

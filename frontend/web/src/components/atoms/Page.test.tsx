@@ -32,6 +32,12 @@ describe("Page yerleşim sözleşmesi", () => {
     expect(main.className).toContain("lg:pb-4");
   });
 
+  it("mutlak konumlu torunlara kap olur — sr-only etiketler belgeyi uzatamaz", () => {
+    for (const el of [render(<Page>a</Page>), render(<Page wide>b</Page>), render(<Page variant="result">c</Page>)]) {
+      expect(el.container.querySelector("main")!.className).toContain("relative");
+    }
+  });
+
   it("wide olmayan sayfa tam ekran işaretini vermez", () => {
     render(<Page>içerik</Page>);
     expect(screen.getByRole("main")).not.toHaveAttribute("data-wide");

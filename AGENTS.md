@@ -21,7 +21,7 @@ backend is built*.
 - User always reviews and performs git actions manually.
 - Keep implementation simple: YAGNI first, avoid unnecessary abstractions.
 - Do not expose or log secrets (`.env`, vault content, API keys, certificates).
-- Never read `.env` file
+- Never read `.env`, `env.sh` files
 
 ## Working Rules
 

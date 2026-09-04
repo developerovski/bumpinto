@@ -14,6 +14,11 @@
 *.env
 !.env.example
 !.env.template
+
+# Kabuğa yüklenen yerel sırlar (`source ./env.sh`). `.env` / `.env.*` / `*.env` desenleri
+# .sh uzantısını YAKALAMAZ; ayrı satır şart.
+env.sh
+
 # Vite build profilleri — sır değil, yalnız public API/WS URL'leri taşır (Plan 3):
 !frontend/web/.env.development
 !frontend/web/.env.preprod
