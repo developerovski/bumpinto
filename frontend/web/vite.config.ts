@@ -14,8 +14,9 @@ export default defineConfig({
     // (allowedHosts: true DNS rebinding'e acik olurdu).
     allowedHosts: [".ngrok-free.dev", ".ngrok-free.app", ".ngrok.app"],
     proxy: {
-      "/api": "http://localhost:8060",
-      "/ws": { target: "ws://localhost:8060", ws: true },
+      // ws:true SART: canli kanal artik /api/sessions/{slug}/ws altinda ve Vite yalniz
+      // ws bayragi acik olan kurali upgrade eder — bayrak olmadan 101 hic donmez.
+      "/api": { target: "http://localhost:8060", ws: true },
     },
   },
   test: {

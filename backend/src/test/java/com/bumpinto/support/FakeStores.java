@@ -2,6 +2,7 @@ package com.bumpinto.support;
 
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.DeckStorePort;
+import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
@@ -215,6 +216,25 @@ public class FakeStores {
         @Override public UserProfile saveProfile(UserProfile profile) {
             users.put(profile.id(), profile);
             return profile;
+        }
+    }
+
+    public static class FakePresence implements PresencePort {
+        public final Map<UUID, Set<UUID>> present = new HashMap<>();
+
+        @Override public void arrived(UUID sessionId, UUID participantId, String wsSessionId) {
+            present.computeIfAbsent(sessionId, key -> new HashSet<>()).add(participantId);
+        }
+
+        @Override public void left(UUID sessionId, UUID participantId, String wsSessionId) {
+            Set<UUID> seats = present.get(sessionId);
+            if (seats != null) {
+                seats.remove(participantId);
+            }
+        }
+
+        @Override public Set<UUID> presentIn(UUID sessionId) {
+            return Set.copyOf(present.getOrDefault(sessionId, Set.of()));
         }
     }
 }

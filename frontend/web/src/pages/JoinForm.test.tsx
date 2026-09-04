@@ -48,3 +48,39 @@ describe("JoinForm — travelMode", () => {
     );
   });
 });
+
+describe("JoinForm — host çevrimiçiliği", () => {
+  const preview = {
+    slug: "x7k2m", name: "Cuma kahvesi", activityType: "COFFEE", sessionType: "GROUP",
+    status: "COLLECTING", hostDisplayName: "Mehmet", participantCount: 1,
+    participants: [{ displayName: "Mehmet", host: true, hasLocation: true }],
+  };
+
+  it("host çevrimdışıyken not gösterir ama Katıl butonu ÇALIŞIR (kapı değil, bilgi)", () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({
+      slug: "x7k2m",
+      preview: { ...preview, hostOnline: false } as never,
+      join: vi.fn().mockResolvedValue(undefined),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    // Buton bos isimde zaten disabled — bu AYRI, ilgisiz bir kural. Bu test SADECE hostOnline'in
+    // EK bir kapi eklemedigini olcer, o yuzden ismi doldurup o kurali devreden cikariyoruz.
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Ayşe" } });
+
+    expect(screen.getByText(/Mehmet şu an oturumda değil/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Katıl" })).toBeEnabled();
+  });
+
+  it("host çevrimiçiyken not görünmez", () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({
+      slug: "x7k2m",
+      preview: { ...preview, hostOnline: true } as never,
+      join: vi.fn().mockResolvedValue(undefined),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+
+    expect(screen.queryByText(/şu an oturumda değil/)).not.toBeInTheDocument();
+  });
+});

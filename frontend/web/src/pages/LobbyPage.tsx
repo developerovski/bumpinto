@@ -6,26 +6,31 @@ import ActivityBadge from "../components/molecules/ActivityBadge";
 import ActivityStrip from "../components/molecules/ActivityStrip";
 import InviteCard from "../components/molecules/InviteCard";
 import LazyBoundary from "../components/molecules/LazyBoundary";
-import LgOnly from "../components/molecules/LgOnly";
 import MidpointCard from "../components/molecules/MidpointCard";
 import SessionHeader from "../components/molecules/SessionHeader";
 import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
 import ParticipantList from "../components/organisms/ParticipantList";
 import { sessionActivity } from "../lib/activity";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { mapProps, useSessionStore } from "../store/sessionStore";
 import { useSessionAction } from "../store/useSessionAction";
 
-/* Harita ayrı chunk (harita politikası §4.7) — yalnız ghost'a basılınca mount edilir. */
+/* Harita ayrı chunk — lg+ varsayılan mount, 2026-09-04 prezans kararı §7 (§4.7'nin "ghost
+   arkasında" maddesini değiştirdi). 390'da ghost kalır: chunk ve Maps faturası bedava değil. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
 
-/** Artboard W3 Lobi — GROUP host: davet linki + katılımcılar + harita (ghost arkasında,
-    yalnız lg) + "Mekanları bul". Harita politikası (§4.7): 390'da hiçbir zaman mount olmaz. */
+/** Artboard W3 Lobi — GROUP host: davet linki + katılımcılar + harita (lg+ varsayılan açık,
+    390'da ghost arkasında — 2026-09-04 prezans kararı §7) + "Mekanları bul". */
 export default function LobbyPage({ view }: { view: SessionView }) {
   const { t } = useTranslation();
   const findVenues = useSessionStore((s) => s.findVenues);
   const { run, busy, error } = useSessionAction();
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  // 390'da ghost'a basilinca; lg'de dogrudan. Tek yonlu OR: genislik degisse de kullanicinin
+  // ghost'a bastigi durum korunur.
   const [mapOpen, setMapOpen] = useState(false);
+  const showMap = desktop || mapOpen;
 
   const participants = view.participants ?? [];
   const located = participants.filter((p) => p.hasLocation).length;
@@ -62,7 +67,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                 yok). Harita açılınca da TEK yerde basılır — MapView'e ayrıca caption verilmez
                 (kod-review bulgusu: iki kez basılıyordu). */}
             <MidpointCard view={view} />
-            {mapOpen ? (
+            {showMap ? (
               <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
                 <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
                   <MapView
@@ -72,16 +77,13 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                     radiusKm={radiusKm}
                     pinLabels={pinLabels}
                     heightClass="h-[20rem] lg:h-[calc(100dvh-14rem)]"
-                    lgOnly
                   />
                 </Suspense>
               </LazyBoundary>
             ) : (
-              <LgOnly>
-                <Button type="button" kind="white" size="fit" onClick={() => setMapOpen(true)}>
-                  {t("lobby.openMap")}
-                </Button>
-              </LgOnly>
+              <Button type="button" kind="white" size="fit" onClick={() => setMapOpen(true)}>
+                {t("lobby.openMap")}
+              </Button>
             )}
             <Button onClick={() => void run(findVenues, "lobby.errFind")} disabled={located < 2 || busy}>
               {t("newSession.findVenues")}

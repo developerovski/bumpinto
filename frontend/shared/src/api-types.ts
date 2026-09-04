@@ -385,6 +385,7 @@ export interface components {
             travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
             /** Format: int32 */
             midpointMinutes?: number;
+            online?: boolean;
         };
         SessionView: {
             slug?: string;
@@ -544,6 +545,7 @@ export interface components {
             /** Format: int32 */
             participantCount?: number;
             participants?: components["schemas"]["PreviewParticipantDto"][];
+            hostOnline?: boolean;
         };
     };
     responses: never;

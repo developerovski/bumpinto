@@ -97,6 +97,7 @@ export default function JoinForm() {
               sessionName={preview?.name ?? null}
               activity={preview?.activityType ?? null}
               count={preview?.participantCount ?? 0}
+              hostOnline={preview?.hostOnline}
             />
             <JoinFormFields
               name={name}

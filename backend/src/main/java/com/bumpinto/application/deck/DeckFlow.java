@@ -15,6 +15,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.DeckStorePort;
+import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
@@ -53,10 +54,11 @@ public class DeckFlow {
     private final DecisionEngine engine;
     private final Clock clock;
     private final ReverseGeocodePort geocoder;
+    private final PresencePort presence;
 
     public DeckFlow(SessionStorePort store, DeckStorePort deck, VenueProviderPort provider,
                     SessionEventsPort events, DecisionEngine engine, Clock clock,
-                    ReverseGeocodePort geocoder) {
+                    ReverseGeocodePort geocoder, PresencePort presence) {
         this.store = store;
         this.deck = deck;
         this.provider = provider;
@@ -64,6 +66,7 @@ public class DeckFlow {
         this.engine = engine;
         this.clock = clock;
         this.geocoder = geocoder;
+        this.presence = presence;
     }
 
     @Transactional
@@ -144,6 +147,15 @@ public class DeckFlow {
         }
         if (session.isSolo()) {
             throw new ConflictException("solo session has no deck");
+        }
+        // Presence kapisi: satir duruyor ama sahibi odada degilse deste baslamaz. Deste BITISI
+        // (done>=total) bilinçli olarak satira bakmaya devam eder — geri alinamaz karar bir ag
+        // dalgalanmasina emanet edilemez.
+        Set<UUID> here = presence.presentIn(session.id());
+        long ready = votingPopulation(session.id()).stream()
+                .filter(p -> here.contains(p.id())).count();
+        if (ready < 2) {
+            throw new ConflictException("need at least 2 participants present to start the deck");
         }
         List<Participant> located = geometryPopulation(session.id());
         // Tohumlu karisim GIRDI sirasina duyarlidir (Collections.shuffle konum-bagimli): gercek
@@ -285,7 +297,7 @@ public class DeckFlow {
                 if (interactive) {
                     throw new ConflictException("no likes at all — try another category");
                 }
-                events.publish(session.slug(), new SessionEvent("no_likes", Map.of()));
+                events.publish(session.slug(), SessionEvent.noLikes());
             }
         }
     }

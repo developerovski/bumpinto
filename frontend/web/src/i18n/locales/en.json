@@ -47,7 +47,8 @@
     "locAutoHintNoLabel": "detected automatically",
     "locOk": "OK",
     "locOther": "Type another city or address",
-    "locRetry": "Try my location again"
+    "locRetry": "Try my location again",
+    "hostAway": "{{host}} isn't in the session right now — you can still join, your location will be waiting."
   },
   "waiting": {
     "joined": "You're in!",
@@ -62,7 +63,10 @@
     "you": "(you)",
     "errUpdate": "Couldn't update your location — try again.",
     "changeLocationAndMode": "Location and travel",
-    "modeHint": "You'll need to share your location again to save."
+    "modeHint": "You'll need to share your location again to save.",
+    "offline": "offline",
+    "openMap": "Open the map",
+    "online": "online"
   },
   "deck": {
     "seeAll": "See all",
@@ -387,6 +391,7 @@
     "guestWait": "the deck opens when the host shuffles",
     "soloBadge": "Solo · {{count}} locations",
     "errShuffle": "Couldn't open the deck — try again.",
+    "errAlone": "You're the only one here right now — starting the deck needs at least two people. If you'd rather not wait, pick a place from the list and close the decision.",
     "errPick": "Couldn't save the pick — try again.",
     "sort": "Sort",
     "sortFair": "Fair for all",
@@ -397,7 +402,8 @@
     "cancel": "Cancel",
     "fairHand": "fairest for everyone first →",
     "noLocationOne": "{{name}} hasn't shared a location yet — times update once they do",
-    "noLocationMany": "Times update once everyone without a location joins in"
+    "noLocationMany": "Times update once everyone without a location joins in",
+    "needTwo": "The deck needs at least two people in the session — while someone is offline you can pick a place from the list and close the decision."
   },
   "attribution": {
     "google": "Google Maps",

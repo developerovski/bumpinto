@@ -54,3 +54,9 @@ docs:
     `travelMode` opsiyonel; verilmezse `CAR` (gec katilan da CAR — spec §4.5b).
 
     Rate limit: 10/dk.
+
+    Yeni 409: `SWIPING`/`RUNOFF`/`DECIDED` durumunda YENI koltuk acilmaz (`session is closed
+    for new participants: <STATUS>`). VAROLAN koltuk her durumda geri doner — bu uc ayni zamanda
+    kimlik kurtarmadir (sekmesini yenileyen uyenin kendi koltuguna donmesi icin); koltuk
+    kurtarmadan once kapatsaydi uyeler kendi oturumlarindan kilitlenirdi. Eskiden yalniz
+    `DECIDED` reddediyordu, ustelik VAROLAN uyeyi bile reddediyordu.

@@ -46,7 +46,8 @@
     "locAutoHintNoLabel": "otomatik alındı",
     "locOk": "Tamam",
     "locOther": "Başka bir şehir ya da adres yaz",
-    "locRetry": "Konumumu tekrar dene"
+    "locRetry": "Konumumu tekrar dene",
+    "hostAway": "{{host}} şu an oturumda değil — yine de katılabilirsin, konumun onu bekler."
   },
   "waiting": {
     "joined": "Katıldın!",
@@ -61,7 +62,10 @@
     "you": "(sen)",
     "errUpdate": "Konum güncellenemedi — tekrar dene.",
     "changeLocationAndMode": "Konum ve ulaşım",
-    "modeHint": "Kaydetmek için konumunu yeniden vermen gerekir."
+    "modeHint": "Kaydetmek için konumunu yeniden vermen gerekir.",
+    "offline": "çevrimdışı",
+    "openMap": "Haritayı aç",
+    "online": "çevrimiçi"
   },
   "deck": {
     "seeAll": "Hepsini gör",
@@ -379,6 +383,7 @@
     "guestWait": "host karıştırınca deste açılır",
     "soloBadge": "Bireysel · {{count}} konum",
     "errShuffle": "Deste açılamadı — tekrar dene.",
+    "errAlone": "Şu an oturumda tek kişisin — deste açmak için en az iki kişi gerek. Beklemek istemiyorsan listeden bir yer seçip kararı kapatabilirsin.",
     "errPick": "Seçim kaydedilemedi — tekrar dene.",
     "sort": "Sıralama",
     "sortFair": "Herkese adil",
@@ -389,7 +394,8 @@
     "cancel": "Vazgeç",
     "fairHand": "önce herkese en adil olanlar →",
     "noLocationOne": "{{name}} konumunu henüz paylaşmadı — süreler o gelince güncellenir",
-    "noLocationMany": "Konumu olmayanlar gelince süreler güncellenir"
+    "noLocationMany": "Konumu olmayanlar gelince süreler güncellenir",
+    "needTwo": "Deste için oturumda en az iki kişi olmalı — biri çevrimdışıyken listeden bir yer seçip kararı kapatabilirsin."
   },
   "attribution": {
     "google": "Google Maps",

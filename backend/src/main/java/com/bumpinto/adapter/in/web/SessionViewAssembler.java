@@ -6,6 +6,7 @@ import com.bumpinto.domain.geo.GeoMath;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
 import com.bumpinto.domain.geo.TravelMinutes;
+import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -15,11 +16,18 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
 public class SessionViewAssembler {
+
+    private final PresencePort presence;
+
+    public SessionViewAssembler(PresencePort presence) {
+        this.presence = presence;
+    }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
         List<Participant> located = snap.participants().stream()
@@ -38,6 +46,7 @@ public class SessionViewAssembler {
             radiusKm = Math.round(SearchRadius.baseKm(points, center) * 10) / 10.0;
         }
         GeoPoint midpointFor = center;
+        Set<UUID> present = presence.presentIn(snap.session().id());
 
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
                 .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
@@ -45,7 +54,8 @@ public class SessionViewAssembler {
                         p.hasLocation() ? approx(p.location()) : null, p.travelMode(),
                         // Orta nokta yoksa ya da kisinin konumu yoksa satir cizilmez → null.
                         midpointFor == null || !p.hasLocation() ? null
-                                : TravelMinutes.between(p.location(), p.travelMode(), midpointFor)))
+                                : TravelMinutes.between(p.location(), p.travelMode(), midpointFor),
+                        present.contains(p.id())))
                 .toList();
 
         // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
@@ -73,7 +83,7 @@ public class SessionViewAssembler {
                 snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts());
     }
 
-    /** Katilmadan once: koordinat, katilimci id'si ve mekan YOK — yalniz ad + host + hasLocation. */
+    /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si ve mekan YOK. */
     public ApiDtos.SessionPreview toPreview(SessionQueries.SessionSnapshot snap) {
         List<ApiDtos.PreviewParticipantDto> participants = snap.participants().stream()
                 .filter(p -> !p.manual())
@@ -82,9 +92,14 @@ public class SessionViewAssembler {
         String hostDisplayName = participants.stream()
                 .filter(ApiDtos.PreviewParticipantDto::host)
                 .findFirst().map(ApiDtos.PreviewParticipantDto::displayName).orElse(null);
+        // Host'un koltuk id'si preview DTO'suna GIRMEZ; cevrimicilik domain satirindan okunur.
+        Set<UUID> present = presence.presentIn(snap.session().id());
+        boolean hostOnline = snap.participants().stream().filter(Participant::host).findFirst()
+                .map(host -> present.contains(host.id())).orElse(false);
         return new ApiDtos.SessionPreview(snap.session().slug(), snap.session().name(),
                 snap.session().activityType(), snap.session().sessionType(),
-                snap.session().status(), hostDisplayName, participants.size(), participants);
+                snap.session().status(), hostDisplayName, participants.size(), participants,
+                hostOnline);
     }
 
     public ApiDtos.SessionListResponse toList(List<SessionSummary> rows) {

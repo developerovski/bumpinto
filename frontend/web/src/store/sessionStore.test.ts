@@ -1,3 +1,4 @@
+import { act, renderHook } from "@testing-library/react";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +8,7 @@ vi.mock("../lib/api", () => ({
 
 import { api } from "../lib/api";
 import { useSessionStore } from "./sessionStore";
+import { useSessionAction } from "./useSessionAction";
 
 const view = {
   slug: "x",
@@ -84,5 +86,49 @@ describe("sessionStore.refresh — üyelik", () => {
     releaseStale();
     await stale;
     expect(useSessionStore.getState().view?.status).toBe("BROWSING");
+  });
+});
+
+describe("useSessionAction — duruma özel hata", () => {
+  /** Sunucunun gercek 409 govdesi: {error: "..."} (ApiExceptionHandler.ApiError). */
+  function conflict(message: string) {
+    const e = new AxiosError("conflict");
+    e.response = { status: 409, data: { error: message } } as never;
+    return e;
+  }
+
+  const alone = () => conflict("need at least 2 participants present to start the deck");
+
+  it("409 verilen anahtara düşer, diğer hatalar genel anahtara", async () => {
+    const { result } = renderHook(() => useSessionAction());
+
+    await act(async () => {
+      await result.current.run(() => Promise.reject(alone()), "venues.errShuffle", {
+        "participants present": "venues.errAlone",
+      });
+    });
+    expect(result.current.error).toContain("tek kişisin");
+
+    await act(async () => {
+      await result.current.run(() => Promise.reject(new Error("boom")), "venues.errShuffle", {
+        "participants present": "venues.errAlone",
+      });
+    });
+    expect(result.current.error).toBe("Deste açılamadı — tekrar dene.");
+  });
+
+  /** Ayni kod, BASKA sebep: bayat sekmeden gelen 409 "tek kisisin" DEMEMELI — host'u yanlis
+      bilgilendirip geri alinamaz bir cikisa (force-decision) yonlendirirdi. */
+  it("baska sebeple gelen 409 genel anahtara duser", async () => {
+    const { result } = renderHook(() => useSessionAction());
+
+    await act(async () => {
+      await result.current.run(
+        () => Promise.reject(conflict("expected BROWSING but was SWIPING")),
+        "venues.errShuffle",
+        { "participants present": "venues.errAlone" },
+      );
+    });
+    expect(result.current.error).toBe("Deste açılamadı — tekrar dene.");
   });
 });

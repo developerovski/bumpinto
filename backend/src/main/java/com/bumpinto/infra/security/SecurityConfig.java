@@ -47,7 +47,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_ENDPOINTS.toArray(RequestMatcher[]::new)).permitAll()
-                .requestMatchers("/v3/api-docs/**", "/ws/**", "/error").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/error").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(o -> o
                 .bearerTokenResolver(bearerTokenResolver)
@@ -142,7 +142,6 @@ public class SecurityConfig {
         config.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
-        source.registerCorsConfiguration("/ws/**", config);
         return source;
     }
 }

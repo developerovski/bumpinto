@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@11.4.0",
   "scripts": {
-    "codegen": "curl -sf http://localhost:8060/v3/api-docs -o frontend/shared/openapi.json && pnpm --filter @bumpinto/shared generate",
+    "codegen": "source ./init-nvm.sh && curl -sf http://localhost:8060/v3/api-docs -o frontend/shared/openapi.json && pnpm --filter @bumpinto/shared generate",
     "dev:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web dev",
     "build:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build",
     "build:web:preprod": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build --mode preprod",

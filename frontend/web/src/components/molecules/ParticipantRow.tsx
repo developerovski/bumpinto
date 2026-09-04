@@ -8,7 +8,9 @@ import { Avatar, Badge } from "../atoms";
     Rozet önceliği artboard'dan: kuran satırında "Kuran", diğerlerinde hazır/bekliyor.
     Alt satır: "{{şehir}} · <ikon> ~{{dk}} dk" — ikon ve dakika `travelMode`/`midpointMinutes`
     alanları ZATEN katılımcı nesnesinin üstünde (B-7:T1, üretilmiş tipte), ayrı prop olarak
-    THREAD edilmez. Geliş animasyonu: `animate-appear` (reduced-motion `@layer base`'te kapalı). */
+    THREAD edilmez. Geliş animasyonu: `animate-appear` (reduced-motion `@layer base`'te kapalı).
+    Çevrimdışı satır SOLUKLAŞTIRILIR ve alt satıra tek kelime eklenir — ayrı bir rozet YOK,
+    "geç kaldı" damgası YOK (ürünün dil kuralları katılımcıyı suçlayan ifadeyi yasaklar). */
 export default function ParticipantRow(props: {
   participant: ParticipantDto;
   index: number;
@@ -18,8 +20,14 @@ export default function ParticipantRow(props: {
   const p = props.participant;
   const mode = p.hasLocation ? p.travelMode : undefined;
   const icons = mode ? MODE_ICON[mode] : [];
+  // `online` sunucudan gelir; istemci canlilik TURETMEZ. undefined = bilgi yok, cevrimici say
+  // (yeni alan gelmeden once render edilen gorunumler kisiyi haksiz yere solutmasin).
+  // Elle eklenen noktalar (SOLO) soket acamaz, onlarda gosterilmez.
+  const away = p.online === false && !p.manual;
   return (
-    <div className="flex items-center gap-3 px-4 py-[0.8125rem] animate-appear">
+    <div
+      className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away ? " opacity-55" : ""}`}
+    >
       <Avatar
         name={p.displayName ?? "?"}
         index={props.index}
@@ -43,6 +51,12 @@ export default function ParticipantRow(props: {
               {p.midpointMinutes != null && (
                 <span className="tabular-nums">{t("travel.min", { min: p.midpointMinutes })}</span>
               )}
+            </>
+          )}
+          {away && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{t("waiting.offline")}</span>
             </>
           )}
         </span>

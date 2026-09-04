@@ -128,7 +128,9 @@ public final class ApiDtos {
     public record ParticipantDto(UUID id, String displayName, boolean host, boolean hasLocation,
                                  boolean deckDone, boolean manual, String locationLabel,
                                  GeoPointDto approxLocation, TravelMode travelMode,
-                                 Integer midpointMinutes) {
+                                 Integer midpointMinutes,
+                                 /** Acik soketi var ya da 45 sn icinde koptu; manual satirlarda daima false. */
+                                 boolean online) {
     }
 
     /**
@@ -167,7 +169,9 @@ public final class ApiDtos {
     public record SessionPreview(String slug, String name, ActivityType activityType,
                                  SessionType sessionType, SessionStatus status,
                                  String hostDisplayName, int participantCount,
-                                 List<PreviewParticipantDto> participants) {
+                                 List<PreviewParticipantDto> participants,
+                                 /** Host su an oturumda mi — Katil ekranindaki rozet. Katilimi ENGELLEMEZ. */
+                                 boolean hostOnline) {
     }
 
     /**

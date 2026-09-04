@@ -24,9 +24,33 @@ const view = {
 } as const;
 
 describe("WaitingRoom", () => {
-  it("harita hiçbir genişlikte mount edilmez (§4.7)", () => {
+  /* §4.7'nin "Bekle'de harita yok" maddesi 2026-09-04 presence kararı §7 ile değişti:
+     lg'de varsayılan açık, 390'da ghost arkasında. */
+  it("lg: harita ghost'a basmadan mount edilir", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query.includes("min-width: 1024px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      render(<WaitingRoom view={view as never} />);
+      expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("390: harita mount edilmez, ghost görünür", () => {
     render(<WaitingRoom view={view as never} />);
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
   });
 
   it("§5.C gizlilik satırı LobbyPage ile AYNI anahtarla görünür", () => {
@@ -62,5 +86,17 @@ describe("WaitingRoom", () => {
         expect.objectContaining({ lat: 51.42, lng: 5.47, label: "Eindhoven", travelMode: "BIKE" }),
       ),
     );
+  });
+
+  it("çevrimdışı katılımcı roster'da işaretlenir, çevrimiçi olan işaretlenmez", () => {
+    const withPresence = {
+      ...view,
+      participants: [
+        { ...view.participants[0], online: true },
+        { ...view.participants[1], online: false },
+      ],
+    };
+    render(<WaitingRoom view={withPresence as never} />);
+    expect(screen.getAllByText("çevrimdışı")).toHaveLength(1);
   });
 });

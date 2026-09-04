@@ -363,4 +363,36 @@ class SessionCommandsTest {
                 "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.travelMode()).isEqualTo(TravelMode.CAR);
     }
+
+    @Test
+    void newSeatsAreRefusedOnceTheDeckStarted() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH,
+                "Mehmet", null, null);
+        store.saveSession(r.session().withStatus(SessionStatus.SWIPING));
+
+        assertThatThrownBy(() -> commands.join(r.session().slug(), Caller.ANONYMOUS, "Geç",
+                SOMEREN, null, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("closed for new participants");
+    }
+
+    /**
+     * Kapi YALNIZ yeni koltuga: sekmesini yenileyen uye kendi koltugunu her durumda geri alir.
+     * Kapi seatOf'tan ONCE olsaydi deste ortasinda sayfayi yenileyen kisi 409 gorurdu.
+     */
+    @Test
+    void existingSeatsAreStillRecoveredAfterTheDeckStarted() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH,
+                "Mehmet", null, null);
+        Participant ayse = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN,
+                null, null);
+        store.saveSession(r.session().withStatus(SessionStatus.RUNOFF));
+
+        Participant again = commands.join(r.session().slug(), Caller.participant(ayse.id()),
+                "Ayşe", null, null, null);
+
+        assertThat(again.id()).isEqualTo(ayse.id());
+    }
 }

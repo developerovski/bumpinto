@@ -1,7 +1,7 @@
 # BumpInto Backend — Mimari
 
-Son güncelleme: 2026-09-03 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 + Plan 15 (B-7)
-`done`, 230/230 test yeşil.
+Son güncelleme: 2026-09-04 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 + Plan 15 (B-7)
++ Plan 18 (B-8) `done`, 265/265 test yeşil.
 
 ## Bu belge ne değildir
 
@@ -312,10 +312,33 @@ Cookie'ler `HttpOnly` + `SameSite=Lax`; `secure` bayrağı profilden gelir (loca
 | Cookie | İsim | Path |
 |---|---|---|
 | Host erişimi | `bumpinto_at` | `/api` |
-| Katılımcı | `bumpinto_pt_{slug}` | `/api/sessions/{slug}` |
+| Katılımcı | `bumpinto_pt_{slug}` | `/api` |
 
-Katılımcı cookie'si oturum başına ayrı isim ve ayrı yol taşır: tarayıcı onu yalnız o oturumun
-yollarına gönderir, ve aynı kullanıcı birden çok oturuma katıldığında cookie'ler birbirini ezmez.
+Oturum yalıtımı **isimden** gelir (`bumpinto_pt_{slug}`), yoldan değil — ve sunucu ayrıca token'ın
+o slug'a ait olduğunu doğrular (`ParticipantTokenFilter`). Katılımcı cookie'sinin yolu bir zamanlar
+`/api/sessions/{slug}` idi; çıkış isteği (`/api/auth/logout`) o yolun altında olmadığı için tarayıcı
+cookie'yi taşımıyor ve silme no-op oluyordu, bu yüzden `/api`'ye genişletildi.
+
+**Genişletmenin bıraktığı miras (2026-09-04'te düzeltildi):** cookie'ler `(ad, domain, path)` ile
+saklanır, yani eski yola yazılmış cookie'ler silinmedi ve tarayıcı ikisini birden gönderiyor.
+RFC 6265 daha spesifik path'i **öne** koyar, dolayısıyla "ilk eşleşen cookie" tam olarak bayat
+olandı: üye kendi oturumunda `participant token required` (403) alıyor ve durum kendiliğinden
+düzelmiyordu. İki kural bunu kapatır ve **geri alınmamalıdır**:
+`ParticipantTokenFilter` aynı isimli **tüm** cookie'leri sırayla dener (ilkini değil, geçerli
+olanı kullanır), `AuthCookies.clearParticipants` ise silme talimatını **iki yola birden** yazar.
+Testi: `AccountApiTest.aStaleDuplicateParticipantCookieDoesNotShadowTheValidOne`.
+
+### WebSocket kimliği
+
+Kanal `/api/sessions/{slug}/ws` altındadır. Katılımcı çerezinin path'i (`/api`) bu yolu kapsadığı
+için tarayıcı çerezi handshake'e kendiliğinden gönderir; istek
+servlet zincirinden geçer, `ParticipantTokenFilter` kimliği kurar ve `anyRequest().authenticated()`
+kimliksiz handshake'i 401'ler. `SessionWsHandshake` slug/participantId/sessionId'yi WS oturum
+niteliklerine yazar — kopma anında ortada HTTP isteği yoktur, tek kaynak orasıdır.
+
+Abonelik de yetkilendirilir: `WebSocketConfig`'in inbound interceptor'ı yalnız kişinin KENDİ
+oturumunun konusuna (`/topic/session/{kendi slug'ı}`) izin verir. Eskiden uç nokta `/ws` idi,
+handshake kimliksizdi ve slug'ı bilen herhangi bir istemci kanalı dinleyebiliyordu.
 
 ### Filter bean tuzağı (tekrarlamayın)
 
@@ -343,6 +366,7 @@ Politikalar sırayla eşleşir; ilk eşleşen kazanır:
 | `join` | POST | `/api/sessions/*/participants` | 10 |
 | `find` | POST | `/api/sessions/*/find-venues` | 3 |
 | `create` | POST | `/api/sessions` | 10 |
+| `ws` | GET | `/api/sessions/*/ws` | 240 |
 | `api` | * | `/api/**` | 120 |
 | `fallback` | * | her şey | 240 |
 
@@ -437,19 +461,26 @@ en fazla 3 olduğu için ayrı tablo açılmadı; sorgulanmıyor, yalnız okunup
 
 ## 11. Olaylar (WebSocket)
 
-STOMP, `/ws` uç noktası, konu `/topic/session/{slug}`.
+STOMP, `/api/sessions/{slug}/ws` uç noktası, konu `/topic/session/{slug}`.
 
 | Olay | Yük |
 |---|---|
 | `participant_joined` | `participantCount` |
 | `participant_left` | `participantCount` |
+| `presence_changed` | — |
+| `location_updated` | — |
 | `venues_ready` | `venueCount` |
 | `deck_ready` | `venueCount` |
 | `deck_progress` | `done`, `total` |
 | `runoff_started` | `finalistCount` |
+| `runoff_voted` | `voted`, `voters` |
+| `runoff_tie` | `finalistCount` |
+| `no_likes` | *(boş)* |
 | `session_decided` | `venueId` |
 
-İki kural:
+Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buraya da satır düşer.
+
+Üç kural:
 
 1. **Commit'ten sonra yayınlanır.** Aktif transaction varsa olay `afterCommit`'e kaydedilir;
    rollback'te hiç gitmez. İstemci var olmayan bir durumu görmez. Use-case'ler saf kalır —
@@ -457,6 +488,18 @@ STOMP, `/ws` uç noktası, konu `/topic/session/{slug}`.
 2. **En-iyi-çaba.** Yayın hatası yakalanır ve loglanır, çağırana sızmaz. Sızsaydı commit başarılı
    olduğu halde istemci 500 görür ve aynı transaction'ın kalan kancaları atlanırdı. İstemci
    yeniden bağlandığında durumu `GET` ile tazeler.
+3. **Presence süreç içidir.** `InMemoryPresence` tek pod'un hafızasında yaşar: çok pod'da
+   paylaşılmaz, restart'ta boşalır (ilk reconnect doldurur) ve 45 sn'lik grace penceresi yüzünden
+   gerçekten ayrılan biri bir süre daha "burada" görünür. `ProviderQuotaCache` ile aynı sınıf borç.
+   Kimlik `SessionConnectEvent`'ten okunur, `SessionConnectedEvent`'ten **değil**: ikincisi broker'ın
+   CONNECT_ACK'idir ve handshake niteliklerini taşımaz (`PresenceListener`).
+   Grace penceresinin anlamlı olması **heartbeat'e bağlıdır**: `TaskScheduler` verilmezse STOMP
+   heartbeat'i sessizce kapanır ve kopukluk yalnız TCP zaman aşımıyla (saatler) anlaşılır — sekme
+   kapatmak FIN gönderir ama kapak kapanması göndermez. 10 sn çift yönlü heartbeat bunu ~20 sn'ye
+   bağlar (`WebSocketConfig.configureMessageBroker`).
+   Presence yalnız **geri alınabilir giriş** kararlarını kapatır (`shuffle`); deste bitişi gibi
+   geri alınamaz kararlar satıra bakmaya devam eder — bir ağ dalgalanması kalıcı bir kararı
+   erken tetiklememelidir.
 
 ---
 
@@ -503,7 +546,7 @@ puan/fiyat/foto **yoktur** ve kart bunu açıkça söyler.
 
 ## 13. Test mimarisi
 
-230 test. Katman katman:
+265 test. Katman katman:
 
 | Tür | Kapsam | Örnek |
 |---|---|---|

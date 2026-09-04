@@ -41,6 +41,7 @@ class DeckFlowTest {
     FakeStores.InMemoryDeckStore deck;
     FakeStores.RecordingEvents events;
     FakeStores.FakeReverseGeocoder geocoder;
+    FakeStores.FakePresence presence;
     List<Double> requestedRadii;
     List<VenueCandidate> providerResult;
     DeckFlow flow;
@@ -73,7 +74,9 @@ class DeckFlowTest {
             return List.copyOf(providerResult);
         };
         clock = Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC);
-        flow = new DeckFlow(store, deck, provider, events, new DecisionEngine(), clock, geocoder);
+        presence = new FakeStores.FakePresence();
+        flow = new DeckFlow(store, deck, provider, events, new DecisionEngine(), clock, geocoder,
+                presence);
 
         hostUser = UUID.randomUUID();
         // Sabit id: shuffle tohumu session.id()'den gelir, rastgele id testi kimlik
@@ -86,6 +89,9 @@ class DeckFlowTest {
                 "Mehmet", DEN_BOSCH, true, null, false, null, null));
         ayse = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 "Ayşe", SOMEREN, false, null, false, null, null));
+        // Mevcut testler "herkes odada" varsayar; presence kapisi yalnizca kendi testinde bosaltilir.
+        presence.arrived(session.id(), host.id(), "ws-host");
+        presence.arrived(session.id(), ayse.id(), "ws-ayse");
     }
 
     /**
@@ -521,5 +527,26 @@ class DeckFlowTest {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
         flow.findVenues("s1", host.id());
         assertThat(store.sessionBySlug("s1").orElseThrow().midpointLabel()).isNull();
+    }
+
+    /**
+     * Hayalet koltukla deste baslamaz: satir duruyor ama sahibi sayfayi kapatmis. Kapi PRESENCE'a
+     * bakar, satir sayisina degil. Deste BITISI bilinçli olarak satira bakmaya devam eder —
+     * geri alinamaz karar bir ag dalgalanmasina emanet edilemez.
+     */
+    @Test
+    void shuffleNeedsTwoParticipantsActuallyPresent() {
+        providerResult.addAll(IntStream.range(0, 8).mapToObj(i -> cand(i, 3.0 + i * 0.2)).toList());
+        flow.findVenues("s1", host.id());
+        presence.left(session.id(), ayse.id(), "ws-ayse");
+
+        assertThatThrownBy(() -> flow.shuffle("s1", host.id()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("2 participants present");
+
+        presence.arrived(session.id(), ayse.id(), "ws-ayse");
+        flow.shuffle("s1", host.id());
+
+        assertThat(store.sessions.get(session.id()).status()).isEqualTo(SessionStatus.SWIPING);
     }
 }

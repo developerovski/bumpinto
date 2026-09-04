@@ -32,3 +32,7 @@ docs:
     Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir — `venues[]` alanlari
     (`fairness`, `travelMinutes`, `provider`, `category`, `address`, `locality`, `ratingCount`,
     `hoursToday`, `placeLink`) DEGISMEDEN korunur; yalniz siralama/`deckOrder` yeniden hesaplanir.
+
+    Yeni 409: en az 2 "sunumda" (present) oy kullanacak katilimci yoksa `need at least 2
+    participants present to start the deck` doner. Sunum = acik soket VAR ya da son 45 saniye
+    icinde kopmus olmak. Host sikismaz: `BROWSING`'den `force-decision` hala kullanilabilir.

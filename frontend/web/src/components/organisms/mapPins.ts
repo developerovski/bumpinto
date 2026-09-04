@@ -18,7 +18,11 @@ function el(className: string, text?: string) {
     Elle konum (manual) kesikli halka. Mekan pinlerinden belirgin biçimde daha büyük ve daha
     üstte (UI review 2026-09-03: küçük daireler haritada kayboluyordu). */
 export function participantPin(p: ParticipantDto, index: number, label?: string) {
-  const wrap = el("flex flex-col items-center");
+  // Cevrimdisi katilimci SOLUK cizilir: konumu hala gecerlidir (satir silinmez), yalnizca kisi
+  // su an odada degildir. Ayri ikon ya da damga YOK — urunun dil kurallari suclayici isaret
+  // istemiyor. ParticipantRow ile AYNI kosul.
+  const away = p.online === false && !p.manual;
+  const wrap = el("flex flex-col items-center" + (away ? " opacity-50" : ""));
   const ring = el(
     "rounded-full p-[3px] shadow-[0_6px_18px_rgba(39,32,59,0.35)] " +
     (p.manual ? "border-2 border-dashed border-ink2 bg-white" : "bg-white"),

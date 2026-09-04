@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class AuthCookies {
@@ -72,8 +73,19 @@ public class AuthCookies {
                 .filter(name -> name.startsWith(PARTICIPANT_PREFIX)
                         && name.length() > PARTICIPANT_PREFIX.length())
                 .distinct()
-                .map(name -> base(name, "", ACCESS_PATH, Duration.ZERO))
+                // IKI yola birden silme yazilir: cerez (ad, domain, PATH) ile saklanir ve
+                // katilimci cerezinin yolu bir kez /api/sessions/{slug} -> /api olarak
+                // genisletildi. Yalniz yeni yola silme yazmak eskisini ERISILMEZ birakiyordu:
+                // tarayici ikisini de gonderiyor, silinemiyor ve bayat olan yenisini golgeliyor.
+                .flatMap(name -> Stream.of(
+                        base(name, "", ACCESS_PATH, Duration.ZERO),
+                        base(name, "", legacyParticipantPath(name), Duration.ZERO)))
                 .toList();
+    }
+
+    /** Cerezin genisletilmeden ONCEKI yolu; yalnizca silme icin uretilir. */
+    private static String legacyParticipantPath(String cookieName) {
+        return "/api/sessions/" + cookieName.substring(PARTICIPANT_PREFIX.length());
     }
 
     private ResponseCookie base(String name, String value, String path, Duration ttl) {

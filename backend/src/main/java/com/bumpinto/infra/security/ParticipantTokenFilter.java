@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,9 +62,17 @@ public class ParticipantTokenFilter extends OncePerRequestFilter {
         // oturum ile istegin hedefledigi oturum ayni olmali. Kontrol burada durur; her
         // controller'a birakilirsa er gec biri unutur ve A oturumu token'i B'yi acar.
         String slug = slugOf(request);
-        String token = slug == null ? null : resolveToken(request, slug);
-        if (token != null) {
-            participantOf(token, slug).ifPresent(ParticipantTokenFilter::authenticate);
+        if (slug != null) {
+            // ADAYLARIN HEPSI denenir, ilki degil: tarayicida ayni isimli BIRDEN COK cerez
+            // olabilir (cerez (ad, domain, path) ile saklanir; path bir kez genisletildi ve eski
+            // yola yazilmis olan silinemedigi icin oradan kaldi). RFC 6265 daha spesifik path'i
+            // ONE koyar, yani "ilk eslesen" tam olarak BAYAT olanidir ve uye kendi oturumunda
+            // 403 alir. Gecerli olan hangisiyse o kazanir.
+            candidateTokens(request, slug).stream()
+                    .map(token -> participantOf(token, slug))
+                    .flatMap(Optional::stream)
+                    .findFirst()
+                    .ifPresent(ParticipantTokenFilter::authenticate);
         }
         chain.doFilter(request, response);
     }
@@ -100,20 +109,21 @@ public class ParticipantTokenFilter extends OncePerRequestFilter {
         return m.find() ? m.group(1) : null;
     }
 
-    private String resolveToken(HttpServletRequest request, String slug) {
+    /** Basliktaki token (mobil) once, sonra ayni adi tasiyan TUM cerezler (web) — sirayla denenir. */
+    private static List<String> candidateTokens(HttpServletRequest request, String slug) {
+        List<String> candidates = new ArrayList<>();
         String header = request.getHeader(HEADER);
         if (header != null) {
-            return header; // mobil / SecureStore yolu
+            candidates.add(header); // mobil / SecureStore yolu
         }
-        if (request.getCookies() == null) {
-            return null;
-        }
-        String cookieName = AuthCookies.participantCookieName(slug);
-        for (Cookie cookie : request.getCookies()) {
-            if (cookieName.equals(cookie.getName())) {
-                return cookie.getValue(); // web / HttpOnly cookie yolu
+        if (request.getCookies() != null) {
+            String cookieName = AuthCookies.participantCookieName(slug);
+            for (Cookie cookie : request.getCookies()) {
+                if (cookieName.equals(cookie.getName())) {
+                    candidates.add(cookie.getValue()); // web / HttpOnly cookie yolu
+                }
             }
         }
-        return null;
+        return candidates;
     }
 }

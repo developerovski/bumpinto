@@ -1,7 +1,9 @@
 package com.bumpinto;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
+import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -24,6 +26,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,6 +68,8 @@ class ApiHappyPathTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired RateLimitFilter rateLimit;
+    @Autowired SessionStorePort sessions;
+    @Autowired PresencePort presence;
     @MockitoBean VenueProviderPort provider;   // @Primary ResilientVenueProvider yerine
     @MockitoBean GoogleIdVerifier google;      // dış Google çağrısı yok
     // Mockito varsayilan yaniti Optional donen metotlarda Optional.empty() — gercek Nominatim
@@ -143,6 +148,7 @@ class ApiHappyPathTest {
                 .isEqualTo(51.39);
 
         // 3b — host karistirir ve kaydirmayi acar
+        everyoneIsInTheRoom(slug);
         String shuffledBody = mvc.perform(post("/api/sessions/" + slug + "/shuffle")
                         .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isOk())
@@ -258,6 +264,7 @@ class ApiHappyPathTest {
 
         mvc.perform(post("/api/sessions/" + slug + "/find-venues").cookie(hostCookie))
                 .andExpect(status().isOk());
+        everyoneIsInTheRoom(slug);
         String favoriteId = json.readTree(mvc.perform(post("/api/sessions/" + slug + "/shuffle")
                         .cookie(hostCookie))
                 .andExpect(status().isOk())
@@ -423,5 +430,46 @@ class ApiHappyPathTest {
                         .contentType(JSON).content("{\"idToken\":\"" + idToken + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getCookie("bumpinto_at");
+    }
+
+    /**
+     * Presence surec icidir ve MockMvc'de handshake yoktur: shuffle kapisi icin oturumdaki
+     * koltuklar elle "odada" isaretlenir. Gercek akista bunu WS handshake yapar.
+     */
+    private void everyoneIsInTheRoom(String slug) {
+        UUID sessionId = sessions.sessionBySlug(slug).orElseThrow().id();
+        sessions.participantsOf(sessionId)
+                .forEach(p -> presence.arrived(sessionId, p.id(), p.id().toString()));
+    }
+
+    /**
+     * WS handshake kimlik ISTER. Kimliksiz istek guvenlik zincirinde 401 alir; kimlikli istek
+     * zinciri gecer ve Spring'in handshake handler'inda "Upgrade yok" diye 400 olur — yani
+     * yetkilendirme degil protokol hatasi. Bu iki kod arasindaki fark kapinin kanitidir.
+     */
+    @Test
+    void webSocketHandshakeRequiresAParticipantIdentity() throws Exception {
+        when(google.verify("gid-ws"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("ws@bumpinto.test", "Mehmet"));
+        String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-ws\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("accessToken").asString();
+        JsonNode created = json.readTree(mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+        String slug = created.get("slug").asString();
+        String hostToken = created.get("participantToken").asString();
+
+        mvc.perform(get("/api/sessions/" + slug + "/ws"))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/api/sessions/" + slug + "/ws")
+                        .header(ParticipantTokenFilter.HEADER, hostToken))
+                .andExpect(status().isBadRequest());
     }
 }

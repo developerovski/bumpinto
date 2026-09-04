@@ -18,8 +18,10 @@ import com.bumpinto.domain.session.SessionType;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class SessionCommands {
 
     static final Duration SESSION_TTL = Duration.ofHours(24);
+
+    /**
+     * Yeni koltuk bu durumlarda ACILMAZ: deste basladiktan sonra oy populasyonu DONAR, yoksa
+     * gec katilan biri done/total matematigini bozar ve herkesi bekletir.
+     */
+    private static final Set<SessionStatus> CLOSED_TO_NEW_SEATS = EnumSet.of(
+            SessionStatus.SWIPING, SessionStatus.RUNOFF, SessionStatus.DECIDED);
 
     private final SessionStorePort store;
     private final SessionEventsPort events;
@@ -65,6 +74,11 @@ public class SessionCommands {
      *
      * <p>Var olan koltuk OLDUGU GIBI donulur. Yeniden katilim bir kayit degil kimlik kurtarmadir;
      * ad ve konum sahibinindir ve kendi ucundan guncellenir (PUT /location).
+     *
+     * <p>Durum kapisi YALNIZ yeni koltuga uygulanir: deste basladiktan (SWIPING/RUNOFF) veya
+     * bittikten (DECIDED) sonra kimligi olan cagiran yine de kendi koltugunu geri alir, cunku
+     * kapi seatOf'tan SONRA calisir — yoksa sekmesini yenileyen bir uye kendi oturumundan 409 ile
+     * atilirdi.
      */
     @Transactional
     public Participant join(String slug, Caller caller, String displayName, GeoPoint location,
@@ -73,12 +87,13 @@ public class SessionCommands {
         if (session.isSolo()) {
             throw new ConflictException("solo session has no invite link");
         }
-        if (session.status() == SessionStatus.DECIDED) {
-            throw new ConflictException("session is closed: " + session.status());
-        }
+        // Koltuk kurtarma kapidan ONCE: sekmesini yenileyen uye her durumda kendi koltugunu alir.
         Optional<Participant> seat = seatOf(session, caller);
         if (seat.isPresent()) {
             return seat.get();
+        }
+        if (CLOSED_TO_NEW_SEATS.contains(session.status())) {
+            throw new ConflictException("session is closed for new participants: " + session.status());
         }
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant joined = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),

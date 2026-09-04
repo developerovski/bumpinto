@@ -10,6 +10,9 @@ export default function JoinIntro(props: {
   sessionName: string | null;
   activity: string | null;
   count: number;
+  /** Host su an oturumda mi. KAPI DEGIL: katilim her durumda acik — davet linkinin ana akisi
+      asenkrondur (host linki paylasip telefonu kilitler). */
+  hostOnline?: boolean;
 }) {
   const { t } = useTranslation();
   const trimmedName = props.sessionName?.trim() ?? "";
@@ -42,6 +45,9 @@ export default function JoinIntro(props: {
           <Badge>{t("join.joinedCount", { count: props.count })}</Badge>
         </div>
         <Note>{t("join.subtitle")}</Note>
+        {props.hostOnline === false && props.hostName && (
+          <Note>{t("join.hostAway", { host: props.hostName })}</Note>
+        )}
       </div>
       <div className="h-px bg-line" />
     </>

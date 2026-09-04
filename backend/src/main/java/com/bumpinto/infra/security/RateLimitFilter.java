@@ -44,6 +44,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 new Policy("join", "POST", Pattern.compile("^/api/sessions/[^/]+/participants$"), 10),
                 new Policy("find", "POST", Pattern.compile("^/api/sessions/[^/]+/find-venues$"), 3),
                 new Policy("create", "POST", Pattern.compile("^/api/sessions$"), 10),
+                // Handshake kendi kovasinda: yoksa /api altina tasinmasi onu sessizce 240'tan
+                // (fallback) 120'ye (api) dusururdu. 240 BILINCLI: TRUST_FORWARDED_FOR
+                // varsayilan false oldugu icin ingress arkasinda TUM istemciler tek kovayi
+                // paylasir; backend restart'indan sonra 5 sn'de bir yeniden baglanan bir grup
+                // daha dar bir kovayi aninda tuketir ve presence hic dolmaz.
+                new Policy("ws", "GET", Pattern.compile("^/api/sessions/[^/]+/ws$"), 240),
                 new Policy("api", null, Pattern.compile("^/api/.*"), 120));
     }
 

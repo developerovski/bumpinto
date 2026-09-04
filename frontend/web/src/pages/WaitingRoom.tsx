@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
-import { Note, Page } from "../components/atoms";
+import { Button, Note, Page } from "../components/atoms";
 import ActivityStrip from "../components/molecules/ActivityStrip";
 import JoinedCard from "../components/molecules/JoinedCard";
+import LazyBoundary from "../components/molecules/LazyBoundary";
 import MidpointCard from "../components/molecules/MidpointCard";
 import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
@@ -11,11 +12,16 @@ import WaitingStatus from "../components/molecules/WaitingStatus";
 import ParticipantList from "../components/organisms/ParticipantList";
 import { sessionActivity } from "../lib/activity";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
-import { useSessionStore, viewerOf } from "../store/sessionStore";
+import { useMediaQuery } from "../lib/useMediaQuery";
+import { mapProps, useSessionStore, viewerOf } from "../store/sessionStore";
 import { useOwnLocation } from "../store/useOwnLocation";
 
-/** Artboard W2 · Katıldın — canlı bekleme. Harita YOK (§4.7 — Bekle'de harita hiç mount
-    edilmez); orta nokta kartı yeterli bilgiyi verir. */
+/* Harita ayrı chunk — lg+ varsayılan, 390'da ghost (2026-09-04 presence kararı §7). */
+const MapView = lazy(() => import("../components/organisms/MapView"));
+
+/** Artboard W2 · Katıldın — canlı bekleme. Harita lg+'da varsayılan açık, 390'da ghost
+    arkasında (2026-09-04 presence kararı §7). Çerçeveleme otomatik: yeni katılımcı geldiğinde
+    refresh() view'ı günceller, MapView kamerayı kendi refit eder. */
 export default function WaitingRoom({ view }: { view: SessionView }) {
   const { t } = useTranslation();
   const updateLocation = useSessionStore((s) => s.updateLocation);
@@ -27,6 +33,10 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
   const activity = sessionActivity(view);
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
   const loc = useOwnLocation();
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const [mapOpen, setMapOpen] = useState(false);
+  const showMap = desktop || mapOpen;
+  const { participants: mapParticipants, midpoint, radiusKm, pinLabels } = mapProps(view, t("map.you"));
 
   function toggle() {
     setError(null);
@@ -67,6 +77,24 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
         right={
           <>
             <MidpointCard view={view} />
+            {showMap ? (
+              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                  <MapView
+                    participants={mapParticipants}
+                    venues={[]}
+                    midpoint={midpoint}
+                    radiusKm={radiusKm}
+                    pinLabels={pinLabels}
+                    heightClass="h-[20rem] lg:h-[24rem]"
+                  />
+                </Suspense>
+              </LazyBoundary>
+            ) : (
+              <Button type="button" kind="white" size="fit" onClick={() => setMapOpen(true)}>
+                {t("waiting.openMap")}
+              </Button>
+            )}
             <WaitingStatus
               open={open}
               onToggle={toggle}

@@ -8,12 +8,14 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Canlı olay kanalı: sunucudan istemciye tek yön (uygulamada tek bir {@code @MessageMapping}
@@ -22,25 +24,27 @@ import java.util.List;
  * <p>Kanal SALT OKUNUR: istemciden gelen mesaj frame'leri düşürülür
  * ({@link #configureClientInboundChannel}). Bu kendiliğinden gelmiyordu — Spring'in simple
  * broker'ı, hedefi broker önekiyle başlayan İSTEMCİ SEND frame'lerini de abonelere röleler.
- * Handshake kimliksiz olduğu için slug'ı bilen biri sahte olay basıp oturumdaki HERKESİN
- * sekmesine tam bir {@code GET /api/sessions/{slug}} yaptırabilirdi (1 frame → N ağır istek).
- * Uygulamada tek bir {@code @MessageMapping} yok; istemci mesajının meşru kullanımı da yok.
+ * Handshake kimliksizken slug'ı bilen biri sahte olay basıp oturumdaki HERKESİN sekmesine tam
+ * bir {@code GET /api/sessions/{slug}} yaptırabiliyordu (1 frame → N ağır istek). Handshake artık
+ * kimlikli (aşağıda) ama kural KALDI: üye de olsa istemcinin yayın yapmasının meşru kullanımı yok.
+ * Uygulamada tek bir {@code @MessageMapping} yok.
  *
- * <p>Handshake KİMLİKSİZ'dir ve bugünkü tasarımda öyle kalmak zorunda: katılımcı çerezinin yolu
- * {@code /api/sessions/{slug}}, hesap çerezininki {@code /api} — tarayıcı {@code /ws}'e hiçbir
- * kimlik çerezi göndermez. Bu yüzden origin listesi tarayıcı tarafındaki TEK savunmadır ve
- * HTTP ile aynı allowlist'e bağlanır. Önceden {@code "*"} idi: herhangi bir sitedeki sayfa,
- * ziyaretçinin tarayıcısında bu kanala abone olabiliyordu (cross-site WebSocket hijacking).
+ * <p>Handshake KİMLİKLİDİR: uç nokta {@code /api/sessions/{slug}/ws} altındadır ve katılımcı
+ * çerezinin path'i tam olarak {@code /api/sessions/{slug}} olduğu için tarayıcı çerezi handshake'e
+ * kendiliğinden gönderir. İstek servlet zincirinden geçer, {@code ParticipantTokenFilter} kimliği
+ * kurar, {@code SecurityConfig.anyRequest().authenticated()} kimliksizi 401'ler.
+ * {@link SessionWsHandshake} kimliği WS oturum niteliklerine yazar.
  *
- * <p>Kapatmadığı boşluk: tarayıcı dışı bir istemci (curl/wscat) Origin başlığını uydurabilir.
- * Slug'ı bilen birine karşı kanal hâlâ açıktır — bu yüzden yayınların gövdesi hassas veri
- * TAŞIMAZ (bkz. {@code SessionEvent}: yalnız sayaçlar ve karar verilen mekân id'si). Gerçek
- * kimlik doğrulaması handshake'in kimlik taşıyabildiği bir tasarım gerektirir (ticket ucu ya
- * da kanalın {@code /api/sessions/{slug}/...} altına taşınması).
+ * <p>Abonelik de yetkilendirilir: kişi yalnız KENDİ oturumunun konusuna abone olabilir. Önceden
+ * uç nokta {@code /ws} idi, handshake kimliksizdi ve slug'ı bilen herhangi bir istemci kanalı
+ * dinleyebiliyordu.
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    /** Cift yonlu STOMP heartbeat araligi. */
+    private static final long HEARTBEAT_MS = 10_000;
 
     private final AppProps props;
 
@@ -48,21 +52,51 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         this.props = props;
     }
 
+    /**
+     * Heartbeat ACIK olmali: TaskScheduler verilmezse STOMP heartbeat'i sessizce kapanir ve kopukluk
+     * yalniz TCP zaman asimiyla anlasilir. Sekme kapatmak FIN gonderir (aninda), ama kapak kapanmasi
+     * / ucak modu / hucresel-WiFi gecisi HICBIR SEY gondermez — o soket saatlerce "acik" kalir ve
+     * 45 sn'lik grace penceresi hicbir sey ifade etmez. 10 sn'lik cift yonlu heartbeat kopuklugu
+     * ~20 sn'ye baglar; istemci (@stomp/stompjs) zaten 10/10 sn istiyor.
+     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic");
+        registry.enableSimpleBroker("/topic")
+                .setTaskScheduler(heartbeatScheduler())
+                .setHeartbeatValue(new long[] {HEARTBEAT_MS, HEARTBEAT_MS});
     }
 
-    /** Yalnız abonelik/bağlantı frame'leri geçer; istemcinin yayın yapması sessizce düşürülür. */
+    private static ThreadPoolTaskScheduler heartbeatScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("ws-heartbeat-");
+        scheduler.initialize();
+        return scheduler;
+    }
+
+    /** Yalniz kendi oturumunun aboneligi gecer; istemcinin yayin yapmasi sessizce dusurulur. */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                return SimpMessageHeaderAccessor.getMessageType(message.getHeaders())
-                        == SimpMessageType.MESSAGE ? null : message;
+                SimpMessageType type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
+                if (type == SimpMessageType.MESSAGE) {
+                    return null;
+                }
+                if (type == SimpMessageType.SUBSCRIBE && !ownTopic(message)) {
+                    return null;
+                }
+                return message;
             }
         });
+    }
+
+    private static boolean ownTopic(Message<?> message) {
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(message);
+        Map<String, Object> attributes = accessor.getSessionAttributes();
+        Object slug = attributes == null ? null : attributes.get(SessionWsHandshake.SLUG);
+        return slug != null && ("/topic/session/" + slug).equals(accessor.getDestination());
     }
 
     @Override
@@ -70,6 +104,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // SecurityConfig.corsConfigurationSource ile AYNI kaynak: iki liste ayrı yaşarsa biri
         // sıkılaşırken diğeri açık kalır. Liste yoksa hiçbir origin kabul edilmez (fail-closed).
         List<String> origins = props.cors() == null ? List.of() : props.cors().allowedOrigins();
-        registry.addEndpoint("/ws").setAllowedOriginPatterns(origins.toArray(String[]::new));
+        registry.addEndpoint("/api/sessions/*/ws")
+                .setAllowedOriginPatterns(origins.toArray(String[]::new))
+                .addInterceptors(new SessionWsHandshake());
     }
 }

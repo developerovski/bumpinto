@@ -23,6 +23,14 @@ public record SessionEvent(String type, Map<String, Object> payload) {
         return new SessionEvent("location_updated", Map.of());
     }
 
+    /**
+     * Biri geldi ya da koptu. Govde BOS: kanal artik kimlikli ama yuk tasimanin degeri yok —
+     * istemci bunu yalnizca "tazele" zili olarak kullanir (locationUpdated ile ayni desen).
+     */
+    public static SessionEvent presenceChanged() {
+        return new SessionEvent("presence_changed", Map.of());
+    }
+
     /** Eleme oyu dustu: "kim kilitledi" listesi degisti (tally DEGIL — o zaten gizli). */
     public static SessionEvent runoffVoted(long voted, long voters) {
         return new SessionEvent("runoff_voted", Map.of("voted", voted, "voters", voters));
@@ -51,6 +59,14 @@ public record SessionEvent(String type, Map<String, Object> payload) {
      */
     public static SessionEvent runoffTie(int finalistCount) {
         return new SessionEvent("runoff_tie", Map.of("finalistCount", finalistCount));
+    }
+
+    /**
+     * Kimse hicbir seyi begenmedi (otomatik degerlendirme). Ad-hoc kurulmustu; fabrikasi olmayan
+     * olay ARCHITECTURE §11 tablosunda da gorunmez ve tablo "tel sozlesmesi" olma iddiasini kaybeder.
+     */
+    public static SessionEvent noLikes() {
+        return new SessionEvent("no_likes", Map.of());
     }
 
     public static SessionEvent sessionDecided(UUID venueId) {

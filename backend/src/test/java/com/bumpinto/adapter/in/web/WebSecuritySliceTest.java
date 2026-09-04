@@ -5,6 +5,7 @@ import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
@@ -87,6 +88,8 @@ class WebSecuritySliceTest {
     @MockitoBean SessionQueries queries;
     @MockitoBean SessionStorePort store;
     @MockitoBean UserProfileQueries profiles;
+    // SessionViewAssembler artik PresencePort ister; bu paket InMemoryPresence'i taramaz.
+    @MockitoBean PresencePort presence;
 
     static final UUID SESSION_ID = UUID.randomUUID();
 

@@ -47,7 +47,8 @@
     "locAutoHintNoLabel": "automatisch bepaald",
     "locOk": "Oké",
     "locOther": "Typ een andere stad of adres",
-    "locRetry": "Probeer mijn locatie opnieuw"
+    "locRetry": "Probeer mijn locatie opnieuw",
+    "hostAway": "{{host}} is er nu niet — je kunt toch meedoen, je locatie wacht op hen."
   },
   "waiting": {
     "joined": "Je doet mee!",
@@ -62,7 +63,10 @@
     "you": "(jij)",
     "errUpdate": "Locatie bijwerken lukte niet — probeer opnieuw.",
     "changeLocationAndMode": "Locatie en vervoer",
-    "modeHint": "Je moet je locatie opnieuw delen om op te slaan."
+    "modeHint": "Je moet je locatie opnieuw delen om op te slaan.",
+    "offline": "offline",
+    "openMap": "Kaart openen",
+    "online": "online"
   },
   "deck": {
     "seeAll": "Toon alles",
@@ -387,6 +391,7 @@
     "guestWait": "de stapel opent zodra de host schudt",
     "soloBadge": "Solo · {{count}} locaties",
     "errShuffle": "Stapel kon niet worden geopend — probeer opnieuw.",
+    "errAlone": "Je bent nu de enige hier — voor een deck zijn minstens twee mensen nodig. Wil je niet wachten, kies dan een plek uit de lijst en sluit de beslissing af.",
     "errPick": "Keuze kon niet worden opgeslagen — probeer opnieuw.",
     "sort": "Sortering",
     "sortFair": "Eerlijk voor iedereen",
@@ -397,7 +402,8 @@
     "cancel": "Annuleren",
     "fairHand": "eerst het eerlijkst voor iedereen →",
     "noLocationOne": "{{name}} heeft nog geen locatie gedeeld — de tijden worden bijgewerkt zodra dat gebeurt",
-    "noLocationMany": "De tijden worden bijgewerkt zodra iedereen zonder locatie meedoet"
+    "noLocationMany": "De tijden worden bijgewerkt zodra iedereen zonder locatie meedoet",
+    "needTwo": "Voor een deck moeten er minstens twee mensen in de sessie zijn — als iemand offline is, kies dan een plek uit de lijst en sluit de beslissing af."
   },
   "attribution": {
     "google": "Google Maps",

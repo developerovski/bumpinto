@@ -432,4 +432,48 @@ class AccountApiTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getCookie("bumpinto_at");
     }
+
+    /**
+     * ILK cerez degil, GECERLI cerez kazanir. Katilimci cerezinin yolu bir kez
+     * /api/sessions/{slug} -> /api olarak genisletildi; tarayici cerezi (ad, domain, PATH) ile
+     * sakladigi icin eski yola yazilmis olan silinmedi ve RFC 6265 daha spesifik path'i ONE
+     * koyuyor. "Ilk eslesen" tam olarak BAYAT olandi: host kendi oturumunda "participant token
+     * required" (403) aliyordu ve durum kendiliginden duzelmiyordu (silme yalniz yeni yola
+     * yaziliyordu, eskisine ulasamiyordu).
+     */
+    @Test
+    void aStaleDuplicateParticipantCookieDoesNotShadowTheValidOne() throws Exception {
+        when(google.verify("gid-dup"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("dup@bumpinto.test", "Mehmet"));
+        Cookie at = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-dup\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+
+        MvcResult created = mvc.perform(post("/api/sessions").cookie(at).header("X-Client", "web")
+                        .contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String slug = json.readTree(created.getResponse().getContentAsString()).get("slug").asString();
+        Cookie valid = created.getResponse().getCookie("bumpinto_pt_" + slug);
+        assertThat(valid).isNotNull();
+
+        // Tarayicinin gonderdigi sira: once eski yoldaki bayat token, sonra gecerli olan.
+        Cookie stale = new Cookie("bumpinto_pt_" + slug, "qgC5gPSUhBHatZmJV88pvlRBjWReHszearsRWICg1gA");
+        mvc.perform(get("/api/sessions/" + slug).cookie(stale, valid).header("X-Client", "web"))
+                .andExpect(status().isOk());
+        // Yazma ucu: 403 "participant token required" YOK — bayat cerez gecerlisini golgelemiyor.
+        mvc.perform(put("/api/sessions/" + slug + "/location").cookie(stale, valid)
+                        .contentType(JSON)
+                        .content("{\"lat\":51.6978,\"lng\":5.3037,\"label\":\"Den Bosch\"}"))
+                .andExpect(status().isOk());
+
+        // Cikis IKI yola birden silme yazar; yoksa eski yoldaki cerez erisilmez kalirdi.
+        MvcResult logout = mvc.perform(post("/api/auth/logout").cookie(at, stale))
+                .andExpect(status().isNoContent()).andReturn();
+        assertThat(logout.getResponse().getCookies())
+                .filteredOn(c -> ("bumpinto_pt_" + slug).equals(c.getName()))
+                .extracting(Cookie::getPath)
+                .containsExactlyInAnyOrder("/api", "/api/sessions/" + slug);
+    }
 }

@@ -28,7 +28,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.messaging.Message;
@@ -39,11 +41,14 @@ import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRegistration;
+import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -137,8 +142,10 @@ class SecurityPolicyTest {
         assertThat("/api/auth/logout").startsWith(path);
         assertThat("/api/auth/google").startsWith(path);
         assertThat("/api/sessions/x7k2m/swipes").startsWith(path);
-        // Canli olay kanali /api disinda: kimlik cerezi handshake'e yine gitmez.
-        assertThat("/ws").doesNotStartWith(path);
+        // WS handshake'i de bu path'in ALTINDA olmali: presence kimligi tam olarak buna dayanir
+        // (tarayici cerezi handshake'e kendiliginden gonderir). Kanal /api/sessions/{slug}
+        // disina tasinirsa kimlik sessizce kaybolur ve herkes cevrimdisi gorunur.
+        assertThat("/api/sessions/x7k2m/ws").startsWith(path);
     }
 
     @Test
@@ -235,33 +242,43 @@ class SecurityPolicyTest {
         assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/participants"))).isTrue();
         assertThat(reachesApp(request("GET", "/api/sessions/x7k2m/preview"))).isTrue();
         assertThat(reachesApp(request("GET", "/v3/api-docs"))).isTrue();
-        assertThat(reachesApp(request("GET", "/ws"))).isTrue();
         assertThat(reachesApp(request("GET", "/error"))).isTrue();
     }
 
     /**
      * Canli olay kanali da HTTP ile AYNI origin listesine baglidir. Onceden
      * setAllowedOriginPatterns("*") idi: herhangi bir sitedeki sayfa, ziyaretcinin tarayicisinda
-     * /topic/session/{slug}'a abone olabiliyordu (cross-site WebSocket hijacking). Handshake
-     * kimliksiz oldugu icin (cerez path'i /ws'i kapsamiyor) origin TEK tarayici tarafi savunma.
+     * /topic/session/{slug}'a abone olabiliyordu (cross-site WebSocket hijacking). Handshake artik
+     * kimlikli olsa da (katilimci cerezi path'i /api/sessions/{slug}/ws'i kapsar, kimliksiz istek
+     * 401 alir) origin allowlist KALDIRILMADI — savunma derinligi: bir origin'in JS'i calan
+     * kimlik cerezi olmadan da hicbir sey acamaz, ama yine de sadece bilinen originlerden el
+     * sikismaya izin verilir.
      */
     @Test
     void webSocketHandshakeIsBoundToTheConfiguredOriginAllowlist() {
-        StompWebSocketEndpointRegistration registration = mock(StompWebSocketEndpointRegistration.class);
+        // RETURNS_SELF: registerStompEndpoints artik ucuncu bir halkaya zincirliyor
+        // (addInterceptors); mock varsayilani null donup zinciri NPE'letmesin diye akici
+        // cagrinin her adimi mock'un kendisini dondurmeli. any() ile stublamak varargs'ta
+        // kirilgan (0 ve 1 elemanli cagrilari ayni matcher yakalamiyor), RETURNS_SELF degil.
+        StompWebSocketEndpointRegistration registration =
+                mock(StompWebSocketEndpointRegistration.class, RETURNS_SELF);
         StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
         when(registry.addEndpoint(anyString())).thenReturn(registration);
 
         new WebSocketConfig(props(true, "", List.of("https://bumpinto.app")))
                 .registerStompEndpoints(registry);
 
-        verify(registry).addEndpoint("/ws");
+        verify(registry).addEndpoint("/api/sessions/*/ws");
         verify(registration).setAllowedOriginPatterns("https://bumpinto.app");
+        // Kimlik interceptor'i gercekten takili: kaldirilirsa handshake niteligi hic yazilmaz.
+        verify(registration).addInterceptors(ArgumentMatchers.any(HandshakeInterceptor.class));
     }
 
     /** Origin listesi bos/tanimsizsa kanal kapali kalir (fail-closed) — "*"a DUSMEZ. */
     @Test
     void webSocketHandshakeFailsClosedWhenNoOriginIsConfigured() {
-        StompWebSocketEndpointRegistration registration = mock(StompWebSocketEndpointRegistration.class);
+        StompWebSocketEndpointRegistration registration =
+                mock(StompWebSocketEndpointRegistration.class, RETURNS_SELF);
         StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
         when(registry.addEndpoint(anyString())).thenReturn(registration);
 
@@ -270,19 +287,30 @@ class SecurityPolicyTest {
         verify(registration).setAllowedOriginPatterns();
     }
 
-    static Message<byte[]> stompFrame(SimpMessageType type) {
+    /**
+     * Handshake nitelikleri (slug/participantId/sessionId) {@code SessionWsHandshake}'te yazilir;
+     * anahtarlar orada sabit ama sinif package-private ve baska pakette oldugu icin buradan
+     * erisilemez (import bile edilemez) — literal "slug" kullanilir, ileride adi degisirse bu
+     * test kirilip iz surer. sessionSlug null ise nitelik hic yazilmaz (handshake atlanmis/sahte
+     * baglanti simulasyonu).
+     */
+    static Message<byte[]> stompFrame(SimpMessageType type, String sessionSlug) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(type);
         accessor.setDestination("/topic/session/x7k2m");
+        if (sessionSlug != null) {
+            // Bazi Spring surumlerinde setSessionAttributes degistirilebilir bir Map ister.
+            accessor.setSessionAttributes(new HashMap<>(Map.of("slug", sessionSlug)));
+        }
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
 
     /**
      * Kanal SALT OKUNUR olmali. Spring'in simple broker'i, hedefi broker onekiyle baslayan
-     * ISTEMCI SEND frame'lerini de abonelere rolelemektedir: handshake kimliksiz oldugu icin
-     * slug'i bilen biri /topic/session/{slug}'a sahte olay basip oturumdaki HERKESIN sekmesine
-     * tam bir GET /api/sessions/{slug} yaptirabilirdi (yukseltme: 1 frame -> N agir istek,
-     * ardindan herkes rate limit'e carpar). Uygulamada tek bir @MessageMapping yok; istemciden
-     * gelen mesaj frame'inin hicbir mesru kullanimi da yok.
+     * ISTEMCI SEND frame'lerini de abonelere rolelemektedir: handshake artik kimlikli olsa da
+     * uyenin bile yayin yapmasinin mesru kullanimi yok — slug'i bilen biri /topic/session/{slug}'a
+     * sahte olay basip oturumdaki HERKESIN sekmesine tam bir GET /api/sessions/{slug} yaptirabilirdi
+     * (yukseltme: 1 frame -> N agir istek, ardindan herkes rate limit'e carpar). Uygulamada tek bir
+     * @MessageMapping yok. Abonelik yetkilendirmesi ayri testte (asagida).
      */
     @Test
     void liveChannelDropsClientPublishedFrames() {
@@ -295,12 +323,37 @@ class SecurityPolicyTest {
 
         verify(registration).interceptors(captor.capture());
         ChannelInterceptor interceptor = captor.getValue();
-        assertThat(interceptor.preSend(stompFrame(SimpMessageType.MESSAGE), channel)).isNull();
-        // Abonelik ve baglanti frame'leri gecmeli, yoksa kanal hic calismaz.
-        Message<byte[]> subscribe = stompFrame(SimpMessageType.SUBSCRIBE);
-        assertThat(interceptor.preSend(subscribe, channel)).isSameAs(subscribe);
-        Message<byte[]> connect = stompFrame(SimpMessageType.CONNECT);
+        // Kendi oturumunun kimligini tasisa BILE MESSAGE dusurulur — istisnasi yok.
+        assertThat(interceptor.preSend(stompFrame(SimpMessageType.MESSAGE, "x7k2m"), channel)).isNull();
+        // CONNECT gecmeli, yoksa kanal hic calismaz (SUBSCRIBE'in kendi kurali asagidaki testte).
+        Message<byte[]> connect = stompFrame(SimpMessageType.CONNECT, null);
         assertThat(interceptor.preSend(connect, channel)).isSameAs(connect);
+    }
+
+    /**
+     * Abonelik de yetkilendirilir: soket yalniz KENDI oturumunun konusuna abone olabilir. Onceden
+     * uc nokta {@code /ws} idi, handshake kimliksizdi (katilimci cerezi onu kapsamiyordu) ve
+     * slug'i bilen HERHANGI bir istemci baska bir grubun oturum olaylarini dinleyebiliyordu.
+     * Handshake niteligi hic yoksa da (sahte/atlanmis baglanti) abonelik dusurulur (fail-closed).
+     */
+    @Test
+    void liveChannelRejectsSubscriptionsToForeignSessionTopics() {
+        ChannelRegistration registration = mock(ChannelRegistration.class);
+        ArgumentCaptor<ChannelInterceptor> captor = ArgumentCaptor.forClass(ChannelInterceptor.class);
+        MessageChannel channel = mock(MessageChannel.class);
+
+        new WebSocketConfig(props(true, "", List.of("https://bumpinto.app")))
+                .configureClientInboundChannel(registration);
+
+        verify(registration).interceptors(captor.capture());
+        ChannelInterceptor interceptor = captor.getValue();
+
+        Message<byte[]> ownTopic = stompFrame(SimpMessageType.SUBSCRIBE, "x7k2m");
+        assertThat(interceptor.preSend(ownTopic, channel)).isSameAs(ownTopic);
+        // Guvenlik ozelligi: handshake niteligi baska bir oturumun slug'iysa bu konuya abone olamaz.
+        assertThat(interceptor.preSend(stompFrame(SimpMessageType.SUBSCRIBE, "other"), channel)).isNull();
+        // Nitelik hic yoksa da dusurulur — varsayilan GECMEZ, varsayilan REDDEDER.
+        assertThat(interceptor.preSend(stompFrame(SimpMessageType.SUBSCRIBE, null), channel)).isNull();
     }
 
     @Test
@@ -310,6 +363,9 @@ class SecurityPolicyTest {
         assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/swipes"))).isFalse();
         assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/find-venues"))).isFalse();
         assertThat(reachesApp(request("GET", "/actuator/health"))).isFalse();
+        // WS artik permitAll DEGIL: kanal /api/sessions/{slug}/ws altinda ve kimlik ister.
+        // reachesApp false ise 401'i zaten dogrular (fail-closed kaniti).
+        assertThat(reachesApp(request("GET", "/api/sessions/x7k2m/ws"))).isFalse();
     }
 
     /** permitAll kurallari metoda baglidir: ayni yolun baska metodu public degildir. */

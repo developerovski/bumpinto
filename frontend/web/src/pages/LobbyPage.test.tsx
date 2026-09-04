@@ -25,4 +25,35 @@ describe("LobbyPage", () => {
     render(<LobbyPage view={view as never} />);
     expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
   });
+  it("lg: harita ghost'a basmadan mount edilir", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query.includes("min-width: 1024px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const view = { ...base, participants: [host, ayse] };
+      useSessionStore.setState({ slug: "x7k2m", view: view as never });
+      render(<LobbyPage view={view as never} />);
+      expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Haritayı aç" })).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("390: harita mount edilmez, ghost görünür", () => {
+    const view = { ...base, participants: [host, ayse] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    render(<LobbyPage view={view as never} />);
+    expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
+  });
 });

@@ -16,12 +16,14 @@ export function useSessionLive(slug: string) {
     void refresh();
     const timer = setInterval(() => void refresh(), POLL_MS);
 
-    // Boş VITE_WS_URL (local profil) location türevine düşmeli — ?? boş stringde düşmez.
-    const wsUrl =
+    // Kanal artik oturum yolunun ALTINDA: katilimci cerezinin path'i /api/sessions/{slug} oldugu
+    // icin tarayici cerezi handshake'e kendiliginden gonderir ve sunucu soketi kimliklendirir.
+    // VITE_WS_URL artik yalniz ORIGIN tasir, /ws sonekini TASIMAZ.
+    const origin =
       (import.meta.env.VITE_WS_URL as string | undefined) ||
-      `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
+      `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
     const client = new Client({
-      brokerURL: wsUrl,
+      brokerURL: `${origin}/api/sessions/${slug}/ws`,
       reconnectDelay: 5000,
       // Bağlantı kurulunca BİR KEZ tazele: abone olana kadar kaçan olaylar burada kapanır,
       // yoksa açılıştaki boşluk artık 30 sn sürerdi.

@@ -1,6 +1,7 @@
 package com.bumpinto.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
@@ -13,6 +14,7 @@ import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.infra.security.ParticipantPrincipal;
+import com.bumpinto.support.FakeStores;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +27,8 @@ class SessionViewAssemblerTest {
 
     static final UUID V1 = UUID.randomUUID();
 
-    SessionViewAssembler assembler = new SessionViewAssembler();
+    FakeStores.FakePresence presence = new FakeStores.FakePresence();
+    SessionViewAssembler assembler = new SessionViewAssembler(presence);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma", ActivityType.COFFEE,
@@ -256,5 +259,35 @@ class SessionViewAssemblerTest {
         return new UsernamePasswordAuthenticationToken(
                 new ParticipantPrincipal(participant.id(), participant.sessionId(), false), null,
                 List.of());
+    }
+
+    @Test
+    void onlineIsTrueOnlyForParticipantsWithAnOpenSocket() {
+        Session s = session(SessionType.GROUP);
+        Participant here = person(s.id(), new GeoPoint(51.69, 5.30), "Den Bosch", false);
+        Participant gone = person(s.id(), new GeoPoint(51.38, 5.71), "Someren", false);
+        presence.arrived(s.id(), here.id(), "ws-here");
+
+        ApiDtos.SessionView view = assembler.toView(
+                new SessionQueries.SessionSnapshot(s, List.of(here, gone), List.of(), Map.of(),
+                        Map.of(), Map.of()), null);
+
+        assertThat(view.participants()).extracting(ApiDtos.ParticipantDto::id,
+                        ApiDtos.ParticipantDto::online)
+                .containsExactlyInAnyOrder(tuple(here.id(), true), tuple(gone.id(), false));
+    }
+
+    @Test
+    void previewReportsWhetherTheHostIsOnline() {
+        Session s = session(SessionType.GROUP);
+        Participant host = new Participant(UUID.randomUUID(), s.id(), "Mehmet",
+                new GeoPoint(51.69, 5.30), true, null, false, "Den Bosch", null);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(s,
+                List.of(host), List.of(), Map.of(), Map.of(), Map.of());
+
+        assertThat(assembler.toPreview(snap).hostOnline()).isFalse();
+
+        presence.arrived(s.id(), host.id(), "ws-host");
+        assertThat(assembler.toPreview(snap).hostOnline()).isTrue();
     }
 }

@@ -1,6 +1,6 @@
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, ErrorText, Page } from "../components/atoms";
+import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
 import ActivityBadge from "../components/molecules/ActivityBadge";
 import AvatarRow from "../components/molecules/AvatarRow";
 import SessionHeader from "../components/molecules/SessionHeader";
@@ -28,10 +28,19 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   const venues = view.venues ?? [];
   const participants = view.participants ?? [];
 
+  // Sunucu kapisinin (409) AYNISI: konumu olan, elle eklenmemis ve odada olan katilimci >= 2.
+  // `online` alani yoksa cevrimici sayilir — bilgi gelmeden host'un onune duvar cikmaz.
+  const inRoom = participants.filter((p) => !p.manual && p.hasLocation && p.online !== false).length;
+
   const action =
     host && !solo ? (
-      <AvatarRow names={participants.map((p) => p.displayName ?? "?")}>
-        <Button type="button" size="fit" disabled={busy} onClick={() => void run(shuffle, "venues.errShuffle")}>
+      <AvatarRow people={participants}>
+        <Button
+          type="button"
+          size="fit"
+          disabled={busy || inRoom < 2}
+          onClick={() => void run(shuffle, "venues.errShuffle", { "participants present": "venues.errAlone" })}
+        >
           {t("venues.shuffle")}
         </Button>
       </AvatarRow>
@@ -54,6 +63,8 @@ export default function VenuesPage({ view }: { view: SessionView }) {
         action={action}
       />
       {error && <ErrorText>{error}</ErrorText>}
+      {/* Sessizce olu buton olmaz: kapaliysa sebebi ve cikisi yazili. */}
+      {host && !solo && inRoom < 2 && !error && <Note center>{t("venues.needTwo")}</Note>}
       <VenueBrowser
         venues={venues}
         participants={mp.participants}

@@ -82,3 +82,7 @@ docs:
     (Premium alanlar acilis maliyet modelinde istenmez).
     `mapsUrl` saglayici vermezse `https://www.google.com/maps/dir/?api=1&destination=lat,lng`
     olarak turetilir.
+
+    `participants[].online`: acik bir soketi VAR ya da son 45 saniye icinde koptu (grace
+    penceresi — sayfa yenileme veya kisa kopma offline gostermez). `manual=true` satirlarda
+    HER ZAMAN `false`: bu satirlar token tasimaz, soket hic acamaz.
