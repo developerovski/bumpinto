@@ -403,7 +403,9 @@
     "fairHand": "eerst het eerlijkst voor iedereen →",
     "noLocationOne": "{{name}} heeft nog geen locatie gedeeld — de tijden worden bijgewerkt zodra dat gebeurt",
     "noLocationMany": "De tijden worden bijgewerkt zodra iedereen zonder locatie meedoet",
-    "needTwo": "Voor een deck moeten er minstens twee mensen in de sessie zijn — als iemand offline is, kies dan een plek uit de lijst en sluit de beslissing af."
+    "needTwo": "Voor een deck moeten er minstens twee mensen in de sessie zijn — als iemand offline is, kies dan een plek uit de lijst en sluit de beslissing af.",
+    "invite": "Uitnodigingslink",
+    "inviteText": "{{name}} — we spreken in het midden af, doe je mee:"
   },
   "attribution": {
     "google": "Google Maps",

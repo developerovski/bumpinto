@@ -395,7 +395,9 @@
     "fairHand": "önce herkese en adil olanlar →",
     "noLocationOne": "{{name}} konumunu henüz paylaşmadı — süreler o gelince güncellenir",
     "noLocationMany": "Konumu olmayanlar gelince süreler güncellenir",
-    "needTwo": "Deste için oturumda en az iki kişi olmalı — biri çevrimdışıyken listeden bir yer seçip kararı kapatabilirsin."
+    "needTwo": "Deste için oturumda en az iki kişi olmalı — biri çevrimdışıyken listeden bir yer seçip kararı kapatabilirsin.",
+    "invite": "Davet linki",
+    "inviteText": "{{name}} — ortada buluşuyoruz, sen de gel:"
   },
   "attribution": {
     "google": "Google Maps",

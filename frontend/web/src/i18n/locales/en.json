@@ -403,7 +403,9 @@
     "fairHand": "fairest for everyone first →",
     "noLocationOne": "{{name}} hasn't shared a location yet — times update once they do",
     "noLocationMany": "Times update once everyone without a location joins in",
-    "needTwo": "The deck needs at least two people in the session — while someone is offline you can pick a place from the list and close the decision."
+    "needTwo": "The deck needs at least two people in the session — while someone is offline you can pick a place from the list and close the decision.",
+    "invite": "Invite link",
+    "inviteText": "{{name}} — we're meeting in the middle, come along:"
   },
   "attribution": {
     "google": "Google Maps",

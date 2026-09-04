@@ -4,6 +4,7 @@ import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
 import ActivityBadge from "../components/molecules/ActivityBadge";
 import AvatarRow from "../components/molecules/AvatarRow";
 import SessionHeader from "../components/molecules/SessionHeader";
+import ShareButton from "../components/molecules/ShareButton";
 import VenueBrowser from "../components/organisms/VenueBrowser";
 import { GROUP_TINT, groupOf, sessionActivity } from "../lib/activity";
 import { track } from "../lib/analytics";
@@ -35,6 +36,17 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   const action =
     host && !solo ? (
       <AvatarRow people={participants}>
+        {/* Katilim BROWSING'de hala acik (SessionCommands.CLOSED_TO_NEW_SEATS) — link de burada
+            olmali, yoksa kural izin verirken arayuz araci vermiyor. SOLO'da yok: o oturumun
+            davet linki hic calismaz. */}
+        <ShareButton
+          text={t("venues.inviteText", { name: view.name })}
+          url={`${location.origin}/j/${view.slug ?? ""}`}
+          label={t("venues.invite")}
+          copiedLabel={t("lobby.copied")}
+          kind="white"
+          size="fit"
+        />
         <Button
           type="button"
           size="fit"

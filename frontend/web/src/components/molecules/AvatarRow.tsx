@@ -11,7 +11,7 @@ import { Avatar } from "../atoms";
 export default function AvatarRow(props: { people: ParticipantDto[]; children?: ReactNode }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-end gap-3">
       <div className="flex gap-1.5">
         {props.people.map((p, i) => {
           const away = p.online === false && !p.manual;
