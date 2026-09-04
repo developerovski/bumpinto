@@ -335,7 +335,7 @@ class SecurityPolicyTest {
     @Test
     void participantTokenIsScopedToItsOwnSessionInTheRealChain() throws Exception {
         String token = CONTEXT.getBean(TokenService.class).issueParticipantToken(
-                UUID.randomUUID(), UUID.randomUUID(), "x7k2m", false, UUID.randomUUID());
+                UUID.randomUUID(), UUID.randomUUID(), "x7k2m", false);
 
         MockHttpServletRequest own = request("POST", "/api/sessions/x7k2m/swipes");
         own.addHeader(ParticipantTokenFilter.HEADER, token);

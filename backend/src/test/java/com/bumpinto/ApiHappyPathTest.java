@@ -125,7 +125,7 @@ class ApiHappyPathTest {
 
         // 3 — host desteyi kurar: onceki BROWSING ("Mekanlar"), herkes harita+listede gorur
         String viewBody = mvc.perform(post("/api/sessions/" + slug + "/find-venues")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode view = json.readTree(viewBody);
@@ -144,7 +144,7 @@ class ApiHappyPathTest {
 
         // 3b — host karistirir ve kaydirmayi acar
         String shuffledBody = mvc.perform(post("/api/sessions/" + slug + "/shuffle")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode shuffled = json.readTree(shuffledBody);
@@ -209,13 +209,16 @@ class ApiHappyPathTest {
 
     /**
      * Host'un elinde SADECE hesap kimligi var: katilimci cerezi yok. Gercekte olan buydu —
-     * katilimci token'i yalnizca oturum kurulurken bir kez cereze yazilir, host oturumu baska
-     * bir tarayicida ("Oturumlar" listesinden) actiginda o cerez yoktur ve bir daha dagitilmaz.
-     * Onceden GET calisiyor, her yazma 403 "participant token required" donuyordu: host
-     * kaydiriyor, hicbir swipe kaydedilmiyor, ekran "Deste bitti" diyordu (sessiz veri kaybi).
+     * token yalnizca oturum kurulurken bir kez dagitilir, host oturumu baska bir tarayicida
+     * ("Oturumlar" listesinden) actiginda o cerez yoktur.
+     *
+     * <p>Cozum artik hesap JWT'sini oda ici kimlik saymak DEGIL (oda icinde tek kimlik vardir):
+     * okuma yolu hesabi koltuk sahipliginden cozer ve cerezi AYNI yanitta yeniden yazar. Onceden
+     * GET calisiyor, her yazma 403 donuyordu: host kaydiriyor, hicbir swipe kaydedilmiyor,
+     * ekran "Deste bitti" diyordu (sessiz veri kaybi).
      */
     @Test
-    void hostWithOnlyAnAccountTokenCanSwipeAndFinishTheDeck() throws Exception {
+    void hostWithOnlyAnAccountTokenRecoversItsSeatCookieAndThenWrites() throws Exception {
         when(google.verify("gid3"))
                 .thenReturn(new GoogleIdVerifier.GoogleUser("nocookie@bumpinto.test", "Mehmet"));
         when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(
@@ -245,31 +248,34 @@ class ApiHappyPathTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getCookie("bumpinto_pt_" + slug);
 
-        mvc.perform(post("/api/sessions/" + slug + "/find-venues")
-                        .header("Authorization", "Bearer " + accessToken))
+        // Oturumu OKUMAK kimligi onarir: hesap koltuk sahipliginden cozulur, cerez geri yazilir.
+        Cookie hostCookie = mvc.perform(get("/api/sessions/" + slug)
+                        .header("Authorization", "Bearer " + accessToken)
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie("bumpinto_pt_" + slug);
+        assertThat(hostCookie).isNotNull();
+
+        mvc.perform(post("/api/sessions/" + slug + "/find-venues").cookie(hostCookie))
                 .andExpect(status().isOk());
         String favoriteId = json.readTree(mvc.perform(post("/api/sessions/" + slug + "/shuffle")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .cookie(hostCookie))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString())
                 .get("venues").get(0).get("id").asString();
 
-        // Sadece hesap token'iyla: kaydir, geri al, tekrar kaydir, desteyi bitir.
-        mvc.perform(post("/api/sessions/" + slug + "/swipes")
-                        .header("Authorization", "Bearer " + accessToken)
+        // Onarilan cerezle: kaydir, geri al, tekrar kaydir, desteyi bitir.
+        mvc.perform(post("/api/sessions/" + slug + "/swipes").cookie(hostCookie)
                         .contentType(JSON)
                         .content("{\"venueId\":\"" + favoriteId + "\",\"liked\":true}"))
                 .andExpect(status().isOk());
-        mvc.perform(delete("/api/sessions/" + slug + "/swipes/" + favoriteId)
-                        .header("Authorization", "Bearer " + accessToken))
+        mvc.perform(delete("/api/sessions/" + slug + "/swipes/" + favoriteId).cookie(hostCookie))
                 .andExpect(status().isOk());
-        mvc.perform(post("/api/sessions/" + slug + "/swipes")
-                        .header("Authorization", "Bearer " + accessToken)
+        mvc.perform(post("/api/sessions/" + slug + "/swipes").cookie(hostCookie)
                         .contentType(JSON)
                         .content("{\"venueId\":\"" + favoriteId + "\",\"liked\":true}"))
                 .andExpect(status().isOk());
-        mvc.perform(post("/api/sessions/" + slug + "/deck-done")
-                        .header("Authorization", "Bearer " + accessToken))
+        mvc.perform(post("/api/sessions/" + slug + "/deck-done").cookie(hostCookie))
                 .andExpect(status().isOk());
 
         // Swipe GERCEKTEN kaydedildi: Ayşe de ayni mekani begenince karar cikar.
@@ -308,14 +314,16 @@ class ApiHappyPathTest {
                         .contentType(JSON).content("{\"idToken\":\"gid2\"}"))
                 .andReturn().getResponse().getContentAsString()).get("accessToken").asString();
 
-        String slug = json.readTree(mvc.perform(post("/api/sessions")
+        JsonNode created = json.readTree(mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(JSON)
                         .content("{\"activityType\":\"COFFEE\",\"sessionType\":\"SOLO\","
                                 + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\","
                                 + "\"locationLabel\":\"'s-Hertogenbosch\"}"))
                 .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString()).get("slug").asString();
+                .andReturn().getResponse().getContentAsString());
+        String slug = created.get("slug").asString();
+        String hostToken = created.get("participantToken").asString();
 
         // katilim SOLO'da kapali
         mvc.perform(post("/api/sessions/" + slug + "/participants")
@@ -324,7 +332,7 @@ class ApiHappyPathTest {
 
         // elle konum
         String pointBody = mvc.perform(post("/api/sessions/" + slug + "/points")
-                        .header("Authorization", "Bearer " + accessToken)
+                        .header(ParticipantTokenFilter.HEADER, hostToken)
                         .contentType(JSON)
                         .content("{\"displayName\":\"Ayşe\",\"locationLabel\":\"Someren\","
                                 + "\"lat\":51.3855,\"lng\":5.7120,\"travelMode\":\"BIKE\"}"))
@@ -334,7 +342,7 @@ class ApiHappyPathTest {
         assertThat(json.readTree(pointBody).get("travelMode").asString()).isEqualTo("BIKE");
 
         String browsing = mvc.perform(post("/api/sessions/" + slug + "/find-venues")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode view = json.readTree(browsing);
@@ -342,11 +350,11 @@ class ApiHappyPathTest {
         String venueId = view.get("venues").get(0).get("id").asString();
 
         mvc.perform(post("/api/sessions/" + slug + "/shuffle")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isConflict());
 
         String decided = mvc.perform(post("/api/sessions/" + slug + "/force-decision")
-                        .header("Authorization", "Bearer " + accessToken)
+                        .header(ParticipantTokenFilter.HEADER, hostToken)
                         .contentType(JSON).content("{\"venueId\":\"" + venueId + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();

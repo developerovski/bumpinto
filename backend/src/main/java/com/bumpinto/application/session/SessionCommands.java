@@ -42,10 +42,6 @@ public class SessionCommands {
     public record CreateSessionResult(Session session, Participant hostParticipant) {
     }
 
-    /** Katilim sonucu oturumu da tasir: token'a yazilacak host kimligi oradan gelir. */
-    public record JoinResult(Session session, Participant participant) {
-    }
-
     @Transactional
     public CreateSessionResult createSession(UUID hostUserId, String name, ActivityType type,
                                              SessionType sessionType, GeoPoint hostLocation,
@@ -71,8 +67,8 @@ public class SessionCommands {
      * ad ve konum sahibinindir ve kendi ucundan guncellenir (PUT /location).
      */
     @Transactional
-    public JoinResult join(String slug, Caller caller, String displayName, GeoPoint location,
-                           String locationLabel, TravelMode travelMode) {
+    public Participant join(String slug, Caller caller, String displayName, GeoPoint location,
+                            String locationLabel, TravelMode travelMode) {
         Session session = required(slug);
         if (session.isSolo()) {
             throw new ConflictException("solo session has no invite link");
@@ -82,24 +78,32 @@ public class SessionCommands {
         }
         Optional<Participant> seat = seatOf(session, caller);
         if (seat.isPresent()) {
-            return new JoinResult(session, seat.get());
+            return seat.get();
         }
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant joined = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(displayName), location, false, null,
                 false, Texts.label(locationLabel), travelMode, caller.userId()));
         events.publish(slug, SessionEvent.participantJoined(store.participantsOf(session.id()).size()));
-        return new JoinResult(session, joined);
+        return joined;
     }
 
-    /** Kimlik var ama koltuk yoksa (ornegin silinmis elle nokta) bos doner: yeni koltuk acilir. */
+    /**
+     * Kimlik var ama koltuk yoksa (ornegin silinmis elle nokta) bos doner: yeni koltuk acilir.
+     *
+     * <p>HESAP once sorulur: elindeki token tarayicida kalmis yanlis bir koltugu gosteriyor
+     * olabilir, hesabin koltugu ise veriden bilinir.
+     */
     private Optional<Participant> seatOf(Session session, Caller caller) {
+        if (caller.userId() != null) {
+            Optional<Participant> owned = store.participantOf(session.id(), caller.userId());
+            if (owned.isPresent()) {
+                return owned;
+            }
+        }
         if (caller.participantId() != null) {
             return store.participantsOf(session.id()).stream()
                     .filter(p -> p.id().equals(caller.participantId())).findFirst();
-        }
-        if (caller.userId() != null) {
-            return store.participantOf(session.id(), caller.userId());
         }
         return Optional.empty();
     }
@@ -122,10 +126,10 @@ public class SessionCommands {
      * eder, burada tekrar etmiyoruz (spec §5.A.7).
      */
     @Transactional
-    public Participant addPoint(String slug, UUID hostUserId, String displayName,
+    public Participant addPoint(String slug, UUID hostParticipantId, String displayName,
                                 String locationLabel, GeoPoint location, TravelMode travelMode) {
         Session session = required(slug);
-        requireHost(session, hostUserId);
+        requireHost(session, hostParticipantId);
         if (!session.isSolo()) {
             throw new ConflictException("manual points are only for solo sessions");
         }
@@ -140,9 +144,9 @@ public class SessionCommands {
     }
 
     @Transactional
-    public void removePoint(String slug, UUID hostUserId, UUID participantId) {
+    public void removePoint(String slug, UUID hostParticipantId, UUID participantId) {
         Session session = required(slug);
-        requireHost(session, hostUserId);
+        requireHost(session, hostParticipantId);
         if (session.status() != SessionStatus.COLLECTING) {
             throw new ConflictException("points are frozen after venues are found");
         }
@@ -156,8 +160,17 @@ public class SessionCommands {
         events.publish(slug, SessionEvent.participantLeft(store.participantsOf(session.id()).size()));
     }
 
-    private void requireHost(Session session, UUID userId) {
-        if (!session.hostId().equals(userId)) {
+    /**
+     * Host da bir katilimcidir: oda ici yetki oturuma kapsamli KATILIMCI kimliginden gelir, hesap
+     * JWT'sinden degil. Hesap token'i 12 saat, oturum 24 saat yasiyordu; yetki hesaba bagliyken
+     * host arada kendi oturumunu yonetemez oluyordu. Imzali claim'e korukorune guvenilmez —
+     * koltuk DB'den okunur, boylece silinmis bir host koltugunun token'i de is gormez.
+     */
+    private void requireHost(Session session, UUID participantId) {
+        boolean host = store.participantsOf(session.id()).stream()
+                .filter(p -> p.id().equals(participantId))
+                .findFirst().map(Participant::host).orElse(false);
+        if (!host) {
             throw new ForbiddenException("only the host can do this");
         }
     }

@@ -7,6 +7,7 @@ import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,7 +60,7 @@ class SessionController {
                 request.locationLabel(), request.travelMode());
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
-        String bodyToken = tokens.deliver(response, client, result.session(),
+        String bodyToken = tokens.deliver(response, client, result.session().slug(),
                 result.hostParticipant());
         return response.body(new ApiDtos.CreateSessionResponse(result.session().slug(),
                 result.session().id(), result.hostParticipant().id(), bodyToken,
@@ -87,8 +88,12 @@ class SessionController {
             throw new ForbiddenException("not a participant of this session");
         }
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        // Çerez yalnız GEREKİYORSA yazılır: eldeki token zaten doğru koltuğu gösteriyorsa her
+        // okumaya bir Set-Cookie eklemenin anlamı yok. Göstermiyorsa (yanlış ya da eksik) bu
+        // satır kimliği onarır — hesabın koltuğu tekrar bu tarayıcının kimliği olur.
         WebPrincipals.seatOf(snapshot, auth)
-                .ifPresent(seat -> tokens.refresh(response, client, snapshot.session(), seat));
+                .filter(seat -> !seat.id().equals(WebPrincipals.participantIdOrNull(auth)))
+                .ifPresent(seat -> tokens.refresh(response, client, slug, seat));
         return response.body(assembler.toView(snapshot, auth));
     }
 
@@ -97,24 +102,27 @@ class SessionController {
         return assembler.toPreview(queries.snapshot(slug));
     }
 
+    // Oturum uclarinda kimlik TEK turdur: katilimci token'i. Host da bir katilimcidir; hesap
+    // JWT'si yalnizca hesap uclarinda (liste, olustur, /api/me) kimliktir.
     @PostMapping("/{slug}/find-venues")
-    ApiDtos.SessionView findVenues(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
-            Authentication auth) {
-        deckFlow.findVenues(slug, WebPrincipals.accountId(jwt));
+    ApiDtos.SessionView findVenues(@AuthenticationPrincipal ParticipantPrincipal me,
+            @PathVariable String slug, Authentication auth) {
+        deckFlow.findVenues(slug, WebPrincipals.participantId(me));
         return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/shuffle")
-    ApiDtos.SessionView shuffle(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
-            Authentication auth) {
-        deckFlow.shuffle(slug, WebPrincipals.accountId(jwt));
+    ApiDtos.SessionView shuffle(@AuthenticationPrincipal ParticipantPrincipal me,
+            @PathVariable String slug, Authentication auth) {
+        deckFlow.shuffle(slug, WebPrincipals.participantId(me));
         return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/force-decision")
-    ApiDtos.SessionView forceDecision(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
+    ApiDtos.SessionView forceDecision(@AuthenticationPrincipal ParticipantPrincipal me,
+            @PathVariable String slug,
             @RequestBody(required = false) ApiDtos.ForceDecisionRequest request, Authentication auth) {
-        deckFlow.forceDecision(slug, WebPrincipals.accountId(jwt),
+        deckFlow.forceDecision(slug, WebPrincipals.participantId(me),
                 request == null ? null : request.venueId());
         return assembler.toView(queries.snapshot(slug), auth);
     }

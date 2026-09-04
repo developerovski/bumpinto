@@ -35,7 +35,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // ParticipantTokenFilter BILEREK import edilmez: bean olursa servlet zincirine de kaydolur ve
 // OncePerRequestFilter'in "already filtered" isareti zincir icindeki gercek ornegi atlatir.
 @Import({SecurityConfig.class, SessionViewAssembler.class, AuthCookies.class, TokenService.class,
-        ParticipantTokenDelivery.class, ParticipantIdentity.class,
+        ParticipantTokenDelivery.class,
         WebSecuritySliceTest.TestBeans.class})
 class WebSecuritySliceTest {
 
@@ -130,7 +130,7 @@ class WebSecuritySliceTest {
      * kimlik token'ın imzasından ve claim'lerinden çıkar, o yüzden depo kurulumuna gerek yok.
      */
     String participantTokenForAbc() {
-        return tokens.issueParticipantToken(AYSE_ID, SESSION_ID, "abc", false, UUID.randomUUID());
+        return tokens.issueParticipantToken(AYSE_ID, SESSION_ID, "abc", false);
     }
 
     @Test
@@ -141,7 +141,7 @@ class WebSecuritySliceTest {
     @Test
     void webJoinPutsTokenOnlyInHttpOnlyCookie() throws Exception {
         when(commands.join(eq("abc"), any(), eq("Ayşe"), any(), any(), any()))
-                .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
+                .thenReturn(ayse());
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .header("X-Client", "web")
@@ -166,7 +166,7 @@ class WebSecuritySliceTest {
     @Test
     void mobileJoinReturnsTokenInBodyWithoutCookie() throws Exception {
         when(commands.join(eq("abc"), any(), eq("Ayşe"), any(), any(), any()))
-                .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
+                .thenReturn(ayse());
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
                         .contentType("application/json")
@@ -246,19 +246,18 @@ class WebSecuritySliceTest {
         assertThat(delivered.getClaimAsBoolean(TokenService.HOST_CLAIM)).isTrue();
     }
 
-    /** Katılımcı token'ı kimlik doğrular ama host ucunu AÇMAZ: 403, 500 değil. */
+    /**
+     * Oda ICINDE hesap token'i tek basina HICBIR SEY surmez — host ucu dahil. Web katmaninin
+     * garantisi budur; "bu katilimci host mu" sorusu artik burada degil, koltugu DB'den okuyan
+     * uygulama katmanindadir (bkz. DeckFlowTest#onlyTheHostSeatCanDriveHostActions).
+     */
     @Test
-    void participantTokenCannotDriveHostEndpoints() throws Exception {
-        mvc.perform(post("/api/sessions/abc/find-venues")
-                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
-                .andExpect(status().isForbidden());
-    }
-
-    /** Baska birinin JWT'si katilimci ucunu ACMAZ: hesap, o oturumun kurucusu degil. */
-    @Test
-    void foreignJwtCannotDriveParticipantEndpoints() throws Exception {
+    void anAccountTokenAloneDrivesNothingInsideTheRoom() throws Exception {
         String bearer = tokens.issueAccessToken(UUID.randomUUID(), "m@x.dev");
 
+        mvc.perform(post("/api/sessions/abc/find-venues")
+                        .header("Authorization", "Bearer " + bearer))
+                .andExpect(status().isForbidden());
         mvc.perform(post("/api/sessions/abc/swipes")
                         .header("Authorization", "Bearer " + bearer)
                         .contentType("application/json")
@@ -267,23 +266,63 @@ class WebSecuritySliceTest {
     }
 
     /**
-     * Host da bir katilimcidir. Katilimci token'i yalniz oturum kurulurken BIR KEZ cereze
-     * yazilir (Path=/api/sessions/{slug}); host oturumu baska bir tarayicida — ornegin
-     * "Oturumlar" listesinden — actiginda elinde sadece hesap JWT'si olur. Kimlik oradan
-     * cozulmezse host kaydirir, HICBIR yazma sunucuya ulasmaz ve ekran basarili gorunur.
+     * Hesabin oda ici kimligi KOLTUK SAHIPLIGINDEN cozulur (participants.user_id) ve cerez ayni
+     * yanitta yeniden yazilir: katilimci cerezi olmayan bir tarayicida uye kendi satirini gorur
+     * ve bir sonraki yazmasi calisir. Host'a ozel bir dal degildir — davetli uye de ayni yoldan
+     * doner, yoksa kendi oturumunun katilim formuna duserdi.
      */
     @Test
-    void hostJwtDrivesParticipantEndpointsOfItsOwnSession() throws Exception {
-        UUID hostId = UUID.randomUUID();
-        UUID hostParticipantId = UUID.randomUUID();
-        when(queries.participantIdOf("abc", hostId)).thenReturn(Optional.of(hostParticipantId));
-        String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
+    void anAccountResolvesToItsOwnSeatOnReadAndGetsItsCookieBack() throws Exception {
+        UUID guestAccount = UUID.randomUUID();
+        Participant seat = new Participant(AYSE_ID, SESSION_ID, "Ayşe",
+                new GeoPoint(51.3855, 5.7120), false, null, false, null, null, guestAccount);
+        when(queries.snapshot("abc")).thenReturn(new SessionQueries.SessionSnapshot(
+                session(UUID.randomUUID()), List.of(seat), List.of(), Map.of(), Map.of(), Map.of()));
 
-        mvc.perform(post("/api/sessions/abc/deck-done")
-                        .header("Authorization", "Bearer " + bearer))
-                .andExpect(status().isOk());
+        MvcResult result = mvc.perform(get("/api/sessions/abc")
+                        .header("Authorization",
+                                "Bearer " + tokens.issueAccessToken(guestAccount, "a@x.dev"))
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewer.participantId").value(AYSE_ID.toString()))
+                .andReturn();
 
-        verify(deckFlow).finishDeck("abc", hostParticipantId);
+        Cookie repaired = result.getResponse().getCookie("bumpinto_pt_abc");
+        assertThat(repaired).isNotNull();
+        assertThat(tokens.decoder().decode(repaired.getValue()).getSubject())
+                .isEqualTo(AYSE_ID.toString());
+    }
+
+    /**
+     * Hesabin koltugu tarayicida kalmis bir katilimci cerezini YENER ve cerez ayni yanitta
+     * duzeltilir. Uye kendi oturumunun linkini giris yapmadigi bir tarayicida acip ANONIM
+     * katilmis olabilir; o cerez hesap kimligini ezseydi oturumun sahibi kendi oturumunda 24
+     * saat misafir kalirdi (A5 incelemesi, 2026-09-04).
+     */
+    @Test
+    void theAccountSeatBeatsAStaleParticipantCookieAndRepairsIt() throws Exception {
+        UUID ownerAccount = UUID.randomUUID();
+        UUID ownerSeatId = UUID.randomUUID();
+        Participant ownerSeat = new Participant(ownerSeatId, SESSION_ID, "Mehmet",
+                new GeoPoint(51.7, 5.3), true, null, false, null, null, ownerAccount);
+        when(queries.snapshot("abc")).thenReturn(new SessionQueries.SessionSnapshot(
+                session(ownerAccount), List.of(ownerSeat, ayse()), List.of(),
+                Map.of(), Map.of(), Map.of()));
+
+        MvcResult result = mvc.perform(get("/api/sessions/abc")
+                        .header("Authorization",
+                                "Bearer " + tokens.issueAccessToken(ownerAccount, "m@x.dev"))
+                        .header("X-Client", "web")
+                        .cookie(new Cookie("bumpinto_pt_abc", participantTokenForAbc())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewer.participantId").value(ownerSeatId.toString()))
+                .andExpect(jsonPath("$.viewer.host").value(true))
+                .andReturn();
+
+        Cookie repaired = result.getResponse().getCookie("bumpinto_pt_abc");
+        assertThat(repaired).isNotNull();
+        assertThat(tokens.decoder().decode(repaired.getValue()).getSubject())
+                .isEqualTo(ownerSeatId.toString());
     }
 
     /** Filtre fail-closed: katılımcı token'ı /api/sessions/{slug} dışında kimlik doğrulamaz. */

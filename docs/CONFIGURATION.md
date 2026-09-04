@@ -156,9 +156,14 @@ Prod'a çıkmadan:
 2. **Foursquare:** Console → Service API Keys → revoke → yeni üret.
 3. **`TOKEN_SECRET`:** yenisini üretip Secret'ı güncelleyin. **Tüm kimlikler düşer** —
    aynı sır hem hesap hem KATILIMCI token'larını imzalar (V6'dan beri katılımcı token'ı da
-   imzalı bir JWT'dir, DB'de saklanmaz). Hesap sahipleri yeniden giriş yapıp toparlanır;
-   canlı bir oturumdaki davetlilerin ise yeniden KATILMASI gerekir ve katılım mükerrer
-   satır açar (orta noktayı bozar). Bu yüzden rotasyonu canlı oturum yokken yapın —
+   imzalı bir JWT'dir, DB'de saklanmaz) ve oturum İÇİNDEKİ yetki de artık bu token'dan gelir:
+   rotasyon anında host da kendi oturumunu yönetemez hâle gelir.
+   **Hesabı olan** herkes toparlanır: yeniden giriş yapıp oturumu bir kez okur, sunucu
+   katılımcı çerezini yeniden basar (koltuk sahipliği `participants.user_id` ile durur, V7) —
+   koltuk korunur, mükerrer satır açılmaz. Mobilde aynı onarım katılım ucundan gelir: kimlik
+   taşıyan katılım ikinci koltuk açmaz, aynı koltuğu ve taze token'ı döndürür.
+   **ANONİM** katılan davetlinin ise kurtaracağı bir kimlik yoktur: yeniden katılır ve ikinci
+   bir satır açar (orta noktayı bozar). Bu yüzden rotasyonu canlı oturum yokken yapın —
    oturum TTL'i 24 saat.
 4. Her durumda: `kubectl rollout restart deployment/bumpinto-backend`.
 

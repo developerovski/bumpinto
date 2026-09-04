@@ -25,22 +25,23 @@ import java.util.regex.Pattern;
  * Bean DEĞİL: Boot her Filter bean'ini servlet zincirine de kaydeder, o da bu filtreyi
  * istek başına iki kez çalıştırırdı. Yalnızca SecurityConfig kurar.
  *
- * <p>Katılımcı token'ı İMZALI bir JWT'dir ve doğrulaması tamamen bellekte biter: imza +
- * claim karşılaştırması, SIFIR DB okuması. Önceden opak bir sırdı ve her istekte
- * {@code participants} tablosundan okunuyordu (istek başına iki sorgu, üstelik DB'de düz metin
- * bir bearer sırrı). İptal yeteneği kaybolmaz: uygulama katmanı her yazmada katılımcıyı zaten
- * DB'den doğruluyor ({@code DeckFlow.requireMember}, {@code SessionCommands.updateLocation}),
- * yani silinmiş katılımcının token'ı imzası geçerli olsa da hiçbir şey yazamaz.
+ * <p>Tek işi vardır: <b>kimlik var mı</b>. İmza + iki claim karşılaştırması, SIFIR DB okuması ve
+ * SIFIR yetki kararı. "Bu kişi host mu, üye mi, ne yapabilir" sorularının hiçbiri buraya ait
+ * değildir; hepsi uygulama katmanında, veriye bakarak yanıtlanır ({@code DeckFlow.requireHost},
+ * {@code requireMember}, {@code SessionCommands.updateLocation}). Bu yüzden silinmiş bir
+ * katılımcının token'ı imzası geçerli olsa da hiçbir şey yazamaz.
  *
- * <p>Bearer filtresinden SONRA kurulur ve gerektiğinde hesap kimliğinin ÜSTÜNE yazar. Sıra
- * tersi olamaz: Spring'in {@code BearerTokenAuthenticationFilter}'ı context'i koşulsuz
- * değiştirir, ondan önce konan katılımcı principal'i hiçbir zaman hayatta kalmazdı — Google
- * ile girmiş bir davetli katıldıktan sonra kendi konumunu bile kaydedemiyordu (2026-09-03).
+ * <p>Bearer filtresinden SONRA kurulur ve hesap kimliğinin ÜSTÜNE yazar. Sıra tersi olamaz:
+ * Spring'in {@code BearerTokenAuthenticationFilter}'ı context'i koşulsuz değiştirir, ondan önce
+ * konan katılımcı principal'i hiçbir zaman hayatta kalmazdı — Google ile girmiş bir davetli
+ * katıldıktan sonra kendi konumunu bile kaydedemiyordu (2026-09-03).
  *
- * <p>Tek istisna: HOST'un katılımcı token'ı, tarayıcıda BAŞKA bir hesap açıkken kabul edilmez.
- * O token oturumu kuran hesaba aittir; tarayıcı artık başka biriyse devralınmıştır. Host'un
- * kendi tarayıcısında ise hesap JWT'si zaten context'te kalır ve host uçları çalışmaya devam
- * eder ({@code @AuthenticationPrincipal Jwt}).
+ * <p>Katılımcı principal'i hesap principal'inin üstüne yazar ama hesap kimliğini YOK ETMEZ:
+ * doğrulanmış {@code Jwt} {@code details}'e asılır. Çünkü tarayıcıda kalmış bir katılımcı çerezi
+ * yanlış koltuğu gösteriyor olabilir — üye önce anonim katılıp sonra giriş yapmışsa, o çerez
+ * kendi oturumunun sahibini bile misafire çevirirdi. Hangi koltuğun doğru olduğunu ancak VERİYE
+ * bakan katman bilir ({@code WebPrincipals.seatOf}, {@code participants.user_id}); filtre o kararı
+ * vermez, yalnızca iki kimliği de sonraki katmana taşır.
  */
 public class ParticipantTokenFilter extends OncePerRequestFilter {
 
@@ -75,43 +76,23 @@ public class ParticipantTokenFilter extends OncePerRequestFilter {
                     || !slug.equals(jwt.getClaimAsString(TokenService.SLUG_CLAIM))) {
                 return Optional.empty();
             }
-            String sessionOwner = jwt.getClaimAsString(TokenService.HOST_USER_CLAIM);
-            boolean host = Boolean.TRUE.equals(jwt.getClaim(TokenService.HOST_CLAIM));
-            if (accountIs(sessionOwner)) {
-                return Optional.empty(); // oturumun sahibi: hesap kimligi yerinde kalir
-            }
-            if (host && signedInWithAnAccount()) {
-                return Optional.empty(); // devralinmis host cerezi
-            }
             return Optional.of(new ParticipantPrincipal(
                     UUID.fromString(jwt.getSubject()),
                     UUID.fromString(jwt.getClaimAsString(TokenService.SESSION_CLAIM)),
-                    host));
+                    Boolean.TRUE.equals(jwt.getClaim(TokenService.HOST_CLAIM))));
         } catch (JwtException | IllegalArgumentException | NullPointerException invalid) {
             return Optional.empty();
         }
     }
 
     private static void authenticate(ParticipantPrincipal participant) {
+        Authentication previous = SecurityContextHolder.getContext().getAuthentication();
         var auth = new UsernamePasswordAuthenticationToken(participant, null,
                 List.of(new SimpleGrantedAuthority("ROLE_PARTICIPANT")));
+        if (previous != null && previous.getPrincipal() instanceof Jwt account) {
+            auth.setDetails(account); // uzerine yazilan hesap kimligi: kaybolmaz, yanda durur
+        }
         SecurityContextHolder.getContext().setAuthentication(auth);
-    }
-
-    /** İstek bir hesap kimliği taşıyor mu (bumpinto_at / Bearer). */
-    private static boolean signedInWithAnAccount() {
-        return account() != null;
-    }
-
-    /** Tarayıcıdaki hesap, verilen kullanıcı id'si mi — token claim'i ile karşılaştırılır, DB'siz. */
-    private static boolean accountIs(String userId) {
-        Jwt account = account();
-        return account != null && userId != null && userId.equals(account.getSubject());
-    }
-
-    private static Jwt account() {
-        Authentication current = SecurityContextHolder.getContext().getAuthentication();
-        return current != null && current.getPrincipal() instanceof Jwt jwt ? jwt : null;
     }
 
     private static String slugOf(HttpServletRequest request) {

@@ -67,9 +67,9 @@ public class DeckFlow {
     }
 
     @Transactional
-    public List<Venue> findVenues(String slug, UUID hostUserId) {
+    public List<Venue> findVenues(String slug, UUID hostParticipantId) {
         Session session = required(slug);
-        requireHost(session, hostUserId);
+        requireHost(session, hostParticipantId);
         if (session.status() != SessionStatus.COLLECTING
                 && session.status() != SessionStatus.SUGGESTING) {
             throw new ConflictException("deck already built: " + session.status());
@@ -136,9 +136,9 @@ public class DeckFlow {
      * Yeniden adlandirma W-6 kapsamina girmez.
      */
     @Transactional
-    public void shuffle(String slug, UUID hostUserId) {
+    public void shuffle(String slug, UUID hostParticipantId) {
         Session session = required(slug);
-        requireHost(session, hostUserId);
+        requireHost(session, hostParticipantId);
         if (session.status() != SessionStatus.BROWSING) {
             throw new ConflictException("expected BROWSING but was " + session.status());
         }
@@ -195,9 +195,9 @@ public class DeckFlow {
      * (b) RUNOFF beraberligini bozma; (c) SWIPING'de kismi katilimla degerlendirme (venueId null).
      */
     @Transactional
-    public void forceDecision(String slug, UUID hostUserId, UUID chosenVenueId) {
+    public void forceDecision(String slug, UUID hostParticipantId, UUID chosenVenueId) {
         Session session = required(slug);
-        requireHost(session, hostUserId);
+        requireHost(session, hostParticipantId);
         if (chosenVenueId != null) {
             switch (session.status()) {
                 case BROWSING -> {
@@ -307,8 +307,12 @@ public class DeckFlow {
         return session;
     }
 
-    private void requireHost(Session session, UUID userId) {
-        if (!session.hostId().equals(userId)) {
+    /**
+     * Oda ici yetki oturuma kapsamli KATILIMCI kimliginden gelir, hesap JWT'sinden degil (bkz.
+     * SessionCommands#requireHost). Koltuk DB'den okunur: imzali claim tek basina yetmez.
+     */
+    private void requireHost(Session session, UUID participantId) {
+        if (!requireMember(session, participantId).host()) {
             throw new ForbiddenException("only the host can do this");
         }
     }

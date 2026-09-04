@@ -254,6 +254,57 @@ class AccountApiTest {
                 .isEqualTo("Mehmet");
     }
 
+    /**
+     * Uye kendi oturumuna ANONIM katilabilir: giris yapmadigi bir tarayicida kendi linkini
+     * acinca katilim formunu gorur ve o tarayiciya YANLIS koltugu gosteren bir cerez yazilir.
+     * Sonradan giris yapmak onu temizlemez (onceki hesap cerezi yok -> signedInAsSomeoneElse
+     * false). A5 incelemesi bu tuzagi buldu: cerez hesap kimligini ezdiginde oturumun sahibi
+     * kendi oturumunda 24 saat misafir kaliyordu — okuma "host degilsin" diyor, host uclari
+     * 403 donuyordu ve hicbir sey onarmiyordu.
+     */
+    @Test
+    void theOwnerIsNotTrappedByItsOwnAnonymousSeat() throws Exception {
+        when(google.verify("gid-trap"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("trap@bumpinto.test", "Mehmet"));
+        Cookie hostAt = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-trap\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        JsonNode created = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
+                        .header("X-Client", "web").contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String slug = created.get("slug").asString();
+        String hostParticipantId = created.get("participantId").asString();
+
+        // Giris yapmamis ikinci tarayici: kendi linkine ANONIM katilir -> hayalet koltuk + cerez.
+        Cookie ghost = mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .header("X-Client", "web").contentType(JSON)
+                        .content("{\"displayName\":\"Mehmet\",\"lat\":51.1,\"lng\":5.1}"))
+                .andExpect(status().isCreated()).andReturn().getResponse()
+                .getCookie("bumpinto_pt_" + slug);
+        assertThat(ghost).isNotNull();
+
+        // O tarayicida host eylemi hayalet koltukla REDDEDILIR: tuzak gercek.
+        mvc.perform(post("/api/sessions/" + slug + "/shuffle").cookie(ghost))
+                .andExpect(status().isForbidden());
+
+        // Ayni tarayicida giris yapilir. Okuma hesabin koltugunu secer ve cerezi ONARIR.
+        MvcResult view = mvc.perform(get("/api/sessions/" + slug).cookie(hostAt, ghost)
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode body = json.readTree(view.getResponse().getContentAsString());
+        assertThat(body.get("viewer").get("participantId").asString()).isEqualTo(hostParticipantId);
+        assertThat(body.get("viewer").get("host").asBoolean()).isTrue();
+        Cookie repaired = view.getResponse().getCookie("bumpinto_pt_" + slug);
+        assertThat(repaired).isNotNull();
+        assertThat(repaired.getValue()).isNotEqualTo(ghost.getValue());
+
+        // Onarilan cerezle host yetkisi geri gelir: 403 degil, "yanlis durum" (409).
+        mvc.perform(post("/api/sessions/" + slug + "/shuffle").cookie(repaired))
+                .andExpect(status().isConflict());
+    }
+
     @Test
     void meRoundTripsDefaultTravelMode() throws Exception {
         when(google.verify("gid-travel"))

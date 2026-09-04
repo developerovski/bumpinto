@@ -1,12 +1,14 @@
 package com.bumpinto.adapter.in.web;
 
-import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,13 +23,10 @@ class ParticipantController {
 
     private final SessionCommands commands;
     private final ParticipantTokenDelivery tokens;
-    private final ParticipantIdentity me;
 
-    ParticipantController(SessionCommands commands, ParticipantTokenDelivery tokens,
-            ParticipantIdentity me) {
+    ParticipantController(SessionCommands commands, ParticipantTokenDelivery tokens) {
         this.commands = commands;
         this.tokens = tokens;
-        this.me = me;
     }
 
     /**
@@ -40,18 +39,18 @@ class ParticipantController {
             @Valid @RequestBody ApiDtos.JoinRequest request) {
         GeoPoint location = request.lat() == null || request.lng() == null ? null
                 : new GeoPoint(request.lat(), request.lng());
-        SessionCommands.JoinResult joined = commands.join(slug, WebPrincipals.callerOf(auth),
+        Participant joined = commands.join(slug, WebPrincipals.callerOf(auth),
                 request.displayName(), location,
                 request.locationLabel(), request.travelMode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
-        String bodyToken = tokens.deliver(response, client, joined.session(), joined.participant());
-        return response.body(new ApiDtos.JoinResponse(joined.participant().id(), bodyToken));
+        String bodyToken = tokens.deliver(response, client, slug, joined);
+        return response.body(new ApiDtos.JoinResponse(joined.id(), bodyToken));
     }
 
     @PutMapping("/location")
-    void location(Authentication auth, @PathVariable String slug,
+    void location(@AuthenticationPrincipal ParticipantPrincipal me, @PathVariable String slug,
             @Valid @RequestBody ApiDtos.LocationRequest request) {
-        commands.updateLocation(slug, me.of(auth, slug),
+        commands.updateLocation(slug, WebPrincipals.participantId(me),
                 new GeoPoint(request.lat(), request.lng()), request.label(), request.travelMode());
     }
 }

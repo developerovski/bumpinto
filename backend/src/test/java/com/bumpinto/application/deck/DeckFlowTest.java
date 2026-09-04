@@ -88,6 +88,24 @@ class DeckFlowTest {
                 "Ayşe", SOMEREN, false, null, false, null, null));
     }
 
+    /**
+     * Oda ici yetkinin YERI: host olmayan bir UYE host eylemlerini suremez. Kontrol web
+     * katmanindan buraya tasindi (A5): kimlik artik tek turdur (katilimci token'i) ve "host mu"
+     * sorusu imzali claim'e degil, koltugun DB'deki haline bakilarak yanitlanir.
+     */
+    @Test
+    void onlyTheHostSeatCanDriveHostActions() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+
+        assertThatThrownBy(() -> flow.findVenues("s1", ayse.id()))
+                .isInstanceOf(ForbiddenException.class);
+        flow.findVenues("s1", host.id());
+        assertThatThrownBy(() -> flow.shuffle("s1", ayse.id()))
+                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> flow.forceDecision("s1", ayse.id(), null))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
     @Test
     void findVenuesOrdersDeckByFairnessNotRating() {
         // host Den Bosch (51.6978, 5.3037), ayse Someren (51.3855, 5.7120) — ikisi de CAR.
@@ -99,7 +117,7 @@ class DeckFlowTest {
                 candAt(3, 4.4, new GeoPoint(51.55, 5.53)),
                 candAt(4, 4.3, new GeoPoint(51.53, 5.52)),
                 candAt(5, 4.2, new GeoPoint(51.56, 5.50))));
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
 
         List<Venue> deckOrder = deck.venuesOf(session.id());
         assertThat(deckOrder.get(deckOrder.size() - 1).externalId()).isEqualTo("x1"); // uzak sonda
@@ -110,10 +128,10 @@ class DeckFlowTest {
     @Test
     void shuffleKeepsFairnessOrderForEveryoneAndPublishesDeckReady() {
         providerResult.addAll(IntStream.range(0, 8).mapToObj(i -> cand(i, 3.0 + i * 0.2)).toList());
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
         List<UUID> browsingOrder = deck.venuesOf(session.id()).stream().map(Venue::id).toList();
 
-        flow.shuffle("s1", hostUser);
+        flow.shuffle("s1", host.id());
 
         Session s = store.sessionBySlug("s1").orElseThrow();
         assertThat(s.status()).isEqualTo(SessionStatus.SWIPING);
@@ -141,27 +159,27 @@ class DeckFlowTest {
                 candAt(4, 4.0, new GeoPoint(51.503, 5.500)),
                 candAt(2, 4.0, new GeoPoint(51.504, 5.500))));
 
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
         List<UUID> browsingOrder = deck.venuesOf(session.id()).stream().map(Venue::id).toList();
 
-        flow.shuffle("s1", hostUser);
+        flow.shuffle("s1", host.id());
         assertThat(deck.venuesOf(session.id()).stream().map(Venue::id).toList())
                 .isEqualTo(browsingOrder);
 
         // Ikinci "Karistir ve kaydir": host BROWSING'e donmus gibi tekrar tetikler — sonuc
         // yine AYNI olmali (idempotent), rastgele bir baska permutasyona kaymamali.
         store.saveSession(store.sessionBySlug("s1").orElseThrow().withStatus(SessionStatus.BROWSING));
-        flow.shuffle("s1", hostUser);
+        flow.shuffle("s1", host.id());
         assertThat(deck.venuesOf(session.id()).stream().map(Venue::id).toList())
                 .isEqualTo(browsingOrder);
     }
 
     @Test
     void shuffleRequiresBrowsingAndHost() {
-        assertThatThrownBy(() -> flow.shuffle("s1", hostUser))
+        assertThatThrownBy(() -> flow.shuffle("s1", host.id()))
                 .isInstanceOf(ConflictException.class); // COLLECTING'de deste yok
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
         assertThatThrownBy(() -> flow.shuffle("s1", UUID.randomUUID()))
                 .isInstanceOf(ForbiddenException.class);
     }
@@ -169,7 +187,7 @@ class DeckFlowTest {
     @Test
     void swipingIsRejectedWhileBrowsing() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
         assertThatThrownBy(() -> flow.swipe("s1", host.id(), venues.get(0).id(), true))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("BROWSING");
@@ -179,7 +197,7 @@ class DeckFlowTest {
     void findVenuesExpandsRadiusWhenSparseAndAcceptsSmallDeck() {
         providerResult.addAll(List.of(cand(0, 4.0), cand(1, 4.2), cand(2, 4.4))); // hep 3 sonuç
 
-        List<Venue> venues = flow.findVenues("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
 
         assertThat(venues).hasSize(3); // az sonuç kabul — istemci liste moduna düşer (spec §4)
         assertThat(requestedRadii).hasSize(4); // taban + 3 genişletme
@@ -199,7 +217,7 @@ class DeckFlowTest {
                 SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-01T09:59:59Z"), null, List.of()));
 
-        assertThatThrownBy(() -> flow.findVenues("s1", hostUser))
+        assertThatThrownBy(() -> flow.findVenues("s1", host.id()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("EXPIRED");
     }
@@ -207,8 +225,8 @@ class DeckFlowTest {
     @Test
     void fullSwipeFlowAutoDecidesWhenEveryoneFinishes() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID favori = venues.get(0).id();
 
         flow.swipe("s1", host.id(), favori, true);
@@ -229,8 +247,8 @@ class DeckFlowTest {
     @Test
     void runoffTieStaysOpenUntilHostForces() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID v0 = venues.get(0).id();
         UUID v1 = venues.get(1).id();
 
@@ -255,7 +273,7 @@ class DeckFlowTest {
                 .filter(p -> p.event().type().equals("runoff_tie")).findFirst().orElseThrow()
                 .event().payload()).containsEntry("finalistCount", 2);
 
-        flow.forceDecision("s1", hostUser, v0);
+        flow.forceDecision("s1", host.id(), v0);
         Session decided = store.sessionBySlug("s1").orElseThrow();
         assertThat(decided.status()).isEqualTo(SessionStatus.DECIDED);
         assertThat(decided.decidedVenueId()).isEqualTo(v0);
@@ -266,8 +284,8 @@ class DeckFlowTest {
     @Test
     void hostPicksVenueDirectlyWhileBrowsing() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.forceDecision("s1", hostUser, venues.get(1).id());
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.forceDecision("s1", host.id(), venues.get(1).id());
         Session s = store.sessionBySlug("s1").orElseThrow();
         assertThat(s.status()).isEqualTo(SessionStatus.DECIDED);
         assertThat(s.decidedVenueId()).isEqualTo(venues.get(1).id());
@@ -277,8 +295,8 @@ class DeckFlowTest {
     @Test
     void pickWhileBrowsingRejectsForeignVenue() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
-        assertThatThrownBy(() -> flow.forceDecision("s1", hostUser, UUID.randomUUID()))
+        flow.findVenues("s1", host.id());
+        assertThatThrownBy(() -> flow.forceDecision("s1", host.id(), UUID.randomUUID()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("not in this session");
     }
@@ -288,15 +306,15 @@ class DeckFlowTest {
         Session solo = store.saveSession(new Session(UUID.randomUUID(), "solo", hostUser, null,
                 ActivityType.COFFEE, SessionType.SOLO, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-02T10:00:00Z"), null, List.of()));
-        store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(), "Mehmet", DEN_BOSCH,
-                true, null, false, "'s-Hertogenbosch", null));
+        Participant soloHost = store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(),
+                "Mehmet", DEN_BOSCH, true, null, false, "'s-Hertogenbosch", null));
         store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(), "Ayşe", SOMEREN,
                 false, null, true, "Someren", null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("solo", hostUser);
+        List<Venue> venues = flow.findVenues("solo", soloHost.id());
         assertThat(store.sessionBySlug("solo").orElseThrow().status()).isEqualTo(SessionStatus.BROWSING);
-        assertThatThrownBy(() -> flow.shuffle("solo", hostUser)).isInstanceOf(ConflictException.class);
-        flow.forceDecision("solo", hostUser, venues.get(0).id());
+        assertThatThrownBy(() -> flow.shuffle("solo", soloHost.id())).isInstanceOf(ConflictException.class);
+        flow.forceDecision("solo", soloHost.id(), venues.get(0).id());
         assertThat(store.sessionBySlug("solo").orElseThrow().status()).isEqualTo(SessionStatus.DECIDED);
     }
 
@@ -311,8 +329,8 @@ class DeckFlowTest {
         Participant kerem = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 "Kerem", null, false, null, false, null, null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID favori = venues.get(0).id();
 
         flow.swipe("s1", host.id(), favori, true);
@@ -339,8 +357,8 @@ class DeckFlowTest {
     @Test
     void noLikesAtAllPublishesNoLikesEventAndKeepsSessionSwiping() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         flow.swipe("s1", host.id(), venues.get(0).id(), false);
         flow.swipe("s1", ayse.id(), venues.get(0).id(), false);
 
@@ -355,12 +373,12 @@ class DeckFlowTest {
     @Test
     void forceDecisionWithNoLikesIsConflictInsteadOfEvent() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         flow.swipe("s1", host.id(), venues.get(0).id(), false);
         flow.finishDeck("s1", host.id());
 
-        assertThatThrownBy(() -> flow.forceDecision("s1", hostUser, null))
+        assertThatThrownBy(() -> flow.forceDecision("s1", host.id(), null))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("no likes");
         assertThat(events.published).extracting(p -> p.event().type()).doesNotContain("no_likes");
@@ -368,7 +386,7 @@ class DeckFlowTest {
 
     @Test
     void emptyProviderResultRollsSessionBackToCollecting() {
-        assertThatThrownBy(() -> flow.findVenues("s1", hostUser))
+        assertThatThrownBy(() -> flow.findVenues("s1", host.id()))
                 .isInstanceOf(NoVenuesFoundException.class);
 
         assertThat(store.sessionBySlug("s1").orElseThrow().status()).isEqualTo(SessionStatus.COLLECTING);
@@ -379,8 +397,8 @@ class DeckFlowTest {
     @Test
     void undoSwipeRemovesTheLikeFromTheDecision() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID v0 = venues.get(0).id();
         UUID v1 = venues.get(1).id();
 
@@ -402,8 +420,8 @@ class DeckFlowTest {
         Participant manual = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 "Kerem", new GeoPoint(51.48, 5.66), false, null, true, "Helmond", null));
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         List<Venue> venues = deck.venuesOf(session.id());
         UUID fav = venues.get(0).id();
         for (Participant p : List.of(host, ayse)) {
@@ -423,8 +441,8 @@ class DeckFlowTest {
     @Test
     void unanimousDecisionRecordsKindAndTimestamp() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID fav = deck.venuesOf(session.id()).get(0).id();
         for (Participant p : List.of(host, ayse)) {
             flow.swipe("s1", p.id(), fav, true);
@@ -439,8 +457,8 @@ class DeckFlowTest {
     @Test
     void runoffRecordsItsReasonAndTheWinningVoteIsKindRunoff() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1), cand(2, 4.0)));
-        flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         List<Venue> venues = deck.venuesOf(session.id());
         // Ortak nokta yok → FALLBACK runoff
         flow.swipe("s1", host.id(), venues.get(0).id(), true);
@@ -466,8 +484,8 @@ class DeckFlowTest {
     @Test
     void hostPickWhileBrowsingRecordsForcedKind() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        List<Venue> venues = flow.findVenues("s1", hostUser);
-        flow.forceDecision("s1", hostUser, venues.get(0).id());
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.forceDecision("s1", host.id(), venues.get(0).id());
         assertThat(store.sessionBySlug("s1").orElseThrow().decisionKind())
                 .isEqualTo(DecisionKind.FORCED);
     }
@@ -475,12 +493,12 @@ class DeckFlowTest {
     @Test
     void forcedPartialEvaluationIsMarkedPartial() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
-        flow.shuffle("s1", hostUser);
+        flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
         UUID fav = deck.venuesOf(session.id()).get(0).id();
         flow.swipe("s1", host.id(), fav, true);
         flow.finishDeck("s1", host.id());     // ayse bitirmedi
-        flow.forceDecision("s1", hostUser, null);
+        flow.forceDecision("s1", host.id(), null);
         Session s = store.sessionBySlug("s1").orElseThrow();
         assertThat(s.status()).isEqualTo(SessionStatus.DECIDED);
         assertThat(s.decisionKind()).isEqualTo(DecisionKind.PARTIAL);
@@ -489,11 +507,11 @@ class DeckFlowTest {
     @Test
     void findVenuesResolvesMidpointLabelOnceAndSurvivesGeocoderFailure() {
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
         assertThat(store.sessionBySlug("s1").orElseThrow().midpointLabel()).isEqualTo("Eindhoven");
         assertThat(geocoder.calls).isEqualTo(1);
 
-        flow.shuffle("s1", hostUser);
+        flow.shuffle("s1", host.id());
         assertThat(geocoder.calls).isEqualTo(1); // etiket bir kez cozulur
     }
 
@@ -501,7 +519,7 @@ class DeckFlowTest {
     void midpointLabelStaysNullWhenGeocoderCannotResolve() {
         geocoder.label = null;
         providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
-        flow.findVenues("s1", hostUser);
+        flow.findVenues("s1", host.id());
         assertThat(store.sessionBySlug("s1").orElseThrow().midpointLabel()).isNull();
     }
 }

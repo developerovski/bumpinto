@@ -50,11 +50,11 @@ class ParticipantTokenFilterTest {
     }
 
     String participantToken(String slug) {
-        return tokens.issueParticipantToken(UUID.randomUUID(), SESSION_ID, slug, false, HOST_USER_ID);
+        return tokens.issueParticipantToken(UUID.randomUUID(), SESSION_ID, slug, false);
     }
 
     String hostToken(String slug) {
-        return tokens.issueParticipantToken(UUID.randomUUID(), SESSION_ID, slug, true, HOST_USER_ID);
+        return tokens.issueParticipantToken(UUID.randomUUID(), SESSION_ID, slug, true);
     }
 
     /** Hesap çerezinin doğrulanmış hâlini taklit eder: bearer filtresi filtreden ÖNCE koşar. */
@@ -117,7 +117,7 @@ class ParticipantTokenFilterTest {
     @Test
     void headerTokenFromAnotherSessionIsRejected() throws Exception {
         String other = tokens.issueParticipantToken(UUID.randomUUID(), OTHER_SESSION_ID, "q3n8p",
-                false, UUID.randomUUID());
+                false);
 
         assertThat(filter(headerRequest("/api/sessions/x7k2m/swipes", other))).isNull();
     }
@@ -125,7 +125,7 @@ class ParticipantTokenFilterTest {
     @Test
     void cookieTokenFromAnotherSessionIsRejected() throws Exception {
         String other = tokens.issueParticipantToken(UUID.randomUUID(), OTHER_SESSION_ID, "q3n8p",
-                false, UUID.randomUUID());
+                false);
 
         assertThat(filter(cookieRequest("/api/sessions/x7k2m/swipes", "x7k2m", other))).isNull();
     }
@@ -135,7 +135,7 @@ class ParticipantTokenFilterTest {
     void expiredTokenIsRejected() throws Exception {
         String stale = tokenService(Clock.fixed(Instant.now().minus(Duration.ofHours(25)),
                 ZoneOffset.UTC)).issueParticipantToken(UUID.randomUUID(), SESSION_ID, "x7k2m",
-                false, HOST_USER_ID);
+                false);
 
         assertThat(filter(headerRequest("/api/sessions/x7k2m/swipes", stale))).isNull();
     }
@@ -170,34 +170,38 @@ class ParticipantTokenFilterTest {
     }
 
     /**
-     * Host'un katilimci cerezi oturumu kuran HESABA aittir. Ayni tarayicida baska bir Google
-     * hesabina gecildiginde cerez geride kalir ve o tarayici host adina yazabilirdi.
-     * Devralinmis cerez kabul edilmez: kimlik hesaba geri duser.
+     * Oda ICINDE token KAZANIR — oturumun sahibi icin de. Filtre artik "bu tarayicidaki hesap
+     * oturumun sahibi mi" diye SORMAZ: host/misafir ayrimi bir YETKI karari ve yeri uygulama
+     * katmanidir ({@code DeckFlow#requireHost} koltugu DB'den okur). Eski iki gecit ve onlari
+     * besleyen huid claim'i, host'un kendi oturumunda misafir koltugu acabildigi dunyaya aitti;
+     * {@code SessionCommands#join} artik ayni cagirana ikinci koltuk actirmiyor.
      */
     @Test
-    void inheritedHostCookieIsIgnoredWhileAnotherAccountIsSignedIn() throws Exception {
+    void theParticipantTokenWinsInsideTheRoomEvenForTheSessionOwner() throws Exception {
         accountSignedInAs(HOST_USER_ID);
 
         Authentication auth = filter(cookieRequest("/api/sessions/x7k2m/location", "x7k2m",
                 hostToken("x7k2m")));
 
-        assertThat(auth.getPrincipal()).isInstanceOf(Jwt.class);
+        assertThat(auth.getPrincipal()).isInstanceOf(ParticipantPrincipal.class);
+        assertThat(((ParticipantPrincipal) auth.getPrincipal()).host()).isTrue();
     }
 
     /**
-     * Host kendi oturumuna MISAFIR olarak da katilmis olabilir (ikinci tarayici, gizli pencere).
-     * O tarayicida hesap JWT'si + host=false katilimci token'i yan yana durur; dar kimlik
-     * principal'i ezseydi host KENDI oturumunda "Mekanlari bul"u kaybeder, arayuz de onu
-     * davetli sanardi. Oturumun sahibi oldugu token'in huid claim'inden DB'siz anlasilir.
+     * Katilimci principal'i hesap kimligini EZER ama YOK ETMEZ. Tarayicida kalmis bir cerez
+     * YANLIS koltugu gosteriyor olabilir (uye once anonim katilip sonra giris yaptiysa); hesap
+     * kaybolursa onarim yolu da kaybolurdu (bkz. WebPrincipals#seatOf).
      */
     @Test
-    void sessionOwnerKeepsItsAccountIdentityEvenWithAGuestTokenInTheSameBrowser() throws Exception {
+    void theAccountIdentitySurvivesUnderneathTheParticipantPrincipal() throws Exception {
         accountSignedInAs(HOST_USER_ID);
 
         Authentication auth = filter(cookieRequest("/api/sessions/x7k2m/location", "x7k2m",
                 participantToken("x7k2m")));
 
-        assertThat(auth.getPrincipal()).isInstanceOf(Jwt.class);
+        assertThat(auth.getPrincipal()).isInstanceOf(ParticipantPrincipal.class);
+        assertThat(auth.getDetails()).isInstanceOfSatisfying(Jwt.class,
+                jwt -> assertThat(jwt.getSubject()).isEqualTo(HOST_USER_ID.toString()));
     }
 
     /** Hesap cerezi yoksa host kendi katilimci cerezi ile calismaya devam eder. */

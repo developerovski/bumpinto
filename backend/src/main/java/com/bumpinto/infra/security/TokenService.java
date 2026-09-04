@@ -28,8 +28,6 @@ public class TokenService {
     public static final String SESSION_CLAIM = "sid";
     public static final String SLUG_CLAIM = "slug";
     public static final String HOST_CLAIM = "host";
-    /** Oturumu KURAN hesabin id'si: filtre "bu tarayicidaki hesap oturumun sahibi mi"yi DB'siz sorar. */
-    public static final String HOST_USER_CLAIM = "huid";
 
     /** Katilimci token'i oturumun kendisi kadar (24s) yasar; cerez Max-Age'i ile ayni kaynak. */
     public static final Duration PARTICIPANT_TTL = Duration.ofHours(24);
@@ -73,16 +71,18 @@ public class TokenService {
      *
      * <p>{@code typ=pt}: hesap token'i ile AYNI sir imzaladigi icin tur ayrimi sart — bu claim
      * olmasa katilimci token'i {@code Authorization: Bearer} ile hesap kimligi olarak gecerdi.
+     *
+     * <p>{@code host}: oda ICINDEKI tek yetki kaynagi. Hesap token'i 12 saat, oturum 24 saat
+     * yasiyordu; yetki hesaba bagliyken host arada kendi oturumunu yonetemez oluyordu.
      */
     public String issueParticipantToken(UUID participantId, UUID sessionId, String slug,
-                                        boolean host, UUID hostUserId) {
+                                        boolean host) {
         Instant now = clock.instant();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(participantId.toString())
                 .claim(SESSION_CLAIM, sessionId.toString())
                 .claim(SLUG_CLAIM, slug)
                 .claim(HOST_CLAIM, host)
-                .claim(HOST_USER_CLAIM, hostUserId.toString())
                 .claim(TYPE_CLAIM, PARTICIPANT_TYPE)
                 .issuedAt(now)
                 .expiresAt(now.plus(PARTICIPANT_TTL))

@@ -138,47 +138,6 @@ class SessionQueriesTest {
                 .hasMessageContaining("session not found");
     }
 
-    /**
-     * Host da bir katilimcidir. Katilimci token'i yalniz oturum kurulurken BIR KEZ cereze
-     * yazilir; host oturumu baska bir tarayicida/cihazda actiginda elinde sadece hesap
-     * JWT'si olur. Kimligi oradan cozemezsek deste yazmalari 403 doner.
-     */
-    @Test
-    void hostParticipantIsResolvedFromTheAccountThatOwnsTheSession() {
-        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
-        UUID hostParticipant = participantIn(session, true).id();
-        participantIn(session, false);
-
-        assertThat(queries.participantIdOf("x7k2m", session.hostId()))
-                .contains(hostParticipant);
-    }
-
-    /** Baska bir kullanicinin JWT'si host kimligini ACMAZ — yoksa herkes host adina kaydirirdi. */
-    @Test
-    void anotherAccountDoesNotResolveToTheHostParticipant() {
-        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
-        participantIn(session, true);
-
-        assertThat(queries.participantIdOf("x7k2m", UUID.randomUUID())).isEmpty();
-        assertThat(queries.participantIdOf("yok", session.hostId())).isEmpty();
-    }
-
-    /**
-     * Host'a ozel bir dal DEGIL: koltugu olan davetli uye de katilimci cerezi olmayan bir
-     * tarayicida kendi kimligini geri bulur — yoksa ikinci bir koltukla girerdi.
-     */
-    @Test
-    void aSignedInGuestAlsoResolvesToItsOwnSeat() {
-        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
-        participantIn(session, true);
-        UUID guestAccount = UUID.randomUUID();
-        Participant guest = sessions.saveParticipant(new Participant(UUID.randomUUID(),
-                session.id(), "Ayşe", new GeoPoint(51.4, 5.4), false, null, false, null, null,
-                guestAccount));
-
-        assertThat(queries.participantIdOf("x7k2m", guestAccount)).contains(guest.id());
-    }
-
     @Test
     void voteTallyIsHiddenUntilEveryFinisherHasVoted() {
         // 3 katilimci, yalniz 2'si finisher (3.'su elle konum: deckDone=false, votes()=false) —

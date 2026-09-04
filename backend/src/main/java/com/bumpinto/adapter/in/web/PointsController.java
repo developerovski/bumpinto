@@ -3,12 +3,12 @@ package com.bumpinto.adapter.in.web;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** SOLO oturumda host'un elle ekledigi konumlar. Host JWT gerekir. */
+/** SOLO oturumda host'un elle ekledigi konumlar. Host'un KATILIMCI kimligi gerekir. */
 @RestController
 @RequestMapping("/api/sessions/{slug}/points")
 class PointsController {
@@ -28,9 +28,9 @@ class PointsController {
     }
 
     @PostMapping
-    ResponseEntity<ApiDtos.ParticipantDto> add(@AuthenticationPrincipal Jwt jwt,
+    ResponseEntity<ApiDtos.ParticipantDto> add(@AuthenticationPrincipal ParticipantPrincipal me,
             @PathVariable String slug, @Valid @RequestBody ApiDtos.PointRequest request) {
-        Participant point = commands.addPoint(slug, WebPrincipals.accountId(jwt),
+        Participant point = commands.addPoint(slug, WebPrincipals.participantId(me),
                 request.displayName(), request.locationLabel(),
                 new GeoPoint(request.lat(), request.lng()), request.travelMode());
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiDtos.ParticipantDto(
@@ -39,9 +39,9 @@ class PointsController {
     }
 
     @DeleteMapping("/{participantId}")
-    ResponseEntity<Void> remove(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
-                                @PathVariable UUID participantId) {
-        commands.removePoint(slug, WebPrincipals.accountId(jwt), participantId);
+    ResponseEntity<Void> remove(@AuthenticationPrincipal ParticipantPrincipal me,
+                                @PathVariable String slug, @PathVariable UUID participantId) {
+        commands.removePoint(slug, WebPrincipals.participantId(me), participantId);
         return ResponseEntity.noContent().build();
     }
 }
