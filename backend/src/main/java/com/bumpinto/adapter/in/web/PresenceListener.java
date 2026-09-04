@@ -10,6 +10,10 @@ import org.springframework.web.socket.messaging.AbstractSubProtocolEvent;
 import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import org.springframework.scheduling.TaskScheduler;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,12 +26,17 @@ import java.util.UUID;
 @Component
 class PresenceListener {
 
+    /** Grace tam sinirinda okumamak icin kucuk pay — saat cozunurlugu ve is sirasi icin. */
+    private static final long GRACE_MARGIN_MS = 250;
+
     private final PresencePort presence;
     private final SessionEventsPort events;
+    private final TaskScheduler scheduler;
 
-    PresenceListener(PresencePort presence, SessionEventsPort events) {
+    PresenceListener(PresencePort presence, SessionEventsPort events, TaskScheduler scheduler) {
         this.presence = presence;
         this.events = events;
+        this.scheduler = scheduler;
     }
 
     /**
@@ -48,6 +57,28 @@ class PresenceListener {
     @EventListener
     void onDisconnect(SessionDisconnectEvent event) {
         apply(event, presence::left);
+        // Kopma anindaki yayin "hala online" der — kisi grace penceresi icindedir. Durum ancak
+        // pencere GECINCE degisir ve o an hicbir sey olmaz: istemci degisikligi 30 sn'lik emniyet
+        // poll'une kadar goremezdi. Kullanici gozlemi (2026-09-04) tam olarak buydu: "biri
+        // girdiginde aninda online oluyor ama cikinca sayfayi yenilemeden offline'a gecmiyor."
+        // Ikinci zil, durumun gercekten degistigi anda calar.
+        slugOf(event).ifPresent(this::ringWhenGraceExpires);
+    }
+
+    private void ringWhenGraceExpires(String slug) {
+        Duration grace = presence.graceWindow();
+        if (grace.isZero() || grace.isNegative()) {
+            return; // pencere yoksa ilk yayin zaten dogruyu soyluyordu
+        }
+        scheduler.schedule(() -> events.publish(slug, SessionEvent.presenceChanged()),
+                Instant.now().plus(grace).plusMillis(GRACE_MARGIN_MS));
+    }
+
+    private static Optional<String> slugOf(AbstractSubProtocolEvent event) {
+        Map<String, Object> attributes =
+                SimpMessageHeaderAccessor.wrap(event.getMessage()).getSessionAttributes();
+        Object slug = attributes == null ? null : attributes.get(SessionWsHandshake.SLUG);
+        return slug instanceof String value ? Optional.of(value) : Optional.empty();
     }
 
     private void apply(AbstractSubProtocolEvent event, PresenceChange change) {

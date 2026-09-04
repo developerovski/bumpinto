@@ -233,6 +233,10 @@ public class FakeStores {
             }
         }
 
+        @Override public java.time.Duration graceWindow() {
+            return java.time.Duration.ZERO;
+        }
+
         @Override public Set<UUID> presentIn(UUID sessionId) {
             return Set.copyOf(present.getOrDefault(sessionId, Set.of()));
         }

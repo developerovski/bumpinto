@@ -89,12 +89,16 @@ adapter/out/presence/InMemoryPresence    ConcurrentHashMap: sessionId -> partici
 adapter/in/web/PresenceListener  SessionConnectedEvent / SessionDisconnectEvent -> port + presence_changed olayı
 ```
 
-**Grace penceresi 45 sn.** Kişi *bağlıysa* **ya da** *son 45 sn içinde koptuysa* "mevcut" sayılır.
+**Grace penceresi 2 sn** (ilk karar 45 sn'ydi; kullanıcı 2026-09-04'te "kopma anında görünmeli" dedi ve 45 sn bunu öldürüyordu). Kişi *bağlıysa* **ya da** *son 2 sn içinde koptuysa* "mevcut" sayılır.
 Sayfa yenileme (~1 sn), kısa ağ kesintisi ve mobil arka plan bu eşiği devirmez. Eşik enjekte edilen
 `Clock` ile ölçülür — saf birim testi mümkün, `Thread.sleep` yok.
 
 **Sayaç, bayrak değil.** Aynı kişi iki sekme açabilir; `openConnections` sayılır, sıfıra inince
 `lastSeenAt` yazılır. Tek sekmenin kapanması kişiyi çevrimdışı yapmaz.
+
+**Kopmada iki yayın.** Kopma anındaki `presence_changed` henüz "online" cevabını taşır (grace
+içindeyiz); ikinci bir zil grace bitiminde zamanlanır ve gerçek değişikliği duyurur. Tek zil,
+"çıkan kişi ekranda online kalıyor" demektir — istemci ancak emniyet poll'ünde fark eder.
 
 **Satır asla silinmez.** Konum, swipe'lar, orta nokta ve deste geometrisi korunur.
 
@@ -184,7 +188,9 @@ Zenginleştirilecek (yeni dosya açılmaz):
   an çevrimdışı görünür ve ilk reconnect'te düzelir. `ProviderQuotaCache` ile aynı sınıf borç.
 - **Tarayıcı dışı istemci.** WS artık kimlik ister, ama presence "sekme açık" demektir; kullanıcının
   ekrana bakıyor olması değil.
-- **45 sn kör nokta.** Gerçekten ayrılan biri 45 sn boyunca mevcut sayılır; bu bilinçli takas.
+- **Kör nokta artık heartbeat'tir, grace değil.** Grace 2 sn'ye indi (yalnız sayfa yenilemesini
+  yutar). Gerçek sınır temiz kapanmayan bağlantılar: kapak, uçak modu, ağ geçişi FIN göndermez ve
+  kopukluk ancak 10 sn'lik çift yönlü heartbeat kaçırılınca anlaşılır (~20 sn).
   Bu sınırın geçerli olması STOMP heartbeat'inin açık olmasına bağlıdır: kapalıyken sekme
   kapatma dışındaki kopmalar (kapak, uçak modu, ağ geçişi) yalnız TCP zaman aşımıyla anlaşılır
   ve pencere saatlere çıkar. Uygulamada 10 sn çift yönlü heartbeat açıktır.

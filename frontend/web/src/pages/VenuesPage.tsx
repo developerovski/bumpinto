@@ -46,6 +46,7 @@ export default function VenuesPage({ view }: { view: SessionView }) {
           copiedLabel={t("lobby.copied")}
           kind="white"
           size="fit"
+          copyOnly
         />
         <Button
           type="button"

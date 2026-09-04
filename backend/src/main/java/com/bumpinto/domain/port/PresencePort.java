@@ -1,5 +1,6 @@
 package com.bumpinto.domain.port;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,4 +18,11 @@ public interface PresencePort {
 
     /** Bagli olan YA DA grace penceresi icinde kopmus katilimcilar. */
     Set<UUID> presentIn(UUID sessionId);
+
+    /**
+     * Kopmadan sonra kisinin hala "burada" sayildigi sure. Cagirana lazim: kopma anindaki yayin
+     * "hala online" der ve durum ancak bu sure GECINCE degisir — o an icin ikinci bir yayin
+     * gerekir, yoksa istemci degisikligi ancak emniyet poll'unde gorur.
+     */
+    Duration graceWindow();
 }

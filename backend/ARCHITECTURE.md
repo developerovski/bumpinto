@@ -488,15 +488,23 @@ Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buray
 2. **En-iyi-çaba.** Yayın hatası yakalanır ve loglanır, çağırana sızmaz. Sızsaydı commit başarılı
    olduğu halde istemci 500 görür ve aynı transaction'ın kalan kancaları atlanırdı. İstemci
    yeniden bağlandığında durumu `GET` ile tazeler.
-3. **Presence süreç içidir.** `InMemoryPresence` tek pod'un hafızasında yaşar: çok pod'da
-   paylaşılmaz, restart'ta boşalır (ilk reconnect doldurur) ve 45 sn'lik grace penceresi yüzünden
-   gerçekten ayrılan biri bir süre daha "burada" görünür. `ProviderQuotaCache` ile aynı sınıf borç.
+3. **Kopmada İKİ yayın vardır.** Kopma anındaki `presence_changed` "hâlâ online" der — kişi grace
+   penceresi içindedir. Durum ancak pencere geçince değişir ve o an kendiliğinden hiçbir şey
+   yayınlanmaz; tek zille istemci değişikliği ancak 30 sn'lik emniyet poll'ünde görürdü. Bu yüzden
+   `PresenceListener` grace bitiminde ikinci bir zil zamanlar (`TaskScheduler`). Zamanlanmış zil
+   kaldırılırsa "çıkan kişi ekranda online kalıyor" hatası geri gelir; testi
+   `PresenceOverWebSocketTest.aClosingSocketNotifiesTheOnesStillInTheRoom`.
+4. **Presence süreç içidir.** `InMemoryPresence` tek pod'un hafızasında yaşar: çok pod'da
+   paylaşılmaz, restart'ta boşalır (ilk reconnect doldurur) ve 2 sn'lik grace penceresi yalnızca
+   sayfa yenilemesini yutar (kullanıcı kararı 2026-09-04: sekme kapanınca kişi ANINDA çevrimdışı
+   görünmeli; ilk 45 sn'lik değer bunu öldürüyordu). `ProviderQuotaCache` ile aynı sınıf borç.
    Kimlik `SessionConnectEvent`'ten okunur, `SessionConnectedEvent`'ten **değil**: ikincisi broker'ın
    CONNECT_ACK'idir ve handshake niteliklerini taşımaz (`PresenceListener`).
    Grace penceresinin anlamlı olması **heartbeat'e bağlıdır**: `TaskScheduler` verilmezse STOMP
    heartbeat'i sessizce kapanır ve kopukluk yalnız TCP zaman aşımıyla (saatler) anlaşılır — sekme
    kapatmak FIN gönderir ama kapak kapanması göndermez. 10 sn çift yönlü heartbeat bunu ~20 sn'ye
-   bağlar (`WebSocketConfig.configureMessageBroker`).
+   bağlar (`WebSocketConfig.configureMessageBroker`) — yani "anında" yalnız temiz kapanışlar için
+   geçerlidir, ağ kaybında üst sınır heartbeat'tir.
    Presence yalnız **geri alınabilir giriş** kararlarını kapatır (`shuffle`); deste bitişi gibi
    geri alınamaz kararlar satıra bakmaya devam eder — bir ağ dalgalanması kalıcı bir kararı
    erken tetiklememelidir.

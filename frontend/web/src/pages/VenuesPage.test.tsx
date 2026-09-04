@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
 import VenuesPage from "./VenuesPage";
 
@@ -46,5 +46,26 @@ describe("VenuesPage — davet ve deste kapısı", () => {
   it("iki kişi de odadaysa Karıştır açık", () => {
     show({ ...base, sessionType: "GROUP", viewer: { participantId: "h", host: true }, participants: [host, { ...guest, online: true }] });
     expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeEnabled();
+  });
+});
+
+describe("VenuesPage — davet linki panoya yazar", () => {
+  it("tıklayınca paylaşım sayfası AÇILMAZ, link kopyalanır ve 'Kopyalandı' der", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const share = vi.fn();
+    const clipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    try {
+      show({ ...base, sessionType: "GROUP", viewer: { participantId: "h", host: true }, participants: [host, guest] });
+      fireEvent.click(screen.getByRole("button", { name: /Davet linki/ }));
+
+      expect(share).not.toHaveBeenCalled();
+      expect(writeText).toHaveBeenCalledWith(`${location.origin}/j/snu7zra8`);
+      expect(await screen.findByText("Kopyalandı")).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, "clipboard", { value: clipboard, configurable: true });
+      Reflect.deleteProperty(navigator, "share");
+    }
   });
 });

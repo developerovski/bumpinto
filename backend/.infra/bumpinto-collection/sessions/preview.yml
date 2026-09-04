@@ -38,6 +38,6 @@ docs:
 
     Rate limit: genel /api 120/dk.
 
-    `hostOnline`: host su an oturumda mi — acik soketi VAR ya da son 45 saniye icinde koptu.
+    `hostOnline`: host su an oturumda mi — acik soketi VAR ya da son 2 saniye icinde koptu.
     Katilmayi ENGELLEMEZ, yalniz Katil ekranindaki rozeti besler: davet linki akisi zaten
     asenkrondur (host linki paylasip telefonunu kilitleyebilir, bu normaldir).

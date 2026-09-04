@@ -58,19 +58,19 @@ class InMemoryPresenceTest {
     }
 
     @Test
-    void shortDisconnectStaysPresentWithinGrace() {
+    void aPageRefreshDoesNotFlipSomeoneOffline() {
         presence.arrived(session, ayse, "ws-1");
         presence.left(session, ayse, "ws-1");
-        clock.advance(Duration.ofSeconds(30));
+        clock.advance(Duration.ofSeconds(1));
 
         assertThat(presence.presentIn(session)).containsExactly(ayse);
     }
 
     @Test
-    void staleDisconnectDropsOutAfterGrace() {
+    void aClosedTabGoesOfflineAlmostImmediately() {
         presence.arrived(session, ayse, "ws-1");
         presence.left(session, ayse, "ws-1");
-        clock.advance(Duration.ofSeconds(46));
+        clock.advance(Duration.ofSeconds(3));
 
         assertThat(presence.presentIn(session)).isEmpty();
     }

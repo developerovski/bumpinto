@@ -1,5 +1,12 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.adapter.out.presence.InMemoryPresence;
+import com.bumpinto.domain.port.PresencePort;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import java.time.Clock;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -13,6 +20,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompHeaders;
+import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.TestPropertySource;
@@ -65,7 +78,21 @@ import static org.mockito.Mockito.when;
         "bumpinto.cookies.secure=false",
         "bumpinto.cookies.domain="
 })
+@Import(PresenceOverWebSocketTest.ShortGrace.class)
 class PresenceOverWebSocketTest {
+
+    /**
+     * Grace penceresi uretimde 45 sn; kopma ayagini gercek zamanda olcmek icin milisaniyeye
+     * cekilir. Sinanan sey pencerenin UZUNLUGU degil (o InMemoryPresenceTest'te sahte Clock ile
+     * olculur), left()'in GERCEK bir soket kapanisinda cagrilip cagrilmadigidir.
+     */
+    @TestConfiguration
+    static class ShortGrace {
+        @Bean @Primary
+        PresencePort shortGracePresence(Clock clock) {
+            return new InMemoryPresence(clock, Duration.ofSeconds(1));
+        }
+    }
 
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = PostgresContainer.shared();
@@ -96,7 +123,7 @@ class PresenceOverWebSocketTest {
     }
 
     @Test
-    void hostShowsOnlineWhileConnectedAndStaysOnlineWithinGraceAfterDisconnect() throws Exception {
+    void hostGoesOnlineOnConnectAndOfflineWhenTheSocketCloses() throws Exception {
         when(google.verify("gid-presence"))
                 .thenReturn(new GoogleIdVerifier.GoogleUser("presence@bumpinto.test", "Mehmet"));
 
@@ -139,11 +166,87 @@ class PresenceOverWebSocketTest {
         await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
                 .untilAsserted(() -> assertThat(isHostOnline(slug, hostToken)).isTrue());
 
-        // 4 — baglanti kesilir ama 45 sn'lik grace penceresi ICINDEYIZ: sayfa yenilemesi/gecici
-        // kopma kisiyi hemen cevrimdisi YAPMAMALI — tasarimin butun amaci bu.
+        // 4 — KOPMA AYAGI: soket kapaninca left() gercekten cagriliyor mu? Ilk yazimda burasi
+        // "grace icinde hala online" diye sinaniyordu; o iddia left() HIC cagrilmasa da gecerdi
+        // (baglanti kumesi bosalmayinca grace zaten devreye girmez) ve tarayicida kisi sonsuza
+        // kadar online kaldi. Sinanmasi gereken bosalma, dayanikliligi degil.
         stompSession.disconnect();
-        Thread.sleep(300); // disconnect olayinin islenmesi icin kisa bir pay
-        assertThat(isHostOnline(slug, hostToken)).isTrue();
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(isHostOnline(slug, hostToken)).isFalse());
+    }
+
+    /**
+     * YAYIN AYAGI: kopan soket, oturumda KALAN abonelere presence_changed gonderiyor mu?
+     * Kullanici gozlemi (2026-09-04): "biri girdiginde aninda online oluyor ama cikinca sayfayi
+     * yenilemeden offline'a gecmiyor." Bu asimetri tam olarak buraya isaret eder — katilim IKI
+     * olay uretir (participant_joined + presence_changed), cikis YALNIZ presence_changed. Ilki
+     * calisip ikincisi calismazsa ekranda tam bu davranis gorunur.
+     *
+     * <p>Onceki testler yalnizca HTTP ile "artik offline mi" diye soruyordu; yayinin gidip
+     * gitmedigini hicbir sey iddia etmiyordu.
+     */
+    @Test
+    void aClosingSocketNotifiesTheOnesStillInTheRoom() throws Exception {
+        when(google.verify("gid-broadcast"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("broadcast@bumpinto.test", "Mehmet"));
+        String accessToken = json.readTree(send(HttpRequest.newBuilder(uri("/api/auth/google"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"idToken\":\"gid-broadcast\"}")))
+                .body()).get("accessToken").asString();
+        JsonNode created = json.readTree(send(HttpRequest.newBuilder(uri("/api/sessions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"activityType\":\"COFFEE\","
+                        + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))).body());
+        String slug = created.get("slug").asString();
+        String hostToken = created.get("participantToken").asString();
+
+        // Davetli katilir (kamu ucu) ve kendi token'ini alir.
+        JsonNode joined = json.readTree(send(HttpRequest.newBuilder(uri("/api/sessions/" + slug + "/participants"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"displayName\":\"Ayşe\","
+                        + "\"lat\":51.3855,\"lng\":5.7120}"))).body());
+        String guestToken = joined.get("participantToken").asString();
+
+        // Host odada KALIR ve dinler; davetli baglanip kopar.
+        BlockingQueue<String> received = new LinkedBlockingQueue<>();
+        StompSession watcher = connect(slug, hostToken);
+        watcher.subscribe("/topic/session/" + slug, new StompFrameHandler() {
+            @Override public Type getPayloadType(StompHeaders headers) {
+                return byte[].class;
+            }
+
+            @Override public void handleFrame(StompHeaders headers, Object payload) {
+                received.add(new String((byte[]) payload, StandardCharsets.UTF_8));
+            }
+        });
+
+        StompSession leaver = connect(slug, guestToken);
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
+                .until(() -> received.stream().anyMatch(frame -> frame.contains("presence_changed")));
+        received.clear();
+
+        leaver.disconnect();
+
+        // IKI zil beklenir. Birincisi kopma aninda calar ama o an cevap HENUZ degismemistir
+        // (kisi grace penceresi icinde hala online); ikincisi pencere gecince calar ve gercek
+        // degisikligi tasir. Tek zil varken istemci degisikligi ancak 30 sn'lik emniyet
+        // poll'unde goruyordu — ekranda "cikan kisi online kaliyor" diye gorunen sey buydu.
+        await().atMost(Duration.ofSeconds(8)).pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(received.stream()
+                        .filter(frame -> frame.contains("presence_changed")).count())
+                        .as("kopmada bir, grace bitiminde bir daha")
+                        .isGreaterThanOrEqualTo(2));
+        assertThat(isHostOnline(slug, hostToken)).isTrue(); // izleyen hala odada
+        watcher.disconnect();
+    }
+
+    private StompSession connect(String slug, String participantToken) throws Exception {
+        WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+        headers.add(ParticipantTokenFilter.HEADER, participantToken);
+        return stompClient.connectAsync("ws://localhost:" + port + "/api/sessions/" + slug + "/ws",
+                headers, new StompSessionHandlerAdapter() {
+                }).get(5, TimeUnit.SECONDS);
     }
 
     private boolean isHostOnline(String slug, String hostToken) throws Exception {
