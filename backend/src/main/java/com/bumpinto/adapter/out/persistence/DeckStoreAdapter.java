@@ -112,10 +112,6 @@ public class DeckStoreAdapter implements DeckStorePort {
                 .collect(Collectors.groupingBy(e -> e.venueId, Collectors.counting()));
     }
 
-    @Override public long votersCount(UUID sessionId) {
-        return votes.findBySessionId(sessionId).size();
-    }
-
     @Override public Map<UUID, UUID> votesByParticipant(UUID sessionId) {
         return votes.findBySessionId(sessionId).stream()
                 .collect(Collectors.toMap(e -> e.participantId, e -> e.venueId));

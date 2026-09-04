@@ -89,16 +89,6 @@ public class SessionCommands {
 
     /**
      * SOLO: host elle konum ekler. Token'siz, oy vermeyen katilimci; yalniz COLLECTING'de.
-     * Eski imza: mod verilmez, varsayilan CAR (Participant'in compact ctor'u coerce eder).
-     */
-    @Transactional
-    public Participant addPoint(String slug, UUID hostUserId, String displayName,
-                                String locationLabel, GeoPoint location) {
-        return addPoint(slug, hostUserId, displayName, locationLabel, location, null);
-    }
-
-    /**
-     * SOLO: host elle konum ekler. Token'siz, oy vermeyen katilimci; yalniz COLLECTING'de.
      * travelMode verilmezse (null) varsayilan CAR — Participant'in compact ctor'u zaten coerce
      * eder, burada tekrar etmiyoruz (spec §5.A.7).
      */

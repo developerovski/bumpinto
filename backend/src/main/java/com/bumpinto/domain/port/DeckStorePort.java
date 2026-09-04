@@ -17,7 +17,6 @@ public interface DeckStorePort {
     Map<UUID, Set<UUID>> likesByParticipant(UUID sessionId);
     void castVote(UUID sessionId, UUID venueId, UUID participantId);
     Map<UUID, Long> voteTally(UUID sessionId);
-    long votersCount(UUID sessionId);
     /**
      * Runoff oylari: katilimci -> sectigi mekan. Anahtarlar "kim kilitledi" rozetini besler;
      * DEGERLER yalnizca kisinin KENDI secimini geri vermek icin kullanilir (sayfa yenilenince

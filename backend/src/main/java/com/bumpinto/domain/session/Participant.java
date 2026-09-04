@@ -43,10 +43,6 @@ public record Participant(UUID id, UUID sessionId, String displayName, GeoPoint 
         return hasLocation() && !manual;
     }
 
-    public Participant locatedAt(GeoPoint newLocation, String newLabel) {
-        return locatedAt(newLocation, newLabel, travelMode);
-    }
-
     public Participant locatedAt(GeoPoint newLocation, String newLabel, TravelMode newMode) {
         return new Participant(id, sessionId, displayName, newLocation, host, token, deckDoneAt,
                 manual, newLabel, newMode == null ? travelMode : newMode);

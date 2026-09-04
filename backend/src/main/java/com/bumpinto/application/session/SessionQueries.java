@@ -73,8 +73,8 @@ public class SessionQueries {
         List<Venue> venues = VENUES_VISIBLE.contains(session.status())
                 ? deck.venuesOf(session.id()) : List.of();
 
-        // RUNOFF'ta oy tablosuna TEK sorgu: votersCount/voteTally/votesByParticipant ayni
-        // satirlari uc kez cekmek yerine, katilimci->mekan haritasindan bellek icinde turetilir.
+        // RUNOFF'ta oy tablosuna TEK sorgu: voteTally/votesByParticipant ayni
+        // satirlari iki kez cekmek yerine, katilimci->mekan haritasindan bellek icinde turetilir.
         Map<UUID, UUID> runoffVotes = session.status() == SessionStatus.RUNOFF
                 ? deck.votesByParticipant(session.id()) : Map.of();
 

@@ -10,7 +10,11 @@ public record Venue(UUID id, UUID sessionId, String provider, String externalId,
                     String category, String address, String locality, Integer ratingCount,
                     String hoursToday, String placeLink) {
 
-    /** Eski imza: saglayici alanlari olmadan (eski satirlar ve testler). */
+    /**
+     * Yalnızca TESTLER için kısa imza; üretimde çağrısı yoktur (sağlayıcı alanları her zaman
+     * dolar). Silinmesi denendi ve geri alındı: 5 test çağrı yerine altışar {@code null}
+     * eklemek testleri okunmaz hale getiriyordu — kazanç 7 satır, bedeli kapsamın okunurluğu.
+     */
     public Venue(UUID id, UUID sessionId, String provider, String externalId, String name,
                  GeoPoint location, Double rating, Integer priceLevel, String photoUrl,
                  String mapsUrl, int deckOrder) {

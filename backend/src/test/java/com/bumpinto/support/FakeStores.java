@@ -175,9 +175,6 @@ public class FakeStores {
                     .collect(Collectors.groupingBy(Vote::venueId, Collectors.counting()));
         }
 
-        @Override public long votersCount(UUID sessionId) {
-            return votes.values().stream().filter(v -> v.sessionId().equals(sessionId)).count();
-        }
 
         @Override public Map<UUID, UUID> votesByParticipant(UUID sessionId) {
             return votes.values().stream().filter(v -> v.sessionId().equals(sessionId))

@@ -78,8 +78,8 @@ class StoreAdapterTest {
         assertThat(likes.get(host.id())).containsExactly(v.id());
 
         deck.castVote(s.id(), v.id(), host.id());
-        assertThat(deck.voteTally(s.id())).containsEntry(v.id(), 1L);
-        assertThat(deck.votersCount(s.id())).isEqualTo(1);
+        // containsOnly: "fazladan oy satiri yok" kapsami votersCount'tan buraya tasindi.
+        assertThat(deck.voteTally(s.id())).containsOnly(entry(v.id(), 1L));
 
         Session runoff = sessions.saveSession(s.inRunoff(List.of(v.id()), RunoffReason.FALLBACK));
         assertThat(sessions.sessionBySlug("slugtest").orElseThrow().runoffVenueIds())
@@ -161,7 +161,6 @@ class StoreAdapterTest {
         assertThat(deck.venuesOf(a.id())).extracting(Venue::id).containsExactly(va.id());
         assertThat(deck.likesByParticipant(a.id())).containsOnlyKeys(pa.id());
         assertThat(deck.voteTally(a.id())).containsOnly(entry(va.id(), 1L));
-        assertThat(deck.votersCount(a.id())).isEqualTo(1);
         assertThat(sessions.participantsOf(a.id())).extracting(Participant::id)
                 .containsExactly(pa.id());
     }
@@ -207,7 +206,6 @@ class StoreAdapterTest {
         deck.castVote(s.id(), v1.id(), p2.id());
 
         assertThat(deck.voteTally(s.id())).containsOnly(entry(v1.id(), 1L), entry(v2.id(), 1L));
-        assertThat(deck.votersCount(s.id())).isEqualTo(2);
     }
 
     /**

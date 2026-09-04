@@ -142,7 +142,7 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.session().hostId(),
-                "Ayşe", "Someren", SOMEREN);
+                "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.manual()).isTrue();
         assertThat(ayse.token()).isNull();
         assertThat(ayse.host()).isFalse();
@@ -150,12 +150,12 @@ class SessionCommandsTest {
         assertThat(store.participantsOf(solo.session().id())).hasSize(2);
 
         assertThatThrownBy(() -> commands.addPoint(solo.session().slug(), UUID.randomUUID(),
-                "X", null, SOMEREN)).isInstanceOf(ForbiddenException.class);
+                "X", null, SOMEREN, null)).isInstanceOf(ForbiddenException.class);
 
         SessionCommands.CreateSessionResult group = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         assertThatThrownBy(() -> commands.addPoint(group.session().slug(), group.session().hostId(),
-                "Ayşe", "Someren", SOMEREN)).isInstanceOf(ConflictException.class);
+                "Ayşe", "Someren", SOMEREN, null)).isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -163,7 +163,7 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.session().hostId(),
-                "Ayşe", "Someren", SOMEREN);
+                "Ayşe", "Someren", SOMEREN, null);
         commands.removePoint(solo.session().slug(), solo.session().hostId(), ayse.id());
         assertThat(store.participantsOf(solo.session().id())).hasSize(1);
         assertThat(events.published).extracting(p -> p.event().type())
@@ -215,7 +215,7 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.session().hostId(),
-                "Ayşe", "Someren", SOMEREN);
+                "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.travelMode()).isEqualTo(TravelMode.CAR);
     }
 
