@@ -58,6 +58,12 @@ public record Participant(UUID id, UUID sessionId, String displayName, GeoPoint 
                 manual, newLabel, newMode == null ? travelMode : newMode, userId);
     }
 
+    /** Anonim alinmis koltugun sahiplenilmesi (K-B23); sahibi olan koltuk el degistirmez. */
+    public Participant ownedBy(UUID owner) {
+        return new Participant(id, sessionId, displayName, location, host, deckDoneAt,
+                manual, locationLabel, travelMode, owner);
+    }
+
     public Participant doneAt(Instant when) {
         return new Participant(id, sessionId, displayName, location, host, when,
                 manual, locationLabel, travelMode, userId);

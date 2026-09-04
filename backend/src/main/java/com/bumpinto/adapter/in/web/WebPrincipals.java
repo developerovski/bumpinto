@@ -79,6 +79,12 @@ final class WebPrincipals {
         return snap.participants().stream().filter(p -> userId.equals(p.userId())).findFirst();
     }
 
+    /** Istegin tasidigi hesap kimligi; hesap yoksa null. */
+    static UUID accountIdOrNull(Authentication auth) {
+        Jwt jwt = accountOf(auth);
+        return jwt == null ? null : accountId(jwt);
+    }
+
     /** Istegin tasidigi katilimci koltugu; token yoksa null. */
     static UUID participantIdOrNull(Authentication auth) {
         return auth != null && auth.getPrincipal() instanceof ParticipantPrincipal me

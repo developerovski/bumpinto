@@ -305,6 +305,58 @@ class AccountApiTest {
                 .andExpect(status().isConflict());
     }
 
+    /**
+     * Anonim katilip SONRA giris yapan davetli, koltugunu IKINCI CIHAZDA da bulur (K-B23).
+     * Giris katilimci cerezini temizlemez (bilincli: "kisi once katilip sonra giris yapmis
+     * olabilir"), ama koltuk sahipsiz kaldigi surece hesap onu goremiyordu: ikinci cihazda
+     * yeniden katilir ve mukerrer satir acardi (orta noktayi ceker).
+     */
+    @Test
+    void anAnonymousSeatBecomesTheAccountsSeatAfterSigningIn() throws Exception {
+        when(google.verify("gid-claim-host"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("claimhost@bumpinto.test", "Mehmet"));
+        when(google.verify("gid-claim-guest"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("claimguest@bumpinto.test", "Ayşe"));
+        Cookie hostAt = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-claim-host\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        String slug = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
+                        .header("X-Client", "web").contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("slug").asString();
+
+        // Davetli GIRIS YAPMADAN katilir: koltugun sahibi yok.
+        MvcResult joined = mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .header("X-Client", "web").contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\",\"lat\":51.38,\"lng\":5.71}"))
+                .andExpect(status().isCreated()).andReturn();
+        String seatId = json.readTree(joined.getResponse().getContentAsString())
+                .get("participantId").asString();
+        Cookie seatCookie = joined.getResponse().getCookie("bumpinto_pt_" + slug);
+
+        // Ayni tarayicida SONRADAN giris yapar ve oturumu okur: koltuk hesaba baglanir.
+        Cookie guestAt = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-claim-guest\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        mvc.perform(get("/api/sessions/" + slug).cookie(guestAt, seatCookie)
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk());
+
+        // IKINCI CIHAZ: yalniz hesap cerezi. Ayni koltuk bulunur ve cerez basilir.
+        MvcResult second = mvc.perform(get("/api/sessions/" + slug).cookie(guestAt)
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(json.readTree(second.getResponse().getContentAsString())
+                .get("viewer").get("participantId").asString()).isEqualTo(seatId);
+        assertThat(second.getResponse().getCookie("bumpinto_pt_" + slug)).isNotNull();
+
+        // Ve oturumda hâlâ iki kisi var: mukerrer satir acilmadi.
+        assertThat(json.readTree(second.getResponse().getContentAsString())
+                .get("participants")).hasSize(2);
+    }
+
     @Test
     void meRoundTripsDefaultTravelMode() throws Exception {
         when(google.verify("gid-travel"))

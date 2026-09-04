@@ -16,7 +16,10 @@
   },
   "session": {
     "notFound": "Bu oturum bulunamadı — link doğru mu?",
-    "expired": "Bu oturumun süresi dolmuş."
+    "expired": "Bu oturumun süresi dolmuş.",
+    "decidedTitle": "Bu buluşma karara bağlandı.",
+    "decided": "Nereye gidileceği belli olmuş; katılım kapandı.",
+    "decidedHint": "Nerede buluşulacağını kuran kişiye sor. Yenisi için ana sayfadan başlayabilirsin."
   },
   "join": {
     "invited": "Arkadaşın seni buluşmaya çağırdı",

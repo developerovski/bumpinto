@@ -145,6 +145,57 @@ class SessionCommandsTest {
         assertThat(store.participantsOf(r.session().id())).hasSize(2);
     }
 
+    /**
+     * Anonim katilip SONRA giris yapan kisi koltugunu kaybetmez (K-B23): koltuk hesaba baglanir,
+     * boylece ikinci cihazda kurtarilabilir. Yoksa yeniden katilir ve MUKERRER satir acardi.
+     */
+    @Test
+    void anUnownedSeatIsClaimedByTheAccountHoldingIt() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        Participant guest = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null);
+        UUID account = UUID.randomUUID();
+
+        Participant claimed = commands.claimSeat(r.session().id(), guest.id(), account).orElseThrow();
+
+        assertThat(claimed.id()).isEqualTo(guest.id());
+        assertThat(claimed.userId()).isEqualTo(account);
+        // Artik hesap kendi koltugunu bulur: yeniden katilim ikinci satir acmaz.
+        assertThat(commands.join(r.session().slug(), Caller.account(account), "Ayşe", SOMEREN, null, null)
+                .id()).isEqualTo(guest.id());
+        assertThat(store.participantsOf(r.session().id())).hasSize(2);
+    }
+
+    /**
+     * Hesabin o oturumda ZATEN koltugu varsa sahiplenme yapilmaz: elde kalan cerez yanlis koltugu
+     * gosteriyordur ve dogru cevap sahiplenmek degil, cerezi onarmaktir.
+     */
+    @Test
+    void aSeatIsNotClaimedWhenTheAccountAlreadyHasOne() {
+        UUID hostAccount = UUID.randomUUID();
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                hostAccount, null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        Participant ghost = commands.join(r.session().slug(), Caller.ANONYMOUS, "Mehmet", SOMEREN, null, null);
+
+        assertThat(commands.claimSeat(r.session().id(), ghost.id(), hostAccount)).isEmpty();
+        assertThat(store.participantsOf(r.session().id()).stream()
+                .filter(p -> p.id().equals(ghost.id())).findFirst().orElseThrow().userId()).isNull();
+    }
+
+    /** Sahibi olan koltuk el DEGISTIRMEZ — token'i ele geciren onu devralamaz. */
+    @Test
+    void anOwnedSeatIsNeverTakenOverByAnotherAccount() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        UUID owner = UUID.randomUUID();
+        Participant seat = commands.join(r.session().slug(), Caller.account(owner), "Ayşe", SOMEREN, null, null);
+
+        assertThat(commands.claimSeat(r.session().id(), seat.id(), UUID.randomUUID())).isEmpty();
+        assertThat(store.participantsOf(r.session().id()).stream()
+                .filter(p -> p.id().equals(seat.id())).findFirst().orElseThrow().userId())
+                .isEqualTo(owner);
+    }
+
     @Test
     void joinUnknownSlugThrowsNotFound() {
         assertThatThrownBy(() -> commands.join("yok", Caller.ANONYMOUS, "X", null, null, null))

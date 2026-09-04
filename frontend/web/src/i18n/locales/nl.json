@@ -16,7 +16,10 @@
   },
   "session": {
     "notFound": "Deze sessie is niet gevonden — klopt de link?",
-    "expired": "Deze sessie is verlopen."
+    "expired": "Deze sessie is verlopen.",
+    "decidedTitle": "Deze afspraak is beslist.",
+    "decided": "Waar jullie heen gaan is al besloten; deelnemen kan niet meer.",
+    "decidedHint": "Vraag de host waar jullie afspreken. Vanaf de homepage start je een nieuwe."
   },
   "join": {
     "invited": "Een vriend nodigt je uit om af te spreken",

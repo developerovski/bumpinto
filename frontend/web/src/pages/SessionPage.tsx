@@ -14,12 +14,18 @@ import WaitingRoom from "./WaitingRoom";
 export default function SessionPage() {
   const { slug = "" } = useParams();
   useSessionLive(slug);
-  const { view, error } = useSessionStore();
+  const { view, preview, error } = useSessionStore();
 
   // `error` bir çeviri anahtarı (sessionStore) — süresi dolmuş/bulunamadı ikisi de olabilir.
   if (error) return <ErrorPage kind={error === "session.expired" ? "expired" : "notFound"} />;
   // Görünüm yoksa katılım formu: sunucu üye olmayana 401/403 döner, store `view`'ı null'lar.
-  if (!view) return <JoinForm />;
+  // Ama kapanmış bir buluşmaya katılım YOK: form gönderilince 409 dönerdi (çıkmaz sokak).
+  // Durumu kamu önizlemesi taşır — üye olmayan da okuyabilir (K-W12).
+  if (!view) {
+    if (preview?.status === "DECIDED") return <ErrorPage kind="decided" />;
+    if (preview?.status === "EXPIRED") return <ErrorPage kind="expired" />;
+    return <JoinForm />;
+  }
   const host = isHost(view);
   const solo = view.sessionType === "SOLO";
   switch (view.status) {

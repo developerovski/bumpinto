@@ -6,6 +6,7 @@ import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
@@ -21,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -87,13 +91,21 @@ class SessionController {
             // assemble (mekân başına yol süresi hesabı) yaptırırdı.
             throw new ForbiddenException("not a participant of this session");
         }
+        // Kimlik ONARIMI: iki hâli olan tek kapı ve hangisinin geçerli olduğunu anlık görüntü
+        // söyler (ek sorgu yok). Hesabın koltuğu VARSA çerez ona göre yeniden yazılır — ama
+        // yalnız eldeki token yanlışsa; doğruysa her okumaya Set-Cookie eklemenin anlamı yok.
+        // Koltuğu YOKSA elde sahipsiz bir koltuk olabilir: anonim katılıp sonra giriş yapan kişi
+        // onu hesabına bağlar ve ikinci cihazda kimliğini kurtarır (K-B23).
+        UUID seatInHand = WebPrincipals.participantIdOrNull(auth);
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
-        // Çerez yalnız GEREKİYORSA yazılır: eldeki token zaten doğru koltuğu gösteriyorsa her
-        // okumaya bir Set-Cookie eklemenin anlamı yok. Göstermiyorsa (yanlış ya da eksik) bu
-        // satır kimliği onarır — hesabın koltuğu tekrar bu tarayıcının kimliği olur.
-        WebPrincipals.seatOf(snapshot, auth)
-                .filter(seat -> !seat.id().equals(WebPrincipals.participantIdOrNull(auth)))
-                .ifPresent(seat -> tokens.refresh(response, client, slug, seat));
+        Optional<Participant> accountSeat = WebPrincipals.seatOf(snapshot, auth);
+        if (accountSeat.isPresent()) {
+            accountSeat.filter(seat -> !seat.id().equals(seatInHand))
+                    .ifPresent(seat -> tokens.refresh(response, client, slug, seat));
+        } else {
+            commands.claimSeat(snapshot.session().id(), seatInHand,
+                    WebPrincipals.accountIdOrNull(auth));
+        }
         return response.body(assembler.toView(snapshot, auth));
     }
 

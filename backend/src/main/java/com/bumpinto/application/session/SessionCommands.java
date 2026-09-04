@@ -108,6 +108,28 @@ public class SessionCommands {
         return Optional.empty();
     }
 
+    /**
+     * Anonim alinmis koltugu hesaba baglar (K-B23). Davet linkine giris yapmadan katilan biri
+     * sonradan giris yaptiginda koltugu sahipsiz kalirdi: ikinci cihazda kimligini kurtaramaz,
+     * yeniden katilir ve MUKERRER satir acardi (orta noktayi ceker).
+     *
+     * <p>Yikici degil ve idempotent: yalnizca sahipsiz bir koltugu isaretler. Hesabin o oturumda
+     * ZATEN koltugu varsa dokunmaz — o durumda elde kalan cerez yanlis koltugu gosteriyordur ve
+     * dogru cevap sahiplenmek degil, cerezi onarmaktir (WebPrincipals.seatOf).
+     */
+    @Transactional
+    public Optional<Participant> claimSeat(UUID sessionId, UUID participantId, UUID userId) {
+        if (participantId == null || userId == null
+                || store.participantOf(sessionId, userId).isPresent()) {
+            return Optional.empty();
+        }
+        return store.participantsOf(sessionId).stream()
+                .filter(p -> p.id().equals(participantId))
+                .filter(p -> p.userId() == null && !p.manual())
+                .findFirst()
+                .map(p -> store.saveParticipant(p.ownedBy(userId)));
+    }
+
     @Transactional
     public void updateLocation(String slug, UUID participantId, GeoPoint location, String label,
                                TravelMode travelMode) {

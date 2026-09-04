@@ -16,7 +16,10 @@
   },
   "session": {
     "notFound": "This session wasn't found — is the link right?",
-    "expired": "This session has expired."
+    "expired": "This session has expired.",
+    "decidedTitle": "This meetup is settled.",
+    "decided": "Where to go is already decided; joining is closed.",
+    "decidedHint": "Ask the host where you're meeting. You can start a new one from home."
   },
   "join": {
     "invited": "A friend invited you to meet up",

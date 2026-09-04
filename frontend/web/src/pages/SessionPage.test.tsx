@@ -18,6 +18,15 @@ function at(view: object) {
   render(<MemoryRouter initialEntries={["/j/x"]}><Routes><Route path="/j/:slug" element={<SessionPage />} /></Routes></MemoryRouter>);
 }
 
+/** Üye olmayan görüntüleyen: sunucu 401/403 döndü, elde yalnız kamu önizlemesi var. */
+function asOutsider(status: string | null) {
+  useSessionStore.setState({
+    slug: "x", view: null, error: null,
+    preview: status === null ? null : ({ slug: "x", status, participants: [] } as never),
+  });
+  render(<MemoryRouter initialEntries={["/j/x"]}><Routes><Route path="/j/:slug" element={<SessionPage />} /></Routes></MemoryRouter>);
+}
+
 describe("SessionPage yönlendirme", () => {
   it("COLLECTING + host → Lobi", () => {
     at({ ...base, status: "COLLECTING", viewer: { participantId: "h", host: true } });
@@ -39,5 +48,28 @@ describe("SessionPage yönlendirme", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "a", host: false } });
     expect(screen.getByText("host karıştırınca deste açılır")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bunu seç" })).not.toBeInTheDocument();
+  });
+});
+
+/* Kapanmış buluşmanın linki: katılım formu ÇIKMAZ SOKAKTI — gönderilince 409 dönüyordu.
+   Durum kamu önizlemesinden okunur; nerede buluşulduğu bu ekranda yazmaz (link yayılmış olabilir). */
+describe("SessionPage — kapanmış buluşma linki", () => {
+  it("DECIDED → katılım formu değil kapanış ekranı", () => {
+    asOutsider("DECIDED");
+    expect(screen.getByText("Bu buluşma karara bağlandı.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Katıl" })).not.toBeInTheDocument();
+  });
+  it("EXPIRED → süresi doldu ekranı", () => {
+    asOutsider("EXPIRED");
+    expect(screen.getByText("Bu oturumun süresi dolmuş.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Katıl" })).not.toBeInTheDocument();
+  });
+  it("açık oturum → katılım formu", () => {
+    asOutsider("COLLECTING");
+    expect(screen.getByRole("button", { name: "Katıl" })).toBeInTheDocument();
+  });
+  it("önizleme henüz gelmediyse katılım formu (bugünkü davranış korunur)", () => {
+    asOutsider(null);
+    expect(screen.getByRole("button", { name: "Katıl" })).toBeInTheDocument();
   });
 });
