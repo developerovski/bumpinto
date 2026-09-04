@@ -50,7 +50,9 @@ public class SecurityConfig {
             .oauth2ResourceServer(o -> o
                 .bearerTokenResolver(bearerTokenResolver)
                 .jwt(jwt -> {}))
-            .addFilterBefore(new ParticipantTokenFilter(sessions),
+            // SONRA: bearer filtresi context'i kosulsuz ezer, once konan katilimci
+            // principal'i hayatta kalmazdi (bkz. ParticipantTokenFilter javadoc).
+            .addFilterAfter(new ParticipantTokenFilter(sessions),
                     BearerTokenAuthenticationFilter.class);
         return http.build();
     }

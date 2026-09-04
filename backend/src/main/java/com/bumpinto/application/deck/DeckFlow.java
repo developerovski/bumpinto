@@ -235,7 +235,12 @@ public class DeckFlow {
 
         long finishers = votingPopulation(session.id()).stream()
                 .filter(Participant::deckDone).count();
-        if (deck.votersCount(session.id()) >= finishers) {
+        long voted = deck.votersCount(session.id());
+        // Her oyda yayinla: ekrandaki "kim kilitledi" listesi (SessionView.runoffVoters) bununla
+        // degisir. Yalniz beraberlikte yayinlamak, oy verildigi anda digerlerinin ekranini
+        // 3 sn'lik poll'e mahkum ediyordu.
+        events.publish(session.slug(), SessionEvent.runoffVoted(voted, finishers));
+        if (voted >= finishers) {
             Map<UUID, Long> tally = deck.voteTally(session.id());
             long max = tally.values().stream().mapToLong(Long::longValue).max().orElse(0);
             List<UUID> winners = tally.entrySet().stream()

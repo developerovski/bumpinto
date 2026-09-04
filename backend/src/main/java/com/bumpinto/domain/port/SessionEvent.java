@@ -14,6 +14,20 @@ public record SessionEvent(String type, Map<String, Object> payload) {
         return new SessionEvent("participant_left", Map.of("participantCount", count));
     }
 
+    /**
+     * Biri konumunu ekledi/degistirdi. Gövde BOS: kanal kimliksiz (WebSocketConfig) ve istemci
+     * zaten olayi yalnizca "tazele" zili olarak kullaniyor — sayaç koymak ek sorgu demek olurdu.
+     * Yayinlanmazsa lobideki "kim hazir" sayaci yalnizca poll ile guncellenir.
+     */
+    public static SessionEvent locationUpdated() {
+        return new SessionEvent("location_updated", Map.of());
+    }
+
+    /** Eleme oyu dustu: "kim kilitledi" listesi degisti (tally DEGIL — o zaten gizli). */
+    public static SessionEvent runoffVoted(long voted, long voters) {
+        return new SessionEvent("runoff_voted", Map.of("voted", voted, "voters", voters));
+    }
+
     public static SessionEvent deckReady(int venueCount) {
         return new SessionEvent("deck_ready", Map.of("venueCount", venueCount));
     }

@@ -1,6 +1,7 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.deck.DeckFlow;
+import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
@@ -65,9 +66,25 @@ class SessionController {
                 result.session().expiresAt()));
     }
 
+    /**
+     * Oturumun İÇİ yalnızca ÜYESİNE açıktır. Kimlik doğrulanmış olmak yetmez: önceden bu uç
+     * her oturum açmış hesaba 200 + {@code viewer:null} dönüyordu, yani slug'ı ele geçiren
+     * herhangi bir hesap katılmadan katılımcı listesini ve yaklaşık konumları okuyabiliyordu.
+     * Katılmamış birine açık olan tek şey public önizlemedir ({@code /preview}) — koordinat,
+     * katılımcı id'si ve mekân taşımaz.
+     *
+     * <p>Host'u dışarıda bırakmaz: katılımcı çerezi olmayan bir tarayıcıda bile hesap JWT'si
+     * host katılımcısına çözülür ({@link WebPrincipals#viewerOf}).
+     */
     @GetMapping("/{slug}")
     ApiDtos.SessionView view(@PathVariable String slug, Authentication auth) {
-        return assembler.toView(queries.snapshot(slug), auth);
+        SessionQueries.SessionSnapshot snapshot = queries.snapshot(slug);
+        if (WebPrincipals.viewerOf(snapshot, auth) == null) {
+            // Görünüm ÜRETİLMEDEN reddedilir: aksi halde üye olmayan her istek boşuna tam
+            // assemble (mekân başına yol süresi hesabı) yaptırırdı.
+            throw new ForbiddenException("not a participant of this session");
+        }
+        return assembler.toView(snapshot, auth);
     }
 
     @GetMapping("/{slug}/preview")

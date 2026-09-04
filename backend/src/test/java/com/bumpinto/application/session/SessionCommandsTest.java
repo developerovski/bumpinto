@@ -82,6 +82,10 @@ class SessionCommandsTest {
 
         assertThat(store.participants.get(kerem.id()).hasLocation()).isTrue();
         assertThat(store.participants.get(kerem.id()).locationLabel()).isEqualTo("Someren");
+        // Yayin sart: lobideki "kim hazir" sayaci buna bagli. Yayinlanmazsa host, davetlinin
+        // konumunu ancak bir sonraki poll'de gorur — canli kanal varken 3 sn beklemek.
+        assertThat(events.published).extracting(p -> p.event().type())
+                .contains("location_updated");
     }
 
     @Test

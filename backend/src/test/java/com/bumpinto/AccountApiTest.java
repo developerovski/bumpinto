@@ -195,13 +195,17 @@ class AccountApiTest {
         assertThat(asHost.get("viewer").get("participantId").asString()).isEqualTo(hostParticipantId);
         assertThat(asHost.get("viewer").get("host").asBoolean()).isTrue();
 
-        // baska bir host'un JWT'si: uye degil -> viewer null
+        // Baska bir hesabin JWT'si: uye DEGIL -> okuma tamamen kapali (403).
+        // Onceden 200 + viewer:null donuyordu: slug'i bilen HERHANGI bir hesap, katilmadan
+        // katilimci listesini ve yaklasik konumlari okuyabiliyordu. Katilmamis birine acik olan
+        // tek sey public onizlemedir (koordinat/id tasimaz).
         Cookie otherAt = mvc.perform(post("/api/auth/google").header("X-Client", "web")
                         .contentType(JSON).content("{\"idToken\":\"gid6\"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
-        JsonNode asOther = json.readTree(mvc.perform(get("/api/sessions/" + slug).cookie(otherAt))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        assertThat(asOther.get("viewer").isNull()).isTrue();
+        mvc.perform(get("/api/sessions/" + slug).cookie(otherAt))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/sessions/" + slug + "/preview").cookie(otherAt))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -219,5 +223,64 @@ class AccountApiTest {
                 .andExpect(jsonPath("$.defaultTravelMode").value("EBIKE"));
         mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.defaultTravelMode").value("EBIKE"));
+    }
+
+    /**
+     * Katilimci cerezi hesaba degil TARAYICIYA yazilir: cikista ve hesap degisiminde
+     * temizlenmezse bir sonraki kullaniciya devreder. Gercekte olan buydu — oturumu kuran
+     * host'un katilimci token'i, ayni tarayicida baska bir Google hesabina gecildikten sonra
+     * da duruyordu; o tarayici host adina yaziyor, davetli kendi kimligini hic edinemiyordu
+     * (2026-09-03).
+     */
+    @Test
+    void participantCookiesDoNotOutliveTheAccountSession() throws Exception {
+        when(google.verify("gid7"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("first7@bumpinto.test", "Mehmet"));
+        when(google.verify("gid8"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("second8@bumpinto.test", "Ayşe"));
+
+        Cookie firstAt = webLogin("gid7");
+        MvcResult created = mvc.perform(post("/api/sessions")
+                        .cookie(firstAt).header("X-Client", "web").contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String slug = json.readTree(created.getResponse().getContentAsString()).get("slug").asString();
+        Cookie participant = created.getResponse().getCookie("bumpinto_pt_" + slug);
+        assertThat(participant).isNotNull();
+
+        // AYNI hesapla tekrar giris: katilimciligi bozmaz.
+        MvcResult again = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .cookie(firstAt, participant)
+                        .contentType(JSON).content("{\"idToken\":\"gid7\"}"))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(again.getResponse().getCookie("bumpinto_pt_" + slug)).isNull();
+
+        // BASKA hesaba gecis: devralinan katilimci cerezi silinir.
+        Cookie switched = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .cookie(firstAt, participant)
+                        .contentType(JSON).content("{\"idToken\":\"gid8\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getCookie("bumpinto_pt_" + slug);
+        assertThat(switched).isNotNull();
+        assertThat(switched.getMaxAge()).isZero();
+        // Silme yazarkenki YOLLA yapilmali; yol /api'dir cunku cerezin cikis/giris ucuna
+        // ulasabilmesi gerekir (bkz. SecurityPolicyTest.participantCookieReachesTheEndpointsThatClearIt).
+        assertThat(switched.getPath()).isEqualTo("/api");
+
+        // Cikis da temizler: tarayici artik "ben" degil.
+        Cookie afterLogout = mvc.perform(post("/api/auth/logout").cookie(firstAt, participant))
+                .andExpect(status().isNoContent()).andReturn().getResponse()
+                .getCookie("bumpinto_pt_" + slug);
+        assertThat(afterLogout).isNotNull();
+        assertThat(afterLogout.getMaxAge()).isZero();
+    }
+
+    /** Web girisi: HttpOnly bumpinto_at cerezi. */
+    private Cookie webLogin(String idToken) throws Exception {
+        return mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"" + idToken + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie("bumpinto_at");
     }
 }

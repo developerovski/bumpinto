@@ -14,7 +14,7 @@ const base = { slug: "x", name: "Cuma kahvesi", activityType: "COFFEE", sessionT
   runoffVenueIds: [], voteTally: {}, midpoint: { lat: 51.5, lng: 5.5 }, radiusKm: 4 };
 
 function at(view: object) {
-  useSessionStore.setState({ slug: "x", view: view as never, needsJoin: false, error: null });
+  useSessionStore.setState({ slug: "x", view: view as never, error: null });
   render(<MemoryRouter initialEntries={["/j/x"]}><Routes><Route path="/j/:slug" element={<SessionPage />} /></Routes></MemoryRouter>);
 }
 

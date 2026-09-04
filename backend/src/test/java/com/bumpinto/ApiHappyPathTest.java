@@ -34,6 +34,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -351,5 +353,67 @@ class ApiHappyPathTest {
         assertThat(json.readTree(decided).get("status").asString()).isEqualTo("DECIDED");
         assertThat(json.readTree(decided).get("decidedVenueId").asString()).isEqualTo(venueId);
         assertThat(json.readTree(decided).get("decisionKind").asString()).isEqualTo("FORCED");
+    }
+
+    /**
+     * Davetli de Google ile girmis olabilir; o zaman tarayicisinda IKI cerez birden bulunur:
+     * hesap cerezi (bumpinto_at) ve katilimci cerezi (bumpinto_pt_{slug}). Gercekte olan buydu:
+     * bearer filtresi katilimci principal'ini eziyor, yazma tarafi JWT'yi gorup host
+     * eslestirmesine dusuyor ve davetli host olmadigi icin her yazma 403 "participant token
+     * required" donuyordu — iki kisi ayni oturumda birbirini goremiyordu (2026-09-03).
+     */
+    @Test
+    void signedInGuestWritesAsThemselvesNotAsTheHost() throws Exception {
+        when(google.verify("gid-host"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("gh@bumpinto.test", "Mehmet"));
+        when(google.verify("gid-guest"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("gg@bumpinto.test", "Ayşe"));
+
+        Cookie hostAccount = webLogin("gid-host");
+        String slug = json.readTree(mvc.perform(post("/api/sessions")
+                        .cookie(hostAccount).header("X-Client", "web")
+                        .contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).get("slug").asString();
+
+        Cookie guestAccount = webLogin("gid-guest");
+        MvcResult joined = mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .cookie(guestAccount).header("X-Client", "web")
+                        .contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\",\"lat\":51.3855,\"lng\":5.7120}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Cookie guestParticipant = joined.getResponse().getCookie("bumpinto_pt_" + slug);
+        String guestId = json.readTree(joined.getResponse().getContentAsString())
+                .get("participantId").asString();
+
+        // Katilimci cerezi + hesap cerezi ayni istekte: dar kimlik kazanmali.
+        mvc.perform(put("/api/sessions/" + slug + "/location")
+                        .cookie(guestAccount, guestParticipant)
+                        .contentType(JSON)
+                        .content("{\"lat\":51.4000,\"lng\":5.6000,\"travelMode\":\"BIKE\"}"))
+                .andExpect(status().isOk());
+
+        // Yazma davetlinin KENDI satirina gitti; host'un satiri yerinde.
+        mvc.perform(get("/api/sessions/" + slug).cookie(guestAccount, guestParticipant))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewer.participantId").value(guestId))
+                .andExpect(jsonPath("$.viewer.host").value(false))
+                .andExpect(jsonPath("$.participants.length()").value(2));
+
+        // Ve davetli host ucunu acamaz: dar kimlik yetki genisletmez.
+        mvc.perform(post("/api/sessions/" + slug + "/find-venues")
+                        .cookie(guestAccount, guestParticipant))
+                .andExpect(status().isForbidden());
+    }
+
+    /** Web girisi: HttpOnly bumpinto_at cerezi. */
+    private Cookie webLogin(String idToken) throws Exception {
+        return mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"" + idToken + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie("bumpinto_at");
     }
 }

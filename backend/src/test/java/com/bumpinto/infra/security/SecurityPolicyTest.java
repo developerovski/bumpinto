@@ -6,6 +6,7 @@ import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.adapter.in.web.WebSocketConfig;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.FakeStores;
 import jakarta.servlet.Filter;
@@ -30,7 +31,22 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.config.ChannelRegistration;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
+import org.mockito.ArgumentCaptor;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRegistration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /** Pazarlık dışı güvenlik duruşunu sabitler: cookie bayrakları, path kapsamı, CORS allowlist. */
 class SecurityPolicyTest {
@@ -111,10 +127,32 @@ class SecurityPolicyTest {
         ResponseCookie b = cookies.participant("q3n8p", "pt-b", Duration.ofHours(24));
 
         assertThat(a.getName()).isEqualTo("bumpinto_pt_x7k2m");
-        assertThat(a.getPath()).isEqualTo("/api/sessions/x7k2m");
         assertThat(a.isSecure()).isTrue();
-        assertThat(b.getName()).isNotEqualTo(a.getName()); // çoklu oturum çakışmaz
-        assertThat(b.getPath()).isEqualTo("/api/sessions/q3n8p");
+        // Oturum yalitimi ADDAN gelir (+ sunucuda token->oturum dogrulamasi), yoldan degil.
+        assertThat(b.getName()).isNotEqualTo(a.getName()); // coklu oturum cakismaz
+        assertThat(b.getPath()).isEqualTo(a.getPath());
+    }
+
+    /**
+     * Silme, cerezin GIDEBILDIGI yola baglidir: tarayici bir cerezi yalniz Path'inin altindaki
+     * isteklere gonderir (RFC 6265). Cerez Path=/api/sessions/{slug} iken cikis istegi
+     * (/api/auth/logout) onu HIC tasimiyordu; sunucu silinecek cerezi goremedigi icin
+     * {@code AuthCookies.clearParticipants} gercek tarayicida no-op'tu: cikistan sonra
+     * tarayiciyi devralan kisi onceki katilimci olarak yazmaya devam edebiliyordu.
+     *
+     * <p>Entegrasyon testi bunu YAKALAYAMAZ (MockMvc cerez path'i uygulamaz, cerezi elle
+     * ekleriz) — invaryant bu yuzden path'in kendisinde sabitlenir.
+     */
+    @Test
+    void participantCookieReachesTheEndpointsThatClearIt() {
+        AuthCookies cookies = new AuthCookies(props(true, "", List.of()));
+        String path = cookies.participant("x7k2m", "pt-a", Duration.ofHours(24)).getPath();
+
+        assertThat("/api/auth/logout").startsWith(path);
+        assertThat("/api/auth/google").startsWith(path);
+        assertThat("/api/sessions/x7k2m/swipes").startsWith(path);
+        // Canli olay kanali /api disinda: kimlik cerezi handshake'e yine gitmez.
+        assertThat("/ws").doesNotStartWith(path);
     }
 
     @Test
@@ -211,8 +249,72 @@ class SecurityPolicyTest {
         assertThat(reachesApp(request("POST", "/api/sessions/x7k2m/participants"))).isTrue();
         assertThat(reachesApp(request("GET", "/api/sessions/x7k2m/preview"))).isTrue();
         assertThat(reachesApp(request("GET", "/v3/api-docs"))).isTrue();
-        assertThat(reachesApp(request("GET", "/ws/info"))).isTrue();
+        assertThat(reachesApp(request("GET", "/ws"))).isTrue();
         assertThat(reachesApp(request("GET", "/error"))).isTrue();
+    }
+
+    /**
+     * Canli olay kanali da HTTP ile AYNI origin listesine baglidir. Onceden
+     * setAllowedOriginPatterns("*") idi: herhangi bir sitedeki sayfa, ziyaretcinin tarayicisinda
+     * /topic/session/{slug}'a abone olabiliyordu (cross-site WebSocket hijacking). Handshake
+     * kimliksiz oldugu icin (cerez path'i /ws'i kapsamiyor) origin TEK tarayici tarafi savunma.
+     */
+    @Test
+    void webSocketHandshakeIsBoundToTheConfiguredOriginAllowlist() {
+        StompWebSocketEndpointRegistration registration = mock(StompWebSocketEndpointRegistration.class);
+        StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
+        when(registry.addEndpoint(anyString())).thenReturn(registration);
+
+        new WebSocketConfig(props(true, "", List.of("https://bumpinto.app")))
+                .registerStompEndpoints(registry);
+
+        verify(registry).addEndpoint("/ws");
+        verify(registration).setAllowedOriginPatterns("https://bumpinto.app");
+    }
+
+    /** Origin listesi bos/tanimsizsa kanal kapali kalir (fail-closed) — "*"a DUSMEZ. */
+    @Test
+    void webSocketHandshakeFailsClosedWhenNoOriginIsConfigured() {
+        StompWebSocketEndpointRegistration registration = mock(StompWebSocketEndpointRegistration.class);
+        StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
+        when(registry.addEndpoint(anyString())).thenReturn(registration);
+
+        new WebSocketConfig(props(true, "", List.of())).registerStompEndpoints(registry);
+
+        verify(registration).setAllowedOriginPatterns();
+    }
+
+    static Message<byte[]> stompFrame(SimpMessageType type) {
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(type);
+        accessor.setDestination("/topic/session/x7k2m");
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    /**
+     * Kanal SALT OKUNUR olmali. Spring'in simple broker'i, hedefi broker onekiyle baslayan
+     * ISTEMCI SEND frame'lerini de abonelere rolelemektedir: handshake kimliksiz oldugu icin
+     * slug'i bilen biri /topic/session/{slug}'a sahte olay basip oturumdaki HERKESIN sekmesine
+     * tam bir GET /api/sessions/{slug} yaptirabilirdi (yukseltme: 1 frame -> N agir istek,
+     * ardindan herkes rate limit'e carpar). Uygulamada tek bir @MessageMapping yok; istemciden
+     * gelen mesaj frame'inin hicbir mesru kullanimi da yok.
+     */
+    @Test
+    void liveChannelDropsClientPublishedFrames() {
+        ChannelRegistration registration = mock(ChannelRegistration.class);
+        ArgumentCaptor<ChannelInterceptor> captor = ArgumentCaptor.forClass(ChannelInterceptor.class);
+        MessageChannel channel = mock(MessageChannel.class);
+
+        new WebSocketConfig(props(true, "", List.of("https://bumpinto.app")))
+                .configureClientInboundChannel(registration);
+
+        verify(registration).interceptors(captor.capture());
+        ChannelInterceptor interceptor = captor.getValue();
+        assertThat(interceptor.preSend(stompFrame(SimpMessageType.MESSAGE), channel)).isNull();
+        // Abonelik ve baglanti frame'leri gecmeli, yoksa kanal hic calismaz.
+        Message<byte[]> subscribe = stompFrame(SimpMessageType.SUBSCRIBE);
+        assertThat(interceptor.preSend(subscribe, channel)).isSameAs(subscribe);
+        Message<byte[]> connect = stompFrame(SimpMessageType.CONNECT);
+        assertThat(interceptor.preSend(connect, channel)).isSameAs(connect);
     }
 
     @Test

@@ -14,6 +14,13 @@ function withStatusTrack(view: SessionView): SessionView {
 // refresh(): mutasyondan önce başlayan GET yanıtı bayat sayılır
 let mutations = 0;
 
+/* Aynı anda birden çok refresh uçabilir: her canlı olay bir tane tetikler, üstüne emniyet
+   poll'ü gelir. Yanıt sırası garanti DEĞİL — geç dönen eski yanıt yeniyi ezerse ekran geriye
+   gider ve bir sonraki olaya kadar öyle kalır. `mutations` bunu karşılamaz: o yalnız araya
+   giren MUTASYONA karşıdır (findVenues/shuffle/pick view'ı refresh'siz yazar), iki eşzamanlı
+   GET'in ikisi de aynı sayacı görür. */
+let refreshes = 0;
+
 // Mutasyon öncesi ve sonrası sayaç artar: arada başlayan GET yanıtı bayat sayılır.
 async function mutate<T>(fn: () => Promise<T>): Promise<T> {
   mutations += 1;
@@ -59,8 +66,8 @@ export function mapProps(view: SessionView | null, youLabel: string, manualLabel
 
 type SessionState = {
   slug: string;
+  /** null = görünüm yok: ya henüz yüklenmedi ya da üye değiliz (401/403) → katılım formu. */
   view: SessionView | null;
-  needsJoin: boolean;
   /** i18n anahtarı (ör. "session.notFound") — metne SessionPage'de çevrilir. */
   error: string | null;
   /** Katılmadan önce herkese açık özet (id/koordinat yok) — Katıl ekranının sağ kartı. */
@@ -82,13 +89,13 @@ type SessionState = {
 export const useSessionStore = create<SessionState>((set, get) => ({
   slug: "",
   view: null,
-  needsJoin: false,
   error: null,
   preview: null,
 
   bind: (slug) => {
     mutations += 1;
-    set({ slug, view: null, needsJoin: false, error: null, preview: null });
+    refreshes += 1;
+    set({ slug, view: null, error: null, preview: null });
   },
 
   loadPreview: async () => {
@@ -106,15 +113,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { slug } = get();
     if (!slug) return;
     const at = mutations;
+    const seq = ++refreshes;
     try {
       const view = await api.getSession(slug);
-      if (at !== mutations) return;
-      set({ view: withStatusTrack(view), needsJoin: false, error: null });
+      if (at !== mutations || seq !== refreshes) return;
+      set({ view: withStatusTrack(view), error: null });
     } catch (e) {
-      if (at !== mutations) return;
+      if (at !== mutations || seq !== refreshes) return;
       const status = e instanceof AxiosError ? e.response?.status : undefined;
-      if (status === 401) {
-        set({ needsJoin: true, view: null });
+      // Üyelik kararı SUNUCUNUN: 401 kimliksiz görüntüleyen, 403 giriş yapmış ama bu oturumun
+      // üyesi olmayan kişi. İkisinin de tek çaresi katılmak. Üyeliği burada yeniden türetmek
+      // (viewer/durum/tip bakarak) sunucu kuralının kopyasıydı ve kayması 2026-09-03 hatasının
+      // kaynağıydı — tek doğru sunucunun yanıtıdır.
+      if (status === 401 || status === 403) {
+        set({ view: null });
         if (!get().preview) void get().loadPreview();
       } else if (status === 404) set({ error: "session.notFound" });
       // diğer hatalar: mevcut görünümü koru, polling tekrar dener

@@ -14,11 +14,12 @@ import WaitingRoom from "./WaitingRoom";
 export default function SessionPage() {
   const { slug = "" } = useParams();
   useSessionLive(slug);
-  const { view, needsJoin, error } = useSessionStore();
+  const { view, error } = useSessionStore();
 
   // `error` bir çeviri anahtarı (sessionStore) — süresi dolmuş/bulunamadı ikisi de olabilir.
   if (error) return <ErrorPage kind={error === "session.expired" ? "expired" : "notFound"} />;
-  if (needsJoin || !view) return <JoinForm />;
+  // Görünüm yoksa katılım formu: sunucu üye olmayana 401/403 döner, store `view`'ı null'lar.
+  if (!view) return <JoinForm />;
   const host = isHost(view);
   const solo = view.sessionType === "SOLO";
   switch (view.status) {

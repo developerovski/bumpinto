@@ -84,6 +84,7 @@ public class SessionCommands {
                 .orElseThrow(() -> new NotFoundException("participant not in session"));
         String resolvedLabel = label == null ? participant.locationLabel() : Texts.label(label);
         store.saveParticipant(participant.locatedAt(location, resolvedLabel, travelMode));
+        events.publish(slug, SessionEvent.locationUpdated());
     }
 
     /**

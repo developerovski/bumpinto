@@ -5,10 +5,14 @@ import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
 import com.bumpinto.infra.security.GoogleIdVerifier;
 import com.bumpinto.infra.security.TokenService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -58,7 +64,8 @@ class AuthController {
     }
 
     @PostMapping("/google")
-    ResponseEntity<LoginResponse> google(@Valid @RequestBody GoogleLoginRequest request,
+    ResponseEntity<LoginResponse> google(HttpServletRequest http,
+            @Valid @RequestBody GoogleLoginRequest request,
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
         GoogleIdVerifier.GoogleUser verified = google.verify(request.idToken());
         UUID userId = users.upsertByEmail(verified.email(), verified.name());
@@ -66,18 +73,59 @@ class AuthController {
         Instant expiresAt = clock.instant().plus(props.security().tokenTtl());
 
         if ("web".equalsIgnoreCase(client)) {
-            return ResponseEntity.ok()
+            ResponseEntity.BodyBuilder response = ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE,
-                            cookies.access(accessToken, props.security().tokenTtl()).toString())
-                    .body(new LoginResponse(null, expiresAt, userId));
+                            cookies.access(accessToken, props.security().tokenTtl()).toString());
+            // Tarayicidaki hesap DEGISTIYSE onceki kimlige yazilmis katilimci cerezleri de gider.
+            if (signedInAsSomeoneElse(http, userId)) {
+                setCookies(response, cookies.clearParticipants(http));
+            }
+            return response.body(new LoginResponse(null, expiresAt, userId));
         }
         return ResponseEntity.ok(new LoginResponse(accessToken, expiresAt, userId));
     }
 
     /** Kimlik gerekmez: suresi dolmus cerezle de cikis yapilabilmeli. Mobil icin no-op (204). */
     @PostMapping("/logout")
-    ResponseEntity<Void> logout() {
-        return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString()).build();
+    ResponseEntity<Void> logout(HttpServletRequest http) {
+        ResponseEntity.HeadersBuilder<?> response = ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString());
+        // Cikis "bu tarayici artik ben degilim" demek: oturum kapsamli katilimci token'lari da
+        // biter, yoksa tarayiciyi devralan kisi onlarla yazmaya devam eder.
+        setCookies(response, cookies.clearParticipants(http));
+        return response.build();
+    }
+
+    private static void setCookies(ResponseEntity.HeadersBuilder<?> response,
+                                   List<ResponseCookie> cookies) {
+        cookies.forEach(cookie -> response.header(HttpHeaders.SET_COOKIE, cookie.toString()));
+    }
+
+    /**
+     * Bu tarayicida ONCEDEN baska bir hesap mi vardi? Hesap cerezi hic yoksa (anonim tarayici)
+     * dokunulmaz: kisi once katilip sonra giris yapmis olabilir. Cerez cozulmuyorsa (suresi
+     * dolmus / bozuk) kime ait oldugu bilinmez — fail-closed, katilimci cerezleri silinir.
+     */
+    private boolean signedInAsSomeoneElse(HttpServletRequest http, UUID userId) {
+        String previous = accessCookie(http);
+        if (previous == null) {
+            return false;
+        }
+        try {
+            return !userId.toString().equals(tokens.decoder().decode(previous).getSubject());
+        } catch (JwtException stale) {
+            return true;
+        }
+    }
+
+    private static String accessCookie(HttpServletRequest http) {
+        if (http.getCookies() == null) {
+            return null;
+        }
+        return Arrays.stream(http.getCookies())
+                .filter(cookie -> AuthCookies.ACCESS.equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 }

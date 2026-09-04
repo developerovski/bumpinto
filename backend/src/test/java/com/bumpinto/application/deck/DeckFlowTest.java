@@ -243,6 +243,9 @@ class DeckFlowTest {
         assertThat(store.sessionBySlug("s1").orElseThrow().status()).isEqualTo(SessionStatus.RUNOFF);
 
         flow.runoffVote("s1", host.id(), v0);
+        // Her oy yayinlanir: "kim kilitledi" listesi (SessionView.runoffVoters) aninda degisir,
+        // yalniz beraberlikte yayinlamak digerlerini poll'e mahkum ediyordu.
+        assertThat(events.published).extracting(p -> p.event().type()).contains("runoff_voted");
         flow.runoffVote("s1", ayse.id(), v1); // beraberlik
         assertThat(store.sessionBySlug("s1").orElseThrow().status()).isEqualTo(SessionStatus.RUNOFF);
         // Beraberlikte hicbir event yoksa ekranlar 3sn'lik polling'e kalir ve "digerlerini
