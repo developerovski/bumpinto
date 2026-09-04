@@ -1717,7 +1717,9 @@ export interface operations {
     view: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Client"?: string;
+            };
             path: {
                 slug: string;
             };

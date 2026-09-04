@@ -49,6 +49,17 @@ class SchemaMigrationTest {
         assertThat(columnsOf("participants")).doesNotContain("token");
     }
 
+    /** Bir hesap bir oturumda TEK koltuk tutar; anonim koltuklar (user_id null) disaridadir. */
+    @Test
+    void v7AddsSeatOwnershipWithOneSeatPerAccount() {
+        assertThat(columnsOf("participants")).contains("user_id");
+        assertThat(jdbc.queryForObject(
+                "select indexdef from pg_indexes where indexname = 'uq_participants_session_user'",
+                String.class))
+                .contains("UNIQUE").contains("session_id").contains("user_id")
+                .contains("IS NOT NULL");
+    }
+
     @Test
     void v4AddsUserPreferenceColumns() {
         assertThat(columnsOf("users")).contains("default_lat", "default_lng",

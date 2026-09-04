@@ -20,6 +20,8 @@ class ParticipantEntity {
     Double lng;
     @Generated(event = EventType.INSERT) @Column(updatable = false) Instant joinedAt;
     Instant deckDoneAt;
+    /** Koltugun sahibi hesap; anonim davetlide ve elle eklenen noktada null. */
+    UUID userId;
     boolean isHost;
     boolean isManual;
     String locationLabel;

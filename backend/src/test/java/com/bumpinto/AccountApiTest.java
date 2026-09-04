@@ -208,6 +208,52 @@ class AccountApiTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * Uyenin kimligi yeni bir tarayicida ONARILIR ve host kendi oturumuna MISAFIR olarak giremez.
+     *
+     * <p>Onceden kimlik yalniz istemcideki katilimci cerezinde yasiyordu: cerezi olmayan bir
+     * tarayicida (yeni cihaz, temizlenmis cerez) host katilim formuna dusuyor ve kendi oturumunda
+     * ikinci bir koltuk aciyordu. Katilim ucu de cagirani hic sormuyordu. Hayalet koltuk kendi
+     * konumuyla orta noktayi ve deste geometrisini bozar.
+     */
+    @Test
+    void theHostRecoversItsSeatInsteadOfTakingASecondOne() throws Exception {
+        when(google.verify("gid-seat"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("seat@bumpinto.test", "Mehmet"));
+        Cookie hostAt = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-seat\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        JsonNode created = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
+                        .header("X-Client", "web").contentType(JSON)
+                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        String slug = created.get("slug").asString();
+        String hostParticipantId = created.get("participantId").asString();
+
+        // Yeni tarayici: yalniz hesap cerezi var. Okuma calisir VE katilimci cerezi yeniden yazilir.
+        Cookie repaired = mvc.perform(get("/api/sessions/" + slug).cookie(hostAt)
+                        .header("X-Client", "web"))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getCookie("bumpinto_pt_" + slug);
+        assertThat(repaired).isNotNull();
+        assertThat(repaired.getValue()).isNotBlank();
+        assertThat(repaired.getPath()).isEqualTo("/api");
+
+        // Yine de katilim ucuna giderse ayni koltugu alir: ikinci satir acilmaz.
+        JsonNode rejoined = json.readTree(mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .cookie(hostAt).header("X-Client", "web").contentType(JSON)
+                        .content("{\"displayName\":\"Sahte Misafir\",\"lat\":51.1,\"lng\":5.1}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        assertThat(rejoined.get("participantId").asString()).isEqualTo(hostParticipantId);
+
+        JsonNode after = json.readTree(mvc.perform(get("/api/sessions/" + slug).cookie(hostAt))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(after.get("participants")).hasSize(1);
+        assertThat(after.get("participants").get(0).get("displayName").asString())
+                .isEqualTo("Mehmet");
+    }
+
     @Test
     void meRoundTripsDefaultTravelMode() throws Exception {
         when(google.verify("gid-travel"))

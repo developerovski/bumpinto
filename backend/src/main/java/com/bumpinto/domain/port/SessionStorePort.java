@@ -13,6 +13,13 @@ public interface SessionStorePort {
     Optional<Session> sessionBySlug(String slug);
     Participant saveParticipant(Participant participant);
     List<Participant> participantsOf(UUID sessionId);
+
+    /**
+     * Hesabin bu oturumdaki koltugu. Kimlik istemcideki token'da degil, iliskinin KENDISINDE
+     * durur: token'siz bir tarayicida acilan hesap yeni koltuk acmak yerine kendi koltugunu
+     * geri bulur. (session_id, user_id) uzerindeki kismi unique index sayesinde tek seek.
+     */
+    Optional<Participant> participantOf(UUID sessionId, UUID userId);
     void deleteParticipant(UUID participantId);
 
     /** Hostu verilen kullanici olan oturumlar, en yeniden eskiye, en fazla limit. */

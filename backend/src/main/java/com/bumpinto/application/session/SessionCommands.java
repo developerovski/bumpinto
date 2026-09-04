@@ -19,6 +19,7 @@ import com.bumpinto.domain.session.SessionType;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,12 +57,21 @@ public class SessionCommands {
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(hostDisplayName), hostLocation, true,
-                null, false, Texts.label(hostLocationLabel), hostTravelMode));
+                null, false, Texts.label(hostLocationLabel), hostTravelMode, hostUserId));
         return new CreateSessionResult(session, host);
     }
 
+    /**
+     * Ayni cagiran IKINCI koltuk acmaz: kimligi olan biri tekrar katilirsa kendi koltugunu geri
+     * alir. Host boylece kendi oturumuna misafir olarak giremez, cerezini kaybeden davetli de
+     * hayalet bir katilimci birakmaz — hayalet koltuk orta noktayi ve deste geometrisini bozar.
+     * Kimliksiz cagiran icin yeni koltuk acilir: davet linki anonim katilima aciktir.
+     *
+     * <p>Var olan koltuk OLDUGU GIBI donulur. Yeniden katilim bir kayit degil kimlik kurtarmadir;
+     * ad ve konum sahibinindir ve kendi ucundan guncellenir (PUT /location).
+     */
     @Transactional
-    public JoinResult join(String slug, String displayName, GeoPoint location,
+    public JoinResult join(String slug, Caller caller, String displayName, GeoPoint location,
                            String locationLabel, TravelMode travelMode) {
         Session session = required(slug);
         if (session.isSolo()) {
@@ -70,12 +80,28 @@ public class SessionCommands {
         if (session.status() == SessionStatus.DECIDED) {
             throw new ConflictException("session is closed: " + session.status());
         }
+        Optional<Participant> seat = seatOf(session, caller);
+        if (seat.isPresent()) {
+            return new JoinResult(session, seat.get());
+        }
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant joined = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(displayName), location, false, null,
-                false, Texts.label(locationLabel), travelMode));
+                false, Texts.label(locationLabel), travelMode, caller.userId()));
         events.publish(slug, SessionEvent.participantJoined(store.participantsOf(session.id()).size()));
         return new JoinResult(session, joined);
+    }
+
+    /** Kimlik var ama koltuk yoksa (ornegin silinmis elle nokta) bos doner: yeni koltuk acilir. */
+    private Optional<Participant> seatOf(Session session, Caller caller) {
+        if (caller.participantId() != null) {
+            return store.participantsOf(session.id()).stream()
+                    .filter(p -> p.id().equals(caller.participantId())).findFirst();
+        }
+        if (caller.userId() != null) {
+            return store.participantOf(session.id(), caller.userId());
+        }
+        return Optional.empty();
     }
 
     @Transactional

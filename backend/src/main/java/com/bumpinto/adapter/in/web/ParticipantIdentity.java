@@ -12,11 +12,10 @@ import java.util.UUID;
 /**
  * Katılımcı eylemlerinde (kaydır, geri al, desteyi bitir, eleme oyu, konum) "ben kimim".
  *
- * <p>İki geçerli kimlik vardır ve İKİSİ DE burada karşılanır: katılımcı token'ı ve oturumu
- * kuran hesabın JWT'si. Yalnız token kabul edilirse host, katılımcı çerezi olmayan her
- * tarayıcıda deste ekranını görür, kartları kaydırır ve HİÇBİR yazma sunucuya ulaşmaz —
- * çerez bir daha dağıtılmadığı için de kendi kendine düzelmez (bkz.
- * {@link SessionQueries#hostParticipantId}).
+ * <p>İki geçerli kimlik vardır ve İKİSİ DE burada karşılanır: katılımcı token'ı ve koltuğun
+ * sahibi hesabın JWT'si. Yalnız token kabul edilirse üye, katılımcı çerezi olmayan her
+ * tarayıcıda deste ekranını görür, kartları kaydırır ve HİÇBİR yazma sunucuya ulaşmaz (bkz.
+ * {@link SessionQueries#participantIdOf}).
  *
  * <p>Okuma tarafı bu eşitlemeyi zaten yapıyordu ({@link WebPrincipals#viewerOf}); asimetri
  * tam olarak bu hatanın kaynağıydı, o yüzden çözüm tek yerde durur: her controller'a
@@ -35,7 +34,7 @@ class ParticipantIdentity {
     UUID of(Authentication auth, String slug) {
         return switch (auth == null ? null : auth.getPrincipal()) {
             case ParticipantPrincipal me -> me.participantId();
-            case Jwt jwt -> queries.hostParticipantId(slug, WebPrincipals.hostUserId(jwt))
+            case Jwt jwt -> queries.participantIdOf(slug, WebPrincipals.accountId(jwt))
                     .orElseThrow(ParticipantIdentity::required);
             case null, default -> throw required();
         };

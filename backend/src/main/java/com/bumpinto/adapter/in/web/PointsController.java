@@ -30,7 +30,7 @@ class PointsController {
     @PostMapping
     ResponseEntity<ApiDtos.ParticipantDto> add(@AuthenticationPrincipal Jwt jwt,
             @PathVariable String slug, @Valid @RequestBody ApiDtos.PointRequest request) {
-        Participant point = commands.addPoint(slug, WebPrincipals.hostUserId(jwt),
+        Participant point = commands.addPoint(slug, WebPrincipals.accountId(jwt),
                 request.displayName(), request.locationLabel(),
                 new GeoPoint(request.lat(), request.lng()), request.travelMode());
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiDtos.ParticipantDto(
@@ -41,7 +41,7 @@ class PointsController {
     @DeleteMapping("/{participantId}")
     ResponseEntity<Void> remove(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
                                 @PathVariable UUID participantId) {
-        commands.removePoint(slug, WebPrincipals.hostUserId(jwt), participantId);
+        commands.removePoint(slug, WebPrincipals.accountId(jwt), participantId);
         return ResponseEntity.noContent().build();
     }
 }

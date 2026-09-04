@@ -40,7 +40,8 @@ class SessionQueriesTest {
 
     Participant participantIn(Session session, boolean host) {
         return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
-                host ? "Mehmet" : "Ayşe", new GeoPoint(51.7, 5.3), host, null, false, null, null));
+                host ? "Mehmet" : "Ayşe", new GeoPoint(51.7, 5.3), host, null, false, null, null,
+                host ? session.hostId() : null));
     }
 
     void venueIn(Session session) {
@@ -148,7 +149,7 @@ class SessionQueriesTest {
         UUID hostParticipant = participantIn(session, true).id();
         participantIn(session, false);
 
-        assertThat(queries.hostParticipantId("x7k2m", session.hostId()))
+        assertThat(queries.participantIdOf("x7k2m", session.hostId()))
                 .contains(hostParticipant);
     }
 
@@ -158,8 +159,24 @@ class SessionQueriesTest {
         Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
         participantIn(session, true);
 
-        assertThat(queries.hostParticipantId("x7k2m", UUID.randomUUID())).isEmpty();
-        assertThat(queries.hostParticipantId("yok", session.hostId())).isEmpty();
+        assertThat(queries.participantIdOf("x7k2m", UUID.randomUUID())).isEmpty();
+        assertThat(queries.participantIdOf("yok", session.hostId())).isEmpty();
+    }
+
+    /**
+     * Host'a ozel bir dal DEGIL: koltugu olan davetli uye de katilimci cerezi olmayan bir
+     * tarayicida kendi kimligini geri bulur — yoksa ikinci bir koltukla girerdi.
+     */
+    @Test
+    void aSignedInGuestAlsoResolvesToItsOwnSeat() {
+        Session session = stored(SessionStatus.SWIPING, NOW.plusSeconds(3600));
+        participantIn(session, true);
+        UUID guestAccount = UUID.randomUUID();
+        Participant guest = sessions.saveParticipant(new Participant(UUID.randomUUID(),
+                session.id(), "Ayşe", new GeoPoint(51.4, 5.4), false, null, false, null, null,
+                guestAccount));
+
+        assertThat(queries.participantIdOf("x7k2m", guestAccount)).contains(guest.id());
     }
 
     @Test

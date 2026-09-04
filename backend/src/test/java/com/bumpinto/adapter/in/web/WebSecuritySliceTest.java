@@ -140,7 +140,7 @@ class WebSecuritySliceTest {
 
     @Test
     void webJoinPutsTokenOnlyInHttpOnlyCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any()))
+        when(commands.join(eq("abc"), any(), eq("Ayşe"), any(), any(), any()))
                 .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
@@ -165,7 +165,7 @@ class WebSecuritySliceTest {
 
     @Test
     void mobileJoinReturnsTokenInBodyWithoutCookie() throws Exception {
-        when(commands.join(eq("abc"), eq("Ayşe"), any(), any(), any()))
+        when(commands.join(eq("abc"), any(), eq("Ayşe"), any(), any(), any()))
                 .thenReturn(new SessionCommands.JoinResult(session(UUID.randomUUID()), ayse()));
 
         MvcResult result = mvc.perform(post("/api/sessions/abc/participants")
@@ -276,7 +276,7 @@ class WebSecuritySliceTest {
     void hostJwtDrivesParticipantEndpointsOfItsOwnSession() throws Exception {
         UUID hostId = UUID.randomUUID();
         UUID hostParticipantId = UUID.randomUUID();
-        when(queries.hostParticipantId("abc", hostId)).thenReturn(Optional.of(hostParticipantId));
+        when(queries.participantIdOf("abc", hostId)).thenReturn(Optional.of(hostParticipantId));
         String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
 
         mvc.perform(post("/api/sessions/abc/deck-done")

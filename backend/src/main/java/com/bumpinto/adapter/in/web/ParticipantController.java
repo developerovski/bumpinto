@@ -30,13 +30,18 @@ class ParticipantController {
         this.me = me;
     }
 
+    /**
+     * Kimlik ZORUNLU degil (davet linki anonim katilima aciktir) ama varsa kullanilir: koltugu
+     * ya da hesabi olan cagiran ayni oturumda ikinci koltuk acmaz (bkz. SessionCommands#join).
+     */
     @PostMapping("/participants")
-    ResponseEntity<ApiDtos.JoinResponse> join(@PathVariable String slug,
+    ResponseEntity<ApiDtos.JoinResponse> join(@PathVariable String slug, Authentication auth,
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client,
             @Valid @RequestBody ApiDtos.JoinRequest request) {
         GeoPoint location = request.lat() == null || request.lng() == null ? null
                 : new GeoPoint(request.lat(), request.lng());
-        SessionCommands.JoinResult joined = commands.join(slug, request.displayName(), location,
+        SessionCommands.JoinResult joined = commands.join(slug, WebPrincipals.callerOf(auth),
+                request.displayName(), location,
                 request.locationLabel(), request.travelMode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, joined.session(), joined.participant());

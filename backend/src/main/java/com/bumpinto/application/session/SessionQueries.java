@@ -45,23 +45,20 @@ public class SessionQueries {
     }
 
     /**
-     * Oturumu kuran hesabın katılımcı kimliği; başkası sorarsa boş.
+     * Hesabın bu oturumdaki koltuğu; koltuğu yoksa boş.
      *
-     * <p>Host da bir katılımcıdır, ama katılımcı token'ı yalnızca oturum kurulurken BİR KEZ
-     * çereze yazılır (Path=/api/sessions/{slug}, 24s). Host oturumu başka bir tarayıcıda ya da
-     * cihazda — örneğin "Oturumlar" listesinden — açtığında elinde sadece hesap JWT'si olur ve
-     * o çerez bir daha ASLA dağıtılmaz. Kimlik buradan çözülmezse okuma tarafı (SessionView
-     * .viewer) çalışmaya devam eder, yazma tarafı 403 döner: host kaydırır, hiçbir swipe
-     * sunucuya ulaşmaz ve ekran her şey yolundaymış gibi görünür.
+     * <p>Katılımcı token'ı yalnızca oturum kurulurken ya da katılırken BİR KEZ dağıtılır. Üye
+     * oturumu başka bir tarayıcıda ya da cihazda açtığında elinde sadece hesap JWT'si olur;
+     * kimlik buradan çözülmezse okuma tarafı çalışmaya devam eder, yazma tarafı 403 döner —
+     * kullanıcı kaydırır, hiçbir swipe sunucuya ulaşmaz, ekran her şey yolundaymış gibi görünür.
      *
-     * <p>Yetki genişlemesi değil: JWT zaten aynı oturumda find-venues/shuffle/force-decision'ı
-     * açıyor — kendi swipe'ını kaydetmek bunlardan daha dar bir yetki.
+     * <p>Host'a özel bir dal DEĞİLDİR: koltuk sahipliği ({@code participants.user_id}) davetli
+     * üyeler için de aynı şekilde çalışır.
      */
-    public Optional<UUID> hostParticipantId(String slug, UUID userId) {
+    public Optional<UUID> participantIdOf(String slug, UUID userId) {
         return store.sessionBySlug(slug)
-                .filter(session -> session.hostId().equals(userId))
-                .flatMap(session -> store.participantsOf(session.id()).stream()
-                        .filter(Participant::host).map(Participant::id).findFirst());
+                .flatMap(session -> store.participantOf(session.id(), userId))
+                .map(Participant::id);
     }
 
     /** Okuma tarafı da tembel expiry uygular: süresi dolmuş oturum EXPIRED raporlanır, DB'ye yazılmaz. */

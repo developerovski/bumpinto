@@ -56,7 +56,7 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
-        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, null, null).participant();
+        Participant ayse = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null).participant();
 
         assertThat(ayse.id()).isNotEqualTo(r.hostParticipant().id());
         assertThat(store.participantsOf(r.session().id())).hasSize(2);
@@ -64,9 +64,90 @@ class SessionCommandsTest {
         assertThat(events.published.get(0).event().type()).isEqualTo("participant_joined");
     }
 
+    /**
+     * Host kendi oturumuna MISAFIR olarak giremez. Onceden katilim ucu cagirani hic sormuyordu:
+     * katilimci cerezi olmayan bir tarayicida host katilim formuna dusuyor ve kendi oturumunda
+     * ikinci bir koltuk aciyordu. Hayalet koltuk orta noktayi ve deste geometrisini bozar.
+     */
+    @Test
+    void hostCannotTakeASecondSeatInItsOwnSession() {
+        UUID hostAccount = UUID.randomUUID();
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                hostAccount, null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+
+        Participant again = commands.join(r.session().slug(), Caller.account(hostAccount),
+                "Sahte Misafir", SOMEREN, null, null).participant();
+
+        assertThat(again.id()).isEqualTo(r.hostParticipant().id());
+        assertThat(again.host()).isTrue();
+        assertThat(store.participantsOf(r.session().id())).hasSize(1);
+        assertThat(events.published).isEmpty(); // katilan yeni kimse yok, olay da yok
+    }
+
+    /** Cerezini kaybeden uye hayalet koltuk birakmaz: kendi koltugunu geri alir. */
+    @Test
+    void aSignedInGuestRejoiningKeepsItsSeat() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        UUID guestAccount = UUID.randomUUID();
+        Participant first = commands.join(r.session().slug(), Caller.account(guestAccount),
+                "Ayşe", SOMEREN, null, null).participant();
+
+        Participant second = commands.join(r.session().slug(), Caller.account(guestAccount),
+                "Ayşe", SOMEREN, null, null).participant();
+
+        assertThat(second.id()).isEqualTo(first.id());
+        assertThat(store.participantsOf(r.session().id())).hasSize(2);
+    }
+
+    /** Elindeki koltuk token'iyla tekrar katilan da ayni koltukta kalir. */
+    @Test
+    void rejoiningWithASeatTokenKeepsTheSameSeat() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        Participant first = commands.join(r.session().slug(), Caller.ANONYMOUS,
+                "Kerem", SOMEREN, null, null).participant();
+
+        Participant second = commands.join(r.session().slug(), Caller.participant(first.id()),
+                "Kerem", SOMEREN, null, null).participant();
+
+        assertThat(second.id()).isEqualTo(first.id());
+        assertThat(store.participantsOf(r.session().id())).hasSize(2);
+    }
+
+    /** Davet linki anonim katilima ACIK kalir: kimliksiz her katilim yeni bir koltuktur. */
+    @Test
+    void anonymousJoinsAlwaysOpenNewSeats() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+
+        Participant a = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null)
+                .participant();
+        Participant b = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", SOMEREN, null, null)
+                .participant();
+
+        assertThat(a.id()).isNotEqualTo(b.id());
+        assertThat(a.userId()).isNull();
+        assertThat(store.participantsOf(r.session().id())).hasSize(3);
+    }
+
+    /** Silinmis koltugun token'i 404 uretmez, yeni bir koltuk acar. */
+    @Test
+    void aTokenForARemovedSeatOpensANewOne() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+        UUID gone = UUID.randomUUID();
+
+        Participant fresh = commands.join(r.session().slug(), Caller.participant(gone),
+                "Kerem", SOMEREN, null, null).participant();
+
+        assertThat(fresh.id()).isNotEqualTo(gone);
+        assertThat(store.participantsOf(r.session().id())).hasSize(2);
+    }
+
     @Test
     void joinUnknownSlugThrowsNotFound() {
-        assertThatThrownBy(() -> commands.join("yok", "X", null, null, null))
+        assertThatThrownBy(() -> commands.join("yok", Caller.ANONYMOUS, "X", null, null, null))
                 .isInstanceOf(NotFoundException.class);
     }
 
@@ -74,7 +155,7 @@ class SessionCommandsTest {
     void updateLocationSetsCoordinates() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null).participant();
+        Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, null).participant();
         assertThat(kerem.hasLocation()).isFalse();
 
         commands.updateLocation(r.session().slug(), kerem.id(), SOMEREN, "Someren", null);
@@ -91,7 +172,7 @@ class SessionCommandsTest {
     void updateLocationWithoutLabelKeepsExistingLabel() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", SOMEREN, "Someren", null).participant();
+        Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", SOMEREN, "Someren", null).participant();
 
         commands.updateLocation(r.session().slug(), kerem.id(), DEN_BOSCH, null, null);
 
@@ -104,7 +185,7 @@ class SessionCommandsTest {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
-        assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z").join(r.session().slug(), "Ayşe", SOMEREN, null, null))
+        assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z").join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining(SessionStatus.EXPIRED.name());
         assertThat(store.sessions.get(r.session().id()).status()).isEqualTo(SessionStatus.COLLECTING);
@@ -114,7 +195,7 @@ class SessionCommandsTest {
     void updateLocationRejectsSessionPastItsExpiry() {
         SessionCommands.CreateSessionResult r = commands.createSession(
                 UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, null).participant();
+        Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, null).participant();
 
         assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z")
                 .updateLocation(r.session().slug(), kerem.id(), SOMEREN, null, null))
@@ -176,7 +257,7 @@ class SessionCommandsTest {
     void joinIsRejectedOnSoloSession() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
-        assertThatThrownBy(() -> commands.join(solo.session().slug(), "Ayşe", SOMEREN, null, null))
+        assertThatThrownBy(() -> commands.join(solo.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("solo");
     }
@@ -187,12 +268,12 @@ class SessionCommandsTest {
                 ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
         assertThat(r.hostParticipant().travelMode()).isEqualTo(TravelMode.BIKE);
 
-        Participant kerem = commands.join(r.session().slug(), "Kerem", SOMEREN, "Someren",
+        Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", SOMEREN, "Someren",
                 TravelMode.EBIKE).participant();
         assertThat(kerem.travelMode()).isEqualTo(TravelMode.EBIKE);
 
         // Mod verilmeyen katilim CAR: "gec katilanlar da CAR" (spec §4.5b)
-        Participant ayse = commands.join(r.session().slug(), "Ayşe", SOMEREN, "Someren", null).participant();
+        Participant ayse = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, "Someren", null).participant();
         assertThat(ayse.travelMode()).isEqualTo(TravelMode.CAR);
     }
 
@@ -200,7 +281,7 @@ class SessionCommandsTest {
     void updateLocationCanChangeTravelModeAndNullKeepsIt() {
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(), null,
                 ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
-        Participant kerem = commands.join(r.session().slug(), "Kerem", null, null, TravelMode.WALK).participant();
+        Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, TravelMode.WALK).participant();
 
         commands.updateLocation(r.session().slug(), kerem.id(), SOMEREN, "Someren", null);
         assertThat(store.participants.get(kerem.id()).travelMode()).isEqualTo(TravelMode.WALK);

@@ -15,6 +15,8 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
 
     List<ParticipantEntity> findBySessionIdIn(Collection<UUID> sessionIds);
 
+    Optional<ParticipantEntity> findBySessionIdAndUserId(UUID sessionId, UUID userId);
+
     @Query("select count(distinct p.displayName) from ParticipantEntity p, SessionEntity s "
             + "where s.id = p.sessionId and s.hostId = :hostId "
             + "and p.isHost = false and p.isManual = false")

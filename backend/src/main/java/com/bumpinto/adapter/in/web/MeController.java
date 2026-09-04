@@ -29,13 +29,13 @@ class MeController {
 
     @GetMapping
     ApiDtos.MeResponse me(@AuthenticationPrincipal Jwt jwt) {
-        return toResponse(queries.me(WebPrincipals.hostUserId(jwt)));
+        return toResponse(queries.me(WebPrincipals.accountId(jwt)));
     }
 
     @PutMapping
     ApiDtos.MeResponse update(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ApiDtos.UpdateMeRequest request) {
-        UUID id = WebPrincipals.hostUserId(jwt);
+        UUID id = WebPrincipals.accountId(jwt);
         ApiDtos.LocationPrefDto location = request.defaultLocation();
         prefs.update(id, request.displayName(),
                 location == null ? null : new GeoPoint(location.lat(), location.lng()),

@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
@@ -80,26 +81,50 @@ public class SecurityConfig {
         };
     }
 
+    /**
+     * Hesap token'i nereden okunur: {@code Authorization: Bearer} (mobil) ya da {@code bumpinto_at}
+     * cerezi (web).
+     *
+     * <p>Public uclarda kimlik ZORUNLU degil ama FAYDALIDIR: katilim ucu cagirani taniyabilirse
+     * ayni hesaba ikinci koltuk acmaz (bkz. {@code SessionCommands#join}). Bu yuzden token orada
+     * yok sayilmaz, once DOGRULANIR: bayat ya da bozuk bir token public bir ucu 401'letmemeli,
+     * yalnizca yok sayilmalidir. Bedeli istek basina bir HMAC dogrulamasi, kazanci hayalet
+     * katilimci satirlarinin bitmesi.
+     */
     @Bean
-    BearerTokenResolver bearerTokenResolver() {
+    BearerTokenResolver bearerTokenResolver(JwtDecoder accountDecoder) {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
         return request -> {
-            String fromHeader = headerResolver.resolve(request);
-            if (fromHeader != null) {
-                return fromHeader; // mobil
+            String presented = headerResolver.resolve(request);
+            if (presented == null) {
+                presented = accessCookie(request);
             }
-            if (isPublicEndpoint(request)) {
-                return null; // eski/bozuk bumpinto_at hicbir public ucu 401'letmesin
+            if (presented == null || !isPublicEndpoint(request)) {
+                return presented;
             }
-            if (request.getCookies() != null) {
-                for (Cookie cookie : request.getCookies()) {
-                    if (AuthCookies.ACCESS.equals(cookie.getName())) {
-                        return cookie.getValue(); // web
-                    }
-                }
-            }
-            return null;
+            return valid(accountDecoder, presented) ? presented : null;
         };
+    }
+
+    private static String accessCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (Cookie cookie : request.getCookies()) {
+            if (AuthCookies.ACCESS.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static boolean valid(JwtDecoder decoder, String token) {
+        try {
+            decoder.decode(token);
+            return true;
+        } catch (JwtException invalid) {
+            return false;
+        }
     }
 
     private static boolean isPublicEndpoint(HttpServletRequest request) {

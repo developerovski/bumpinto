@@ -54,6 +54,11 @@ public class FakeStores {
         }
 
 
+        @Override public Optional<Participant> participantOf(UUID sessionId, UUID userId) {
+            return participantsOf(sessionId).stream()
+                    .filter(p -> userId.equals(p.userId())).findFirst();
+        }
+
         @Override public void deleteParticipant(UUID participantId) {
             participants.remove(participantId);
         }

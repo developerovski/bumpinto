@@ -41,4 +41,20 @@ class ParticipantTokenDelivery {
         }
         return token;
     }
+
+    /**
+     * Tarayicidaki kimligi ONARIR: hesabi olan uye, katilimci cerezi olmayan bir tarayicida
+     * (yeni cihaz, temizlenmis ya da suresi dolmus cerez) oturumu okudugunda cerez yeniden
+     * yazilir — yoksa kendi oturumunun katilim formuna duserdi.
+     *
+     * <p>Mobil bu onarimi cerezle degil katilim ucuyla yapar: kimlik tasiyan katilim ayni koltugu
+     * ve taze token'i govdede geri doner ({@code SessionCommands#join}). Bu yuzden burada mobil
+     * icin uretilen bir token sessizce dusmez — hic uretilmez.
+     */
+    void refresh(ResponseEntity.BodyBuilder response, String client, Session session,
+                 Participant participant) {
+        if ("web".equalsIgnoreCase(client)) {
+            deliver(response, client, session, participant);
+        }
+    }
 }

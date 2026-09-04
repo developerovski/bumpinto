@@ -45,7 +45,7 @@ class SessionController {
 
     @GetMapping
     ApiDtos.SessionListResponse mine(@AuthenticationPrincipal Jwt jwt) {
-        return assembler.toList(profiles.mySessions(WebPrincipals.hostUserId(jwt)));
+        return assembler.toList(profiles.mySessions(WebPrincipals.accountId(jwt)));
     }
 
     @PostMapping
@@ -53,7 +53,7 @@ class SessionController {
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client,
             @Valid @RequestBody ApiDtos.CreateSessionRequest request) {
         SessionCommands.CreateSessionResult result = commands.createSession(
-                WebPrincipals.hostUserId(jwt), request.name(), request.activityType(),
+                WebPrincipals.accountId(jwt), request.name(), request.activityType(),
                 request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
                 new GeoPoint(request.lat(), request.lng()), request.displayName(),
                 request.locationLabel(), request.travelMode());
@@ -73,18 +73,23 @@ class SessionController {
      * Katılmamış birine açık olan tek şey public önizlemedir ({@code /preview}) — koordinat,
      * katılımcı id'si ve mekân taşımaz.
      *
-     * <p>Host'u dışarıda bırakmaz: katılımcı çerezi olmayan bir tarayıcıda bile hesap JWT'si
-     * host katılımcısına çözülür ({@link WebPrincipals#viewerOf}).
+     * <p>Üyeyi dışarıda bırakmaz: katılımcı çerezi olmayan bir tarayıcıda bile hesap JWT'si
+     * koltuk sahipliğinden çözülür ({@link WebPrincipals#seatOf}) ve çerez aynı yanıtta
+     * yeniden yazılır.
      */
     @GetMapping("/{slug}")
-    ApiDtos.SessionView view(@PathVariable String slug, Authentication auth) {
+    ResponseEntity<ApiDtos.SessionView> view(@PathVariable String slug, Authentication auth,
+            @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
         SessionQueries.SessionSnapshot snapshot = queries.snapshot(slug);
         if (WebPrincipals.viewerOf(snapshot, auth) == null) {
             // Görünüm ÜRETİLMEDEN reddedilir: aksi halde üye olmayan her istek boşuna tam
             // assemble (mekân başına yol süresi hesabı) yaptırırdı.
             throw new ForbiddenException("not a participant of this session");
         }
-        return assembler.toView(snapshot, auth);
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        WebPrincipals.seatOf(snapshot, auth)
+                .ifPresent(seat -> tokens.refresh(response, client, snapshot.session(), seat));
+        return response.body(assembler.toView(snapshot, auth));
     }
 
     @GetMapping("/{slug}/preview")
@@ -95,21 +100,21 @@ class SessionController {
     @PostMapping("/{slug}/find-venues")
     ApiDtos.SessionView findVenues(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
             Authentication auth) {
-        deckFlow.findVenues(slug, WebPrincipals.hostUserId(jwt));
+        deckFlow.findVenues(slug, WebPrincipals.accountId(jwt));
         return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/shuffle")
     ApiDtos.SessionView shuffle(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
             Authentication auth) {
-        deckFlow.shuffle(slug, WebPrincipals.hostUserId(jwt));
+        deckFlow.shuffle(slug, WebPrincipals.accountId(jwt));
         return assembler.toView(queries.snapshot(slug), auth);
     }
 
     @PostMapping("/{slug}/force-decision")
     ApiDtos.SessionView forceDecision(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
             @RequestBody(required = false) ApiDtos.ForceDecisionRequest request, Authentication auth) {
-        deckFlow.forceDecision(slug, WebPrincipals.hostUserId(jwt),
+        deckFlow.forceDecision(slug, WebPrincipals.accountId(jwt),
                 request == null ? null : request.venueId());
         return assembler.toView(queries.snapshot(slug), auth);
     }

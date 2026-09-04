@@ -70,6 +70,7 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.lat = p.location() == null ? null : p.location().lat();
         e.lng = p.location() == null ? null : p.location().lng();
         e.deckDoneAt = p.deckDoneAt();
+        e.userId = p.userId();
         e.isHost = p.host();
         e.isManual = p.manual();
         e.locationLabel = p.locationLabel();
@@ -81,6 +82,11 @@ public class SessionStoreAdapter implements SessionStorePort {
     @Override public List<Participant> participantsOf(UUID sessionId) {
         return participants.findBySessionIdOrderByJoinedAtAscIdAsc(sessionId).stream()
                 .map(SessionStoreAdapter::toParticipant).toList();
+    }
+
+    @Override public Optional<Participant> participantOf(UUID sessionId, UUID userId) {
+        return participants.findBySessionIdAndUserId(sessionId, userId)
+                .map(SessionStoreAdapter::toParticipant);
     }
 
 
@@ -144,6 +150,6 @@ public class SessionStoreAdapter implements SessionStorePort {
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         return new Participant(e.id, e.sessionId, e.displayName, loc, e.isHost,
                 e.deckDoneAt, e.isManual, e.locationLabel,
-                e.travelMode == null ? null : TravelMode.valueOf(e.travelMode));
+                e.travelMode == null ? null : TravelMode.valueOf(e.travelMode), e.userId);
     }
 }
