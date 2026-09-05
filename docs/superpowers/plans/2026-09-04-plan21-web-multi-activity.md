@@ -25,6 +25,126 @@ pnpm i18n:check                                           # 3 dil anahtar parite
 
 ---
 
+## Yürütme grupları (ÖNCE BUNU OKU)
+
+**Web'in tuzağı Java'nınkinin tersi.** `vitest` esbuild ile tipleri *sıyırır*, denetlemez: bir
+prop'u kaldırdığında onu hâlâ geçen çağrı yerleri **testleri kırmaz**, sessizce geçer. Yani
+yeşil test burada tek başına hiçbir şey kanıtlamaz.
+
+**Her grubun gerçek kapısı `pnpm build:web`'dir** (tipleri denetler). Test yeşil + build kırmızı
+= iş bitmemiştir.
+
+| Grup | Görevler | Sonunda |
+|---|---|---|
+| **W-G1** | T1 | `pnpm codegen` + `activity.ts` yardımcıları + `MAX_ACTIVITIES` — build yeşil |
+| **W-G2** | T2 | `ActivityPicker` çoklu seçim — build yeşil |
+| **W-G3** | **T3 + T4 + T5 + T6 + `ProfilePrefs`** | Tip/prop sweep'i: store, sayfa, kart, tüm çağrı yerleri — build yeşil |
+| **W-G4** | T7 + `VenueRow` rozeti | Boş alan uyarısı + 3 dil + parite + liste satırı rozeti — build yeşil |
+
+**W-G3 tek bir iştir, parçalanamaz.** `sessionActivity()` kalkması ~11 ekranı, `VenueCard`'ın
+`activity` prop'unun kalkması 4 çağrı yerini, `InvitePreview`'un `activities` alması `NewSessionPage`'i
+aynı anda etkiler. Ara adımlarda `pnpm build:web` kırmızıdır — beklenendir.
+
+## `ProfilePrefs` — tekil seçim, dürüst rol (W-G3'e ek)
+
+`ProfilePrefs` de `ActivityPicker` kullanıyor ama profil varsayılanı **tekil** kalıyor
+(backend de tekil bıraktı). Ucuz çözüm — `value={[defaultActivity]}` diye sarmalamak —
+çalışır ama picker'a `role="checkbox"` bastırır; ekran okuyucuya "birden fazla seçebilirsin"
+der. Rolü çoğul yapmamızın **tek sebebi** bu yalanı ortadan kaldırmaktı, profil ekranında
+geri getirmek tutarsızlık olur.
+
+`ActivityPicker`'a `max` prop'u eklenir:
+
+```tsx
+export default function ActivityPicker<A extends string>(props: {
+  value: A[];
+  onToggle: (a: A) => void;
+  /** Tekil seçim için 1 (Profil varsayılanı); varsayılan MAX_ACTIVITIES. */
+  max?: number;
+  compact?: boolean;
+  ariaLabel?: string;
+}) {
+  const { t } = useTranslation();
+  const max = props.max ?? MAX_ACTIVITIES;
+  const single = max === 1;
+  // Tekil seçimde rol de tekil olmalı: "checkbox" ekran okuyucuya birden fazla
+  // secilebilecegini soyler, oysa tiklamak DEGISTIRIR.
+  const groupRole = single ? "radiogroup" : "group";
+  const itemRole = single ? "radio" : "checkbox";
+  const full = props.value.length >= max;
+```
+
+ve chip'te `const locked = !single && full && !on;` — tekil modda hiçbir chip kilitlenmez,
+tıklamak değiştirir. `role`/`aria-checked` `groupRole`/`itemRole`'den gelir.
+
+`ProfilePrefs` çağrısı:
+
+```tsx
+          <ActivityPicker
+            compact
+            max={1}
+            value={me.defaultActivity ? [me.defaultActivity] : []}
+            onToggle={(a) => void onActivity(a).catch(() => setError(t("profile.errSave")))}
+            ariaLabel={t("profile.defaultActivity")}
+          />
+```
+
+`ActivityPicker.test.tsx`'e tek test eklenir:
+
+```tsx
+  /** Profil varsayılanı tekildir: rol de tekil olmalı, ve seçili chip kilitlenmemeli. */
+  it("max=1 iken radio rolü kullanır ve seçim değiştirilebilir", () => {
+    const onToggle = vi.fn();
+    render(<ActivityPicker value={["COFFEE"]} onToggle={onToggle} max={1} />);
+    expect(screen.getAllByRole("radio")).toHaveLength(15);
+    const other = screen.getByRole("radio", { name: "Müze" });
+    expect(other).toBeEnabled();
+    fireEvent.click(other);
+    expect(onToggle).toHaveBeenCalledWith("MUSEUM");
+  });
+```
+
+## Liste satırı rozeti (W-G4'e ek)
+
+Mekanlar ekranı **liste-önce** tasarlandı (karar 2026-09-03). Karışık destede satırlar hangi
+ilgi alanından geldiklerini söylemezse çoklu seçimin değeri **ana ekranda görünmez** olur:
+kullanıcı 20 satır görür, hangisi kahve hangisi hike bilemez. Deste/runoff kartlarında rozet
+var, listede yok.
+
+`VenueRow` zaten `venue: VenueDto` alıyor, yani `v.activityType` elinin altında — prop zinciri
+gerekmiyor. İnmesi gereken tek şey "deste karışık mı" boolean'ı:
+
+`VenuesPage` → `VenueBrowser` → `VenueRow`, `mixedDeck?: boolean`. `RunoffList`'e W-G3'te
+yapılan aktarımın aynısı.
+
+`VenueRow` içinde, başlık satırının yanında:
+
+```tsx
+      {props.mixedDeck && v.activityType && <ActivityBadge activity={v.activityType} />}
+```
+
+`activityType` yoksa rozet **hiç çizilmez** (atıf uydurulmaz — bkz. "Backend gerçeği").
+Tek alanlı destede `mixedDeck` false olduğu için her satıra gereksiz rozet basılmaz.
+
+## Backend gerçeği: `activityType` sık sık `null` gelir
+
+Sağlayıcı atfı **garanti değil**:
+
+- **Foursquare çoklu seçimde her zaman `null` atfeder** — yanıttan yalnız kategori *adı* okunuyor,
+  eşleme tablosu üst düzey id tutuyor.
+- Google da tip takma adı yüzünden bazı mekânları atfedemez.
+
+Dolayısıyla her tüketici `null` atfı **düzgün şekilde yutmalı**: `FitLine` hiç çizilmez,
+kart rozeti basılmaz, tint oturumun ilk alanına düşer. Hiçbir yerde "COFFEE" varsayılanı
+uydurulmaz.
+
+**Ayrıca:** seçili bir ilgi alanının desteye gireceği backend'de **garanti edilmiyor** (deste
+dengeleme katmanı denendi ve geri alındı — sağlayıcı zaten `DECK_MAX`'tan fazla aday
+döndürmüyor, elenecek bir şey yok). Bu yüzden T7'deki "bulunamadı" uyarısı kozmetik değil,
+**ürünün dürüst cevabıdır**.
+
+---
+
 ## Kapsam dışı (bilerek)
 
 - **Oy/kaydırma mekaniği değişmiyor.** Karışık deste tek eksende kaydırılır.
@@ -62,8 +182,8 @@ pnpm i18n:check                                           # 3 dil anahtar parite
 | `SessionPreview.activityTypes` | `ActivityType[]` | Aynı |
 | `SessionSummaryDto.activityTypes` | `ActivityType[]` | Aynı |
 | `VenueDto.activityType` | `ActivityType \| null` | Mekânın geldiği alan; atıf çözülemediyse `null` |
-| `SessionView.emptyActivityTypes` | `ActivityType[]` | Hiç mekân üretmemiş alanlar; `BROWSING` öncesi boş |
-| `CreateSessionRequest.activityTypes` | `ActivityType[]` | 1–3; boş/4+ → 400 |
+| `SessionView.emptyActivityTypes` | `ActivityType[]` | Hiç mekân üretmemiş alanlar. Deste yokken **ve** hiçbir mekân atfedilememişken boş — ikinci durumda backend'in sinyali yoktur, susar |
+| `CreateSessionRequest.activityTypes` | `ActivityType[]` | 1–3, **tekrarsız**; boş / 4+ / tekrarlı → 400 |
 
 ---
 

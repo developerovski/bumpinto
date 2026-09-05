@@ -2,10 +2,11 @@
    T4: "Son düzlük" çıkartması KALDIRILDI (karar dokümanı §4.8 — kutlama/rozet dili yasak);
    overline + başlık dalı (2 finalist / 3+) + neden kopyası (INTERSECTION/FALLBACK, B-7:T2) yeterli. */
 import { useTranslation } from "react-i18next";
+import { activityListLabel } from "../../lib/activity";
 import { Note, Overline } from "../atoms";
 
 export default function RunoffIntro(props: {
-  activity: string;
+  activities: string[];
   people: number;
   finalists: number;
   reason?: "INTERSECTION" | "FALLBACK";
@@ -20,7 +21,7 @@ export default function RunoffIntro(props: {
     <div className="flex flex-col items-start gap-1">
       <Overline>
         {t("runoff.overline", {
-          activity: t(`activity.${props.activity}`).toLocaleUpperCase(locale),
+          activity: activityListLabel(props.activities, t, locale).toLocaleUpperCase(locale),
           count: props.people,
         })}
       </Overline>

@@ -2,7 +2,7 @@ import { Suspense, lazy, useState } from "react";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
-import ActivityBadge from "../components/molecules/ActivityBadge";
+import ActivityBadges from "../components/molecules/ActivityBadges";
 import ActivityStrip from "../components/molecules/ActivityStrip";
 import InviteCard from "../components/molecules/InviteCard";
 import LazyBoundary from "../components/molecules/LazyBoundary";
@@ -11,7 +11,7 @@ import SessionHeader from "../components/molecules/SessionHeader";
 import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
 import ParticipantList from "../components/organisms/ParticipantList";
-import { sessionActivity } from "../lib/activity";
+import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { mapProps, useSessionStore } from "../store/sessionStore";
 import { useSessionAction } from "../store/useSessionAction";
@@ -35,7 +35,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
   const participants = view.participants ?? [];
   const located = participants.filter((p) => p.hasLocation).length;
   const waiting = participants.find((p) => !p.hasLocation);
-  const activity = sessionActivity(view);
+  const activities = sessionActivities(view);
   const { participants: mapParticipants, midpoint, radiusKm, pinLabels } = mapProps(view, t("map.you"));
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
 
@@ -46,7 +46,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
         title={view.name}
         badges={
           <>
-            <ActivityBadge activity={activity} />
+            <ActivityBadges activities={activities} />
             <Badge tone="amber">{t("lobby.collecting")}</Badge>
           </>
         }
@@ -56,7 +56,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
         left={
           <>
             <InviteCard slug={view.slug ?? ""} />
-            <ActivityStrip activity={activity} km={km} />
+            <ActivityStrip activities={activities} km={km} />
             <SessionSteps current="locations" />
             <ParticipantList participants={participants} />
           </>

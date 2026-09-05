@@ -2,6 +2,7 @@
 import { useTranslation } from "react-i18next";
 import type { SessionSummaryDto } from "@bumpinto/shared";
 import { Badge, LinkButton, Progress, Sticker } from "../atoms";
+import { activityListLabel } from "../../lib/activity";
 
 /** Durum → hedef sayfa CTA metni (i18n anahtarı). Backend DECIDED/EXPIRED'ı past'e koyar — burada gelmez. */
 function cta(status: SessionSummaryDto["status"]): string {
@@ -14,7 +15,8 @@ function cta(status: SessionSummaryDto["status"]): string {
 
 /** Artboard W1 · açık buluşma kartı — durum, ilerleme, katılımcı sayısı, CTA. */
 export default function SessionCard({ row }: { row: SessionSummaryDto }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const label = activityListLabel(row.activityTypes ?? [], t, i18n.resolvedLanguage ?? "en");
   const active = row.status === "SWIPING";
   const done = row.doneCount ?? 0;
   const readyTotal = row.readyCount ?? 0;
@@ -31,9 +33,9 @@ export default function SessionCard({ row }: { row: SessionSummaryDto }) {
           <Sticker>{t("sessions.deckOpen")}</Sticker>
         </span>
       )}
-      <h3 className="mb-1 text-[1.3125rem]">{row.name ?? t(`activity.${row.activityType}`)}</h3>
+      <h3 className="mb-1 text-[1.3125rem]">{row.name ?? label}</h3>
       <p className="mb-3.5 text-[0.8125rem] text-ink2">
-        {t(`activity.${row.activityType}`)} · {row.sessionType === "SOLO" ? t("sessions.solo") : t("sessions.group")}
+        {label} · {row.sessionType === "SOLO" ? t("sessions.solo") : t("sessions.group")}
       </p>
       <div className="mb-3.5 flex flex-col gap-2">
         {row.status === "SWIPING" ? (
@@ -61,7 +63,7 @@ export default function SessionCard({ row }: { row: SessionSummaryDto }) {
           href={`/j/${row.slug ?? ""}`}
           kind="white"
           size="fit-sm"
-          aria-label={`${t(cta(row.status))} · ${row.name ?? t(`activity.${row.activityType}`)}`}
+          aria-label={`${t(cta(row.status))} · ${row.name ?? label}`}
         >
           {t(cta(row.status))}
         </LinkButton>

@@ -4,7 +4,7 @@ import WhyHere from "./WhyHere";
 
 const labels = { p1: "Sen", p2: "Ayşe", p3: "Kerem" };
 
-const view = { activityType: "COFFEE", midpoint: { lat: 51.4416, lng: 5.4697 } } as never;
+const view = { activityTypes: ["COFFEE"], midpoint: { lat: 51.4416, lng: 5.4697 } } as never;
 
 describe("WhyHere", () => {
   it("üç ekseni de gösterir (adalet/uyum/yer) veri varken", () => {
@@ -14,6 +14,7 @@ describe("WhyHere", () => {
         venue={{
           travelMinutes: { p1: 25, p2: 30, p3: 35 },
           category: "espresso bar",
+          activityType: "COFFEE",
           address: "Kleine Berg 16, Eindhoven merkez",
           lat: 51.4416,
           lng: 5.4697,
@@ -79,5 +80,27 @@ describe("WhyHere", () => {
     expect(screen.getByText("Herkes ~25–35 dk")).toBeInTheDocument();
     expect(screen.queryByText(/en uzun yol/)).not.toBeInTheDocument();
     expect(screen.queryByText(/önce çıkarsa herkes aynı anda varır/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Foursquare coklu secimde HER ZAMAN atifsiz doner. Kapi yalniz `category`'ye baksaydi
+   * baslik cizilir, altindaki `FitLine` null donerdi — bomboş bir "Uyum" ekseni.
+   */
+  it("kategori var ama atıf yoksa Uyum ekseni hiç çizilmez", () => {
+    render(
+      <WhyHere
+        view={view}
+        venue={{
+          travelMinutes: { p1: 25, p2: 30, p3: 35 },
+          category: "espresso bar",
+          address: "Kleine Berg 16, Eindhoven merkez",
+          lat: 51.4416,
+          lng: 5.4697,
+        }}
+        labels={labels}
+      />,
+    );
+    expect(screen.queryByText("Uyum")).not.toBeInTheDocument();
+    expect(screen.getByText("Adalet")).toBeInTheDocument();
   });
 });

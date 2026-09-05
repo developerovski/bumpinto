@@ -18,6 +18,8 @@ export default function RunoffList(props: {
   onChoose: (id: string) => void;
   disabled: boolean;
   travel?: TravelInfo;
+  /** Oturum >1 ilgi alanı taşıyorsa finalist kartları kendi rozetlerini basar. */
+  mixedDeck?: boolean;
 }) {
   return (
     <>
@@ -37,6 +39,7 @@ export default function RunoffList(props: {
                 photoHeight={150}
                 selected={props.choice === v.id}
                 travel={props.travel}
+                mixedDeck={props.mixedDeck}
               />
             </button>
             <RunoffTrailer venue={v} all={props.finalists} />
@@ -55,6 +58,7 @@ export default function RunoffList(props: {
             >
               <VenueCard
                 venue={v}
+                mixedDeck={props.mixedDeck}
                 variant="row"
                 selected={props.choice === v.id}
                 travel={props.travel}

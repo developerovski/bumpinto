@@ -19,7 +19,7 @@ export default function PastSessionRow({ row, index }: { row: SessionSummaryDto;
       <div className="h-12 w-12 flex-none">
         <VenueCard
           venue={{ id: row.slug, name: row.decidedVenueName ?? row.name ?? "?", photoUrl: row.decidedVenuePhotoUrl, deckOrder: index }}
-          tint={GROUP_TINT[groupOf(row.activityType ?? "COFFEE")]}
+          tint={GROUP_TINT[groupOf(row.activityTypes?.[0] ?? "")]}
           photoOnly
           photoHeight={48}
         />

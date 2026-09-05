@@ -11,7 +11,7 @@ describe("RunoffIntro", () => {
 
     it("'Fitness' → 'FITNESS' (ASCII I, 'FİTNESS' DEĞİL)", async () => {
       await i18n.changeLanguage("en");
-      render(<RunoffIntro activity="FITNESS" people={3} finalists={2} sent={false} />);
+      render(<RunoffIntro activities={["FITNESS"]} people={3} finalists={2} sent={false} />);
       expect(screen.getByText(/FITNESS/)).toBeInTheDocument();
       expect(screen.queryByText(/FİTNESS/)).not.toBeInTheDocument();
     });

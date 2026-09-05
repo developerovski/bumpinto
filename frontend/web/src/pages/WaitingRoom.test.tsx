@@ -11,7 +11,7 @@ import WaitingRoom from "./WaitingRoom";
 const view = {
   slug: "x7k2m",
   name: "Cuma kahvesi",
-  activityType: "COFFEE",
+  activityTypes: ["COFFEE"],
   sessionType: "GROUP",
   status: "COLLECTING",
   midpoint: { lat: 51.5, lng: 5.5 },

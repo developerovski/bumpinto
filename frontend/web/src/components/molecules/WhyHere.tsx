@@ -2,7 +2,6 @@
    yer tutucu metin yazılmaz (§1 bulgusu: artboard'lar olmayan veriye yaslanıyordu). */
 import { useTranslation } from "react-i18next";
 import { fairnessOf, type SessionView as View, type VenueDto as Venue } from "@bumpinto/shared";
-import { sessionActivity } from "../../lib/activity";
 import { roundedMidpointMeters } from "../../lib/geo";
 import { HandNote, Note, Overline } from "../atoms";
 import FitLine from "./FitLine";
@@ -43,10 +42,12 @@ export default function WhyHere(props: {
       {/* UYUM — B-7:T4 `category` gelmeden çizilmez. Sözcük/renk mantığı `FitLine`'da tek
           uygulama (reviewer notu) — `categories` geçilmez, tek mekan ekranında çeşitlilik
           denetimi (§4.6, "12 aynı kart") anlamsız. */}
-      {props.venue.category && (
+      {/* Atıf da şart: `FitLine` atıfsız mekânda null döner, kapı yalnız `category`'ye baksaydı
+          başlık çizilip altı boş kalırdı (Foursquare çoklu seçimde HER ZAMAN atıfsız döner). */}
+      {props.venue.category && props.venue.activityType && (
         <div className={AXIS}>
           <Overline>{t("result.axisFit")}</Overline>
-          <FitLine venue={props.venue} activity={sessionActivity(props.view)} />
+          <FitLine venue={props.venue} />
         </div>
       )}
 

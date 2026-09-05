@@ -337,6 +337,7 @@
     "solo": "Bireysel",
     "soloCopy": "Konumları sen girersin, haritadan kendin seçersin. Link ve deste yok.",
     "what": "Ne yapıyorsunuz?",
+    "whatHint": "En fazla {{max}} tane seç",
     "name": "Buluşmaya isim ver",
     "nameOptional": "· istersen",
     "namePlaceholder": "Cuma kahvesi",
@@ -397,7 +398,8 @@
     "noLocationMany": "Konumu olmayanlar gelince süreler güncellenir",
     "needTwo": "Deste için oturumda en az iki kişi olmalı — biri çevrimdışıyken listeden bir yer seçip kararı kapatabilirsin.",
     "invite": "Davet linki",
-    "inviteText": "{{name}} — ortada buluşuyoruz, sen de gel:"
+    "inviteText": "{{name}} — ortada buluşuyoruz, sen de gel:",
+    "noneFor": "{{activity}} için yakında yer bulunamadı."
   },
   "attribution": {
     "google": "Google Maps",

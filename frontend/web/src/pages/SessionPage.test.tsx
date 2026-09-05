@@ -6,7 +6,7 @@ vi.mock("../store/useSessionLive", () => ({ useSessionLive: () => undefined }));
 import { useSessionStore } from "../store/sessionStore";
 import SessionPage from "./SessionPage";
 
-const base = { slug: "x", name: "Cuma kahvesi", activityType: "COFFEE", sessionType: "GROUP", expiresAt: "",
+const base = { slug: "x", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP", expiresAt: "",
   participants: [
     { id: "h", displayName: "Mehmet", host: true, hasLocation: true, deckDone: false, manual: false, locationLabel: "Den Bosch", approxLocation: { lat: 51.7, lng: 5.3 } },
     { id: "a", displayName: "Ayşe", host: false, hasLocation: true, deckDone: false, manual: false, locationLabel: "Someren", approxLocation: { lat: 51.39, lng: 5.71 } },

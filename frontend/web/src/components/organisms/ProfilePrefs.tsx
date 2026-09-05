@@ -117,8 +117,9 @@ export default function ProfilePrefs({
         <div className="mx-[1.125rem] mb-3.5 flex flex-col gap-3">
           <ActivityPicker
             compact
-            value={me.defaultActivity ?? ""}
-            onChange={(a) => void onActivity(a).catch(() => setError(t("profile.errSave")))}
+            max={1}
+            value={me.defaultActivity ? [me.defaultActivity] : []}
+            onToggle={(a) => void onActivity(a).catch(() => setError(t("profile.errSave")))}
             ariaLabel={t("profile.defaultActivity")}
           />
           {open === "activity" && errorNode}

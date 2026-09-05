@@ -345,6 +345,7 @@
     "solo": "Solo",
     "soloCopy": "Jij voert de locaties in en kiest zelf op de kaart. Geen link, geen stapel.",
     "what": "Wat gaan jullie doen?",
+    "whatHint": "Kies er maximaal {{max}}",
     "name": "Geef de afspraak een naam",
     "nameOptional": "· optioneel",
     "namePlaceholder": "Vrijdagkoffie",
@@ -405,7 +406,8 @@
     "noLocationMany": "De tijden worden bijgewerkt zodra iedereen zonder locatie meedoet",
     "needTwo": "Voor een deck moeten er minstens twee mensen in de sessie zijn — als iemand offline is, kies dan een plek uit de lijst en sluit de beslissing af.",
     "invite": "Uitnodigingslink",
-    "inviteText": "{{name}} — we spreken in het midden af, doe je mee:"
+    "inviteText": "{{name}} — we spreken in het midden af, doe je mee:",
+    "noneFor": "Geen plekken voor {{activity}} in de buurt."
   },
   "attribution": {
     "google": "Google Maps",

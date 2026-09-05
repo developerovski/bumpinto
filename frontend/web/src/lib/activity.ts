@@ -20,9 +20,24 @@ export function groupOf(activity: string): ActivityGroup {
   return (Object.keys(ACTIVITY_GROUPS) as ActivityGroup[]).find((g) => ACTIVITY_GROUPS[g].includes(activity)) ?? "FOOD_DRINK";
 }
 
-/** SessionView.activityType — eksikse varsayılan COFFEE. */
-export function sessionActivity(view: { activityType?: string }): string {
-  return view.activityType ?? "COFFEE";
+/** Deste 20 mekân taşır; 4 ilgi alanı her birine 5 kart bırakır — uzlaşma için çok ince. */
+export const MAX_ACTIVITIES = 3;
+
+/** SessionView.activityTypes — alan yoksa BOŞ dizi. Eski tekil yardımcı eksikte `COFFEE`
+    varsayıyordu; çoklu seçimde bu uydurma bir rozet çizerdi. */
+export function sessionActivities(view: { activityTypes?: string[] }): string[] {
+  return view.activityTypes ?? [];
+}
+
+/** Cümle içine giren alan adları: `Intl.ListFormat` bağlacı locale'den alır (tr "ve",
+    nl "en", en Oxford). Elle birleştirme üç dilden ikisinde yanlış olurdu. */
+export function activityListLabel(
+  activities: string[],
+  t: (key: string) => string,
+  locale: string,
+): string {
+  const labels = activities.map((a) => t(`activity.${a}`));
+  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(labels);
 }
 
 /* Karar dokümanı §4.6 — "uyum satırı" için aktivite başına beklenen sağlayıcı kategorileri.

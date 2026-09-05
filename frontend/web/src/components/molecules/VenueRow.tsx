@@ -2,6 +2,7 @@ import { forwardRef, type KeyboardEvent } from "react";
 import type { VenueDto } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Overline } from "../atoms";
+import ActivityBadge from "./ActivityBadge";
 import VenueMeta from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
 
@@ -16,6 +17,8 @@ const VenueRow = forwardRef<
     venue: VenueDto;
     selected: boolean;
     tint: number;
+    /** Karışık deste (>1 ilgi alanı): satır kendi alanının rozetini de basar. */
+    mixedDeck?: boolean;
     travel: TravelInfo;
     /** SessionView.midpointLabel — semt bununla AYNIYSA meta satırında tekrar edilmez (§4.9). */
     midpointLabel?: string;
@@ -59,6 +62,11 @@ const VenueRow = forwardRef<
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {v.category && <Overline>{v.category}</Overline>}
         <h3 className="font-head text-[1.0625rem] font-bold">{v.name}</h3>
+        {props.mixedDeck && v.activityType && (
+          <div className="flex">
+            <ActivityBadge activity={v.activityType} />
+          </div>
+        )}
         <VenueMeta venue={v} travel={props.travel} midpointLabel={props.midpointLabel} />
       </div>
     </div>

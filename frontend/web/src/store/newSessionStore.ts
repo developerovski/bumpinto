@@ -1,6 +1,7 @@
 import type { ParticipantDto, Schemas } from "@bumpinto/shared";
 import { create } from "zustand";
 import { api } from "../lib/api";
+import { MAX_ACTIVITIES } from "../lib/activity";
 import { approx } from "../lib/geo";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 
@@ -13,23 +14,23 @@ export type LocalPoint = {
   lng: number;
   travelMode: TravelMode;
 };
-type Activity = Schemas["CreateSessionRequest"]["activityType"];
+type Activity = Schemas["CreateSessionRequest"]["activityTypes"][number];
 
 type State = {
-  type: SessionType; activity: Activity; name: string; points: LocalPoint[]; travelMode: TravelMode;
+  type: SessionType; activities: Activity[]; name: string; points: LocalPoint[]; travelMode: TravelMode;
   busy: boolean; error: string | null;
-  setType: (t: SessionType) => void; setActivity: (a: Activity) => void; setName: (n: string) => void;
+  setType: (t: SessionType) => void; toggleActivity: (a: Activity) => void; setName: (n: string) => void;
   setTravelMode: (m: TravelMode) => void;
   addLocalPoint: (p: LocalPoint) => void; removeLocalPoint: (index: number) => void;
   setLocalPointTravelMode: (index: number, mode: TravelMode) => void;
   /** Kur (+ SOLO: noktaları ekle, mekanları bul). Oturum slug'ını döner. */
   submit: (displayName: string, own: Loc) => Promise<string>;
-  reset: () => void;
+  reset: (defaultActivity?: Activity) => void;
 };
 
-const initial = (): Pick<State, "type" | "activity" | "name" | "points" | "travelMode" | "busy" | "error"> => ({
+const initial = (): Pick<State, "type" | "activities" | "name" | "points" | "travelMode" | "busy" | "error"> => ({
   type: "GROUP",
-  activity: "COFFEE",
+  activities: ["COFFEE"],
   name: "",
   points: [],
   travelMode: DEFAULT_TRAVEL_MODE,
@@ -40,7 +41,15 @@ const initial = (): Pick<State, "type" | "activity" | "name" | "points" | "trave
 export const useNewSessionStore = create<State>((set, get) => ({
   ...initial(),
   setType: (t) => set({ type: t }),
-  setActivity: (a) => set({ activity: a }),
+  /** Sınırlar TEK yerde: picker chip'i devre dışı bıraksa bile store son sözü söyler.
+      Son alan kaldırılmaz — backend boş listeyi 400'le reddediyor. */
+  toggleActivity: (a) =>
+    set((s) => {
+      if (s.activities.includes(a)) {
+        return s.activities.length === 1 ? s : { activities: s.activities.filter((x) => x !== a) };
+      }
+      return s.activities.length >= MAX_ACTIVITIES ? s : { activities: [...s.activities, a] };
+    }),
   setName: (n) => set({ name: n }),
   setTravelMode: (m) => set({ travelMode: m }),
   addLocalPoint: (p) => set((s) => ({ points: [...s.points, p] })),
@@ -48,13 +57,13 @@ export const useNewSessionStore = create<State>((set, get) => ({
   setLocalPointTravelMode: (index, mode) =>
     set((s) => ({ points: s.points.map((p, i) => (i === index ? { ...p, travelMode: mode } : p)) })),
   submit: async (displayName, own) => {
-    const { type, activity, name, points, travelMode } = get();
+    const { type, activities, name, points, travelMode } = get();
     set({ busy: true, error: null });
     try {
       let slug: string;
       try {
         const r = await api.createSession({
-          activityType: activity,
+          activityTypes: activities,
           sessionType: type,
           name: name.trim() || undefined,
           lat: own.lat,
@@ -90,7 +99,10 @@ export const useNewSessionStore = create<State>((set, get) => ({
       set({ busy: false });
     }
   },
-  reset: () => set({ ...initial() }),
+  /** Varsayılan geçilirse başlangıç seçimi ODUR; yoksa COFFEE. Profil varsayılanını
+      toggle ile eklemek yanlış olurdu: reset zaten tek elemanlı bir seçim bırakıyor. */
+  reset: (defaultActivity?: Activity) =>
+    set({ ...initial(), activities: [defaultActivity ?? "COFFEE"] }),
 }));
 
 /** Kendi konum (varsa) + eklenen nokta sayısı. */

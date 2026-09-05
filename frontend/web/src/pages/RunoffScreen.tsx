@@ -8,6 +8,7 @@ import RunoffStatus from "../components/molecules/RunoffStatus";
 import RunoffTie from "../components/molecules/RunoffTie";
 import TwoZone from "../components/molecules/TwoZone";
 import RunoffList from "../components/organisms/RunoffList";
+import { sessionActivities } from "../lib/activity";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { allVoted, votersOf } from "../lib/voters";
 import { useDeckStore } from "../store/deckStore";
@@ -22,6 +23,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
   const pick = useSessionStore((s) => s.pick);
   const v = props.view;
   const selfId = v.viewer?.participantId;
+  const activities = sessionActivities(v);
   const [choice, setChoice] = useState<string | null>(null);
   const [localSent, setLocalSent] = useState(false);
   const { run, busy, error } = useSessionAction();
@@ -83,7 +85,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
         left={
           <>
             <RunoffIntro
-              activity={v.activityType ?? ""}
+              activities={activities}
               people={voters.length}
               finalists={finalists.length}
               reason={v.runoffReason}
@@ -98,6 +100,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
               onChoose={setChoice}
               disabled={tie ? !host : sent}
               travel={travel}
+              mixedDeck={activities.length > 1}
             />
           </>
         }

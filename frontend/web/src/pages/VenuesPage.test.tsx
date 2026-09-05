@@ -8,7 +8,7 @@ const venue = {
   travelMinutes: { h: 40, a: 45 },
 };
 const base = {
-  slug: "snu7zra8", name: "Cuma kahvesi", activityType: "COFFEE", status: "BROWSING",
+  slug: "snu7zra8", name: "Cuma kahvesi", activityTypes: ["COFFEE"], status: "BROWSING",
   venues: [venue], midpoint: { lat: 51.5, lng: 5.5 }, radiusKm: 9,
 };
 const host = { id: "h", displayName: "Mehmet", host: true, hasLocation: true, manual: false, online: true, approxLocation: { lat: 51.7, lng: 5.3 } };
@@ -46,6 +46,34 @@ describe("VenuesPage — davet ve deste kapısı", () => {
   it("iki kişi de odadaysa Karıştır açık", () => {
     show({ ...base, sessionType: "GROUP", viewer: { participantId: "h", host: true }, participants: [host, { ...guest, online: true }] });
     expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeEnabled();
+  });
+});
+
+describe("VenuesPage — boş kalan ilgi alanı uyarısı", () => {
+  /** Seçili ama boş kalan alan sessizce yutulmaz — ek çağrı yapılmadığı için açıkça söylenir. */
+  it("mekân üretmemiş ilgi alanını bildirir", () => {
+    show({
+      ...base,
+      activityTypes: ["COFFEE", "HIKE"],
+      emptyActivityTypes: ["HIKE"],
+      sessionType: "GROUP",
+      viewer: { participantId: "h", host: true },
+      participants: [host, guest],
+    });
+    expect(screen.getByText(/Doğa yürüyüşü için yakında yer bulunamadı/)).toBeInTheDocument();
+  });
+
+  /** Hepsi doluysa uyarı hiç çizilmez. */
+  it("boş alan yoksa uyarı basmaz", () => {
+    show({
+      ...base,
+      activityTypes: ["COFFEE"],
+      emptyActivityTypes: [],
+      sessionType: "GROUP",
+      viewer: { participantId: "h", host: true },
+      participants: [host, guest],
+    });
+    expect(screen.queryByText(/bulunamadı/)).not.toBeInTheDocument();
   });
 });
 

@@ -25,4 +25,35 @@ describe("VenueRow", () => {
     expect(row).toHaveAttribute("role", "button");
     expect(row).not.toHaveAttribute("aria-disabled", "true");
   });
+
+  /** Karisik destede liste satiri hangi alandan geldigini SOYLER (liste-once ekran). */
+  it("karışık destede aktivite rozeti basar", () => {
+    render(
+      <VenueRow
+        venue={{ ...venue, activityType: "HIKE" }}
+        selected={false}
+        tint={0}
+        travel={travel}
+        mixedDeck
+        onHover={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Doğa yürüyüşü")).toBeInTheDocument();
+  });
+
+  /** Atif cozulemediyse rozet UYDURULMAZ; tek alanli destede de basilmaz. */
+  it("atıfsız mekânda ve tek alanlı destede rozet basmaz", () => {
+    const { rerender } = render(
+      <VenueRow venue={venue} selected={false} tint={0} travel={travel} mixedDeck
+        onHover={vi.fn()} onSelect={vi.fn()} />,
+    );
+    expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
+
+    rerender(
+      <VenueRow venue={{ ...venue, activityType: "HIKE" }} selected={false} tint={0}
+        travel={travel} onHover={vi.fn()} onSelect={vi.fn()} />,
+    );
+    expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
+  });
 });

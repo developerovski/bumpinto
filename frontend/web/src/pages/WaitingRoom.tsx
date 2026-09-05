@@ -10,7 +10,7 @@ import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
 import WaitingStatus from "../components/molecules/WaitingStatus";
 import ParticipantList from "../components/organisms/ParticipantList";
-import { sessionActivity } from "../lib/activity";
+import { sessionActivities } from "../lib/activity";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { mapProps, useSessionStore, viewerOf } from "../store/sessionStore";
@@ -30,7 +30,7 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [travelMode, setTravelMode] = useState<TravelMode>(self?.travelMode ?? DEFAULT_TRAVEL_MODE);
-  const activity = sessionActivity(view);
+  const activities = sessionActivities(view);
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
   const loc = useOwnLocation();
   const desktop = useMediaQuery("(min-width: 1024px)");
@@ -70,7 +70,7 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
         left={
           <>
             <JoinedCard self={self} />
-            <ActivityStrip activity={activity} km={km} />
+            <ActivityStrip activities={activities} km={km} />
             <ParticipantList participants={view.participants ?? []} />
           </>
         }

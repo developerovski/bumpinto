@@ -76,15 +76,14 @@ describe("VenueCard", () => {
   it("activity + categories verilince uyum satırını başlıktan hemen sonra gösterir", () => {
     render(
       <VenueCard
-        venue={{ id: "v1", name: "Bakkerij Bart", category: "Fırın" }}
-        activity="COFFEE"
+        venue={{ id: "v1", name: "Bakkerij Bart", category: "Fırın", activityType: "COFFEE" }}
         categories={["Espresso bar", "Fırın"]}
       />,
     );
     expect(screen.getByText("Kahve değil: fırın")).toBeInTheDocument();
   });
 
-  it("activity verilmezse uyum satırı hiç çizilmez", () => {
+  it("mekânın activityType'ı yoksa uyum satırı hiç çizilmez", () => {
     render(<VenueCard venue={{ id: "v1", name: "Café Berlage", category: "Espresso bar" }} />);
     expect(screen.queryByText(/Kahve/)).not.toBeInTheDocument();
   });
@@ -146,8 +145,8 @@ describe("VenueCard", () => {
           locality: "Best",
           hoursToday: "08–17",
           provider: "GOOGLE",
+          activityType: "COFFEE",
         }}
-        activity="COFFEE"
         categories={["Espresso bar", "Fırın"]}
       />,
     );
@@ -164,5 +163,63 @@ describe("VenueCard", () => {
     expect(iMeta).toBeLessThan(iLocality);
     expect(iLocality).toBeLessThan(iHours);
     expect(iHours).toBeLessThan(iAttr);
+  });
+
+  /** Karışık destede kart KENDİ alanını söyler: hike kartı "kahve değil" demez. */
+  it("uyum satırı mekânın kendi ilgi alanına bakar", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Trage Tocht", category: "Nature trail", activityType: "HIKE" }}
+        categories={["Coffee shop", "Nature trail"]}
+      />,
+    );
+    expect(screen.getByText(/Doğa yürüyüşü için/)).toBeInTheDocument();
+  });
+
+  /** Atıf yoksa satır HİÇ çizilmez — uydurma bir alan adı yazmaktansa sussun. */
+  it("atıfsız mekânda uyum satırı çizilmez", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Trage Tocht", category: "Hiking area", activityType: undefined }}
+        categories={["Coffee shop", "Hiking area"]}
+      />,
+    );
+    expect(screen.queryByText(/için:/)).not.toBeInTheDocument();
+  });
+
+  /** Karışık destede kart rozeti gösterilir; tek alanlı destede gereksiz gürültüdür. */
+  it("karışık destede aktivite rozeti basar", () => {
+    render(<VenueCard venue={{ id: "v1", name: "Trage Tocht", activityType: "HIKE" }} mixedDeck />);
+    expect(screen.getByText("Doğa yürüyüşü")).toBeInTheDocument();
+  });
+
+  it("mixedDeck geçilmezse rozet basılmaz (tek alanlı deste)", () => {
+    render(<VenueCard venue={{ id: "v1", name: "Trage Tocht", activityType: "HIKE" }} />);
+    expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Mobil (390) runoff iki finalisti YAN YANA gosterir. Karisik destede hangisinin hangi
+   * alan oldugu yazmazsa kullanici neyi sectigini bilmez — row varyanti da rozet basmali.
+   */
+  it("row varyantı karışık destede aktivite rozeti basar", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Aa Trail", activityType: "HIKE", deckOrder: 0 }}
+        variant="row"
+        mixedDeck
+      />,
+    );
+    expect(screen.getByText("Doğa yürüyüşü")).toBeInTheDocument();
+  });
+
+  it("row varyantı tek alanlı destede rozet basmaz", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Aa Trail", activityType: "HIKE", deckOrder: 0 }}
+        variant="row"
+      />,
+    );
+    expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
   });
 });

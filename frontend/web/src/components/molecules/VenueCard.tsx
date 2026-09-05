@@ -9,6 +9,7 @@ import { monogram } from "../../lib/monogram";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import Attribution from "./Attribution";
 import FairnessBadge from "./FairnessBadge";
+import ActivityBadge from "./ActivityBadge";
 import FitLine from "./FitLine";
 import TravelChips from "./TravelChips";
 
@@ -43,8 +44,8 @@ export default function VenueCard(props: {
   travel?: TravelInfo;
   /** Gradyan başlangıç ofseti (ör. aktivite grubuna göre GROUP_TINT) — deckOrder ile toplanır. */
   tint?: 0 | 1 | 2 | 3;
-  /** SessionView.activityType — verilmezse uyum satırı hiç çizilmez (§4.6). */
-  activity?: string;
+  /** Karışık deste (>1 ilgi alanı): kart kendi alanının rozetini de basar. */
+  mixedDeck?: boolean;
   /** Destedeki TÜM kategoriler — `FitLine`'ın çeşitlilik denetimine geçilir. */
   categories?: string[];
   /** SessionView.midpointLabel — semt bununla AYNIYSA meta satırında tekrar edilmez (§4.9). */
@@ -120,8 +121,13 @@ export default function VenueCard(props: {
           </div>
           <div className="flex flex-1 flex-col gap-1">
             <h3>{v.name}</h3>
-            {/* Artboard `Liste modu 390` `.row.wr` — puan/fiyat satırı + tek adalet rozeti. */}
+            {/* Artboard `Liste modu 390` `.row.wr` — puan/fiyat satırı + tek adalet rozeti.
+                Karışık destede aktivite rozeti de burada: mobil birinci sınıf artboard,
+                iki finalist yan yanayken hangisinin hangi alan olduğu yazmalı. */}
             <div className="flex flex-wrap items-center gap-2">
+              {props.mixedDeck && v.activityType && (
+                <ActivityBadge activity={v.activityType} />
+              )}
               {hasMeta && (
                 <span className="text-[0.75rem] text-ink2">
                   {v.rating != null && `★ ${v.rating}`}
@@ -184,9 +190,10 @@ export default function VenueCard(props: {
           <div className="flex items-start justify-between gap-2">
             <div className={`flex flex-1 flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]}`}>
               {!props.hideTitle && <h2 className="text-[1.25rem]">{v.name}</h2>}
-              {props.activity && (
-                <FitLine venue={v} activity={props.activity} categories={props.categories ?? []} />
+              {props.mixedDeck && v.activityType && (
+                <div className="flex"><ActivityBadge activity={v.activityType} /></div>
               )}
+              <FitLine venue={v} categories={props.categories ?? []} />
               {(hasMeta || locality) && (
                 <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
                   {v.rating != null && (

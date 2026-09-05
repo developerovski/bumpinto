@@ -10,7 +10,7 @@ import TwoZone from "../components/molecules/TwoZone";
 import ViralCard from "../components/molecules/ViralCard";
 import WhyHere from "../components/molecules/WhyHere";
 import WinnerCard from "../components/molecules/WinnerCard";
-import { GROUP_TINT, groupOf, sessionActivity } from "../lib/activity";
+import { GROUP_TINT, groupOf, sessionActivities } from "../lib/activity";
 import { claimReveal } from "../lib/reveal";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { votersOf } from "../lib/voters";
@@ -43,7 +43,8 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   const participants = v.participants ?? [];
   const selfId = v.viewer?.participantId;
   const isHost = !!v.viewer?.host;
-  const activity = sessionActivity(v);
+  // Tint KAZANANIN kendi alanından: karışık destede oturumun ilk alanı yanlış renk verirdi.
+  const tint = GROUP_TINT[groupOf(winner?.activityType ?? sessionActivities(v)[0] ?? "")];
   // travelMinutes katılımcı UUID'siyle anahtarlı (artboard W3 rozet metni).
   const travel = useTravelLabels(view);
 
@@ -112,7 +113,7 @@ export default function ResultScreen({ view }: { view: SessionView }) {
           <>
             <WhyHere view={v} venue={winner} labels={travel.labels} />
             <TravelList venue={winner} participants={participants} selfId={selfId} />
-            <BackupPlan view={v} winnerId={winner.id ?? ""} tint={GROUP_TINT[groupOf(activity)]} />
+            <BackupPlan view={v} winnerId={winner.id ?? ""} tint={tint} />
             <ViralCard host={isHost} />
           </>
         }

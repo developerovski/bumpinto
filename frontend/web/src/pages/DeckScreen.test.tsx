@@ -24,7 +24,7 @@ const venues: VenueDto[] = Array.from({ length: 12 }, (_, i) => ({ id: `v${i}`, 
 function buildView(overrides: Partial<SessionView> = {}): SessionView {
   return {
     slug: "x",
-    activityType: "FOOD",
+    activityTypes: ["FOOD"],
     sessionType: "GROUP",
     status: "SWIPING",
     name: "Kahve",
@@ -54,16 +54,16 @@ describe("DeckScreen — yeniden yükleme sonrası sunucu gerçeği", () => {
   });
 });
 
-// BLOCKER fix: VenueDeck artık `activity`/`midpointLabel` görünümden alır (kart anatomisi §4.9).
+// BLOCKER fix: VenueDeck `midpointLabel`i görünümden alır; uyum satırı MEKÂNIN kendi alanından (§4.9).
 describe("DeckScreen — kart anatomisi canlı destede kablolu (§4.9)", () => {
   it("uyum satırını gösterir; semt orta nokta etiketiyle AYNIYSA meta satırında tekrar edilmez", () => {
     useDeckStore.setState({ slug: "x", index: 0, liked: {}, listMode: false, sending: false, sent: false });
     const view = buildView({
-      activityType: "COFFEE",
+      activityTypes: ["COFFEE"],
       midpointLabel: "Eindhoven",
       venues: [
-        { id: "v0", name: "Café Berlage", deckOrder: 0, category: "Espresso bar", locality: "Eindhoven" },
-        { id: "v1", name: "Bakkerij Bart", deckOrder: 1, category: "Fırın" },
+        { id: "v0", name: "Café Berlage", deckOrder: 0, category: "Espresso bar", locality: "Eindhoven", activityType: "COFFEE" },
+        { id: "v1", name: "Bakkerij Bart", deckOrder: 1, category: "Fırın", activityType: "COFFEE" },
       ],
     });
     render(<DeckScreen slug="x" view={view} />);

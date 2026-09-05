@@ -6,7 +6,7 @@ import SoloSetupPage from "./SoloSetupPage";
 const view = {
   slug: "s9k2m",
   name: "Cumartesi kahvesi",
-  activityType: "COFFEE",
+  activityTypes: ["COFFEE"],
   sessionType: "SOLO",
   status: "COLLECTING",
   participants: [

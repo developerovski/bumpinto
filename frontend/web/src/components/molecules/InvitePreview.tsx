@@ -1,9 +1,9 @@
 import { Trans, useTranslation } from "react-i18next";
 import { Avatar, Badge, HandNote, Highlight, Note, Overline } from "../atoms";
-import ActivityBadge from "./ActivityBadge";
+import ActivityBadges from "./ActivityBadges";
 
 /** GRUP sağ bölge — davetlinin göreceği önizleme (spec §5 W2). */
-export default function InvitePreview(props: { hostName: string; sessionName: string; activity: string }) {
+export default function InvitePreview(props: { hostName: string; sessionName: string; activities: string[] }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-3">
@@ -17,7 +17,7 @@ export default function InvitePreview(props: { hostName: string; sessionName: st
         </div>
         <h2>{props.sessionName || <Trans i18nKey="join.title" components={[<Highlight key="0" />]} />}</h2>
         <div className="flex flex-wrap gap-2">
-          <ActivityBadge activity={props.activity} />
+          <ActivityBadges activities={props.activities} />
           <Badge>{t("join.joinedCount", { count: 1 })}</Badge>
         </div>
         <Note>{t("join.subtitle")}</Note>

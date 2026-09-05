@@ -2,12 +2,12 @@ import { Suspense, lazy } from "react";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, HandNote, Note, Page } from "../components/atoms";
-import ActivityBadge from "../components/molecules/ActivityBadge";
+import ActivityBadges from "../components/molecules/ActivityBadges";
 import LazyBoundary from "../components/molecules/LazyBoundary";
 import SessionHeader from "../components/molecules/SessionHeader";
 import TwoZone from "../components/molecules/TwoZone";
 import PointsEditor from "../components/organisms/PointsEditor";
-import { sessionActivity } from "../lib/activity";
+import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { pointCount } from "../store/newSessionStore";
 import { mapProps, useSessionStore } from "../store/sessionStore";
@@ -28,7 +28,7 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
   const host = participants.find((p) => p.host) ?? null;
   const manual = participants.filter((p) => p.manual);
   const count = pointCount(host?.hasLocation ? { label: host.locationLabel } : null, manual);
-  const activity = sessionActivity(view);
+  const activities = sessionActivities(view);
   // 390'da harita hiç mount edilmez (§4.7) — sağ bölge ve harita yalnız gerçek lg genişlikte
   // (JoinForm deseni: `lgOnly` + `TwoZone.rightLgOnly`); jsdom `matchMedia` uygulamıyor →
   // test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz haritanın mount
@@ -42,7 +42,7 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
         title={view.name}
         badges={
           <>
-            <ActivityBadge activity={activity} />
+            <ActivityBadges activities={activities} />
             <Badge>{t("sessions.solo")}</Badge>
           </>
         }

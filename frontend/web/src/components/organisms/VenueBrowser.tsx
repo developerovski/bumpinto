@@ -29,6 +29,8 @@ export default function VenueBrowser(props: {
   travel: TravelInfo;
   onPick: (venueId: string) => void;
   tint?: number;
+  /** Oturum >1 ilgi alanı taşıyorsa satırlar kendi rozetlerini basar (bkz. VenueRow). */
+  mixedDeck?: boolean;
   pinLabels?: Record<string, string>;
   /** SessionView.midpointLabel — satır meta çizgisinde semt bununla AYNIYSA tekrar edilmez (§4.9). */
   midpointLabel?: string;
@@ -180,6 +182,7 @@ export default function VenueBrowser(props: {
                 venue={v}
                 selected={v.id === selected}
                 tint={tint}
+                mixedDeck={props.mixedDeck}
                 travel={props.travel}
                 midpointLabel={props.midpointLabel}
                 onHover={() => setSel(v.id ?? null)}

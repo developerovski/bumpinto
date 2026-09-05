@@ -18,7 +18,7 @@ function view(
   extra: Record<string, unknown> = {},
 ) {
   return {
-    slug: "q4754zo7", activityType: "FOOD", sessionType: "GROUP", status: "RUNOFF",
+    slug: "q4754zo7", activityTypes: ["FOOD"], sessionType: "GROUP", status: "RUNOFF",
     participants: [mehmet, yildiz], venues, runoffVenueIds: ["v1", "v2"],
     runoffVotedParticipantIds: votedIds, viewer, ...extra,
   } as never;

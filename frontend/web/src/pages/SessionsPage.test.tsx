@@ -11,10 +11,10 @@ describe("SessionsPage", () => {
 
   it("açık ve geçmiş oturumları listeler", async () => {
     vi.mocked(api.listSessions).mockResolvedValueOnce({
-      open: [{ slug: "x", name: "Cuma kahvesi", activityType: "COFFEE", sessionType: "GROUP",
+      open: [{ slug: "x", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP",
         status: "SWIPING", createdAt: "2026-09-01T10:00:00Z", expiresAt: "2026-09-02T10:00:00Z",
         participantCount: 3, readyCount: 3, doneCount: 2 }],
-      past: [{ slug: "y", name: "Öğle molası", activityType: "FOOD", sessionType: "GROUP",
+      past: [{ slug: "y", name: "Öğle molası", activityTypes: ["FOOD"], sessionType: "GROUP",
         status: "EXPIRED", createdAt: "2026-08-02T10:00:00Z", expiresAt: "2026-08-03T10:00:00Z",
         participantCount: 2, readyCount: 2, doneCount: 0 }],
     });
@@ -24,6 +24,18 @@ describe("SessionsPage", () => {
     expect(screen.getByText("2/3 bitirdi")).toBeInTheDocument();
     expect(screen.getByText("Doldu")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Desteye git · Cuma kahvesi" })).toHaveAttribute("href", "/j/x");
+  });
+
+  /** Adsız oturumun başlığı seçili alanların birleşimidir. */
+  it("adsız çok alanlı oturumu birleşik etiketle listeler", async () => {
+    vi.mocked(api.listSessions).mockResolvedValueOnce({
+      open: [{ slug: "z", name: undefined, activityTypes: ["COFFEE", "BAR"], sessionType: "GROUP",
+        status: "COLLECTING", createdAt: "2026-09-01T10:00:00Z", expiresAt: "2026-09-02T10:00:00Z",
+        participantCount: 2, readyCount: 1, doneCount: 0 }],
+      past: [],
+    });
+    render(<SessionsPage />);
+    expect(await screen.findByRole("heading", { name: "Kahve ve Bar" })).toBeInTheDocument();
   });
 
   it("boş durum", async () => {

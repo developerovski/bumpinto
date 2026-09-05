@@ -95,7 +95,7 @@ export default function JoinForm() {
             <JoinIntro
               hostName={preview?.hostDisplayName ?? null}
               sessionName={preview?.name ?? null}
-              activity={preview?.activityType ?? null}
+              activities={preview?.activityTypes ?? []}
               count={preview?.participantCount ?? 0}
               hostOnline={preview?.hostOnline}
             />

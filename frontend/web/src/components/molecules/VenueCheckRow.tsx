@@ -11,7 +11,8 @@ export default function VenueCheckRow(props: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   travel?: TravelInfo;
-  activity?: string;
+  /** Oturum >1 ilgi alanı taşıyorsa satır kartı kendi rozetini basar. */
+  mixedDeck?: boolean;
   categories?: string[];
   midpointLabel?: string;
 }) {
@@ -28,7 +29,7 @@ export default function VenueCheckRow(props: {
           venue={props.venue}
           photoHeight={120}
           travel={props.travel}
-          activity={props.activity}
+          mixedDeck={props.mixedDeck}
           categories={props.categories}
           midpointLabel={props.midpointLabel}
           attribution={false}

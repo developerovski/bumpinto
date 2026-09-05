@@ -1,12 +1,12 @@
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
-import ActivityBadge from "../components/molecules/ActivityBadge";
+import ActivityBadges from "../components/molecules/ActivityBadges";
 import AvatarRow from "../components/molecules/AvatarRow";
 import SessionHeader from "../components/molecules/SessionHeader";
 import ShareButton from "../components/molecules/ShareButton";
 import VenueBrowser from "../components/organisms/VenueBrowser";
-import { GROUP_TINT, groupOf, sessionActivity } from "../lib/activity";
+import { activityListLabel, GROUP_TINT, groupOf, sessionActivities } from "../lib/activity";
 import { track } from "../lib/analytics";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { isHost, mapProps, useSessionStore } from "../store/sessionStore";
@@ -14,7 +14,7 @@ import { useSessionAction } from "../store/useSessionAction";
 
 /** Artboard Mekanlar 1280/390 · BROWSING — mekan listesi/harita + host karıştır aksiyonu. */
 export default function VenuesPage({ view }: { view: SessionView }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const host = isHost(view);
   const solo = view.sessionType === "SOLO";
   const mode = solo ? "solo" : host ? "host" : "guest";
@@ -22,8 +22,11 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   const pick = useSessionStore((s) => s.pick);
   const { run, busy, error } = useSessionAction();
   const travel = useTravelLabels(view);
-  const activity = sessionActivity(view);
-  const tint = GROUP_TINT[groupOf(activity)];
+  const activities = sessionActivities(view);
+  // Liste/harita kart başına ton taşımaz: sayfa çapındaki tek gradyan oturumun ilk alanından.
+  const tint = GROUP_TINT[groupOf(activities[0] ?? "")];
+  // Karışık deste (>1 ilgi alanı): satırlar kendi rozetlerini basar (bkz. VenueRow).
+  const mixedDeck = activities.length > 1;
   const mp = mapProps(view, t("map.you"), solo ? t("newSession.manual") : undefined);
   // Sıralama artık sayfada yapılmaz — VenueBrowser saf fonksiyonlarla (byFairness/byRating) sıralar.
   const venues = view.venues ?? [];
@@ -72,9 +75,18 @@ export default function VenuesPage({ view }: { view: SessionView }) {
             ? t("venues.meta", { count: venues.length, km: Math.round(view.radiusKm) })
             : t("venues.metaNoRadius", { count: venues.length })
         }
-        badges={<ActivityBadge activity={activity} />}
+        badges={<ActivityBadges activities={activities} />}
         action={action}
       />
+      {/* Backend telafi çağrısı yapmıyor (Places bütçesi) — boş kalan alan sessiz bir
+          hata gibi okunmasın diye burada açıkça söylenir. */}
+      {(view.emptyActivityTypes ?? []).length > 0 && (
+        <p className="text-[0.8125rem] font-semibold text-amber">
+          {t("venues.noneFor", {
+            activity: activityListLabel(view.emptyActivityTypes ?? [], t, i18n.resolvedLanguage ?? "en"),
+          })}
+        </p>
+      )}
       {error && <ErrorText>{error}</ErrorText>}
       {/* Sessizce olu buton olmaz: kapaliysa sebebi ve cikisi yazili. */}
       {host && !solo && inRoom < 2 && !error && <Note center>{t("venues.needTwo")}</Note>}
@@ -87,6 +99,7 @@ export default function VenuesPage({ view }: { view: SessionView }) {
         travel={travel}
         onPick={(id) => void run(() => pick(id), "venues.errPick")}
         tint={tint}
+        mixedDeck={mixedDeck}
         pinLabels={mp.pinLabels}
         midpointLabel={view.midpointLabel}
         onMapOpen={() => track("map_open", { screen: "venues" })}

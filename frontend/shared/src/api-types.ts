@@ -328,8 +328,7 @@ export interface components {
             friendsMet?: number;
         };
         CreateSessionRequest: {
-            /** @enum {string} */
-            activityType: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
+            activityTypes: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
             name?: string;
             /** @enum {string} */
             sessionType?: "GROUP" | "SOLO";
@@ -390,8 +389,7 @@ export interface components {
         SessionView: {
             slug?: string;
             name?: string;
-            /** @enum {string} */
-            activityType?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
+            activityTypes?: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
             /** @enum {string} */
             sessionType?: "GROUP" | "SOLO";
             /** @enum {string} */
@@ -421,6 +419,7 @@ export interface components {
             likeCounts?: {
                 [key: string]: number;
             };
+            emptyActivityTypes?: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
         };
         VenueDto: {
             /** Format: uuid */
@@ -450,6 +449,8 @@ export interface components {
             ratingCount?: number;
             hoursToday?: string;
             placeLink?: string;
+            /** @enum {string} */
+            activityType?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
         };
         ViewerDto: {
             /** Format: uuid */
@@ -508,8 +509,7 @@ export interface components {
         SessionSummaryDto: {
             slug?: string;
             name?: string;
-            /** @enum {string} */
-            activityType?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
+            activityTypes?: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
             /** @enum {string} */
             sessionType?: "GROUP" | "SOLO";
             /** @enum {string} */
@@ -535,8 +535,7 @@ export interface components {
         SessionPreview: {
             slug?: string;
             name?: string;
-            /** @enum {string} */
-            activityType?: "COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES";
+            activityTypes?: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
             /** @enum {string} */
             sessionType?: "GROUP" | "SOLO";
             /** @enum {string} */

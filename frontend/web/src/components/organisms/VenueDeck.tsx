@@ -49,8 +49,8 @@ function reducedMotion(): boolean {
 export default function VenueDeck(props: {
   venues: VenueDto[];
   travel?: TravelInfo;
-  /** SessionView.activityType — kart anatomisi §4.9 uyum satırı için. */
-  activity?: string;
+  /** Oturum >1 ilgi alanı taşıyorsa kartlar kendi rozetlerini basar. */
+  mixedDeck?: boolean;
   /** SessionView.midpointLabel — kart anatomisi §4.9 semt satırı için. */
   midpointLabel?: string;
 }) {
@@ -124,7 +124,7 @@ export default function VenueDeck(props: {
             venue={current}
             className={D1}
             travel={props.travel}
-            activity={props.activity}
+            mixedDeck={props.mixedDeck}
             categories={categories}
             midpointLabel={props.midpointLabel}
           />
@@ -152,7 +152,7 @@ export default function VenueDeck(props: {
               venue={f.venue}
               className={D1}
               travel={props.travel}
-              activity={props.activity}
+              mixedDeck={props.mixedDeck}
               categories={categories}
               midpointLabel={props.midpointLabel}
             />

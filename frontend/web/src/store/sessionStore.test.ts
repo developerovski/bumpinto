@@ -13,7 +13,7 @@ import { useSessionAction } from "./useSessionAction";
 const view = {
   slug: "x",
   name: "Cuma kahvesi",
-  activityType: "COFFEE",
+  activityTypes: ["COFFEE"],
   sessionType: "GROUP",
   status: "COLLECTING",
   expiresAt: "",

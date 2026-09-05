@@ -345,6 +345,7 @@
     "solo": "Solo",
     "soloCopy": "You enter the locations and pick from the map yourself. No link, no deck.",
     "what": "What are you up to?",
+    "whatHint": "Pick up to {{max}}",
     "name": "Name the meetup",
     "nameOptional": "· optional",
     "namePlaceholder": "Friday coffee",
@@ -405,7 +406,8 @@
     "noLocationMany": "Times update once everyone without a location joins in",
     "needTwo": "The deck needs at least two people in the session — while someone is offline you can pick a place from the list and close the decision.",
     "invite": "Invite link",
-    "inviteText": "{{name}} — we're meeting in the middle, come along:"
+    "inviteText": "{{name}} — we're meeting in the middle, come along:",
+    "noneFor": "No {{activity}} spots nearby."
   },
   "attribution": {
     "google": "Google Maps",

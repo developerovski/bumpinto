@@ -13,6 +13,7 @@ import TravelModeField from "../components/molecules/TravelModeField";
 import TwoZone from "../components/molecules/TwoZone";
 import TypeSelector from "../components/molecules/TypeSelector";
 import PointsEditor from "../components/organisms/PointsEditor";
+import { MAX_ACTIVITIES } from "../lib/activity";
 import { centroid } from "../lib/geo";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useAuthStore } from "../store/authStore";
@@ -22,7 +23,7 @@ import { useOwnLocation } from "../store/useOwnLocation";
 /* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
 
-type Activity = Schemas["CreateSessionRequest"]["activityType"];
+type Activity = Schemas["CreateSessionRequest"]["activityTypes"][number];
 
 /** Artboard W2 "Yeni oturum" — Grup: link kur; Bireysel: konumları elle ekle, harita önizlemesinde gör. */
 export default function NewSessionPage() {
@@ -30,14 +31,14 @@ export default function NewSessionPage() {
   const navigate = useNavigate();
   const me = useAuthStore((s) => s.me);
   const type = useNewSessionStore((s) => s.type);
-  const activity = useNewSessionStore((s) => s.activity);
+  const activities = useNewSessionStore((s) => s.activities);
   const name = useNewSessionStore((s) => s.name);
   const points = useNewSessionStore((s) => s.points);
   const travelMode = useNewSessionStore((s) => s.travelMode);
   const busy = useNewSessionStore((s) => s.busy);
   const error = useNewSessionStore((s) => s.error);
   const setType = useNewSessionStore((s) => s.setType);
-  const setActivity = useNewSessionStore((s) => s.setActivity);
+  const toggleActivity = useNewSessionStore((s) => s.toggleActivity);
   const setName = useNewSessionStore((s) => s.setName);
   const setTravelMode = useNewSessionStore((s) => s.setTravelMode);
   const addLocalPoint = useNewSessionStore((s) => s.addLocalPoint);
@@ -57,8 +58,7 @@ export default function NewSessionPage() {
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
-    reset();
-    if (me?.defaultActivity) setActivity(me.defaultActivity);
+    reset((me?.defaultActivity as Activity) ?? undefined);
     if (me?.defaultTravelMode) setTravelMode(me.defaultTravelMode);
     // yalnız ilk mount'ta — reset ve varsayılan etkinlik/ulaşım
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,7 +117,8 @@ export default function NewSessionPage() {
             <Overline>{t("newSession.how")}</Overline>
             <TypeSelector value={type} onChange={setType} />
             <Overline>{t("newSession.what")}</Overline>
-            <ActivityPicker value={activity} onChange={(a) => setActivity(a as Activity)} />
+            <Note>{t("newSession.whatHint", { max: MAX_ACTIVITIES })}</Note>
+            <ActivityPicker value={activities} onToggle={toggleActivity} />
             <Field
               id="session-name"
               label={`${t("newSession.name")} ${t("newSession.nameOptional")}`}
@@ -181,7 +182,7 @@ export default function NewSessionPage() {
               <HandNote>{t("newSession.soloHand")}</HandNote>
             </>
           ) : (
-            <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activity={activity} />
+            <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activities={activities} />
           )
         }
         rightLgOnly={type === "SOLO"}

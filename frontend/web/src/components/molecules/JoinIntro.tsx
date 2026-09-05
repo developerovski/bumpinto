@@ -1,14 +1,14 @@
 /* Kaynak: ui.css .field(gap:12) / .row / .muted / .a-dv — artboard Katıl 1280/390 */
 import { Trans, useTranslation } from "react-i18next";
 import { Avatar, Badge, Highlight, Note } from "../atoms";
-import ActivityBadge from "./ActivityBadge";
+import ActivityBadges from "./ActivityBadges";
 
 /** Artboard W1 · davet başlığı bloğu + onu formdan ayıran saç teli ayraç.
     Oturum adı/etkinlik/katılımcı sayısı sunucu önizlemesinden (preview) gelir. */
 export default function JoinIntro(props: {
   hostName: string | null;
   sessionName: string | null;
-  activity: string | null;
+  activities: string[];
   count: number;
   /** Host su an oturumda mi. KAPI DEGIL: katilim her durumda acik — davet linkinin ana akisi
       asenkrondur (host linki paylasip telefonu kilitler). */
@@ -41,7 +41,7 @@ export default function JoinIntro(props: {
           </h1>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          {props.activity && <ActivityBadge activity={props.activity} />}
+          <ActivityBadges activities={props.activities} />
           <Badge>{t("join.joinedCount", { count: props.count })}</Badge>
         </div>
         <Note>{t("join.subtitle")}</Note>

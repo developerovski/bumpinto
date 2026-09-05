@@ -12,7 +12,7 @@ import SessionHeader from "../components/molecules/SessionHeader";
 import TwoZone from "../components/molecules/TwoZone";
 import VenueCheckRow from "../components/molecules/VenueCheckRow";
 import VenueDeck from "../components/organisms/VenueDeck";
-import { sessionActivity } from "../lib/activity";
+import { activityListLabel, sessionActivities } from "../lib/activity";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { useDeckStore } from "../store/deckStore";
 import { isHost, useSessionStore } from "../store/sessionStore";
@@ -20,11 +20,12 @@ import { useSessionAction } from "../store/useSessionAction";
 
 /** Artboard W3 · Deste web — tıkla veya kaydır; bitince liste/gönder, az sonuçta liste. */
 export default function DeckScreen(props: { slug: string; view: SessionView }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const selfId = props.view.viewer?.participantId;
-  const activity = sessionActivity(props.view);
+  const activities = sessionActivities(props.view);
+  const label = activityListLabel(activities, t, i18n.resolvedLanguage ?? "en");
   const midpointLabel = props.view.midpointLabel;
-  const title = props.view.name ?? t(`activity.${props.view.activityType}`);
+  const title = props.view.name ?? label;
   const venues = useMemo(
     () => [...(props.view.venues ?? [])].sort((a, b) => (a.deckOrder ?? 0) - (b.deckOrder ?? 0)),
     [props.view.venues],
@@ -61,7 +62,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
   const likedCount = Object.values(liked).filter(Boolean).length;
   const shareUrl = `${location.origin}/j/${props.view.slug ?? ""}`;
   const shareText = t("deck.nudgeText", {
-    activity: t(`activity.${props.view.activityType}`),
+    activity: label,
     count: venues.length,
   });
 
@@ -117,7 +118,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
                   checked={!!liked[v.id!]}
                   onChange={(on) => void setLike(v.id!, on)}
                   travel={travel}
-                  activity={activity}
+                  mixedDeck={activities.length > 1}
                   categories={categories}
                   midpointLabel={midpointLabel}
                 />
@@ -149,7 +150,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
       />
       <TwoZone
         left={
-          <VenueDeck venues={venues} travel={travel} activity={activity} midpointLabel={midpointLabel} />
+          <VenueDeck venues={venues} travel={travel} mixedDeck={activities.length > 1} midpointLabel={midpointLabel} />
         }
         right={
           <>

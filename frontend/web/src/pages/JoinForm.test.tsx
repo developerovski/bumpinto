@@ -51,7 +51,7 @@ describe("JoinForm — travelMode", () => {
 
 describe("JoinForm — host çevrimiçiliği", () => {
   const preview = {
-    slug: "x7k2m", name: "Cuma kahvesi", activityType: "COFFEE", sessionType: "GROUP",
+    slug: "x7k2m", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP",
     status: "COLLECTING", hostDisplayName: "Mehmet", participantCount: 1,
     participants: [{ displayName: "Mehmet", host: true, hasLocation: true }],
   };

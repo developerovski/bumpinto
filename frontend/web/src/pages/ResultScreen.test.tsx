@@ -16,7 +16,7 @@ const kerem: Participant = {
 function buildView(overrides: Partial<View> = {}): View {
   return {
     slug: "x7k2m",
-    activityType: "COFFEE",
+    activityTypes: ["COFFEE"],
     sessionType: "GROUP",
     status: "DECIDED",
     name: "Kahve buluşması",
