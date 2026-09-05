@@ -26,6 +26,7 @@ import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.Voters;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.venue.VenueCandidate;
 import org.springframework.stereotype.Service;
@@ -156,7 +157,7 @@ public class DeckFlow {
         // (done>=total) bilinçli olarak satira bakmaya devam eder — geri alinamaz karar bir ag
         // dalgalanmasina emanet edilemez.
         Set<UUID> here = presence.presentIn(session.id());
-        long ready = votingPopulation(session.id()).stream()
+        long ready = votingPopulation(session).stream()
                 .filter(p -> here.contains(p.id())).count();
         if (ready < 2) {
             throw new ConflictException("need at least 2 participants present to start the deck");
@@ -196,7 +197,7 @@ public class DeckFlow {
         Participant me = requireDeckParticipant(session, participantId);
         store.saveParticipant(me.doneAt(clock.instant()));
 
-        List<Participant> population = votingPopulation(session.id());
+        List<Participant> population = votingPopulation(session);
         long total = population.size();
         long done = population.stream().filter(Participant::deckDone).count();
         events.publish(slug, SessionEvent.deckProgress(done, total));
@@ -248,7 +249,7 @@ public class DeckFlow {
         }
         deck.castVote(session.id(), venueId, participantId);
 
-        long finishers = votingPopulation(session.id()).stream()
+        long finishers = votingPopulation(session).stream()
                 .filter(Participant::deckDone).count();
         // Oy tablosu TEK sorgu: oy SAYISI da buradan turetilir. Ayri bir votersCount cagrisi
         // ayni satirlari ikinci kez okuyordu (DeckStoreAdapter'da ikisi de findBySessionId).
@@ -275,7 +276,7 @@ public class DeckFlow {
 
     private void evaluate(Session session, boolean interactive) {
         Map<UUID, Set<UUID>> likes = deck.likesByParticipant(session.id());
-        List<ParticipantLikes> participantLikes = votingPopulation(session.id()).stream()
+        List<ParticipantLikes> participantLikes = votingPopulation(session).stream()
                 .map(p -> new ParticipantLikes(p.id(), p.deckDone(),
                         likes.getOrDefault(p.id(), Set.of())))
                 .toList();
@@ -347,8 +348,8 @@ public class DeckFlow {
      * Oy popülasyonu: konumu olan ve elle eklenmemis katilimcilar. done/total, runoff finishers ve
      * karar motoru girdisi HEP burayi kullanir — elle konum kaydiramaz, yoksa oturum asla bitmez.
      */
-    private List<Participant> votingPopulation(UUID sessionId) {
-        return store.participantsOf(sessionId).stream().filter(Participant::votes).toList();
+    private List<Participant> votingPopulation(Session session) {
+        return Voters.of(session, store.participantsOf(session.id()));
     }
 
     /** Mekan basina adalet: assembler ile AYNI dakika kodunu kullanir (tek kaynak). */
@@ -405,7 +406,9 @@ public class DeckFlow {
      */
     private Participant requireDeckParticipant(Session session, UUID participantId) {
         Participant participant = requireMember(session, participantId);
-        if (!participant.hasLocation()) {
+        // Capali oturumda konum uyeligin sarti degil (spec K1): merkez katilimcilardan
+        // turemedigi icin konumsuz kisi de kaydirir. Konum yalniz yol suresi/adalet gosterimi.
+        if (session.anchor() == null && !participant.hasLocation()) {
             throw new ConflictException("share your location before joining the deck");
         }
         if (participant.manual()) {

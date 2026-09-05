@@ -48,10 +48,8 @@ public record Participant(UUID id, UUID sessionId, String displayName, GeoPoint 
         return deckDoneAt != null;
     }
 
-    /** Oy popülasyonu: konumu olan ve elle eklenmemis katilimci. */
-    public boolean votes() {
-        return hasLocation() && !manual;
-    }
+    /* votes() BURADA DEGIL: cevap oturuma baglidir (capali oturumda konum gerekmez) ve
+       Participant oturumu gormez. Bkz. domain/session/Voters. */
 
     public Participant locatedAt(GeoPoint newLocation, String newLabel, TravelMode newMode) {
         return new Participant(id, sessionId, displayName, newLocation, host, deckDoneAt,

@@ -6,6 +6,7 @@ import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
+import com.bumpinto.domain.session.Voters;
 import com.bumpinto.domain.venue.Venue;
 import org.springframework.stereotype.Service;
 
@@ -59,7 +60,8 @@ public class SessionQueries {
 
         // Sayim aciklama kapisi (spec §3: acik sayim bandwagon yaratir, gizli-sonra-acilis
         // dogru): karar verildiyse ya da oy verecek herkes verdiyse acilir.
-        long finishers = participants.stream().filter(p -> p.votes() && p.deckDone()).count();
+        long finishers = participants.stream()
+                .filter(p -> Voters.votes(p, session) && p.deckDone()).count();
         boolean everyoneVoted = session.status() == SessionStatus.RUNOFF && finishers > 0
                 && runoffVotes.size() >= finishers;
         Map<UUID, Long> tally;
@@ -75,16 +77,17 @@ public class SessionQueries {
         // likeCounts YALNIZ DECIDED sonrasi (K-B11): oylama surerken kimin neyi begendigi
         // sayilarindan geri okunabilirdi.
         Map<UUID, Long> likeCounts = session.status() == SessionStatus.DECIDED
-                ? tallyLikes(participants, deck.likesByParticipant(session.id())) : Map.of();
+                ? tallyLikes(session, participants, deck.likesByParticipant(session.id()))
+                : Map.of();
 
         return new SessionSnapshot(session, participants, venues, tally, runoffVotes, likeCounts);
     }
 
     /** Mekan -> desteyi bitirmis kac oy popülasyonu uyesi begendi. */
-    private static Map<UUID, Long> tallyLikes(List<Participant> participants,
+    private static Map<UUID, Long> tallyLikes(Session session, List<Participant> participants,
                                               Map<UUID, Set<UUID>> likesByParticipant) {
         Set<UUID> counted = participants.stream()
-                .filter(p -> p.votes() && p.deckDone())
+                .filter(p -> Voters.votes(p, session) && p.deckDone())
                 .map(Participant::id)
                 .collect(Collectors.toSet());
         return likesByParticipant.entrySet().stream()

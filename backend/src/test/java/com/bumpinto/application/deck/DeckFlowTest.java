@@ -626,4 +626,89 @@ class DeckFlowTest {
         // sayaci verify(never()) ile ayni seyi soyler.
         assertThat(geocoder.calls).isZero();
     }
+
+    /** Capali oturum kurar; katilimcilarin konumu YOKTUR (spec K1'in asil senaryosu). */
+    private Session anchoredSession(String slug) {
+        return store.saveSession(new Session(UUID.randomUUID(), slug, hostUser, null,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(3600), null, List.of(),
+                null, null, null, "Amsterdam", new GeoPoint(52.3676, 4.9041)));
+    }
+
+    private Participant memberOf(Session s, String name, GeoPoint at, boolean host) {
+        Participant p = store.saveParticipant(new Participant(UUID.randomUUID(), s.id(), name,
+                at, host, null, false, null, TravelMode.CAR, host ? hostUser : null));
+        presence.arrived(s.id(), p.id(), "ws-" + name);
+        return p;
+    }
+
+    /** Capali oturumda konum uyeligin sarti DEGIL: konumsuz katilimci kaydirabilir (spec K1). */
+    @Test
+    void anchoredSessionLetsLocationlessParticipantSwipe() {
+        Session anchored = anchoredSession("vote1");
+        Participant h = memberOf(anchored, "Mehmet", null, true);
+        Participant k = memberOf(anchored, "Kerem", null, false);
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+
+        List<Venue> venues = flow.findVenues("vote1", h.id());
+        flow.shuffle("vote1", h.id());
+        flow.swipe("vote1", k.id(), venues.get(0).id(), true);
+
+        assertThat(deck.likesByParticipant(anchored.id()).get(k.id()))
+                .containsExactly(venues.get(0).id());
+    }
+
+    /** Capasiz oturumda kural AYNEN durur: orta nokta konumlardan turedigi icin konumsuz
+        kisi orada temsil edilemez. */
+    @Test
+    void unanchoredSessionStillRequiresLocationToSwipe() {
+        Participant kerem = store.saveParticipant(new Participant(UUID.randomUUID(),
+                session.id(), "Kerem", null, false, null, false, null, TravelMode.CAR, null));
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        List<Venue> venues = flow.findVenues("s1", host.id());
+        flow.shuffle("s1", host.id());
+
+        assertThatThrownBy(() -> flow.swipe("s1", kerem.id(), venues.get(0).id(), true))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("share your location");
+    }
+
+    /** shuffle'in "odada 2 oy veren" kapisi capalida konumdan bagimsiz doyar — kapinin
+        kendisi degismedi, besledigi kume degisti (spec V6). */
+    @Test
+    void anchoredShuffleWorksWithoutAnyLocation() {
+        Session anchored = anchoredSession("vote2");
+        Participant h = memberOf(anchored, "Mehmet", null, true);
+        memberOf(anchored, "Kerem", null, false);
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        flow.findVenues("vote2", h.id());
+
+        flow.shuffle("vote2", h.id());
+
+        assertThat(store.sessionBySlug("vote2").orElseThrow().status())
+                .isEqualTo(SessionStatus.SWIPING);
+    }
+
+    /** Kabul edilen bedel (spec §5): karar artik konumsuz kisiyi de BEKLER. */
+    @Test
+    void anchoredDeckWaitsForTheLocationlessParticipant() {
+        Session anchored = anchoredSession("vote3");
+        Participant h = memberOf(anchored, "Mehmet", new GeoPoint(52.36, 4.90), true);
+        Participant k = memberOf(anchored, "Kerem", null, false);
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        List<Venue> venues = flow.findVenues("vote3", h.id());
+        flow.shuffle("vote3", h.id());
+
+        flow.swipe("vote3", h.id(), venues.get(0).id(), true);
+        flow.finishDeck("vote3", h.id());
+        // Konumsuz Kerem sayildigi icin karar HENUZ cikmaz.
+        assertThat(store.sessionBySlug("vote3").orElseThrow().status())
+                .isEqualTo(SessionStatus.SWIPING);
+
+        flow.swipe("vote3", k.id(), venues.get(0).id(), true);
+        flow.finishDeck("vote3", k.id());
+
+        assertThat(store.sessionBySlug("vote3").orElseThrow().status())
+                .isEqualTo(SessionStatus.DECIDED);
+    }
 }
