@@ -33,6 +33,9 @@ docs:
     ve oturumu SWIPING'e gecirir. Sonuc bulunamazsa yaricap genisletilir
     (en fazla `SearchRadius.MAX_EXPANSIONS`); hic mekan yoksa 422 doner.
 
+    `422 NoVenuesFound` yalniz HICBIR aktiviteden mekan gelmediginde doner. Kismi sonuc
+    (secilen 3 alandan 1'i bos) BASARIDIR; eksik alan `emptyActivityTypes`'ta bildirilir.
+
     Yalnizca KONUMU OLAN katilimcilar deste akisina girer.
 
     Rate limit: 3/dk — bu ucta en dar limit, saglayici kotasini korur.

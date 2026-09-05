@@ -55,7 +55,8 @@ class UserProfileQueriesTest {
     }
 
     Session newSession(String slug, SessionStatus status, Instant expiresAt) {
-        Session session = new Session(UUID.randomUUID(), slug, host, "Cuma", ActivityType.COFFEE,
+        Session session = new Session(UUID.randomUUID(), slug, host, "Cuma",
+                List.of(ActivityType.COFFEE),
                 SessionType.GROUP, status, expiresAt, null, List.of());
         return sessions.saveSession(session);
     }

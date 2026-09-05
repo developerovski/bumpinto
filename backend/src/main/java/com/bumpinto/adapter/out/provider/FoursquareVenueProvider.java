@@ -128,13 +128,34 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
                 Instant.ofEpochSecond(Long.parseLong(reset)));
     }
 
+    /**
+     * Secili aktivitelerin HEPSI eslenmisse virgullu kategori dizesi, biri bile eksikse null.
+     * KISMI kapsama kabul edilmez: orkestrator "ilk dolu sonuc kazanir" kuralini isletir,
+     * yani eksik kapsamayla donen dolu bir liste Google'i devre disi birakir ve kullanici
+     * sectigi bir ilgi alanindan hic mekan gormez.
+     */
+    static String categoryIds(List<ActivityType> selected) {
+        StringBuilder joined = new StringBuilder();
+        for (ActivityType type : selected) {
+            String id = CATEGORIES.get(type);
+            if (id == null) {
+                return null;
+            }
+            if (!joined.isEmpty()) {
+                joined.append(',');
+            }
+            joined.append(id);
+        }
+        return joined.isEmpty() ? null : joined.toString();
+    }
+
     @Override
-    public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
-                                       int limit) {
-        String category = CATEGORIES.get(type);
+    public List<VenueCandidate> search(GeoPoint center, double radiusKm,
+                                       List<ActivityType> selected, int limit) {
+        String category = categoryIds(selected);
         if (category == null) {
-            // Kategorisiz arama YAPMA: FSQ o zaman filtresiz sonuc doner ve "sinema" isteyen
-            // kullaniciya kafe listeler. Bos donersek Resilient katmani Google'a gecer.
+            // Kategorisiz ya da EKSIK kategoriyle arama YAPMA: FSQ filtresiz sonuc doner ya da
+            // secimin bir kismini servis eder. Bos donersek orkestrator Google'a gecer.
             return List.of();
         }
         HttpResponse<JsonNode> response = http.get(SEARCH_URL)
@@ -178,7 +199,12 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
                     // FSQ tam sokak adresi Premium'da; elimizdeki tek yer kelimesi locality.
                     // address ve locality AYNI degeri tasir — UI ikisini de kart meta'sinda kullanir.
                     firstCategory(r), locality, locality, null, null,
-                    website.isBlank() ? null : website));
+                    website.isBlank() ? null : website,
+                    // Atif ancak tek aktivite secildiginde kesindir. Coklu secimde null:
+                    // yanittan yalniz kategori ADINI okuyoruz, CATEGORIES ise ust duzey id
+                    // tutuyor — ad uzerinden geri esleme guvenilir degil, uydurma atif ise
+                    // kartta yanlis rozet gosterir.
+                    selected.size() == 1 ? selected.get(0) : null));
         }
         return out;
     }

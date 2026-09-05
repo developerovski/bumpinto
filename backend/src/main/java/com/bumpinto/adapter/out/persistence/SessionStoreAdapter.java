@@ -43,7 +43,8 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.slug = s.slug();
         e.hostId = s.hostId();
         e.name = s.name();
-        e.activityType = s.activityType().name();
+        e.activityTypes = s.activityTypes().stream()
+                .map(ActivityType::name).collect(Collectors.joining(","));
         e.sessionType = s.sessionType().name();
         e.status = s.status().name();
         e.expiresAt = s.expiresAt();
@@ -137,7 +138,11 @@ public class SessionStoreAdapter implements SessionStorePort {
     static Session toSession(SessionEntity e) {
         List<UUID> runoff = e.runoffVenueIds == null ? List.of()
                 : Arrays.stream(e.runoffVenueIds.split(",")).map(UUID::fromString).toList();
-        return new Session(e.id, e.slug, e.hostId, e.name, ActivityType.valueOf(e.activityType),
+        // runoffVenueIds'in aksine null denetimi YOK: kolon V1'den beri NOT NULL ve yazma
+        // yolu @NotEmpty ile korunuyor — bos dize buraya ulasamaz.
+        List<ActivityType> activities = Arrays.stream(e.activityTypes.split(","))
+                .map(ActivityType::valueOf).toList();
+        return new Session(e.id, e.slug, e.hostId, e.name, activities,
                 SessionType.valueOf(e.sessionType), SessionStatus.valueOf(e.status), e.expiresAt,
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),

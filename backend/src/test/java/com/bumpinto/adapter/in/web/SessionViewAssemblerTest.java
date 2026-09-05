@@ -31,7 +31,8 @@ class SessionViewAssemblerTest {
     SessionViewAssembler assembler = new SessionViewAssembler(presence);
 
     Session session(SessionType type) {
-        return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma", ActivityType.COFFEE,
+        return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
+                List.of(ActivityType.COFFEE),
                 type, SessionStatus.COLLECTING, Instant.parse("2026-09-02T10:00:00Z"), null, List.of());
     }
 
@@ -42,6 +43,21 @@ class SessionViewAssemblerTest {
     Venue venue(UUID sessionId, GeoPoint at) {
         return new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Café", at, 4.6, 2,
                 null, null, 0);
+    }
+
+    Venue venue(String externalId, ActivityType activityType) {
+        return new Venue(UUID.randomUUID(), UUID.randomUUID(), "google", externalId, "V",
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, null, 0,
+                null, null, null, null, null, null, activityType);
+    }
+
+    SessionQueries.SessionSnapshot snapshotWith(List<ActivityType> activityTypes,
+            SessionStatus status, List<Venue> venues) {
+        Session s = new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
+                activityTypes, SessionType.GROUP, status,
+                Instant.parse("2026-09-02T10:00:00Z"), null, List.of());
+        return new SessionQueries.SessionSnapshot(s, List.of(), venues, Map.of(), Map.of(),
+                Map.of());
     }
 
     @Test
@@ -211,7 +227,7 @@ class SessionViewAssemblerTest {
     @Test
     void runoffResponseCarriesWhoLockedButNeverWhatOthersPicked() throws Exception {
         Session s = new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
-                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.RUNOFF,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.RUNOFF,
                 Instant.parse("2026-09-04T10:00:00Z"), null, List.of(V1),
                 null, null, RunoffReason.INTERSECTION, "Eindhoven");
         Participant me = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
@@ -238,7 +254,8 @@ class SessionViewAssemblerTest {
         Participant b = person(s.id(), new GeoPoint(51.69, 5.30), "Den Bosch", false);
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "f1", "Café Berlage",
                 new GeoPoint(51.4412, 5.4712), null, null, null, null, 0,
-                "Coffee Shop", "Eindhoven", "Eindhoven", null, null, "https://berlage.nl");
+                "Coffee Shop", "Eindhoven", "Eindhoven", null, null, "https://berlage.nl",
+                null);
 
         ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(a, b), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
@@ -289,5 +306,45 @@ class SessionViewAssemblerTest {
 
         presence.arrived(s.id(), host.id(), "ws-host");
         assertThat(assembler.toPreview(snap).hostOnline()).isTrue();
+    }
+
+    /**
+     * Secili ama hic mekan uretmemis alan kullaniciya SOYLENIR. Ek cagri yapilmadigi icin
+     * (Places kredisi sinirli) sessizce eksik kalmasi kabul edilemez; ekran "hike icin
+     * yakinda yer bulunamadi" yazabilsin diye alan turetilir -- depolanmaz.
+     */
+    @Test
+    void reportsSelectedActivitiesThatProducedNoVenues() {
+        SessionQueries.SessionSnapshot snap = snapshotWith(
+                List.of(ActivityType.COFFEE, ActivityType.HIKE),
+                SessionStatus.BROWSING,
+                List.of(venue("cafe0", ActivityType.COFFEE)));
+
+        assertThat(assembler.toView(snap, null).emptyActivityTypes())
+                .containsExactly(ActivityType.HIKE);
+    }
+
+    /**
+     * Deste dolu ama HICBIR mekan atfedilememis: "hepsi bos" demek ekranda 20 mekan
+     * dururken "hicbiri bulunamadi" yazmak olurdu. Atif sinyali yoksa susariz.
+     */
+    @Test
+    void staysSilentWhenNoVenueCouldBeAttributedAtAll() {
+        SessionQueries.SessionSnapshot snap = snapshotWith(
+                List.of(ActivityType.COFFEE, ActivityType.HIKE),
+                SessionStatus.BROWSING,
+                List.of(venue("ghost0", null), venue("ghost1", null)));
+
+        assertThat(assembler.toView(snap, null).emptyActivityTypes()).isEmpty();
+    }
+
+    /** BROWSING oncesi deste HENUZ yok: "hepsi bos" demek yanlis olurdu. */
+    @Test
+    void reportsNoEmptyActivitiesBeforeTheDeckExists() {
+        SessionQueries.SessionSnapshot snap = snapshotWith(
+                List.of(ActivityType.COFFEE, ActivityType.HIKE),
+                SessionStatus.COLLECTING, List.of());
+
+        assertThat(assembler.toView(snap, null).emptyActivityTypes()).isEmpty();
     }
 }

@@ -2,6 +2,7 @@ package com.bumpinto.adapter.out.persistence;
 
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.DeckStorePort;
+import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.Venue;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,7 @@ public class DeckStoreAdapter implements DeckStorePort {
             e.ratingCount = v.ratingCount();
             e.hoursToday = v.hoursToday();
             e.placeLink = v.placeLink();
+            e.activityType = v.activityType() == null ? null : v.activityType().name();
             return e;
         }).toList());
         return list;
@@ -58,7 +60,8 @@ public class DeckStoreAdapter implements DeckStorePort {
                 .map(e -> new Venue(e.id, e.sessionId, e.provider, e.externalId, e.name,
                         new GeoPoint(e.lat, e.lng), e.rating, e.priceLevel, e.photoUrl,
                         e.mapsUrl, e.deckOrder, e.category, e.address, e.locality, e.ratingCount,
-                        e.hoursToday, e.placeLink))
+                        e.hoursToday, e.placeLink,
+                        e.activityType == null ? null : ActivityType.valueOf(e.activityType)))
                 .toList();
     }
 

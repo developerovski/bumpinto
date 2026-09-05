@@ -15,7 +15,7 @@ http:
     type: json
     data: |-
       {
-        "activityType": "COFFEE",
+        "activityTypes": ["COFFEE", "HIKE"],
         "name": "Cuma kahvesi",
         "sessionType": "GROUP",
         "lat": 51.6978,
@@ -55,7 +55,10 @@ docs:
   content: |-
     Host JWT gerekir. Host ayni zamanda katilimci olarak eklenir.
 
-    `activityType` (15 deger, bilinmeyen deger 400 doner):
+    `activityTypes` 1-3 deger, TEKRARSIZ. Bos liste, 4+ eleman ya da tekrar 400 doner.
+    Siralama host'un secim sirasidir; deste kovalari bu sirada doldurulur.
+
+    Gecerli degerler (15, bilinmeyen deger 400 doner):
     - Foursquare + Google: `COFFEE` `FOOD` `BAR` `WALK` `ACTIVITY` (=bowling)
     - **Yalnizca Google** (kartlarda foto YOK, puan var): `SWIM` `HIKE` `FITNESS` `CINEMA`
       `MUSEUM` `ART` `NIGHTLIFE` `THEME_PARK` `ADVENTURE` `GAMES`

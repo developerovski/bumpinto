@@ -83,7 +83,7 @@ class DeckFlowTest {
         // permutasyonunda nadiren kirardi.
         session = store.saveSession(new Session(
                 UUID.fromString("00000000-0000-0000-0000-000000000001"), "s1", hostUser, null,
-                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-02T10:00:00Z"), null, List.of()));
         host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 "Mehmet", DEN_BOSCH, true, null, false, null, null));
@@ -219,7 +219,8 @@ class DeckFlowTest {
 
     @Test
     void expiredSessionIsRejectedEvenWhenStoredStatusIsCollecting() {
-        store.saveSession(new Session(session.id(), "s1", hostUser, null, ActivityType.COFFEE,
+        store.saveSession(new Session(session.id(), "s1", hostUser, null,
+                List.of(ActivityType.COFFEE),
                 SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-01T09:59:59Z"), null, List.of()));
 
@@ -310,7 +311,7 @@ class DeckFlowTest {
     @Test
     void soloSessionDecidesByPickAndNeverShuffles() {
         Session solo = store.saveSession(new Session(UUID.randomUUID(), "solo", hostUser, null,
-                ActivityType.COFFEE, SessionType.SOLO, SessionStatus.COLLECTING,
+                List.of(ActivityType.COFFEE), SessionType.SOLO, SessionStatus.COLLECTING,
                 Instant.parse("2026-09-02T10:00:00Z"), null, List.of()));
         Participant soloHost = store.saveParticipant(new Participant(UUID.randomUUID(), solo.id(),
                 "Mehmet", DEN_BOSCH, true, null, false, "'s-Hertogenbosch", null));

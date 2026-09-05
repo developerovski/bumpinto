@@ -123,7 +123,7 @@ class WebSecuritySliceTest {
     }
 
     static Session session(UUID hostId) {
-        return new Session(SESSION_ID, "abc", hostId, null, ActivityType.COFFEE,
+        return new Session(SESSION_ID, "abc", hostId, null, List.of(ActivityType.COFFEE),
                 SessionType.GROUP, SessionStatus.SWIPING, Instant.now().plusSeconds(600), null,
                 List.of());
     }
@@ -192,7 +192,7 @@ class WebSecuritySliceTest {
     @Test
     void createSessionWithoutAuthIs401() throws Exception {
         mvc.perform(post("/api/sessions").contentType("application/json")
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -209,7 +209,7 @@ class WebSecuritySliceTest {
         MvcResult created = mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + bearer)
                         .contentType("application/json")
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.slug").value("abc"))
                 .andExpect(jsonPath("$.participantToken").isNotEmpty())
@@ -236,7 +236,7 @@ class WebSecuritySliceTest {
                         .header("Authorization", "Bearer " + tokens.issueAccessToken(hostId, "m@x.dev"))
                         .header("X-Client", "web")
                         .contentType("application/json")
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.participantToken").doesNotExist())
                 .andReturn();
@@ -332,7 +332,7 @@ class WebSecuritySliceTest {
     @Test
     void participantTokenDoesNotOpenSessionCreation() throws Exception {
         String participantToken = participantTokenForAbc();
-        String body = "{\"activityType\":\"COFFEE\",\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}";
+        String body = "{\"activityTypes\":[\"COFFEE\"],\"lat\":51.7,\"lng\":5.3,\"displayName\":\"M\"}";
 
         mvc.perform(post("/api/sessions")
                         .header(ParticipantTokenFilter.HEADER, participantToken)

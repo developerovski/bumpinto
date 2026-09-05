@@ -45,7 +45,7 @@ class ProviderOrchestratorTest {
     }
 
     static List<VenueCandidate> search(ProviderOrchestrator o) {
-        return o.search(CENTER, 5.0, ActivityType.COFFEE, 10);
+        return o.search(CENTER, 5.0, List.of(ActivityType.COFFEE), 10);
     }
 
     /** Kota oranı yüksek olan kazanır — @Order sırası değil. */
@@ -98,7 +98,7 @@ class ProviderOrchestratorTest {
 
         Clock later = Clock.fixed(NOW.plus(Duration.ofHours(2)), ZoneOffset.UTC);
         ProviderOrchestrator afterReset = new ProviderOrchestrator(List.of(fsq, google), cache, later);
-        assertThat(afterReset.search(new GeoPoint(52.0, 4.0), 5.0, ActivityType.BAR, 10))
+        assertThat(afterReset.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10))
                 .containsExactly(FSQ_CAND);
     }
 
@@ -117,7 +117,7 @@ class ProviderOrchestratorTest {
         assertThat(q.source()).isEqualTo(ProviderQuota.Source.EXHAUSTED);
         assertThat(q.resetAt()).isEqualTo(NOW.plus(Duration.ofHours(24)));
 
-        o.search(new GeoPoint(52.0, 4.0), 5.0, ActivityType.BAR, 10);
+        o.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10);
         verify(fsq, times(1)).search(any(), anyDouble(), any(), anyInt());
     }
 
@@ -134,7 +134,7 @@ class ProviderOrchestratorTest {
 
         assertThat(search(o)).containsExactly(G_CAND);
         assertThat(cache.get("foursquare")).isEmpty();
-        assertThat(o.search(new GeoPoint(52.0, 4.0), 5.0, ActivityType.BAR, 10))
+        assertThat(o.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10))
                 .containsExactly(FSQ_CAND);
     }
 
@@ -175,5 +175,31 @@ class ProviderOrchestratorTest {
         assertThat(search(e)).isEmpty();
         assertThat(search(e)).isEmpty();
         verify(empty, times(2)).search(any(), anyDouble(), any(), anyInt());
+    }
+
+    /** Cache anahtari SIRAYA duyarli OLMAMALI: {COFFEE,BAR} ile {BAR,COFFEE} ayni aramadir. */
+    @Test
+    void cacheKeyIsOrderIndependentForTheSameActivitySet() {
+        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
+        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq), new ProviderQuotaCache(),
+                CLOCK);
+
+        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE, ActivityType.BAR), 20);
+        o.search(CENTER, 5.0, List.of(ActivityType.BAR, ActivityType.COFFEE), 20);
+
+        verify(fsq, times(1)).search(any(), anyDouble(), any(), anyInt());
+    }
+
+    /** Farkli kume = farkli anahtar: kahve destesi hike destesini kirletmez. */
+    @Test
+    void differentActivitySetsDoNotShareACacheEntry() {
+        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
+        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq), new ProviderQuotaCache(),
+                CLOCK);
+
+        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE), 20);
+        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE, ActivityType.HIKE), 20);
+
+        verify(fsq, times(2)).search(any(), anyDouble(), any(), anyInt());
     }
 }

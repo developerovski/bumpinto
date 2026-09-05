@@ -123,9 +123,9 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
     }
 
     @Override
-    public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
-                                       int limit) {
-        JSONObject body = requestBody(center, radiusKm, type, limit);
+    public List<VenueCandidate> search(GeoPoint center, double radiusKm,
+                                       List<ActivityType> selected, int limit) {
+        JSONObject body = requestBody(center, radiusKm, selected, limit);
         ProviderQuota quota = measureQuota(); // ay donduyse sayaclari sifirlar
         if (quota.remaining() <= 0) {
             // Butce SERT tavandir: istek hic atilmaz, orkestrator siradaki saglayiciya gecer.
@@ -143,7 +143,10 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
                                 + "places.priceLevel,places.googleMapsUri,places.photos,"
                                 + "places.primaryTypeDisplayName,places.businessStatus,"
                                 + "places.shortFormattedAddress,places.userRatingCount,"
-                                + "places.regularOpeningHours,places.addressComponents")
+                                + "places.regularOpeningHours,places.addressComponents,"
+                                // Essentials katmani: istek zaten Enterprise alanlar iceriyor,
+                                // bunlar faturalama katmanini YUKSELTMEZ. Atif bunlardan cikar.
+                                + "places.primaryType,places.types")
                 .body(body.toString())
                 .asJson();
         if (response.getStatus() == 429) {
@@ -192,7 +195,8 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
                     locality(p),
                     p.has("userRatingCount") ? p.getInt("userRatingCount") : null,
                     hoursToday(p),
-                    mapsUri != null ? mapsUri : placeIdLink(id, name)));
+                    mapsUri != null ? mapsUri : placeIdLink(id, name),
+                    attribute(p, selected)));
         }
         return out;
     }
@@ -274,21 +278,58 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
      * Ayri metot: includedTypes'in DUZ bir dize dizisi olmasi gerekiyor. {@code put(List)}
      * yazilirsa ic ice dizi ({@code [["a","b"]]}) gider — Google bunu 400 ile degil, sessizce
      * filtresiz sonuc dondurerek karsilar. Testin dogrudan tutabilmesi icin ayrildi.
+     *
+     * <p>Secili aktivitelerin turleri TEK istekte birlesir (includedTypes OR'lanir, istek
+     * basina 50 ture kadar izinli): 3 ilgi alani 1 aktivitelik kotaya mal olur.
      */
-    static JSONObject requestBody(GeoPoint center, double radiusKm, ActivityType type, int limit) {
-        List<String> includedTypes = TYPES.get(type);
-        if (includedTypes == null) {
-            throw new ProviderException("no google type mapping for " + type);
-        }
+    static JSONObject requestBody(GeoPoint center, double radiusKm, List<ActivityType> selected,
+                                  int limit) {
         JSONArray types = new JSONArray();
-        includedTypes.forEach(types::put);
+        for (ActivityType type : selected) {
+            List<String> mapped = TYPES.get(type);
+            if (mapped == null) {
+                throw new ProviderException("no google type mapping for " + type);
+            }
+            mapped.forEach(types::put);
+        }
         return new JSONObject()
                 .put("includedTypes", types)
+                // MESAFE, populariteden farkli olarak seyrek turu (hiking_area, museum)
+                // 20'lik tavanin disina itmez; orta nokta urununde dogru egilim de budur.
+                .put("rankPreference", "DISTANCE")
                 .put("maxResultCount", Math.min(limit, 20))
                 .put("locationRestriction", new JSONObject().put("circle", new JSONObject()
                         .put("center", new JSONObject()
                                 .put("latitude", center.lat()).put("longitude", center.lng()))
                         .put("radius", Math.min(radiusKm * 1000, 50000))));
+    }
+
+    /**
+     * Yanit hangi mekanin hangi ilgi alanindan geldigini soylemez -- turlerden geri kurulur.
+     * Once {@code primaryType} (mekanin kendi baskin turu), sonra {@code types} icinde
+     * KULLANICININ SECIM SIRASINA gore ilk eslesme. Hicbiri tutmazsa null: uydurulmus bir
+     * atif karti yanlis rozetle gosterir ve deste dengesini de yanlis hesaplatir.
+     */
+    static ActivityType attribute(JSONObject place, List<ActivityType> selected) {
+        String primary = place.optString("primaryType", "");
+        for (ActivityType type : selected) {
+            if (TYPES.get(type).contains(primary)) {
+                return type;
+            }
+        }
+        JSONArray types = place.optJSONArray("types");
+        if (types == null) {
+            return null;
+        }
+        for (ActivityType type : selected) {
+            List<String> mapped = TYPES.get(type);
+            for (int i = 0; i < types.length(); i++) {
+                if (mapped.contains(types.optString(i, ""))) {
+                    return type;
+                }
+            }
+        }
+        return null;
     }
 
     /** {"text": "..."} sarmalayicili Google alanlari (displayName, primaryTypeDisplayName). */

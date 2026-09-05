@@ -27,4 +27,5 @@ class VenueEntity {
     Integer ratingCount;
     String hoursToday;
     String placeLink;
+    String activityType;
 }

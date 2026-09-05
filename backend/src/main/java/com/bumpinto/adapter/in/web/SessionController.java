@@ -58,7 +58,7 @@ class SessionController {
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client,
             @Valid @RequestBody ApiDtos.CreateSessionRequest request) {
         SessionCommands.CreateSessionResult result = commands.createSession(
-                WebPrincipals.accountId(jwt), request.name(), request.activityType(),
+                WebPrincipals.accountId(jwt), request.name(), request.activityTypes(),
                 request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
                 new GeoPoint(request.lat(), request.lng()), request.displayName(),
                 request.locationLabel(), request.travelMode());

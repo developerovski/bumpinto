@@ -9,6 +9,7 @@ import kong.unirest.core.MockClient;
 import kong.unirest.core.Unirest;
 import kong.unirest.core.UnirestInstance;
 import kong.unirest.core.json.JSONArray;
+import kong.unirest.core.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -52,7 +53,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out).hasSize(1);
         VenueCandidate c = out.get(0);
@@ -83,7 +84,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out.get(0).photoUrl()).isEqualTo("https://lh3/g1=w1000");
     }
@@ -106,7 +107,7 @@ class GooglePlacesVenueProviderTest {
                 .thenReturn("gone").withStatus(404);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).photoUrl()).isNull();
@@ -124,7 +125,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out.get(0).photoUrl()).isNull();
         mock.verifyAll();
@@ -144,12 +145,61 @@ class GooglePlacesVenueProviderTest {
     @Test
     void buildsFlatIncludedTypesArrayForMultiTypeActivity() {
         JSONArray types = GooglePlacesVenueProvider
-                .requestBody(new GeoPoint(51.5, 5.5), 5.0, ActivityType.SWIM, 10)
+                .requestBody(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.SWIM), 10)
                 .getJSONArray("includedTypes");
+        assertThat(types.toList()).containsExactlyInAnyOrder("swimming_pool", "water_park");
+    }
 
-        assertThat(types.length()).isEqualTo(2);
-        assertThat(types.getString(0)).isEqualTo("swimming_pool");
-        assertThat(types.getString(1)).isEqualTo("water_park");
+    /** Uc aktivite TEK istekte birlesir: cogul ilgi alani ek kota harcamaz. */
+    @Test
+    void mergesEverySelectedActivityIntoOneRequest() {
+        JSONArray types = GooglePlacesVenueProvider
+                .requestBody(new GeoPoint(51.5, 5.5), 5.0,
+                        List.of(ActivityType.COFFEE, ActivityType.HIKE, ActivityType.BAR), 20)
+                .getJSONArray("includedTypes");
+        assertThat(types.toList()).containsExactlyInAnyOrder(
+                "cafe", "hiking_area", "national_park", "state_park", "bar");
+    }
+
+    /**
+     * Siralama MESAFE: 20'lik sert tavanda populariteyle seyrek tur (hiking_area) hic
+     * gelmiyordu. Karar 2026-09-04 -- tek aktiviteli destelerin icerigini de degistirir.
+     */
+    @Test
+    void ranksByDistanceSoSparseTypesSurviveTheTwentyCap() {
+        assertThat(GooglePlacesVenueProvider
+                .requestBody(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 20)
+                .getString("rankPreference")).isEqualTo("DISTANCE");
+    }
+
+    /** primaryType secili kumede ise atif odur. */
+    @Test
+    void attributesPlaceByPrimaryType() {
+        JSONObject place = new JSONObject()
+                .put("primaryType", "hiking_area")
+                .put("types", new JSONArray(List.of("hiking_area", "tourist_attraction")));
+        assertThat(GooglePlacesVenueProvider.attribute(place,
+                List.of(ActivityType.COFFEE, ActivityType.HIKE))).isEqualTo(ActivityType.HIKE);
+    }
+
+    /** primaryType secili kumede degilse types'a bakilir, secim SIRASI belirler. */
+    @Test
+    void fallsBackToTypesArrayInSelectionOrder() {
+        JSONObject place = new JSONObject()
+                .put("primaryType", "tourist_attraction")
+                .put("types", new JSONArray(List.of("tourist_attraction", "bar", "restaurant")));
+        assertThat(GooglePlacesVenueProvider.attribute(place,
+                List.of(ActivityType.FOOD, ActivityType.BAR))).isEqualTo(ActivityType.FOOD);
+    }
+
+    /** Hicbir sey eslesmezse atif UYDURULMAZ: null doner, deste dengesinde artik kovasina duser. */
+    @Test
+    void returnsNullWhenNothingMatchesInsteadOfGuessing() {
+        JSONObject place = new JSONObject()
+                .put("primaryType", "tourist_attraction")
+                .put("types", new JSONArray(List.of("tourist_attraction")));
+        assertThat(GooglePlacesVenueProvider.attribute(place,
+                List.of(ActivityType.COFFEE, ActivityType.HIKE))).isNull();
     }
 
     @Test
@@ -159,7 +209,7 @@ class GooglePlacesVenueProviderTest {
         mock.expect(HttpMethod.POST, NEARBY_URL).thenReturn("{}");
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out).isEmpty();
     }
@@ -172,7 +222,7 @@ class GooglePlacesVenueProviderTest {
         mock.expect(HttpMethod.POST, NEARBY_URL).thenReturn("{}").withStatus(429);
 
         assertThatThrownBy(() -> provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .isInstanceOf(QuotaExceededException.class);
     }
 
@@ -185,8 +235,8 @@ class GooglePlacesVenueProviderTest {
         GooglePlacesVenueProvider p = provider(http);
 
         assertThat(p.measureQuota().remaining()).isEqualTo(1000);
-        p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
-        p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+        p.search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
+        p.search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         ProviderQuota q = p.measureQuota();
         assertThat(q.remaining()).isEqualTo(998);
@@ -221,7 +271,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
 
         assertThat(c.category()).isEqualTo("Espresso bar");
         assertThat(c.address()).isEqualTo("Kleine Berg 16, Eindhoven");
@@ -239,7 +289,8 @@ class GooglePlacesVenueProviderTest {
                                 + "places.priceLevel,places.googleMapsUri,places.photos,"
                                 + "places.primaryTypeDisplayName,places.businessStatus,"
                                 + "places.shortFormattedAddress,places.userRatingCount,"
-                                + "places.regularOpeningHours,places.addressComponents");
+                                + "places.regularOpeningHours,places.addressComponents,"
+                                + "places.primaryType,places.types");
     }
 
     /**
@@ -263,7 +314,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
 
         // NOW = 2026-09-02 = carsamba (Wednesday); dizi Pazar-ilk, index-tabanli okuma yanlis
         // gunu (Tuesday) dondururdu — isim eslesmesi dogru satiri bulur.
@@ -282,7 +333,7 @@ class GooglePlacesVenueProviderTest {
                             {"longText":"Strijp-S","types":["sublocality_level_1","sublocality"]}]}]}
                         """);
 
-        assertThat(provider(http).search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10)
+        assertThat(provider(http).search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10)
                 .get(0).locality()).isEqualTo("Strijp-S");
     }
 
@@ -308,7 +359,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).externalId()).isEqualTo("acik");
@@ -326,7 +377,7 @@ class GooglePlacesVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
         assertThat(c.placeLink()).isEqualTo(
                 "https://www.google.com/maps/search/?api=1&query=Caf%C3%A9+Berlage&query_place_id=g9");
     }
@@ -346,7 +397,7 @@ class GooglePlacesVenueProviderTest {
         GooglePlacesVenueProvider p = new GooglePlacesVenueProvider(http,
                 FoursquareVenueProviderTest.props(), clock);
 
-        p.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+        p.search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
         assertThat(p.measureQuota().remaining()).isEqualTo(999);
 
         // Sinir Pasifik takvim ayidir: 1 Ekim 00:00 PDT (UTC-7) = 07:00 UTC, saat degil.
@@ -366,12 +417,12 @@ class GooglePlacesVenueProviderTest {
         GooglePlacesVenueProvider provider = new GooglePlacesVenueProvider(http, budget(1, 10),
                 Clock.fixed(NOW, ZoneOffset.UTC));
 
-        assertThat(provider.search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+        assertThat(provider.search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .hasSize(1);
         // Butce bitti: ikinci arama aga CIKMAZ, orkestrator baska saglayiciya gecsin diye
         // QuotaExceededException atilir.
         assertThatThrownBy(() -> provider.search(new GeoPoint(51.5, 5.5), 5.0,
-                ActivityType.COFFEE, 10))
+                List.of(ActivityType.COFFEE), 10))
                 .isInstanceOf(QuotaExceededException.class);
         mock.assertThat(HttpMethod.POST, NEARBY_URL).wasInvokedTimes(1);
         assertThat(provider.measureQuota().remaining()).isZero();
@@ -399,7 +450,7 @@ class GooglePlacesVenueProviderTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
 
         List<VenueCandidate> out = provider.search(new GeoPoint(51.5, 5.5), 5.0,
-                ActivityType.COFFEE, 10);
+                List.of(ActivityType.COFFEE), 10);
 
         assertThat(out).hasSize(2);
         assertThat(out.get(0).photoUrl()).isEqualTo("https://lh3/g1=w1000");
@@ -425,13 +476,13 @@ class GooglePlacesVenueProviderTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
 
         List<VenueCandidate> first = provider.search(new GeoPoint(51.5, 5.5), 5.0,
-                ActivityType.COFFEE, 10);
+                List.of(ActivityType.COFFEE), 10);
         assertThat(first.get(0).photoUrl()).isEqualTo("https://lh3/g1=w1000");
 
         // Ikinci arama AYNI aydadir: tek birimlik foto butcesi ilk aramada tukendi, sayac
         // ikinci aramada SIFIRLANMAZ — venue fotosuz kalir.
         List<VenueCandidate> second = provider.search(new GeoPoint(51.5, 5.5), 5.0,
-                ActivityType.COFFEE, 10);
+                List.of(ActivityType.COFFEE), 10);
         assertThat(second.get(0).photoUrl()).isNull();
         mock.assertThat(HttpMethod.GET,
                 "https://places.googleapis.com/v1/places/g1/photos/REF1/media")

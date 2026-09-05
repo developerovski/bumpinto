@@ -58,7 +58,8 @@ class StoreAdapterTest {
         assertThat(userRows.findByEmail("m@x.dev").orElseThrow().name).isEqualTo("Mehmet Y");
 
         Session s = sessions.saveSession(new Session(UUID.randomUUID(), "slugtest", hostUser,
-                "Cuma", ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                "Cuma", List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
         Participant host = sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(),
                 "Mehmet", new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
@@ -252,11 +253,12 @@ class StoreAdapterTest {
 
         Session session1 = sessions.saveSession(new Session(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"), "smryssn1", hostA, "Cuma",
-                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
         Session session2 = sessions.saveSession(new Session(
                 UUID.fromString("22222222-2222-2222-2222-222222222222"), "smryssn2", hostA,
-                "Cumartesi", ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                "Cumartesi", List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
 
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayla",
@@ -302,13 +304,28 @@ class StoreAdapterTest {
         assertThat(sessions.distinctGuestsOfHost(hostA)).isEqualTo(4); // Ayşe, Kerem, Zeynep, Mert
     }
 
+    /** CSV gidis-donus: 3 aktivite yazilir, ayni sirada geri okunur. */
+    @Test
+    void activityTypesRoundTripAsCsvInSelectionOrder() {
+        UUID hostId = users.upsertByEmail("csv-host@x.dev", "Csv");
+        Session saved = sessions.saveSession(new Session(UUID.randomUUID(), "csv001",
+                hostId, "Cuma", List.of(ActivityType.COFFEE, ActivityType.HIKE, ActivityType.BAR),
+                SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.parse("2026-09-05T10:00:00Z"), null, List.of()));
+
+        Session loaded = sessions.sessionBySlug(saved.slug()).orElseThrow();
+
+        assertThat(loaded.activityTypes())
+                .containsExactly(ActivityType.COFFEE, ActivityType.HIKE, ActivityType.BAR);
+    }
+
     @Test
     void venueProviderFieldsRoundTrip() {
         UUID sessionId = newSession("venue-fields").id();
         Venue v = new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Espresso Bar",
                 new GeoPoint(51.44, 5.47), 4.6, 2, null, "https://maps/g1", 0,
                 "Espresso bar", "Kleine Berg 16, Eindhoven", "Eindhoven", 312,
-                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1");
+                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
     }
@@ -316,7 +333,7 @@ class StoreAdapterTest {
     private Session newSession(String slug) {
         UUID host = users.upsertByEmail(slug + "@x.dev", "Host " + slug);
         return sessions.saveSession(new Session(UUID.randomUUID(), slug, host, "Cuma",
-                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
     }
 

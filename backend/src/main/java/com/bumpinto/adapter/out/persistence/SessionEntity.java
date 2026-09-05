@@ -17,7 +17,7 @@ class SessionEntity {
     String slug;
     UUID hostId;
     String name;
-    String activityType;
+    String activityTypes; // csv
     String sessionType;
     String status;
     Instant expiresAt;

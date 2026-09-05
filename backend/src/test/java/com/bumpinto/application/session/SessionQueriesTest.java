@@ -34,7 +34,8 @@ class SessionQueriesTest {
 
     Session stored(SessionStatus status, Instant expiresAt) {
         Session session = new Session(UUID.randomUUID(), "x7k2m", UUID.randomUUID(), "Kahve",
-                ActivityType.COFFEE, SessionType.GROUP, status, expiresAt, null, List.of());
+                List.of(ActivityType.COFFEE), SessionType.GROUP, status, expiresAt, null,
+                List.of());
         return sessions.saveSession(session);
     }
 

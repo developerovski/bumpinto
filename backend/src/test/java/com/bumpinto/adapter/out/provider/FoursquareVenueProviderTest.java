@@ -59,9 +59,32 @@ class FoursquareVenueProviderTest {
                         """);
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.SWIM, 10);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.SWIM), 10);
 
         assertThat(out).isEmpty();
+    }
+
+    /**
+     * KISMI kapsama = kapsama yok. FSQ hike'i eslemiyor; kahve+hike icin dolu bir kahve
+     * listesi donerse orkestrator "ilk dolu kazanir" der ve Google'a hic gitmez -- kullanici
+     * sectigi hike'tan tek mekan gormez. Bos donup Google'a birakmak TEK dogru davranis.
+     */
+    @Test
+    void returnsEmptyWhenItCannotCoverEverySelectedActivity() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient.register(http);
+
+        List<VenueCandidate> result = provider(http).search(new GeoPoint(51.44, 5.47), 5.0,
+                List.of(ActivityType.COFFEE, ActivityType.HIKE), 20);
+
+        assertThat(result).isEmpty();
+    }
+
+    /** Hepsi esleniyorsa kategoriler virgulle birlesir: yine TEK istek. */
+    @Test
+    void joinsCategoryIdsWhenEveryActivityIsMapped() {
+        assertThat(FoursquareVenueProvider.categoryIds(
+                List.of(ActivityType.COFFEE, ActivityType.BAR))).isEqualTo("13032,13003");
     }
 
     @Test
@@ -85,7 +108,7 @@ class FoursquareVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
 
         assertThat(c.category()).isEqualTo("Coffee Shop");
         assertThat(c.address()).isEqualTo("Eindhoven");
@@ -119,7 +142,7 @@ class FoursquareVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
 
         assertThat(c.externalId()).isEqualTo("f3");
         assertThat(c.name()).isEqualTo("Malformed Spot");
@@ -140,7 +163,7 @@ class FoursquareVenueProviderTest {
                         """);
 
         VenueCandidate c = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10).get(0);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10).get(0);
         assertThat(c.address()).isEqualTo("Strijp-S");
         assertThat(c.locality()).isEqualTo("Strijp-S");
         assertThat(c.category()).isNull();
@@ -163,7 +186,7 @@ class FoursquareVenueProviderTest {
                 .thenReturn("{}");
 
         List<VenueCandidate> out = provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 200);
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 200);
 
         assertThat(out).isEmpty();
         mock.verifyAll();
@@ -178,7 +201,7 @@ class FoursquareVenueProviderTest {
         FoursquareVenueProvider provider = provider(http);
 
         assertThatThrownBy(() -> provider.search(new GeoPoint(51.5, 5.5), 5.0,
-                ActivityType.COFFEE, 10))
+                List.of(ActivityType.COFFEE), 10))
                 .isInstanceOf(ProviderException.class)
                 .hasMessageContaining("503")
                 .hasMessageNotContaining("fsq-key");
@@ -194,7 +217,7 @@ class FoursquareVenueProviderTest {
                 .withStatus(429);
 
         assertThatThrownBy(() -> provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .isInstanceOf(QuotaExceededException.class);
     }
 
@@ -210,7 +233,7 @@ class FoursquareVenueProviderTest {
                 .withHeader("x-ratelimit-reset", "1788382514");
         ProviderQuotaCache cache = new ProviderQuotaCache();
 
-        provider(http, cache).search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10);
+        provider(http, cache).search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10);
 
         ProviderQuota q = cache.get(FoursquareVenueProvider.ID).orElseThrow();
         assertThat(q.limit()).isEqualTo(180000);
@@ -256,7 +279,7 @@ class FoursquareVenueProviderTest {
                 .withHeader("x-ratelimit-remaining", "0");
 
         assertThatThrownBy(() -> provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .isInstanceOfSatisfying(QuotaExceededException.class, e ->
                         assertThat(e.resetAt()).isEqualTo(NOW.plus(FoursquareVenueProvider.CREDIT_COOLDOWN)));
 
@@ -270,7 +293,7 @@ class FoursquareVenueProviderTest {
                 .withHeader("x-ratelimit-reset", "1788382514");
 
         assertThatThrownBy(() -> provider(http)
-                .search(new GeoPoint(51.5, 5.5), 5.0, ActivityType.COFFEE, 10))
+                .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .isInstanceOfSatisfying(QuotaExceededException.class, e ->
                         assertThat(e.resetAt()).isEqualTo(Instant.ofEpochSecond(1788382514L)));
     }

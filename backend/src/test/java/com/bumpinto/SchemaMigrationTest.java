@@ -60,6 +60,13 @@ class SchemaMigrationTest {
                 .contains("IS NOT NULL");
     }
 
+    /** V8: oturum 1-3 ilgi alani tasir (CSV), mekan hangi alandan geldigini bilir. */
+    @Test
+    void v8RenamesSessionActivityToCsvAndAttributesVenues() {
+        assertThat(columnsOf("sessions")).contains("activity_types").doesNotContain("activity_type");
+        assertThat(columnsOf("venues")).contains("activity_type");
+    }
+
     @Test
     void v4AddsUserPreferenceColumns() {
         assertThat(columnsOf("users")).contains("default_lat", "default_lng",

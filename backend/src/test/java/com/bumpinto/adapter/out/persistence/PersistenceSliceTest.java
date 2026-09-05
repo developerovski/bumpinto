@@ -34,7 +34,7 @@ class PersistenceSliceTest {
         s.slug = "x7k2m";
         s.hostId = u.id;
         s.name = "Cuma kahvesi";
-        s.activityType = "COFFEE";
+        s.activityTypes = "COFFEE";
         s.sessionType = "GROUP";
         s.status = "COLLECTING";
         s.expiresAt = Instant.now().plusSeconds(3600);

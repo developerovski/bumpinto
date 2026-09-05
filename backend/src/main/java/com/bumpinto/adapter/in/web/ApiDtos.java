@@ -10,8 +10,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.UniqueElements;
 
 import java.time.Instant;
 import java.util.List;
@@ -36,7 +38,15 @@ public final class ApiDtos {
         return secret == null ? "null" : "***";
     }
 
-    public record CreateSessionRequest(@NotNull ActivityType activityType,
+    public record CreateSessionRequest(
+                                       /**
+                                        * 1-3 ilgi alani, TEKRARSIZ; siralama host'un secim
+                                        * sirasidir. Tekrar serbest birakilsaydi cache anahtari
+                                        * "COFFEE+COFFEE" olur ve ayni arama ikinci kez satin
+                                        * alinirdi — Places butcesi bu isin ana kisiti.
+                                        */
+                                       @NotEmpty @Size(max = 3) @UniqueElements
+                                       List<ActivityType> activityTypes,
                                        @Size(max = 60) String name,
                                        /** null → GROUP (M-1 mobil istemcisi alani gondermez). */
                                        SessionType sessionType,
@@ -141,10 +151,12 @@ public final class ApiDtos {
                            Integer priceLevel, String photoUrl, String mapsUrl, int deckOrder,
                            Map<UUID, Integer> travelMinutes, FairnessDto fairness,
                            String provider, String category, String address, String locality,
-                           Integer ratingCount, String hoursToday, String placeLink) {
+                           Integer ratingCount, String hoursToday, String placeLink,
+                           /** Hangi ilgi alanindan geldigi; atif cozulemediyse null. */
+                           ActivityType activityType) {
     }
 
-    public record SessionView(String slug, String name, ActivityType activityType,
+    public record SessionView(String slug, String name, List<ActivityType> activityTypes,
                               SessionType sessionType, SessionStatus status, Instant expiresAt,
                               List<ParticipantDto> participants, List<VenueDto> venues,
                               List<UUID> runoffVenueIds, UUID decidedVenueId,
@@ -159,14 +171,16 @@ public final class ApiDtos {
                               DecisionKind decisionKind, Instant decidedAt,
                               RunoffReason runoffReason,
                               /** Mekan -> begeni sayisi; YALNIZ DECIDED'da dolu. */
-                              Map<UUID, Long> likeCounts) {
+                              Map<UUID, Long> likeCounts,
+                              /** Secili ama hic mekan uretmemis alanlar; BROWSING oncesi bos. */
+                              List<ActivityType> emptyActivityTypes) {
     }
 
     /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si, mekan YOK. */
     public record PreviewParticipantDto(String displayName, boolean host, boolean hasLocation) {
     }
 
-    public record SessionPreview(String slug, String name, ActivityType activityType,
+    public record SessionPreview(String slug, String name, List<ActivityType> activityTypes,
                                  SessionType sessionType, SessionStatus status,
                                  String hostDisplayName, int participantCount,
                                  List<PreviewParticipantDto> participants,
@@ -182,7 +196,8 @@ public final class ApiDtos {
     public record ViewerDto(UUID participantId, boolean host, UUID runoffVoteVenueId) {
     }
 
-    public record SessionSummaryDto(String slug, String name, ActivityType activityType,
+    public record SessionSummaryDto(String slug, String name,
+                                    List<ActivityType> activityTypes,
                                     SessionType sessionType, SessionStatus status,
                                     Instant createdAt, Instant expiresAt, int participantCount,
                                     int readyCount, int doneCount,

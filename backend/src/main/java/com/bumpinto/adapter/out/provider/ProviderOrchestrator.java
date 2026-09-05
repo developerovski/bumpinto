@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Kotaya gore saglayici secimi + sonuc onbellegi.
@@ -56,15 +57,19 @@ public class ProviderOrchestrator implements VenueProviderPort {
     }
 
     @Override
-    public List<VenueCandidate> search(GeoPoint center, double radiusKm, ActivityType type,
-                                       int limit) {
+    public List<VenueCandidate> search(GeoPoint center, double radiusKm,
+                                       List<ActivityType> types, int limit) {
+        // Anahtar SIRADAN bagimsiz: {COFFEE,BAR} ile {BAR,COFFEE} ayni aramadir, ikincisi
+        // ayni sonucu ikinci kez satin almamali. Ada gore alfabetik siralama kanonik bicimi verir.
+        String canonical = types.stream().map(ActivityType::name).sorted()
+                .collect(Collectors.joining("+"));
         String key = String.format(Locale.ROOT, "%.3f:%.3f:%.1f:%s:%d",
-                center.lat(), center.lng(), radiusKm, type, limit);
+                center.lat(), center.lng(), radiusKm, canonical, limit);
         List<VenueCandidate> cached = results.getIfPresent(key);
         if (cached != null) {
             return cached;
         }
-        List<VenueCandidate> result = searchRanked(center, radiusKm, type, limit);
+        List<VenueCandidate> result = searchRanked(center, radiusKm, types, limit);
         // BOS sonuc CACHE'LENMEZ: seyrek bolgede gecici bir bosluk 30 dk boyunca
         // "mekan yok"a donusurdu. Hata durumu da cache'lenmez (istisna yukari gider).
         if (!result.isEmpty()) {
@@ -91,17 +96,17 @@ public class ProviderOrchestrator implements VenueProviderPort {
     }
 
     private List<VenueCandidate> searchRanked(GeoPoint center, double radiusKm,
-                                              ActivityType type, int limit) {
+                                              List<ActivityType> types, int limit) {
         Instant now = clock.instant();
         RuntimeException lastFailure = null;
         for (QuotaAwareVenueProvider provider : ranked(now)) {
             try {
-                List<VenueCandidate> result = provider.search(center, radiusKm, type, limit);
+                List<VenueCandidate> result = provider.search(center, radiusKm, types, limit);
                 if (!result.isEmpty()) {
                     // Hangi saglayicinin desteyi urettigi loglardan izlenir (kota satirlariyla
                     // birlikte okununca "neden Google'a dustuk" sorusunu cevaplar).
                     log.info("venues from {}: {} results for {} r={}km", provider.id(),
-                            result.size(), type, radiusKm);
+                            result.size(), types, radiusKm);
                     return result;
                 }
             } catch (QuotaExceededException e) {

@@ -176,7 +176,7 @@ class SecurityPolicyTest {
 
     static {
         STORE.saveSession(new Session(SESSION_ID, "x7k2m", UUID.randomUUID(), "Kahve",
-                ActivityType.COFFEE, SessionType.GROUP, SessionStatus.COLLECTING,
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
                 Instant.now().plus(6, ChronoUnit.HOURS), null, List.of()));
         STORE.saveParticipant(new Participant(UUID.randomUUID(), SESSION_ID, "Ayse", null,
                 false, null, false, null, null));

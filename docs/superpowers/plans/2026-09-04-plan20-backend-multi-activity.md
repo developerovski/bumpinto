@@ -26,6 +26,80 @@ Tek sınıf için `-Dtest=SınıfAdı`. `Unresolved compilation problem` görür
 
 ---
 
+## Yürütme grupları (ÖNCE BUNU OKU)
+
+Maven `main` kaynaklarının **tamamını** derler: `Session`'ın tipi değiştiği anda
+`SessionCommands`, `SessionController`, `SessionViewAssembler` ve `DeckFlow` birlikte kırılır ve
+`-Dtest=TekSınıf` dahil **hiçbir test koşmaz**. Bu yüzden görevler tek tek değil, **derlemesi
+yeşilden yeşile giden gruplar** halinde yürütülür.
+
+| Grup | Görevler | Sonunda |
+|---|---|---|
+| **G1** | T1 | Migration. Java derlemesi yeşil ama **süit kırmızıya döner**: `SessionEntity.activityType` artık var olmayan kolona bakar. **G1 tek başına commit EDİLMEZ** — G2 ile aynı commit'e girer. |
+| **G2** | **T2 + T3 + T4 + T7 + T9'un mekanik kısmı + doğrulama + `create-session.yml`** | Tip genişletme sweep'i — `mvn -o clean test` YEŞİL |
+| **G3** | T5 | Google bulk + DISTANCE + atıf — yeşil |
+| **G4** | T6 | FSQ kapsama kilidi — yeşil |
+| **G5** | T8 | ~~Round-robin deste~~ — **GERİ ALINDI**, aşağıya bak |
+| **G6** | T9'un davranış kısmı | `emptyActivityTypes` + `VenueDto.activityType` — yeşil |
+| **G7** | T10 | Bruno + ARCHITECTURE |
+
+**Bruno `create-session.yml` G2'dedir, G7'de değil.** Gövdesi `activityType` gönderiyordu ve tip
+değişiminden sonra o istek 400 döner. AGENTS.md API Collection Policy bunu "uç noktanın tanımının
+parçası, sonraki iş değil" sayıyor — G7'ye ertelemek politikayı ihlal ederdi (2026-09-04 inceleme
+bulgusu). G7'de yalnız **kırılmayan** dosyaların `docs:` güncellemeleri kaldı.
+
+**`@UniqueElements` şart.** Sözleşme "tekrarsız" diyor ama ilk taslakta hiçbir grup uygulamıyordu.
+Tekrar serbest kalsaydı `{COFFEE,COFFEE}` cache anahtarında `"COFFEE+COFFEE"` üretir ve **aynı arama
+ikinci kez satın alınırdı** — Places bütçesi bu işin ana kısıtı olduğu için bu sessiz bir para
+sızıntısıydı (2026-09-04 inceleme bulgusu).
+
+**G5 (T8, round-robin) geri alındı — 2026-09-04 inceleme bulgusu.** Task 8'in gerekçesi
+yanlıştı: "20'lik tavanda seyrek tür düşer" dedim, ama **kesme diye bir şey yok.**
+`provider.search(..., DECK_MAX=20)` → Google `maxResultCount = min(limit,20)` → orchestrator
+ilk dolu sonucu döndürür, birleştirmez → yarıçap döngüsü `found`'u yeniden atar, biriktirmez.
+Yani aday sayısı hep `≤ 20 = DECK_MAX` ve `balanced()` girdisinin tamamını döndürür.
+
+Tek canlı etkisi zararlıydı: başlangıç sırasını değiştirip `shuffle()`'ın idempotentlik
+değişmezini bozuyordu (`findVenues` `balanced()`'tan, `shuffle()` `canonicalOrder`'dan kurar;
+`fairnessFirst` içindeki `Collections.shuffle` konum bağımlıdır). Koruyan test kördü: `candAt`
+atıfsız aday üretiyor, hepsi artık kovasına düşüyor, `balanced()` düz sıraya dejenere oluyordu.
+
+Seyrek tür savunması G3'ün `DISTANCE`'ı, kullanıcı bildirimi G6'nın `emptyActivityTypes`'ıdır.
+**Task 8 bu plandan uygulanmamalıdır.**
+
+**Doğrulama G2'dedir, G6'da değil.** `@NotNull` boş listeyi geçirir ve sağlayıcı katmanı boş
+seçimle çağrılınca 400 yerine **500** üretir. Anotasyon tipin sözleşmesinin parçasıdır; ayrı
+gruba bırakmak yapay bir regresyon penceresi açar (2026-09-04 inceleme bulgusu).
+
+**G1 + G2 tek bir commit'tir.** Migration şemayı yeniden adlandırdığı an entity eşlemesi kopar; ikisi ayrı commit'lenirse aradaki her revizyon çalışmaz durumdadır.
+
+**G2 tek bir iştir, parçalanamaz.** İçindeki tüm dosyalar aynı anda değişir; testler ancak
+sweep bittikten sonra koşar. G2 içindeki "Run test to verify it fails" adımları **derleme
+hatası** olarak başarısız olur — bu beklenendir, TDD kırmızısı sayılır. Grubun sonunda:
+
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 21) JENV_VERSION=21 TESTCONTAINERS_RYUK_DISABLED=true \
+  mvn -o clean test
+```
+
+G3–G6 tek görevlik gruplardır ve normal TDD döngüsü işler.
+
+**G2'nin kapsamı, dosya dosya:** `Session.java`, `Venue.java`, `VenueCandidate.java`,
+`VenueProviderPort.java`, `QuotaAwareVenueProvider.java`, `GooglePlacesVenueProvider.java` ve
+`FoursquareVenueProvider.java` (**yalnız `search` imzası** — bulk/DISTANCE/atıf G3'te, kapsama
+kilidi G4'te), `ProviderOrchestrator.java`, `DeckFlow.java` (**yalnız** `provider.search`'e liste
+geçmek ve `Venue`'ye `c.activityType()` yazmak — round-robin G5'te), `SessionEntity.java`,
+`VenueEntity.java`, `SessionStoreAdapter.java`, `DeckStoreAdapter.java`, `ApiDtos.java`
+(tip değişimi **+ `@NotEmpty @Size(max = 3)`** — `emptyActivityTypes` ve
+`VenueDto.activityType` G6'da),
+`SessionViewAssembler.java`, `SessionController.java`, `SessionCommands.java`, ve derlemeyi
+yeşile döndürmek için gereken **tüm test dosyaları**.
+
+> G2 sırasında `MeController` / `UserStoreAdapter` / `UserProfile` kırılırsa **tipi genişletme** —
+> `defaultActivity` bilerek tekil kalıyor. Kırılıyorlarsa çağrı yerini düzelt, tipi değil.
+
+---
+
 ## Kapsam dışı (bilerek)
 
 - **Oy semantiği değişmiyor.** Karışık deste tek eksende kaydırılır; `DecisionEngine`'e dokunulmaz. Kullanıcı kararı 2026-09-04.
@@ -64,12 +138,12 @@ Tek sınıf için `-Dtest=SınıfAdı`. `Unresolved compilation problem` görür
 
 | Alan | Tip | Kural |
 |---|---|---|
-| `CreateSessionRequest.activityTypes` | `ActivityType[]` | **1–3** eleman, tekrarsız. Boş/4+ → **400**. |
+| `CreateSessionRequest.activityTypes` | `ActivityType[]` | **1–3** eleman, tekrarsız. Boş / 4+ / tekrarlı → **400** (`@NotEmpty @Size(max=3) @UniqueElements`). |
 | `SessionView.activityTypes` | `ActivityType[]` | Oturumun seçili alanları, host'un seçtiği sırada. |
 | `SessionPreview.activityTypes` | `ActivityType[]` | Aynı; davet önizlemesi. |
 | `SessionSummaryDto.activityTypes` | `ActivityType[]` | Aynı; liste satırı. |
 | `VenueDto.activityType` | `ActivityType \| null` | Mekânın hangi ilgi alanından geldiği. Atıf çözülemediyse `null`. |
-| `SessionView.emptyActivityTypes` | `ActivityType[]` | Seçili ama **hiç mekân üretmemiş** alanlar. `BROWSING` öncesi daima boş. |
+| `SessionView.emptyActivityTypes` | `ActivityType[]` | Seçili ama **hiç mekân üretmemiş** alanlar. Deste yokken **ve** hiçbir mekân atfedilememişken boş — ikinci durumda elde sinyal yoktur, "hepsi boş" demek 20 mekân dururken yalan olurdu. |
 | `POST /{slug}/find-venues` | 422 `NoVenuesFound` | Yalnız **hiçbir** aktiviteden mekân gelmezse. Kısmi sonuç başarıdır. |
 
 ---
@@ -324,15 +398,11 @@ public record VenueCandidate(String provider, String externalId, String name, Ge
         this(provider, externalId, name, location, rating, priceLevel, photoUrl, mapsUrl,
                 null, null, null, null, null, null, null);
     }
-
-    /** Atif disindaki tum alanlari koruyarak ilgi alanini isaretler. */
-    public VenueCandidate withActivityType(ActivityType type) {
-        return new VenueCandidate(provider, externalId, name, location, rating, priceLevel,
-                photoUrl, mapsUrl, category, address, locality, ratingCount, hoursToday,
-                placeLink, type);
-    }
 }
 ```
+
+> `withActivityType()` **yazma.** İlk taslakta vardı; G3/G4 atfı doğrudan `VenueCandidate`
+> ctor'unda veriyor, yani metot hiç çağrılmazdı (YAGNI — 2026-09-04 inceleme bulgusu).
 
 - [ ] **Step 2: `Venue`'ye aynı alanı ekle**
 
@@ -1148,7 +1218,7 @@ Expected: FAIL — derleme hatası.
 
 - [ ] **Step 3: DTO'ları ve assembler'ı güncelle**
 
-`ApiDtos.java` — `CreateSessionRequest`:
+`ApiDtos.java` — `CreateSessionRequest` (**G2'de yapıldı**, burada yalnız referans):
 
 ```java
     public record CreateSessionRequest(

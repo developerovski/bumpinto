@@ -86,3 +86,7 @@ docs:
     `participants[].online`: acik bir soketi VAR ya da son 2 saniye icinde koptu (grace
     penceresi — sayfa yenileme veya kisa kopma offline gostermez). `manual=true` satirlarda
     HER ZAMAN `false`: bu satirlar token tasimaz, soket hic acamaz.
+
+    `activityTypes`: oturumun secili alanlari (1-3).
+    `emptyActivityTypes`: secili ama hic mekan uretmemis alanlar; BROWSING oncesi daima bos.
+    `venues[].activityType`: mekanin geldigi alan; saglayici atfi cozulemediyse null.

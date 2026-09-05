@@ -457,6 +457,42 @@ en fazla 3 olduğu için ayrı tablo açılmadı; sorgulanmıyor, yalnız okunup
 - Google'da bir aktivite birden çok türe açılır (`includedTypes` OR'lanır), tek istekte daha
   geniş sonuç: `MUSEUM` → `museum` + `art_museum` + `history_museum`.
 
+### Çoklu ilgi alanı ve bulk arama (B-9, 2026-09-04)
+
+Bir oturum 1–3 ilgi alanı taşır. Google `searchNearby` `includedTypes` bir dizi kabul ettiği
+için seçilen alanların türleri **tek** istekte birleşir: çoklu seçim ek kota harcamaz.
+
+Üç bağlı karar:
+
+1. **`rankPreference: DISTANCE`.** `maxResultCount` 20'de sert tavanlıdır. Popülarite
+   sıralamasında şehir merkezinde kafe/bar, `hiking_area`/`museum` gibi seyrek türleri
+   kesitin tamamen dışına itiyordu. Mesafe orta nokta ürününde zaten doğru eğilimdir.
+   Bu karar **tek aktiviteli** destelerin içeriğini de değiştirir (bilinçli).
+2. **Atıf `primaryType` + `types`'tan geri kurulur.** Bu iki alan Essentials katmanıdır;
+   mask zaten Enterprise alanlar taşıdığından faturalama katmanını yükseltmezler. Çözülemeyen
+   atıf `null` bırakılır — uydurulmaz.
+3. **Foursquare kısmi kapsamayla arama yapmaz.** Orchestrator "ilk dolu sonuç kazanır"
+   kuralını işletir; FSQ seçimin bir kısmını servis ederse Google devre dışı kalır ve kullanıcı
+   seçtiği bir alandan hiç mekân görmez.
+
+**Telafi çağrısı yoktur**: bir alandan hiç mekân gelmezse ikinci istek atılmaz, durum
+`SessionView.emptyActivityTypes` ile bildirilir (Places bütçesi sınırlı — kullanıcı kararı
+2026-09-04).
+
+**Seçili bir alanın desteye gireceği GARANTİ EDİLMEZ — bilinçli.** Deste kompozisyonunu
+dengeleyen bir kova/round-robin katmanı denendi (`DeckFlow.balanced`) ve **geri alındı**:
+sağlayıcıya `limit = DECK_MAX = 20` gidiyor, Google `maxResultCount`'u 20'de tavanlıyor,
+orchestrator sonuçları birleştirmiyor ve yarıçap döngüsü biriktirmiyor — yani aday sayısı
+hiçbir zaman `DECK_MAX`'ı aşmıyor ve **elenecek bir şey yok**. Katmanın tek gözlemlenebilir
+etkisi `DeckOrdering.fairnessFirst`'e giden başlangıç sırasını değiştirmekti, ki bu da
+`shuffle()`'ın idempotentlik değişmezini bozuyordu (o sıra `canonicalOrder`'dan yeniden
+kurulur; `Collections.shuffle` konum bağımlıdır).
+
+Seyrek türü koruyan tek gerçek mekanizma isteğin **içindedir**: `rankPreference: DISTANCE`.
+O da garanti değil — şehir merkezinde 300 m'de 20 kafe varken 4 km'deki `hiking_area` yine
+kesitin dışında kalır. Ürün cevabı telafi çağrısı değil, dürüstlüktür: `emptyActivityTypes`
+kullanıcıya hangi alandan mekân bulunamadığını söyler.
+
 ---
 
 ## 11. Olaylar (WebSocket)

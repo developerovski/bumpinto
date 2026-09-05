@@ -21,6 +21,7 @@ import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.VenueProviderPort;
+import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
@@ -90,7 +91,7 @@ public class DeckFlow {
         List<VenueCandidate> found = List.of();
         for (int attempt = 0; attempt <= SearchRadius.MAX_EXPANSIONS; attempt++) {
             found = provider.search(center, SearchRadius.expandedKm(baseKm, attempt),
-                    session.activityType(), DECK_MAX);
+                    session.activityTypes(), DECK_MAX);
             if (found.size() >= DECK_MIN) {
                 break;
             }
@@ -117,7 +118,7 @@ public class DeckFlow {
             venues.add(new Venue(UUID.randomUUID(), session.id(), c.provider(), c.externalId(),
                     c.name(), c.location(), c.rating(), c.priceLevel(), c.photoUrl(),
                     c.mapsUrl(), i, c.category(), c.address(), c.locality(), c.ratingCount(),
-                    c.hoursToday(), c.placeLink()));
+                    c.hoursToday(), c.placeLink(), c.activityType()));
         }
         List<Venue> saved = deck.saveVenues(venues);
         // Etiket BIR KEZ burada cozulur: orta nokta bundan sonra degismez (konumlar donuyor)
@@ -362,6 +363,7 @@ public class DeckFlow {
         UUID id = session.id();
         return id.getMostSignificantBits() ^ id.getLeastSignificantBits();
     }
+
 
     /**
      * TEK kanonik siralama: puan azalan (yoksa sona), sonra sabit kimlik (externalId) — hem

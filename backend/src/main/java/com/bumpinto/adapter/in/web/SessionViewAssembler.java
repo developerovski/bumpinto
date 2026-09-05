@@ -7,6 +7,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -70,17 +72,39 @@ public class SessionViewAssembler {
                     v.rating(), v.priceLevel(), v.photoUrl(), directionsUrl(v), v.deckOrder(),
                     travel, fairness,
                     v.provider(), v.category(), v.address(), v.locality(), v.ratingCount(),
-                    v.hoursToday(), v.placeLink());
+                    v.hoursToday(), v.placeLink(), v.activityType());
         }).toList();
         return new ApiDtos.SessionView(snap.session().slug(), snap.session().name(),
-                snap.session().activityType(), snap.session().sessionType(),
+                snap.session().activityTypes(), snap.session().sessionType(),
                 snap.session().status(), snap.session().expiresAt(),
                 participants, venues, snap.session().runoffVenueIds(),
                 snap.session().decidedVenueId(), snap.voteTally(), midpoint, radiusKm,
                 snap.runoffVotes().keySet().stream().sorted().toList(),
                 WebPrincipals.viewerOf(snap, auth),
                 snap.session().midpointLabel(), snap.session().decisionKind(),
-                snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts());
+                snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts(),
+                emptyActivityTypes(snap));
+    }
+
+    /**
+     * Secili ama desteye tek mekan sokamamis alanlar. TURETILIR, depolanmaz: deste zaten
+     * elimizde ve tek kaynak odur. Deste kurulmadan once (BROWSING oncesi) bos doner --
+     * yoksa "hicbir sey bulunamadi" gibi okunurdu.
+     */
+    private static List<ActivityType> emptyActivityTypes(SessionQueries.SessionSnapshot snap) {
+        if (snap.venues().isEmpty()) {
+            return List.of();
+        }
+        Set<ActivityType> covered = snap.venues().stream().map(Venue::activityType)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        // HICBIR mekan atfedilememisse "hepsi bos" DENMEZ: elde deste var, yalniz atif
+        // sinyali yok (saglayici tur takma adi). "20 kahve mekani + kahve bulunamadi"
+        // ekranda apacik bir yalan olurdu; bilmiyorsak susariz.
+        if (covered.isEmpty()) {
+            return List.of();
+        }
+        return snap.session().activityTypes().stream()
+                .filter(a -> !covered.contains(a)).toList();
     }
 
     /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si ve mekan YOK. */
@@ -97,7 +121,7 @@ public class SessionViewAssembler {
         boolean hostOnline = snap.participants().stream().filter(Participant::host).findFirst()
                 .map(host -> present.contains(host.id())).orElse(false);
         return new ApiDtos.SessionPreview(snap.session().slug(), snap.session().name(),
-                snap.session().activityType(), snap.session().sessionType(),
+                snap.session().activityTypes(), snap.session().sessionType(),
                 snap.session().status(), hostDisplayName, participants.size(), participants,
                 hostOnline);
     }
@@ -112,7 +136,7 @@ public class SessionViewAssembler {
 
     private static ApiDtos.SessionSummaryDto toSummaryDto(SessionSummary s) {
         return new ApiDtos.SessionSummaryDto(s.session().slug(), s.session().name(),
-                s.session().activityType(), s.session().sessionType(), s.session().status(),
+                s.session().activityTypes(), s.session().sessionType(), s.session().status(),
                 s.createdAt(), s.session().expiresAt(), s.participantCount(), s.readyCount(),
                 s.doneCount(), s.decidedVenueName(), s.decidedVenuePhotoUrl());
     }

@@ -71,7 +71,7 @@ class AccountApiTest {
 
         for (String type : List.of("GROUP", "SOLO")) {
             mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
-                            .content("{\"activityType\":\"COFFEE\",\"sessionType\":\"" + type + "\","
+                            .content("{\"activityTypes\":[\"COFFEE\"],\"sessionType\":\"" + type + "\","
                                     + "\"name\":\"" + type + " kahve\",\"lat\":51.69,\"lng\":5.30,"
                                     + "\"displayName\":\"Mehmet\"}"))
                     .andExpect(status().isCreated());
@@ -150,7 +150,7 @@ class AccountApiTest {
                         .contentType(JSON).content("{\"idToken\":\"gid5\"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
         JsonNode created = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt).contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"name\":\"Önizleme\",\"lat\":51.69,\"lng\":5.30,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Önizleme\",\"lat\":51.69,\"lng\":5.30,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String slug = created.get("slug").asString();
@@ -225,7 +225,7 @@ class AccountApiTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
         JsonNode created = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
                         .header("X-Client", "web").contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.69,\"lng\":5.30,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String slug = created.get("slug").asString();
@@ -271,7 +271,7 @@ class AccountApiTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
         JsonNode created = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
                         .header("X-Client", "web").contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.69,\"lng\":5.30,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String slug = created.get("slug").asString();
@@ -322,7 +322,7 @@ class AccountApiTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
         String slug = json.readTree(mvc.perform(post("/api/sessions").cookie(hostAt)
                         .header("X-Client", "web").contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.69,\"lng\":5.30,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
                 .get("slug").asString();
@@ -391,7 +391,7 @@ class AccountApiTest {
         Cookie firstAt = webLogin("gid7");
         MvcResult created = mvc.perform(post("/api/sessions")
                         .cookie(firstAt).header("X-Client", "web").contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.69,\"lng\":5.30,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.69,\"lng\":5.30,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn();
         String slug = json.readTree(created.getResponse().getContentAsString()).get("slug").asString();
@@ -451,7 +451,7 @@ class AccountApiTest {
 
         MvcResult created = mvc.perform(post("/api/sessions").cookie(at).header("X-Client", "web")
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.6978,\"lng\":5.3037,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated()).andReturn();
         String slug = json.readTree(created.getResponse().getContentAsString()).get("slug").asString();

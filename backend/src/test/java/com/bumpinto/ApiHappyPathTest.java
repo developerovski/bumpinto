@@ -106,7 +106,7 @@ class ApiHappyPathTest {
         String createBody = mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"name\":\"Cuma kahvesi\","
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Cuma kahvesi\","
                                 + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
@@ -197,7 +197,7 @@ class ApiHappyPathTest {
         String otherSlug = json.readTree(mvc.perform(post("/api/sessions")
                         .cookie(accessCookie)
                         .contentType(JSON)
-                        .content("{\"activityType\":\"BAR\",\"lat\":51.44,\"lng\":5.47,"
+                        .content("{\"activityTypes\":[\"BAR\"],\"lat\":51.44,\"lng\":5.47,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString()).get("slug").asString();
@@ -242,7 +242,7 @@ class ApiHappyPathTest {
                         .header("Authorization", "Bearer " + accessToken)
                         .header("X-Client", "web")
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.6978,\"lng\":5.3037,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString()).get("slug").asString();
@@ -324,7 +324,7 @@ class ApiHappyPathTest {
         JsonNode created = json.readTree(mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"sessionType\":\"SOLO\","
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"sessionType\":\"SOLO\","
                                 + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\","
                                 + "\"locationLabel\":\"'s-Hertogenbosch\"}"))
                 .andExpect(status().isCreated())
@@ -388,7 +388,7 @@ class ApiHappyPathTest {
         String slug = json.readTree(mvc.perform(post("/api/sessions")
                         .cookie(hostAccount).header("X-Client", "web")
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.6978,\"lng\":5.3037,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString()).get("slug").asString();
@@ -458,7 +458,7 @@ class ApiHappyPathTest {
         JsonNode created = json.readTree(mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(JSON)
-                        .content("{\"activityType\":\"COFFEE\",\"lat\":51.6978,\"lng\":5.3037,"
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"lat\":51.6978,\"lng\":5.3037,"
                                 + "\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
@@ -471,5 +471,38 @@ class ApiHappyPathTest {
         mvc.perform(get("/api/sessions/" + slug + "/ws")
                         .header(ParticipantTokenFilter.HEADER, hostToken))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 1-3 arasi SERT sinir. Bos liste kabul edilseydi saglayici katmani bos secimle cagrilir
+     * ve 400 yerine 500 uretirdi; 4+ secim 20 mekanlik desteye alan basina 5 kart birakir.
+     */
+    @Test
+    void rejectsEmptyOrOversizedActivitySelection() throws Exception {
+        when(google.verify("gid-val"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("val@bumpinto.test", "Mehmet"));
+        String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-val\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).get("accessToken").asString();
+
+        // Tekrar da reddedilir: {COFFEE,COFFEE} cache anahtarinda "COFFEE+COFFEE" uretir ve
+        // ayni aramayi ikinci kez satin alirdi.
+        for (String selection : new String[] {"[]", "[\"COFFEE\",\"BAR\",\"HIKE\",\"SWIM\"]",
+                "[\"COFFEE\",\"COFFEE\"]"}) {
+            mvc.perform(post("/api/sessions")
+                            .header("Authorization", "Bearer " + accessToken)
+                            .contentType(JSON)
+                            .content("{\"activityTypes\":" + selection + ",\"lat\":51.6978,"
+                                    + "\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\",\"HIKE\",\"BAR\"],"
+                                + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated());
     }
 }

@@ -140,7 +140,7 @@ class PresenceOverWebSocketTest {
         HttpResponse<String> createResponse = send(HttpRequest.newBuilder(uri("/api/sessions"))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{\"activityType\":\"COFFEE\","
+                .POST(HttpRequest.BodyPublishers.ofString("{\"activityTypes\":[\"COFFEE\"],"
                         + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}")));
         assertThat(createResponse.statusCode()).isEqualTo(201);
         JsonNode created = json.readTree(createResponse.body());
@@ -196,7 +196,7 @@ class PresenceOverWebSocketTest {
         JsonNode created = json.readTree(send(HttpRequest.newBuilder(uri("/api/sessions"))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{\"activityType\":\"COFFEE\","
+                .POST(HttpRequest.BodyPublishers.ofString("{\"activityTypes\":[\"COFFEE\"],"
                         + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))).body());
         String slug = created.get("slug").asString();
         String hostToken = created.get("participantToken").asString();

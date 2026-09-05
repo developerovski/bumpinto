@@ -52,12 +52,13 @@ public class SessionCommands {
     }
 
     @Transactional
-    public CreateSessionResult createSession(UUID hostUserId, String name, ActivityType type,
+    public CreateSessionResult createSession(UUID hostUserId, String name,
+                                             List<ActivityType> types,
                                              SessionType sessionType, GeoPoint hostLocation,
                                              String hostDisplayName, String hostLocationLabel,
                                              TravelMode hostTravelMode) {
         Session session = store.saveSession(new Session(UUID.randomUUID(), Ids.slug(), hostUserId,
-                Texts.sessionName(name), type, sessionType, SessionStatus.COLLECTING,
+                Texts.sessionName(name), types, sessionType, SessionStatus.COLLECTING,
                 clock.instant().plus(SESSION_TTL), null, List.of()));
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),

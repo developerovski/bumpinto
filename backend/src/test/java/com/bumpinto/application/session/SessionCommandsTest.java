@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +42,7 @@ class SessionCommandsTest {
     @Test
     void createSessionStartsCollectingWithHostAsParticipant() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), "Cuma kahvesi", ActivityType.COFFEE, SessionType.GROUP,
+                UUID.randomUUID(), "Cuma kahvesi", List.of(ActivityType.COFFEE), SessionType.GROUP,
                 DEN_BOSCH, "Mehmet", null, null);
 
         assertThat(r.session().status()).isEqualTo(SessionStatus.COLLECTING);
@@ -54,7 +55,7 @@ class SessionCommandsTest {
     @Test
     void joinAddsParticipantAndPublishesEvent() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
         Participant ayse = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null);
 
@@ -73,7 +74,7 @@ class SessionCommandsTest {
     void hostCannotTakeASecondSeatInItsOwnSession() {
         UUID hostAccount = UUID.randomUUID();
         SessionCommands.CreateSessionResult r = commands.createSession(
-                hostAccount, null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                hostAccount, null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
         Participant again = commands.join(r.session().slug(), Caller.account(hostAccount),
                 "Sahte Misafir", SOMEREN, null, null);
@@ -88,7 +89,7 @@ class SessionCommandsTest {
     @Test
     void aSignedInGuestRejoiningKeepsItsSeat() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         UUID guestAccount = UUID.randomUUID();
         Participant first = commands.join(r.session().slug(), Caller.account(guestAccount),
                 "Ayşe", SOMEREN, null, null);
@@ -104,7 +105,7 @@ class SessionCommandsTest {
     @Test
     void rejoiningWithASeatTokenKeepsTheSameSeat() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant first = commands.join(r.session().slug(), Caller.ANONYMOUS,
                 "Kerem", SOMEREN, null, null);
 
@@ -119,7 +120,7 @@ class SessionCommandsTest {
     @Test
     void anonymousJoinsAlwaysOpenNewSeats() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
         Participant a = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null)
                 ;
@@ -135,7 +136,7 @@ class SessionCommandsTest {
     @Test
     void aTokenForARemovedSeatOpensANewOne() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         UUID gone = UUID.randomUUID();
 
         Participant fresh = commands.join(r.session().slug(), Caller.participant(gone),
@@ -152,7 +153,7 @@ class SessionCommandsTest {
     @Test
     void anUnownedSeatIsClaimedByTheAccountHoldingIt() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant guest = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null);
         UUID account = UUID.randomUUID();
 
@@ -174,7 +175,7 @@ class SessionCommandsTest {
     void aSeatIsNotClaimedWhenTheAccountAlreadyHasOne() {
         UUID hostAccount = UUID.randomUUID();
         SessionCommands.CreateSessionResult r = commands.createSession(
-                hostAccount, null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                hostAccount, null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant ghost = commands.join(r.session().slug(), Caller.ANONYMOUS, "Mehmet", SOMEREN, null, null);
 
         assertThat(commands.claimSeat(r.session().id(), ghost.id(), hostAccount)).isEmpty();
@@ -186,7 +187,7 @@ class SessionCommandsTest {
     @Test
     void anOwnedSeatIsNeverTakenOverByAnotherAccount() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         UUID owner = UUID.randomUUID();
         Participant seat = commands.join(r.session().slug(), Caller.account(owner), "Ayşe", SOMEREN, null, null);
 
@@ -205,7 +206,7 @@ class SessionCommandsTest {
     @Test
     void updateLocationSetsCoordinates() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, null);
         assertThat(kerem.hasLocation()).isFalse();
 
@@ -222,7 +223,7 @@ class SessionCommandsTest {
     @Test
     void updateLocationWithoutLabelKeepsExistingLabel() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", SOMEREN, "Someren", null);
 
         commands.updateLocation(r.session().slug(), kerem.id(), DEN_BOSCH, null, null);
@@ -234,7 +235,7 @@ class SessionCommandsTest {
     @Test
     void joinRejectsSessionPastItsExpiryWithoutWritingStatus() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
 
         assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z").join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null))
                 .isInstanceOf(ConflictException.class)
@@ -245,7 +246,7 @@ class SessionCommandsTest {
     @Test
     void updateLocationRejectsSessionPastItsExpiry() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, null);
 
         assertThatThrownBy(() -> commandsAt("2026-09-02T10:00:01Z")
@@ -261,7 +262,7 @@ class SessionCommandsTest {
     @Test
     void createSessionCarriesTypeAndHostLocationLabel() {
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
-                "Ayşe'yle kahve", ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet",
+                "Ayşe'yle kahve", List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet",
                 "'s-Hertogenbosch", null);
         assertThat(r.session().sessionType()).isEqualTo(SessionType.SOLO);
         assertThat(r.hostParticipant().locationLabel()).isEqualTo("'s-Hertogenbosch");
@@ -271,7 +272,7 @@ class SessionCommandsTest {
     @Test
     void addPointCreatesManualParticipantOnlyForSoloHostWhileCollecting() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.hostParticipant().id(),
                 "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.manual()).isTrue();
@@ -285,7 +286,7 @@ class SessionCommandsTest {
                 "X", null, SOMEREN, null)).isInstanceOf(ForbiddenException.class);
 
         SessionCommands.CreateSessionResult group = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         assertThatThrownBy(() -> commands.addPoint(group.session().slug(), group.hostParticipant().id(),
                 "Ayşe", "Someren", SOMEREN, null)).isInstanceOf(ConflictException.class);
     }
@@ -293,7 +294,7 @@ class SessionCommandsTest {
     @Test
     void removePointDeletesOnlyManualParticipants() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.hostParticipant().id(),
                 "Ayşe", "Someren", SOMEREN, null);
         commands.removePoint(solo.session().slug(), solo.hostParticipant().id(), ayse.id());
@@ -307,7 +308,7 @@ class SessionCommandsTest {
     @Test
     void joinIsRejectedOnSoloSession() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         assertThatThrownBy(() -> commands.join(solo.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("solo");
@@ -316,7 +317,7 @@ class SessionCommandsTest {
     @Test
     void joinCarriesTravelModeAndDefaultsToCar() {
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
+                List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
         assertThat(r.hostParticipant().travelMode()).isEqualTo(TravelMode.BIKE);
 
         Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", SOMEREN, "Someren",
@@ -331,7 +332,7 @@ class SessionCommandsTest {
     @Test
     void updateLocationCanChangeTravelModeAndNullKeepsIt() {
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet", null, null);
         Participant kerem = commands.join(r.session().slug(), Caller.ANONYMOUS, "Kerem", null, null, TravelMode.WALK);
 
         commands.updateLocation(r.session().slug(), kerem.id(), SOMEREN, "Someren", null);
@@ -345,7 +346,7 @@ class SessionCommandsTest {
     @Test
     void manualPointsDefaultToCarWhenModeOmitted() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
+                List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet", null, TravelMode.BIKE);
         Participant ayse = commands.addPoint(solo.session().slug(), solo.hostParticipant().id(),
                 "Ayşe", "Someren", SOMEREN, null);
         assertThat(ayse.travelMode()).isEqualTo(TravelMode.CAR);
@@ -354,7 +355,7 @@ class SessionCommandsTest {
     @Test
     void manualPointsCarryTravelModeWhenGiven() {
         SessionCommands.CreateSessionResult solo = commands.createSession(UUID.randomUUID(), null,
-                ActivityType.COFFEE, SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
+                List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH, "Mehmet", null, null);
         Participant kerem = commands.addPoint(solo.session().slug(), solo.hostParticipant().id(),
                 "Kerem", "Someren", SOMEREN, TravelMode.BIKE);
         assertThat(kerem.travelMode()).isEqualTo(TravelMode.BIKE);
@@ -367,7 +368,7 @@ class SessionCommandsTest {
     @Test
     void newSeatsAreRefusedOnceTheDeckStarted() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH,
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH,
                 "Mehmet", null, null);
         store.saveSession(r.session().withStatus(SessionStatus.SWIPING));
 
@@ -384,7 +385,7 @@ class SessionCommandsTest {
     @Test
     void existingSeatsAreStillRecoveredAfterTheDeckStarted() {
         SessionCommands.CreateSessionResult r = commands.createSession(
-                UUID.randomUUID(), null, ActivityType.COFFEE, SessionType.GROUP, DEN_BOSCH,
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH,
                 "Mehmet", null, null);
         Participant ayse = commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN,
                 null, null);
