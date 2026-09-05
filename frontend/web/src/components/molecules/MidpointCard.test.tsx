@@ -66,4 +66,17 @@ describe("MidpointCard", () => {
     expect(screen.getByText("≤ 9 km")).toBeInTheDocument();
     expect(screen.queryByText(/herkes ~/)).not.toBeInTheDocument();
   });
+
+  it("çapalı oturumda 'orta nokta' değil buluşma yeri yazar", () => {
+    render(<MidpointCard view={{ anchored: true, midpointLabel: "Amsterdam", radiusKm: 2, participants: [] } as unknown as SessionView} />);
+    expect(screen.getByText("Amsterdam")).toBeInTheDocument();
+    expect(screen.getByText("Buluşma yeri")).toBeInTheDocument();
+    // K6: çapalıda kıyas değeri (herkes ~min–max dk) YAZILMAZ — yalnız yarıçap.
+    expect(screen.getByText("2 km çevresinde aranıyor")).toBeInTheDocument();
+  });
+
+  it("çapasız oturumda bugünkü üst başlık aynen durur", () => {
+    render(<MidpointCard view={{ anchored: false, midpointLabel: null, radiusKm: null, participants: [] } as unknown as SessionView} />);
+    expect(screen.queryByText("Buluşma yeri")).not.toBeInTheDocument();
+  });
 });

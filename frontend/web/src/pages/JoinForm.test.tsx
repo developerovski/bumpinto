@@ -84,3 +84,27 @@ describe("JoinForm — host çevrimiçiliği", () => {
     expect(screen.queryByText(/şu an oturumda değil/)).not.toBeInTheDocument();
   });
 });
+
+/** Harita seçici: faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil —
+    katılım ekranı bugün 390'da hiç harita mount etmiyor, seçici de ancak düğmeye basılınca gelmeli. */
+describe("JoinForm — haritadan seç", () => {
+  function renderJoin() {
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
+    return render(<MemoryRouter><JoinForm /></MemoryRouter>);
+  }
+
+  it("390'da harita seçici VARSAYILAN mount edilmez — yükleme başına ücret buradan doğar", async () => {
+    renderJoin();
+    // Sağdaki MapView de tembel; onun DOM'a düşmesini beklemek tembel chunk'lara fırsat verir.
+    // Seçici varsayılan render edilseydi düğmesi en geç bu noktada belirirdi.
+    await screen.findByTestId("mapview");
+    expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
+  });
+
+  it("'haritadan seç'e basılınca seçici açılır", async () => {
+    renderJoin();
+    fireEvent.click(screen.getByRole("button", { name: "Haritadan seç" }));
+    expect(await screen.findByRole("button", { name: "Burayı seç" })).toBeInTheDocument();
+  });
+});

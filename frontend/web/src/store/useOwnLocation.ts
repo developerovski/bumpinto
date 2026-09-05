@@ -69,6 +69,15 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     setCoords(null);
   }
 
+  /** Haritadan seçilen nokta: adres alanı temizlenir, konum "granted" sayılır — kullanıcı
+      açıkça bir yer işaretledi, tarayıcı izni beklemenin anlamı yok. */
+  function setPicked(picked: Coords) {
+    setAddressState("");
+    addressRef.current = "";
+    setCoords(picked);
+    setState("granted");
+  }
+
   async function resolve(): Promise<Coords | null> {
     if (coords) return coords;
     if (!address.trim()) return null;
@@ -77,5 +86,5 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     return c;
   }
 
-  return { state, coords, address, busy, setAddress, detect, otherAddress, resolve };
+  return { state, coords, address, busy, setAddress, detect, otherAddress, setPicked, resolve };
 }

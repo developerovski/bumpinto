@@ -327,19 +327,28 @@ export interface components {
             /** Format: int64 */
             friendsMet?: number;
         };
+        AnchorDto: {
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lng: number;
+            label?: string;
+        };
         CreateSessionRequest: {
             activityTypes: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
             name?: string;
             /** @enum {string} */
             sessionType?: "GROUP" | "SOLO";
             /** Format: double */
-            lat: number;
+            lat?: number;
             /** Format: double */
-            lng: number;
+            lng?: number;
             displayName: string;
             locationLabel?: string;
             /** @enum {string} */
             travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
+            anchor?: components["schemas"]["AnchorDto"];
+            originPresent?: boolean;
         };
         CreateSessionResponse: {
             slug?: string;
@@ -420,6 +429,7 @@ export interface components {
                 [key: string]: number;
             };
             emptyActivityTypes?: ("COFFEE" | "FOOD" | "BAR" | "WALK" | "ACTIVITY" | "SWIM" | "HIKE" | "FITNESS" | "CINEMA" | "MUSEUM" | "ART" | "NIGHTLIFE" | "THEME_PARK" | "ADVENTURE" | "GAMES")[];
+            anchored?: boolean;
         };
         VenueDto: {
             /** Format: uuid */

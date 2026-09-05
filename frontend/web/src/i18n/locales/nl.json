@@ -185,7 +185,6 @@
     "eyebrowUnanimous": "JULLIE KOZEN ALLEMAAL DEZELFDE PLEK",
     "eyebrowRunoff": "Beslist met stemmen {{a}}–{{b}}",
     "eyebrowPartial": "zonder {{names}}",
-    "openInMaps": "Open in Google Maps",
     "backup": "Reserveplan",
     "backupNote": "tweede plek",
     "likedSticker": "{{n}}/{{total}} vond het leuk!",
@@ -293,7 +292,11 @@
     "midpointOnly": "Middelpunt",
     "midpointPending": "Het middelpunt wordt duidelijk zodra je meedoet",
     "you": "jij",
-    "youPending": "jij · zodra je meedoet"
+    "youPending": "jij · zodra je meedoet",
+    "pickOnMap": "Kies op de kaart",
+    "pickHint": "Tik op de kaart of sleep de speld",
+    "pickConfirm": "Kies deze plek",
+    "pickCancel": "Annuleren"
   },
   "midpoint": {
     "overline": "Middelpunt",
@@ -302,7 +305,11 @@
     "meta": "≤ {{km}} km · iedereen ~{{min}}–{{max}} min",
     "metaKm": "≤ {{km}} km",
     "pending": "Wordt duidelijk zodra iedereen een locatie deelt",
-    "sideNote": "Middelpunt ligt richting {{name}} · {{mode}}"
+    "sideNote": "Middelpunt ligt richting {{name}} · {{mode}}",
+    "anchorOverline": "Ontmoetingsplek",
+    "anchorNear": "{{label}}",
+    "anchorMeta": "Zoeken binnen {{km}} km",
+    "anchorPending": "Locaties zoeken"
   },
   "steps": {
     "locations": "Locaties",
@@ -349,6 +356,13 @@
     "name": "Geef de afspraak een naam",
     "nameOptional": "· optioneel",
     "namePlaceholder": "Vrijdagkoffie",
+    "meetWhere": "Waar spreken jullie af?",
+    "modeMidpoint": "Op het middelpunt",
+    "modeAnchor": "Op een vaste plek",
+    "anchorLabel": "Ontmoetingsplek",
+    "anchorPlaceholder": "Stad of adres",
+    "anchorHint": "Locaties worden binnen 2 km van deze plek gezocht.",
+    "anchorSet": "Zoeken rond {{label}}",
     "where": "Waar ben je?",
     "ownHint": "je huidige locatie",
     "ownMissing": "Nog geen locatie",
@@ -367,7 +381,8 @@
     "previewLink": "link verschijnt na aanmaken",
     "previewHand": "gooi de link in WhatsApp, klaar →",
     "soloHand": "niet swipen, kies wat je leuk vindt →",
-    "errCreate": "Afspraak kon niet worden gemaakt — probeer opnieuw."
+    "errCreate": "Afspraak kon niet worden gemaakt — probeer opnieuw.",
+    "errNoAnchor": "Kies eerst een ontmoetingsplek."
   },
   "lobby": {
     "sticker": "link sturen, klaar",
@@ -417,6 +432,7 @@
   "venue": {
     "fitOk": "Voor {{activity}}: {{category}}",
     "fitOff": "Geen {{activity}}: {{category}}",
-    "hoursToday": "Vandaag {{hours}}"
+    "hoursToday": "Vandaag {{hours}}",
+    "openInMaps": "Open in Google Maps"
   }
 }

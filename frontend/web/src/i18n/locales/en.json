@@ -185,7 +185,6 @@
     "eyebrowUnanimous": "YOU ALL PICKED THE SAME PLACE",
     "eyebrowRunoff": "Decided by vote {{a}}–{{b}}",
     "eyebrowPartial": "without {{names}}",
-    "openInMaps": "Open in Google Maps",
     "backup": "Backup plan",
     "backupNote": "second place",
     "likedSticker": "{{n}}/{{total}} liked it!",
@@ -293,7 +292,11 @@
     "midpointOnly": "Midpoint",
     "midpointPending": "The midpoint settles once you join",
     "you": "you",
-    "youPending": "you · once you join"
+    "youPending": "you · once you join",
+    "pickOnMap": "Pick on map",
+    "pickHint": "Tap the map or drag the pin",
+    "pickConfirm": "Use this spot",
+    "pickCancel": "Cancel"
   },
   "midpoint": {
     "overline": "Midpoint",
@@ -302,7 +305,11 @@
     "meta": "≤ {{km}} km · everyone ~{{min}}–{{max}} min",
     "metaKm": "≤ {{km}} km",
     "pending": "Settles once everyone drops a location",
-    "sideNote": "Midpoint is toward {{name}} · {{mode}}"
+    "sideNote": "Midpoint is toward {{name}} · {{mode}}",
+    "anchorOverline": "Meeting spot",
+    "anchorNear": "{{label}}",
+    "anchorMeta": "Searching within {{km}} km",
+    "anchorPending": "Looking for venues"
   },
   "steps": {
     "locations": "Locations",
@@ -349,6 +356,13 @@
     "name": "Name the meetup",
     "nameOptional": "· optional",
     "namePlaceholder": "Friday coffee",
+    "meetWhere": "Where should you meet?",
+    "modeMidpoint": "At the midpoint",
+    "modeAnchor": "At a specific place",
+    "anchorLabel": "Meeting spot",
+    "anchorPlaceholder": "City or address",
+    "anchorHint": "Venues are searched within 2 km of this spot.",
+    "anchorSet": "Searching around {{label}}",
     "where": "Where are you?",
     "ownHint": "your current location",
     "ownMissing": "No location yet",
@@ -367,7 +381,8 @@
     "previewLink": "link appears once created",
     "previewHand": "drop the link in WhatsApp, that's it →",
     "soloHand": "no swiping needed, pick from the map →",
-    "errCreate": "Couldn't create the meetup — try again."
+    "errCreate": "Couldn't create the meetup — try again.",
+    "errNoAnchor": "Pick a meeting spot first."
   },
   "lobby": {
     "sticker": "drop the link, done",
@@ -417,6 +432,7 @@
   "venue": {
     "fitOk": "For {{activity}}: {{category}}",
     "fitOff": "Not {{activity}}: {{category}}",
-    "hoursToday": "Today {{hours}}"
+    "hoursToday": "Today {{hours}}",
+    "openInMaps": "Open in Google Maps"
   }
 }

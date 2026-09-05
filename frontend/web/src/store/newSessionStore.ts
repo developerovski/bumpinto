@@ -6,6 +6,7 @@ import { approx } from "../lib/geo";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 
 export type SessionType = "GROUP" | "SOLO";
+export type AnchorMode = "MIDPOINT" | "ANCHOR";
 export type Loc = { lat: number; lng: number; label: string | null };
 export type LocalPoint = {
   displayName: string;
@@ -21,14 +22,19 @@ type State = {
   busy: boolean; error: string | null;
   setType: (t: SessionType) => void; toggleActivity: (a: Activity) => void; setName: (n: string) => void;
   setTravelMode: (m: TravelMode) => void;
+  anchorMode: AnchorMode; anchor: Loc | null;
+  setAnchorMode: (m: AnchorMode) => void; setAnchor: (a: Loc | null) => void;
   addLocalPoint: (p: LocalPoint) => void; removeLocalPoint: (index: number) => void;
   setLocalPointTravelMode: (index: number, mode: TravelMode) => void;
   /** Kur (+ SOLO: noktaları ekle, mekanları bul). Oturum slug'ını döner. */
-  submit: (displayName: string, own: Loc) => Promise<string>;
+  submit: (displayName: string, own: Loc | null) => Promise<string>;
   reset: (defaultActivity?: Activity) => void;
 };
 
-const initial = (): Pick<State, "type" | "activities" | "name" | "points" | "travelMode" | "busy" | "error"> => ({
+const initial = (): Pick<
+  State,
+  "type" | "activities" | "name" | "points" | "travelMode" | "busy" | "error" | "anchorMode" | "anchor"
+> => ({
   type: "GROUP",
   activities: ["COFFEE"],
   name: "",
@@ -36,6 +42,8 @@ const initial = (): Pick<State, "type" | "activities" | "name" | "points" | "tra
   travelMode: DEFAULT_TRAVEL_MODE,
   busy: false,
   error: null,
+  anchorMode: "MIDPOINT",
+  anchor: null,
 });
 
 export const useNewSessionStore = create<State>((set, get) => ({
@@ -52,12 +60,17 @@ export const useNewSessionStore = create<State>((set, get) => ({
     }),
   setName: (n) => set({ name: n }),
   setTravelMode: (m) => set({ travelMode: m }),
+  /** Moddan çıkınca çapa DA temizlenir: ekranda görünmeyen bir çapanın istekte kalması
+      "orta nokta seçtim ama Amsterdam geldi" demek olurdu. */
+  setAnchorMode: (m) => set(m === "MIDPOINT" ? { anchorMode: m, anchor: null } : { anchorMode: m }),
+  setAnchor: (a) => set({ anchor: a }),
   addLocalPoint: (p) => set((s) => ({ points: [...s.points, p] })),
   removeLocalPoint: (index) => set((s) => ({ points: s.points.filter((_, i) => i !== index) })),
   setLocalPointTravelMode: (index, mode) =>
     set((s) => ({ points: s.points.map((p, i) => (i === index ? { ...p, travelMode: mode } : p)) })),
   submit: async (displayName, own) => {
-    const { type, activities, name, points, travelMode } = get();
+    const { type, activities, name, points, travelMode, anchorMode, anchor } = get();
+    const anchored = anchorMode === "ANCHOR" && anchor != null;
     set({ busy: true, error: null });
     try {
       let slug: string;
@@ -66,11 +79,12 @@ export const useNewSessionStore = create<State>((set, get) => ({
           activityTypes: activities,
           sessionType: type,
           name: name.trim() || undefined,
-          lat: own.lat,
-          lng: own.lng,
+          lat: own?.lat,
+          lng: own?.lng,
           displayName,
-          locationLabel: own.label ?? undefined,
+          locationLabel: own?.label ?? undefined,
           travelMode,
+          anchor: anchored ? { lat: anchor.lat, lng: anchor.lng, label: anchor.label ?? undefined } : undefined,
         });
         if (!r.slug) throw new Error("slug missing");
         slug = r.slug;

@@ -4,6 +4,7 @@ import type { VenueDto as Venue } from "@bumpinto/shared";
 import { roundedMidpointMeters } from "../../lib/geo";
 import type { DecisionKind } from "../../lib/serverEnums";
 import type { TravelInfo } from "../../lib/useTravelLabels";
+import { venueLink } from "../../lib/venueLink";
 import { Heading, Highlight, LinkButton, Note, Sticker } from "../atoms";
 import Attribution from "./Attribution";
 import VenueCard from "./VenueCard";
@@ -20,7 +21,7 @@ function hhmm(iso: string, locale: string): string | null {
 
 /** Artboard Karar 1280 · kazanan bloğu: üst başlık + vurgulu ad + meta satırı (YALNIZ mesafe —
     adres WhyHere'in YER ekseninde) + çıkartmalı kart + inline harita bağlantısı. Harita YOK
-    (§4.7) — yalnız `placeLink`/`mapsUrl`/hesaplanan yol tarifi bağlantısı. API oy birliğini
+    (§4.7) — bağlantı `venueLink` ile çözülür (`placeLink`, yoksa `mapsUrl`). API oy birliğini
     kanıtlayamaz (voteTally boşluğu tekil sonuç için de force-decision için de olur) — bu yüzden
     çıkartma her zaman "herkes beğendi" DEĞİL: `decisionKind` + `likeCounts` (B-7:T2)
     UNANIMOUS'ta "N/M beğendi!" (artboard), aksi hâlde "Karar verildi!"/"Karar verildi · HH:mm".
@@ -75,12 +76,7 @@ export default function WinnerCard(props: {
 
   // "Yol tarifi al" kalktı (§4.7 harita politikası) — tek bağlantı, tek href kaynağı.
   // href yoksa buton HİÇ render edilmez (ölü href="#" düzelir).
-  const href =
-    props.venue.placeLink ??
-    props.venue.mapsUrl ??
-    (props.venue.lat != null && props.venue.lng != null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${props.venue.lat},${props.venue.lng}`
-      : null);
+  const href = venueLink(props.venue);
 
   return (
     <>
@@ -122,7 +118,7 @@ export default function WinnerCard(props: {
           size="fit"
           className="self-center"
         >
-          {t("result.openInMaps")}
+          {t("venue.openInMaps")}
         </LinkButton>
       )}
       <Attribution provider={props.venue.provider} center />

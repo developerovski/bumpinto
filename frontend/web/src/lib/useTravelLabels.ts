@@ -8,6 +8,12 @@ import type { SessionView } from "@bumpinto/shared";
 export type TravelInfo = {
   labels: Record<string, string>;
   selfId?: string | null;
+  /** Çapalı oturum: FairnessBadge mekanları KIYASLADIĞI için çizilmez — 2 km'lik daire
+      içinde 20 kartın hepsinde aynı şeyi yazar. Ayrı bir prop olarak tüm render yerlerine
+      (bugün beş: VenueCard'ın polaroid ve row dalları, VenueMeta üzerinden VenueRow ve
+      VenuePopCard, bir de LikedList) sürüklenseydi biri sessizce düşerdi (W-8 `mixedDeck`
+      dersi); bu nesne hepsine zaten geçiyor. */
+  anchored?: boolean;
 };
 
 /** travelMinutes katılımcı UUID'siyle anahtarlı rozet metinleri — Deste/Runoff/Sonuç ekranları ortak. */
@@ -20,6 +26,10 @@ export function useTravelLabels(view: SessionView | null): TravelInfo {
         labels[p.id] =
           p.id === view?.viewer?.participantId ? t("travel.self") : (p.displayName ?? t("travel.friend"));
     }
-    return { labels, selfId: view?.viewer?.participantId ?? null };
+    return {
+      labels,
+      selfId: view?.viewer?.participantId ?? null,
+      anchored: view?.anchored ?? false,
+    };
   }, [view, t]);
 }

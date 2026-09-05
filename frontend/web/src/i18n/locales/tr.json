@@ -178,7 +178,6 @@
     "eyebrowUnanimous": "HEPİNİZ AYNI YERİ BEĞENDİ",
     "eyebrowRunoff": "Oylamayla {{a}}–{{b}}",
     "eyebrowPartial": "{{names}} olmadan",
-    "openInMaps": "Google Maps'te aç",
     "backup": "Yedek plan",
     "backupNote": "ikinci sırada",
     "likedSticker": "{{n}}/{{total}} beğendi!",
@@ -285,7 +284,11 @@
     "midpointOnly": "Orta nokta",
     "midpointPending": "Orta nokta sen katılınca netleşir",
     "you": "sen",
-    "youPending": "sen · katılınca"
+    "youPending": "sen · katılınca",
+    "pickOnMap": "Haritadan seç",
+    "pickHint": "Haritaya dokun ya da pini sürükle",
+    "pickConfirm": "Burayı seç",
+    "pickCancel": "İptal"
   },
   "midpoint": {
     "overline": "Orta nokta",
@@ -294,7 +297,11 @@
     "meta": "≤ {{km}} km · herkes ~{{min}}–{{max}} dk",
     "metaKm": "≤ {{km}} km",
     "pending": "Herkes konumunu atınca netleşir",
-    "sideNote": "Orta nokta {{name}} tarafında · {{mode}}"
+    "sideNote": "Orta nokta {{name}} tarafında · {{mode}}",
+    "anchorOverline": "Buluşma yeri",
+    "anchorNear": "{{label}}",
+    "anchorMeta": "{{km}} km çevresinde aranıyor",
+    "anchorPending": "Mekanlar aranıyor"
   },
   "steps": {
     "locations": "Konumlar",
@@ -341,6 +348,13 @@
     "name": "Buluşmaya isim ver",
     "nameOptional": "· istersen",
     "namePlaceholder": "Cuma kahvesi",
+    "meetWhere": "Nerede buluşulsun?",
+    "modeMidpoint": "Orta noktada",
+    "modeAnchor": "Belli bir yerde",
+    "anchorLabel": "Buluşma yeri",
+    "anchorPlaceholder": "Şehir ya da adres",
+    "anchorHint": "Mekanlar bu noktanın 2 km çevresinde aranır.",
+    "anchorSet": "{{label}} çevresinde aranacak",
     "where": "Sen neredesin?",
     "ownHint": "şu anki konumun",
     "ownMissing": "Konumun henüz yok",
@@ -359,7 +373,8 @@
     "previewLink": "link kurunca oluşur",
     "previewHand": "linki WhatsApp'a at, yeter →",
     "soloHand": "kaydırmak zorunda değilsin, haritadan seç →",
-    "errCreate": "Buluşma kurulamadı — tekrar dene."
+    "errCreate": "Buluşma kurulamadı — tekrar dene.",
+    "errNoAnchor": "Önce bir buluşma yeri seç."
   },
   "lobby": {
     "sticker": "linki at gitsin",
@@ -409,6 +424,7 @@
   "venue": {
     "fitOk": "{{activity}} için: {{category}}",
     "fitOff": "{{activity}} değil: {{category}}",
-    "hoursToday": "Bugün {{hours}}"
+    "hoursToday": "Bugün {{hours}}",
+    "openInMaps": "Google Maps'te aç"
   }
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto, VenueDto } from "@bumpinto/shared";
 import { Note } from "../atoms";
-import { MAP_ID, loadMaps, mapsConfigured } from "../../lib/maps";
+import { MAP_ID, loadMaps, mapsConfigured, trackMapInstance } from "../../lib/maps";
 import { MAX_FIT_ZOOM, cameraFor, cameraSignature } from "../../lib/mapCamera";
 import type { LatLng } from "../../lib/geo";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -137,6 +137,7 @@ export default function MapView(props: MapViewProps) {
           center: midpoint ?? { lat: 51.44, lng: 5.47 },
           zoom: 10, // ilk kare; içerik gelince applyCamera devralır
         });
+        trackMapInstance();
         setReady(true);
       })
       .catch(() => {
@@ -145,6 +146,10 @@ export default function MapView(props: MapViewProps) {
     return () => {
       alive = false;
     };
+    // BILINEN KUSUR (spec R3, bu işin kapsamı DEĞİL): `desktop` reaktif olduğu için pencere
+    // 1024px'i geçince effect yeniden koşar ve YENİ bir harita örneği kurulur; temizlik
+    // yalnız `alive`i düşürüyor, eski haritayı yıkmıyor. Ölçüm `trackMapInstance` ile
+    // görünür; sayılar düzeltmeyi gerekçelendirdiğinde ayrı bir iz açılır.
   }, [configured, lgOnly, desktop]);
 
   const points: LatLng[] = participants

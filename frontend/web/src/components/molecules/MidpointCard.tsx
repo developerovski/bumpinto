@@ -21,21 +21,26 @@ export default function MidpointCard(props: { view: SessionView }) {
   const range = mins.length > 0 ? { min: Math.min(...mins), max: Math.max(...mins) } : null;
   const km = v.radiusKm != null ? Math.round(v.radiusKm) : null;
   const near = nearestParticipant(v);
+  const anchored = v.anchored === true;
 
   return (
     <div className="flex items-center gap-4 rounded-card border border-line bg-card p-[1.125rem_1.25rem] shadow-sh1">
       <MapMark />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <Overline>{t("midpoint.overline")}</Overline>
+        <Overline>{anchored ? t("midpoint.anchorOverline") : t("midpoint.overline")}</Overline>
         <h2 className="text-[1.125rem]">
-          {v.midpointLabel ? t("midpoint.near", { label: v.midpointLabel }) : t("midpoint.title")}
+          {v.midpointLabel
+            ? t(anchored ? "midpoint.anchorNear" : "midpoint.near", { label: v.midpointLabel })
+            : t("midpoint.title")}
         </h2>
         <span className="text-[0.8125rem] text-ink2 tabular-nums">
-          {km != null && range
-            ? t("midpoint.meta", { km, min: range.min, max: range.max })
-            : km != null
-              ? t("midpoint.metaKm", { km })
-              : t("midpoint.pending")}
+          {anchored
+            ? km != null ? t("midpoint.anchorMeta", { km }) : t("midpoint.anchorPending")
+            : km != null && range
+              ? t("midpoint.meta", { km, min: range.min, max: range.max })
+              : km != null
+                ? t("midpoint.metaKm", { km })
+                : t("midpoint.pending")}
         </span>
         {near?.travelMode && near.travelMode !== "CAR" && (
           // TÜRKÇE EK YOK: "Orta nokta {{name}} tarafında · bisikletle geliyor"

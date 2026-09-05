@@ -1,5 +1,9 @@
 export type LatLng = { lat: number; lng: number };
 
+/** Harita seçicisi konum yokken buradan açılır (Utrecht — ülkenin ortası). Tek yerde durur ki
+    iki çağıran (JoinForm, NewSessionPage) sessizce ayrışmasın. */
+export const DEFAULT_MAP_CENTER: LatLng = { lat: 52.0907, lng: 5.1214 };
+
 /** Backend GeoMath.centroid'in birebir kopyası (küresel ortalama). */
 export function centroid(points: LatLng[]): LatLng | null {
   if (points.length === 0) return null;

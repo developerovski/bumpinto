@@ -21,6 +21,7 @@ export default function JoinFormFields(props: {
   onAddressChange: (value: string) => void;
   onUseLocation: () => void;
   onOtherAddress: () => void;
+  onPickOnMap?: () => void;
   onTravelModeChange: (mode: TravelMode) => void;
   onSubmit: (e: FormEvent) => void;
 }) {
@@ -43,6 +44,7 @@ export default function JoinFormFields(props: {
         onAddressChange={props.onAddressChange}
         onUseLocation={props.onUseLocation}
         onOtherAddress={props.onOtherAddress}
+        onPickOnMap={props.onPickOnMap}
         inputId="join-address"
         busy={props.locationBusy}
       />

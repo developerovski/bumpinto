@@ -11,6 +11,10 @@ export default function FairnessBadge(props: {
   travel: TravelInfo;
 }) {
   const { t } = useTranslation();
+  // Çapalı oturumda rozet ayırt etmiyor (spec K6) — çizilmez. Yol süreleri (TravelChips)
+  // ve karar ekranındaki tek mekanlık ADALET ekseni (WhyHere) etkilenmez: onlar kıyas
+  // değil olgu bildirir.
+  if (props.travel.anchored) return null;
   const f = fairnessOf(props.venue);
   if (!f || f.entries.length < 2) return null;
   if (f.spread <= SAME_FOR_ALL) return <Badge tone="grass">{t("fairness.same")}</Badge>;

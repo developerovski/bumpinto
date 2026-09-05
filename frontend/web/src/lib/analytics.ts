@@ -7,7 +7,9 @@ type Props = Record<string, string | number | boolean>;
 type ClarityFn = (command: "event", name: string) => void;
 type GtagFn = (command: "event", name: string, props?: Props) => void;
 
-export type EventName = "map_open" | "maps_js_load" | "session_status";
+/** `maps_js_load` artık üretimde atılmıyor (betik yüklemesi kullanıcı başına bir kezdi);
+    faturalanan birimi sayan olay `maps_map_instance` — bkz. lib/maps.ts `trackMapInstance`. */
+export type EventName = "map_open" | "maps_js_load" | "maps_map_instance" | "session_status";
 
 export function track(name: EventName, props: Props = {}): void {
   if (typeof window === "undefined") return;

@@ -16,13 +16,19 @@ export function loadMaps(language: string): Promise<void> {
   if (!loading) {
     setOptions({ key: KEY, v: "weekly", language });
     loading = Promise.all([importLibrary("maps"), importLibrary("marker")])
-      .then(() => {
-        track("maps_js_load"); // tekil `loading` promise'ı zaten bir kez koşuyor — çift sayım yok
-      })
+      .then(() => undefined)
       .catch((e: unknown) => {
         loading = null; // sonraki MapView yeniden dener
         throw e;
       });
   }
   return loading;
+}
+
+/** Faturalanan birim betiğin yüklenmesi DEĞİL, harita ÖRNEĞİdir (Dynamic Maps, örnek
+    başına). `loadMaps` tekil promise olduğu için kullanıcı başına bir kez koşuyordu ve
+    gerçek maliyeti ~3 kat eksik sayıyordu: masaüstü katılımcı yolu Katıl → Bekle →
+    Mekanlar üç ayrı örnek kuruyor. Sayacı örneği yaratan her yer çağırır. */
+export function trackMapInstance() {
+  track("maps_map_instance");
 }

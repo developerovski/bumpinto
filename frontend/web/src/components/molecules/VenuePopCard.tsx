@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
-import { Overline } from "../atoms";
+import { venueLink } from "../../lib/venueLink";
+import { LinkButton, Overline } from "../atoms";
 import VenueMeta from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
 
@@ -22,6 +23,7 @@ export default function VenuePopCard(props: {
 }) {
   const { t } = useTranslation();
   const v = props.venue;
+  const link = venueLink(v);
 
   return (
     <div className="absolute left-4 top-4 z-[5] flex w-[19.5rem] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[1.25rem] border border-line bg-white shadow-sh2">
@@ -44,6 +46,13 @@ export default function VenuePopCard(props: {
         <VenueMeta venue={v} travel={props.travel} midpointLabel={props.midpointLabel} />
         {v.hoursToday && (
           <span className="text-[0.75rem] text-ink3">{t("venue.hoursToday", { hours: v.hoursToday })}</span>
+        )}
+        {/* Bağlantı `action` yuvasına GİRMEZ: orası onay durumunda SelectionCard ile dolu ve
+            dış çıkış "Kilitle" ile birincillik yarışına girmemeli — ghost, kendi satırında. */}
+        {link && (
+          <LinkButton href={link} target="_blank" rel="noreferrer" kind="ghost" size="fit">
+            {t("venue.openInMaps")}
+          </LinkButton>
         )}
         {props.action}
       </div>

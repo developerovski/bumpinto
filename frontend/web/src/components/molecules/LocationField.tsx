@@ -23,6 +23,9 @@ export default function LocationField(props: {
   otherLabel?: string;
   inputId?: string;
   busy?: boolean;
+  /** Verilirse "haritadan seç" düğmesi çıkar. Harita AÇILINCA mount edilir — faturalanan
+      birim `new google.maps.Map()` ve 390'da katılım ekranı bugün hiç harita mount etmiyor. */
+  onPickOnMap?: () => void;
 }) {
   const { t } = useTranslation();
   const inputId = props.inputId ?? "location-address";
@@ -69,6 +72,15 @@ export default function LocationField(props: {
             onChange={(e) => props.onAddressChange(e.target.value)}
             autoFocus
           />
+          {props.onPickOnMap && (
+            <button
+              type="button"
+              onClick={props.onPickOnMap}
+              className="self-start text-[0.75rem] font-normal text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
+            >
+              {t("map.pickOnMap")}
+            </button>
+          )}
         </>
       )}
 
@@ -86,6 +98,15 @@ export default function LocationField(props: {
             value={props.address}
             onChange={(e) => props.onAddressChange(e.target.value)}
           />
+          {props.onPickOnMap && (
+            <button
+              type="button"
+              onClick={props.onPickOnMap}
+              className="self-start text-[0.75rem] font-normal text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
+            >
+              {t("map.pickOnMap")}
+            </button>
+          )}
         </>
       )}
     </div>

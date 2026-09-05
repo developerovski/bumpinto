@@ -7,7 +7,7 @@ import LazyBoundary from "../components/molecules/LazyBoundary";
 import TwoZone from "../components/molecules/TwoZone";
 import WhoIsHere from "../components/molecules/WhoIsHere";
 import type { ParticipantDto } from "@bumpinto/shared";
-import { approx } from "../lib/geo";
+import { DEFAULT_MAP_CENTER, approx } from "../lib/geo";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { useAuthStore } from "../store/authStore";
 import { useSessionStore } from "../store/sessionStore";
@@ -15,6 +15,9 @@ import { useOwnLocation } from "../store/useOwnLocation";
 
 /* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
+/* Seçici de ayrı chunk VE yalnız düğmeye basılınca render edilir: faturalanan birim
+   `new google.maps.Map()` örneğidir, sayfa yüklemesi değil. */
+const MapPicker = lazy(() => import("../components/organisms/MapPicker"));
 
 /** Kendi pinimizin id'si — gercek katilimci id'si henuz yok (katilim oncesi). */
 const SELF_PIN = "self";
@@ -27,6 +30,7 @@ export default function JoinForm() {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [travelMode, setTravelMode] = useState<TravelMode>(me?.defaultTravelMode ?? DEFAULT_TRAVEL_MODE);
   // profil `me` çoğu zaman bu sayfa ilk render edildiğinde henüz yüklenmemiştir (davet linki
   // taze sayfa yüklemesiyle açılır) — geldiğinde ön-doldur, ama kullanıcı elle seçtiyse üzerine yazma.
@@ -112,9 +116,24 @@ export default function JoinForm() {
               onAddressChange={loc.setAddress}
               onUseLocation={loc.detect}
               onOtherAddress={loc.otherAddress}
+              onPickOnMap={() => setPickerOpen(true)}
               onTravelModeChange={handleTravelModeChange}
               onSubmit={submit}
             />
+            {pickerOpen && (
+              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                  <MapPicker
+                    center={loc.coords ?? DEFAULT_MAP_CENTER}
+                    onPick={(picked) => {
+                      loc.setPicked(picked);
+                      setPickerOpen(false);
+                    }}
+                    onCancel={() => setPickerOpen(false)}
+                  />
+                </Suspense>
+              </LazyBoundary>
+            )}
           </>
         }
         right={

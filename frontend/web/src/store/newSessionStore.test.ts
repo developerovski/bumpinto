@@ -61,6 +61,43 @@ describe("newSessionStore", () => {
     s.setLocalPointTravelMode(0, "WALK");
     expect(useNewSessionStore.getState().points[0].travelMode).toBe("WALK");
   });
+
+  it("çapa modunda istek anchor taşır ve host konumu göndermez", async () => {
+    const spy = vi.mocked(api.createSession);
+    spy.mockResolvedValueOnce({ slug: "abc" } as never);
+    const s = useNewSessionStore.getState();
+    s.setAnchorMode("ANCHOR");
+    s.setAnchor({ lat: 52.3676, lng: 4.9041, label: "Amsterdam" });
+
+    await useNewSessionStore.getState().submit("Mehmet", null);
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anchor: { lat: 52.3676, lng: 4.9041, label: "Amsterdam" },
+        lat: undefined,
+        lng: undefined,
+      }),
+    );
+  });
+
+  it("orta nokta modunda anchor gönderilmez", async () => {
+    const spy = vi.mocked(api.createSession);
+    spy.mockResolvedValueOnce({ slug: "abc" } as never);
+    useNewSessionStore.getState().reset();
+
+    await useNewSessionStore.getState().submit("Mehmet", { lat: 51.7, lng: 5.3, label: "Den Bosch" });
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ anchor: undefined, lat: 51.7 }));
+  });
+
+  it("reset çapayı da temizler — önceki oturumun yeri sızmaz", () => {
+    const s = useNewSessionStore.getState();
+    s.setAnchorMode("ANCHOR");
+    s.setAnchor({ lat: 52.3, lng: 4.9, label: "Amsterdam" });
+    useNewSessionStore.getState().reset();
+    expect(useNewSessionStore.getState().anchor).toBeNull();
+    expect(useNewSessionStore.getState().anchorMode).toBe("MIDPOINT");
+  });
 });
 
 describe("newSessionStore aktivite seçimi", () => {
