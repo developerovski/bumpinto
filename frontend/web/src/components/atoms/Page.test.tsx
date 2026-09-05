@@ -17,7 +17,7 @@ describe("Page yerleşim sözleşmesi", () => {
   });
 
   it("çakışan alt boşluk yok: tek bir lg:pb-* sınıfı basılır", () => {
-    for (const el of [render(<Page>a</Page>), render(<Page wide>b</Page>)]) {
+    for (const el of [render(<Page>a</Page>), render(<Page wide>b</Page>), render(<Page fit>c</Page>)]) {
       const main = el.container.querySelector("main")!;
       expect(main.className.match(/\blg:pb-\S+/g)).toHaveLength(1);
     }
@@ -30,6 +30,23 @@ describe("Page yerleşim sözleşmesi", () => {
     expect(main.className).toContain("lg:min-h-0");
     expect(main.className).toContain("lg:overflow-hidden");
     expect(main.className).toContain("lg:pb-4");
+  });
+
+  /* Lobi/Bekle haritası sabit `calc(100dvh - 14rem)` taşıyordu: kabuk gerçekte ~511px ederken
+     varsayım 224px'ti, masaüstünde ~290px taşma bırakıyordu. `fit` ölçüyü kabuğa devreder. */
+  it("fit: tek ekran işaretini verir ama max genişliği korur", () => {
+    render(<Page fit>lobi</Page>);
+    const main = screen.getByRole("main");
+    expect(main).toHaveAttribute("data-fit");
+    expect(main).not.toHaveAttribute("data-wide");
+    expect(main.className).toContain("fit:min-h-0");
+    expect(main.className).toContain("fit:overflow-hidden");
+    expect(main.className).toContain("lg:max-w-[80rem]");
+  });
+
+  it("fit işareti yalnız istendiğinde basılır", () => {
+    render(<Page>içerik</Page>);
+    expect(screen.getByRole("main")).not.toHaveAttribute("data-fit");
   });
 
   it("mutlak konumlu torunlara kap olur — sr-only etiketler belgeyi uzatamaz", () => {

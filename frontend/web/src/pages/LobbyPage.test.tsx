@@ -36,7 +36,7 @@ describe("LobbyPage", () => {
     expect(screen.getByText(/Kahve, Doğa yürüyüşü ve Bar için buluşuyoruz/)).toBeInTheDocument();
   });
 
-  it("lg: harita ghost'a basmadan mount edilir", async () => {
+  it("lg: harita ghost'a basmadan mount edilir ve kalan yüksekliği doldurur", async () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) =>
       ({
@@ -53,8 +53,15 @@ describe("LobbyPage", () => {
       const view = { ...base, participants: [host, ayse] };
       useSessionStore.setState({ slug: "x7k2m", view: view as never });
       render(<LobbyPage view={view as never} />);
-      expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+      const map = await screen.findByTestId("mapview");
       expect(screen.queryByRole("button", { name: "Haritayı aç" })).not.toBeInTheDocument();
+      /* Sabit `lg:h-[calc(100dvh-14rem)]` masaüstünde ~290px taşma bırakıyordu: kabuk 224px
+         değil ~511px. Ölçü artık kabuktan gelir — haritada sabit lg yüksekliği YASAK. */
+      expect(map.className).toContain("fit:h-full");
+      expect(map.className).not.toMatch(/lg:h-\[/);
+      expect(screen.getByRole("main")).toHaveAttribute("data-fit");
+      expect(screen.getByTestId("zone-left").className).toContain("fit:overflow-y-auto");
+      expect(screen.getByTestId("zone-right").className).toContain("fit:overflow-y-auto");
     } finally {
       window.matchMedia = original;
     }

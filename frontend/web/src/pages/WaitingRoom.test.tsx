@@ -41,7 +41,11 @@ describe("WaitingRoom", () => {
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
     try {
       render(<WaitingRoom view={view as never} />);
-      expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+      const map = await screen.findByTestId("mapview");
+      // LobbyPage ile AYNI sözleşme: harita sabit lg yüksekliği taşımaz, kalanı doldurur.
+      expect(map.className).toContain("fit:h-full");
+      expect(map.className).not.toMatch(/lg:h-\[/);
+      expect(screen.getByRole("main")).toHaveAttribute("data-fit");
     } finally {
       window.matchMedia = original;
     }

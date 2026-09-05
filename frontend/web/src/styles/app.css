@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* `fit:` — Lobi/Bekle'nin "tek ekran" varyantı. Genişlik VE yükseklik kapısı birlikte: kısa
+   pencerede kural tümüyle düşer ve sayfa normal kayar. Aşağıdaki `main[data-fit]` kuralı
+   AYNI sorguyu tekrarlar — ikisi birlikte değişir. */
+@custom-variant fit (@media (min-width: 1024px) and (min-height: 44rem));
+
 @theme {
   --color-paper: #fffbf6;
   --color-card: #ffffff;
@@ -165,6 +170,17 @@
          kaydırması artık yapısal olarak imkânsız. `hidden` DEĞİL: `clip` kaydırma kabı
          yaratmaz, böylece üst çubuğun `sticky` davranışı görüntü alanına göre çözülmeye
          devam eder. */
+      overflow: clip;
+    }
+  }
+  /* Lobi/Bekle (`Page fit`): aynı tek-ekran sözleşmesi, ama yalnız pencere yeterince YÜKSEKKEN.
+     Harita sabit `calc(100dvh - …)` taşıyordu; kabuk (üst çubuk + başlık + orta nokta kartı +
+     CTA + altbilgi) ~511px ederken varsayım 224px'ti, her masaüstünde ~290px taşma bırakıyordu.
+     Ölçü artık tek yerden: kabuk kesin yükseklik alır, harita kalanı `flex-1` ile doldurur.
+     `fit:` varyantıyla AYNI sorgu — 44rem altında kural yok, sayfa kayar. */
+  @media (min-width: 1024px) and (min-height: 44rem) {
+    [data-app-shell]:has(> main[data-fit]) {
+      height: 100dvh;
       overflow: clip;
     }
   }

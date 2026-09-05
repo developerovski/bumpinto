@@ -40,7 +40,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
 
   return (
-    <Page>
+    <Page fit>
       <SessionHeader
         as="h1"
         title={view.name}
@@ -52,6 +52,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
         }
       />
       <TwoZone
+        fill
         mobileFirst="right"
         left={
           <>
@@ -67,19 +68,23 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                 yok). Harita açılınca da TEK yerde basılır — MapView'e ayrıca caption verilmez
                 (kod-review bulgusu: iki kez basılıyordu). */}
             <MidpointCard view={view} />
+            {/* Harita kalan yüksekliği alır — sabit ölçü YOK. `fit:min-h-[14rem]` taban: sağ kolon
+                (orta nokta + CTA + notlar) kalanı yerse harita silinmez, bölge kendi içinde kayar. */}
             {showMap ? (
-              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
-                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
-                  <MapView
-                    participants={mapParticipants}
-                    venues={[]}
-                    midpoint={midpoint}
-                    radiusKm={radiusKm}
-                    pinLabels={pinLabels}
-                    heightClass="h-[20rem] lg:h-[calc(100dvh-14rem)]"
-                  />
-                </Suspense>
-              </LazyBoundary>
+              <div className="fit:min-h-[14rem] fit:flex-1">
+                <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                  <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                    <MapView
+                      participants={mapParticipants}
+                      venues={[]}
+                      midpoint={midpoint}
+                      radiusKm={radiusKm}
+                      pinLabels={pinLabels}
+                      heightClass="h-[20rem] fit:h-full"
+                    />
+                  </Suspense>
+                </LazyBoundary>
+              </div>
             ) : (
               <Button type="button" kind="white" size="fit" onClick={() => setMapOpen(true)}>
                 {t("lobby.openMap")}

@@ -64,8 +64,9 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
   }
 
   return (
-    <Page>
+    <Page fit>
       <TwoZone
+        fill
         mobileFirst="right"
         left={
           <>
@@ -77,19 +78,23 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
         right={
           <>
             <MidpointCard view={view} />
+            {/* Harita kalan yüksekliği alır — sabit ölçü YOK. `fit:min-h-[14rem]` taban: sağ kolon
+                (orta nokta + CTA + notlar) kalanı yerse harita silinmez, bölge kendi içinde kayar. */}
             {showMap ? (
-              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
-                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
-                  <MapView
-                    participants={mapParticipants}
-                    venues={[]}
-                    midpoint={midpoint}
-                    radiusKm={radiusKm}
-                    pinLabels={pinLabels}
-                    heightClass="h-[20rem] lg:h-[24rem]"
-                  />
-                </Suspense>
-              </LazyBoundary>
+              <div className="fit:min-h-[14rem] fit:flex-1">
+                <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                  <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                    <MapView
+                      participants={mapParticipants}
+                      venues={[]}
+                      midpoint={midpoint}
+                      radiusKm={radiusKm}
+                      pinLabels={pinLabels}
+                      heightClass="h-[20rem] fit:h-full"
+                    />
+                  </Suspense>
+                </LazyBoundary>
+              </div>
             ) : (
               <Button type="button" kind="white" size="fit" onClick={() => setMapOpen(true)}>
                 {t("waiting.openMap")}

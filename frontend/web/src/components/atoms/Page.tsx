@@ -26,6 +26,9 @@ export default function Page(props: {
   center?: boolean;
   /** Harita ekranları (Mekanlar) — lg kapağı tamamen kaldırır, harita sağ tarafı doldurur. */
   wide?: boolean;
+  /** Lobi/Bekle — tek ekran, ama max genişlik korunur (`wide`'ın aksine). Yalnız `fit:`
+      varyantının yükseklik kapısı açıkken; kısa pencerede sayfa normal kayar. */
+  fit?: boolean;
   children: ReactNode;
 }) {
   const variant = props.variant ?? "default";
@@ -35,6 +38,9 @@ export default function Page(props: {
       // yükseklik alır, `flex-1` olan main kalan alanı birebir doldurur. Yüzdeli yükseklik
       // (haritanın `lg:h-full`'ü) yalnız kesin ölçülü kapla çözülür; `min-h` yetmiyordu.
       data-wide={props.wide ? "" : undefined}
+      // Kabuğa "bu sayfa tek ekran" der (app.css `:has(> main[data-fit])`) — `data-wide`'ın
+      // yükseklik kapılı kardeşi.
+      data-fit={props.fit ? "" : undefined}
       className={[
         // Yükseklik ölçüsü TEK yerden gelir: AppShell'in dikey flex kabuğu (`min-h-[100dvh]`),
         // main yalnız kalanı alır (`flex-1`). Daha önce main kendi `min-h-[calc(100dvh-3.5rem)]`
@@ -48,9 +54,11 @@ export default function Page(props: {
         // wide: `min-h-0` içeriğin kabı büyütmesini keser — sayfa kaymaz, yalnız sol liste kayar
         // (VenueBrowser), harita sağ sütunu tam boy doldurur.
         props.wide ? "lg:max-w-none lg:min-h-0 lg:overflow-hidden" : "lg:max-w-[80rem] xl:max-w-[96rem]",
+        // fit: yükseklik `flex-1`den gelir, içerik kabı büyütemez — kaydırma bölgelerin içinde kalır.
+        props.fit ? "fit:min-h-0 fit:overflow-hidden" : "",
         variants[variant],
         bottomPad[variant],
-        props.wide ? "lg:pb-4" : "lg:pb-11",
+        props.wide ? "lg:pb-4" : props.fit ? "lg:pb-6" : "lg:pb-11",
         props.center ? "justify-center" : "",
       ]
         .join(" ")
