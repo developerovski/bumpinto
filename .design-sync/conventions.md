@@ -6,7 +6,7 @@ sticker-and-polaroid playfulness. Screens are a single centred 480px column, nev
 
 ### 1. Always mount inside `BumpIntoProvider`
 
-15 of the 32 components call `useTranslation()`. Outside the provider they render raw i18n keys
+Most of the 67 components call `useTranslation()`. Outside the provider they render raw i18n keys
 (`join.title`) instead of copy. The provider ships in the bundle with an initialised i18next
 instance pinned to Turkish, exported alongside the components:
 
@@ -54,14 +54,17 @@ Two gotchas: there is **no `text-display` utility** — display sizing comes fro
 `h1`, so use the `Heading` component. And there is no `flame2` token or utility at all:
 the coral end of the brand gradient lives inside `--grad`’s own literal value.
 
-The DS also ships hand-drawn glyph classes used by its own components: `c-ico-undo`, `c-ico-x`,
-`c-ico-heart` (deck actions), `c-mark*` (map mark), `c-check` (the green tick).
+The DS also ships a few hand-drawn glyph classes used by its own components: `c-check`
+(the green tick), `c-mark`/`c-mark-pin`/`c-mark-ring`/`c-mark-dot` (map mark) and `c-dv-text`.
+Icons themselves are **Phosphor** (`@phosphor-icons/react`), rendered by the components
+internally — the old `c-ico-undo`/`c-ico-x`/`c-ico-heart` deck-action glyphs were removed and
+no longer resolve.
 
 ### 3. Where the truth lives
 
 Read `_ds/<folder>/styles.css` and its `@import` closure before styling — it is the authoritative
 list of what resolves. Per component, read `components/<group>/<Name>/<Name>.prompt.md` for usage
-and `<Name>.d.ts` for the props contract. Groups are `atoms`, `molecules`, `organisms`.
+and `<Name>.d.ts` for the props contract. Groups are `atoms`, `molecules`, `organisms`, plus `general` for the two exports that ship without a natural home (`HeaderButton`, `DesktopOnly`).
 
 ### 4. Copy
 

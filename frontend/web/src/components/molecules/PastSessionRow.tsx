@@ -22,6 +22,10 @@ export default function PastSessionRow({ row, index }: { row: SessionSummaryDto;
           tint={GROUP_TINT[groupOf(row.activityTypes?.[0] ?? "")]}
           photoOnly
           photoHeight={48}
+          /* `photoOnly` dalında foto kutusu height:100% (VenueCard.tsx:167) — belirli
+             yükseklikli bir ata olmadan 0'a çöküyordu ve satırda boş bir şerit kalıyordu.
+             48px'i veren dıştaki `h-12`; kart kökünün onu devralması gerekiyor. */
+          className="h-full"
         />
       </div>
       <div className="flex flex-1 flex-col gap-0.5">

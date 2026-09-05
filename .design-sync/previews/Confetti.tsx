@@ -22,7 +22,7 @@ export function OnResultPage() {
         <Wordmark />
         <WinnerCard
           venue={WINNER}
-          travelLabels={{ "p-self": "Sana", "p-elif": "Elif" }}
+          travel={{ labels: { "p-self": "Sana", "p-elif": "Elif" }, selfId: "p-self" }}
         />
       </Page>
     </div>

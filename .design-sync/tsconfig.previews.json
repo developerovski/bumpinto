@@ -1,0 +1,33 @@
+{
+  /* Preview'ları GERÇEK bileşen tipleriyle tip denetler. Converter bunu yapmaz:
+     `.tsx` derlenemezse bileşen sessizce floor card'a düşer, prop sürüklenmesi ise
+     (ör. travelLabels -> travel) hiç fark edilmeden yanlış kart yayınlanır.
+     Paket şeklinde sourceKey bileşen kaynağını HASH'LEMEZ (package-build.mjs:838),
+     bu yüzden API değişince eski preview "verified-by-upload" sayılır — bu dosya
+     o boşluğu kapatan mekanik kapı.
+
+     Çalıştır:  node node_modules/typescript/bin/tsc -p .design-sync/tsconfig.previews.json
+     Temiz çıktı = sıfır hata. */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@bumpinto/web": ["frontend/web/src/components/index.ts"],
+      /* .design-sync/node_modules -> .ds-sync/node_modules sembolik bağı @types/react 19
+         taşıyor, uygulama ise 18'de. Sabitlenmezse preview'lar app'in görmediği
+         "Icon cannot be used as a JSX component" gibi sahte hatalar üretir. */
+      "react": ["node_modules/@types/react"],
+      "react/*": ["node_modules/@types/react/*"]
+    },
+    "types": ["vite/client"]
+  },
+  "include": ["previews/**/*.tsx"]
+}

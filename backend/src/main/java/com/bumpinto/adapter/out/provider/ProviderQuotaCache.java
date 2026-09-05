@@ -8,11 +8,13 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Saglayici → son bilinen kota. Uc yazar var: scheduler (PROBE/BUDGET), saglayicilarin
- * kendisi (her gercek yanittan HEADER — bedava ve en taze) ve orkestrator (429 → EXHAUSTED).
+ * Saglayici → son bilinen kota. Iki yazar var, IKISI DE BEDAVA: saglayicilarin kendisi (her
+ * gercek yanittan HEADER) ve orkestrator (429 → EXHAUSTED). Kota okumak icin ayrica istek
+ * atan bir yazar YOK — o is scheduler'la birlikte kaldirildi.
  *
- * <p>Surec ici: pod yeniden basladiginda bosalir, ilk scheduler turu doldurur. Bos oldugu
- * kisa pencerede orkestrator {@code @Order} sirasina duser — kotasiz secim, kararsiz degil.
+ * <p>Surec ici: pod yeniden basladiginda bosalir ve ilk gercek arama doldurur. Bos oldugu
+ * pencerede tek sonuc, kotasi tukenmis saglayicinin elenmemesidir; SIRA zaten kotadan
+ * bagimsizdir ({@code @Order}), yani secim hicbir zaman kararsiz degildir.
  */
 @Component
 public class ProviderQuotaCache {

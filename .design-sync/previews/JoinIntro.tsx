@@ -1,8 +1,69 @@
 import { JoinIntro } from "@bumpinto/web";
+import { ACTIVITIES_MIX, ACTIVITIES_ONE } from "./_fixtures";
 
-/** W1 · davet başlığı bloğu: halkalı avatar, `Trans` ile vurgulu başlık,
-    açıklama notu ve formdan ayıran saç teli ayraç. Props almaz —
-    tüm metin i18n'den (`join.*`) gelir. */
+const COL = {
+  width: "27.75rem",
+  background: "var(--color-paper)",
+  padding: "1rem",
+} as const;
+
+/** W1 · davet başlığı bloğu — halkalı avatar, "X seni davet etti", oturum adının
+    İLK kelimesi `Highlight` ile vurgulanır, ilgi alanı rozetleri + katılımcı sayacı,
+    açıklama notu ve formdan ayıran saç teli ayraç. */
 export function Invitation() {
-  return <JoinIntro />;
+  return (
+    <div style={COL}>
+      <JoinIntro hostName="Mehmet" sessionName="Kahve turu" activities={ACTIVITIES_ONE} count={3} />
+    </div>
+  );
+}
+
+/** Oturum adsızsa başlık i18n şablonuna düşer (`join.title`) — vurgulu kelime
+    yine `Highlight` taşır, düzen değişmez. */
+export function NoSessionName() {
+  return (
+    <div style={COL}>
+      <JoinIntro hostName="Elif" sessionName={null} activities={ACTIVITIES_ONE} count={2} />
+    </div>
+  );
+}
+
+/** Çoklu ilgi alanı — rozet şeridi `Intl.ListFormat` değil, ayrı rozetler basar;
+    sayaç rozeti her zaman en sonda. */
+export function MultiActivity() {
+  return (
+    <div style={COL}>
+      <JoinIntro
+        hostName="Deniz"
+        sessionName="Cumartesi planı"
+        activities={ACTIVITIES_MIX}
+        count={5}
+      />
+    </div>
+  );
+}
+
+/** Host çevrimdışı: ikinci bir not eklenir. KAPI DEĞİL — katılım her durumda açık,
+    çünkü davet linkinin ana akışı asenkrondur (host linki paylaşıp telefonu kilitler). */
+export function HostAway() {
+  return (
+    <div style={COL}>
+      <JoinIntro
+        hostName="Mehmet"
+        sessionName="Kahve turu"
+        activities={ACTIVITIES_ONE}
+        count={3}
+        hostOnline={false}
+      />
+    </div>
+  );
+}
+
+/** Host adı bilinmiyorsa (eski davet linki) genel "davet edildin" metnine düşer. */
+export function UnknownHost() {
+  return (
+    <div style={COL}>
+      <JoinIntro hostName={null} sessionName={null} activities={ACTIVITIES_ONE} count={1} />
+    </div>
+  );
 }

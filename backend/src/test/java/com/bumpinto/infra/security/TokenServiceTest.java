@@ -27,7 +27,7 @@ class TokenServiceTest {
             new AppProps.Cors(List.of()),
             new AppProps.Cookies(false, ""),
             new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 5000, 5000),
+                new AppProps.Quota(5000, 5000),
                 new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
 
     final TokenService tokens = new TokenService(PROPS, Clock.systemUTC());

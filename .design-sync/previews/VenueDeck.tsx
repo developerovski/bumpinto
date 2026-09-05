@@ -7,6 +7,7 @@ const ELIF = "b31d9e70-6a42-4f8c-8d55-1c07a9be3d21";
 
 /** DeckScreen'in kurduğu eşleme: kendi satırın "Sana", diğerleri adıyla. */
 const TRAVEL_LABELS = { [SELF]: "Sana", [ELIF]: "Elif" };
+const TRAVEL = { labels: TRAVEL_LABELS, selfId: SELF };
 
 const MODA = {
   id: "9d1f0c2a-77b4-4e18-96c1-0a5b3e7d2f44",
@@ -40,6 +41,13 @@ const BALAT = {
   travelMinutes: { [SELF]: 41, [ELIF]: 23 },
 };
 
+/* ÜRÜN GERÇEĞİ (senkron kusuru DEĞİL): deste yuvası sabit `h-[27.5rem] flex-none`,
+   ön kart ise mutlak konumlu ve doğal yüksekliğinde. Yol rozetleri + uyum satırı
+   render olunca kart bu yuvayı aşıyor ve ALTINDAKİ DeckActions düğmelerinin üstüne
+   biniyor. DeckScreen.tsx:153 aynı propları geçiyor — üründe de böyle.
+   İlk senkronda görünmüyordu çünkü `travelLabels` o zaman geçersiz bir proptu ve
+   rozetler hiç çizilmiyordu; kart kısa kalıyordu. */
+
 /** W3 sayfa sütunu — Page(variant="deck") ölçüleri: 480px kolon, aralıksız yığın. */
 function DeckColumn({ children }: { children: ReactNode }) {
   return (
@@ -53,7 +61,7 @@ function DeckColumn({ children }: { children: ReactNode }) {
 export function FullStack() {
   return (
     <DeckColumn>
-      <VenueDeck venues={[MODA, KARAKOY, BEBEK, BALAT]} travelLabels={TRAVEL_LABELS} />
+      <VenueDeck venues={[MODA, KARAKOY, BEBEK, BALAT]} travel={TRAVEL} />
     </DeckColumn>
   );
 }
@@ -62,7 +70,7 @@ export function FullStack() {
 export function LastTwo() {
   return (
     <DeckColumn>
-      <VenueDeck venues={[BEBEK, BALAT]} travelLabels={TRAVEL_LABELS} />
+      <VenueDeck venues={[BEBEK, BALAT]} travel={TRAVEL} />
     </DeckColumn>
   );
 }
@@ -72,7 +80,7 @@ export function LastTwo() {
 export function FinalCard() {
   return (
     <DeckColumn>
-      <VenueDeck venues={[KARAKOY]} travelLabels={TRAVEL_LABELS} />
+      <VenueDeck venues={[KARAKOY]} travel={TRAVEL} />
     </DeckColumn>
   );
 }

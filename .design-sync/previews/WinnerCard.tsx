@@ -39,7 +39,7 @@ export function Winner() {
           deckOrder: 0,
           travelMinutes: { [SELF]: 28, [ELIF]: 34 },
         }}
-        travelLabels={{ [SELF]: "Sana", [ELIF]: "Elif" }}
+        travel={{ labels: { [SELF]: "Sana", [ELIF]: "Elif" }, selfId: SELF }}
       />
     </ResultCol>
   );
@@ -62,7 +62,7 @@ export function ThreeFriends() {
           deckOrder: 1,
           travelMinutes: { [SELF]: 19, [ELIF]: 22, [DENIZ]: 37 },
         }}
-        travelLabels={{ [SELF]: "Sana", [ELIF]: "Elif", [DENIZ]: "Deniz" }}
+        travel={{ labels: { [SELF]: "Sana", [ELIF]: "Elif", [DENIZ]: "Deniz" }, selfId: SELF }}
       />
     </ResultCol>
   );

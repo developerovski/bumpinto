@@ -22,7 +22,7 @@ class NominatimReverseGeocoderTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 1000, 1000),
+                new AppProps.Quota(1000, 1000),
                 new AppProps.Geocode("ops@bumpinto.test", minInterval));
     }
 

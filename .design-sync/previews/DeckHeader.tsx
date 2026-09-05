@@ -1,31 +1,68 @@
-import { DeckHeader } from "@bumpinto/web";
+import { DeckHeader, HeaderButton } from "@bumpinto/web";
 
+/* Ürün kolonu: Page `max-w-[30rem]` + 1.125rem yatay boşluk. */
 const FRAME = "mx-auto w-full max-w-[30rem] px-[1.125rem]";
 
-/** W3 · destenin ilk kartı — marka, "1 / 12" sayacı ve "Hepsini gör" kısayolu.
-    Metin taşımaz; sayaç i18n'deki `deck.counter` şablonundan kurulur. */
+/** W3 · destenin başı — oturum adı, "N / M kart · semt" meta satırı, ilerleme
+    şeridi ve "Hepsini gör" kısayolu. `progress` 0–1 arası orandır, sayaç değil. */
 export function FirstCard() {
   return (
     <div className={FRAME}>
-      <DeckHeader current={1} total={12} onSeeAll={() => {}} />
+      <DeckHeader
+        title="Kahve turu"
+        meta="1 / 12 kart · Kadıköy civarı"
+        progress={1 / 12}
+        onSeeAll={() => {}}
+      />
     </div>
   );
 }
 
-/** Destenin ortası — iki haneli sayaç, tabular-nums sayesinde zıplamaz. */
-export function MidDeck() {
+/** Destenin ortası + `likesMeta` — beğeni sayacı YALNIZ 390'da meta'ya eklenir
+    (`lg:hidden`); geniş kartta zaten sağ kolonda "Beğendiklerin" var. */
+export function WithLikes() {
   return (
     <div className={FRAME}>
-      <DeckHeader current={7} total={12} onSeeAll={() => {}} />
+      <DeckHeader
+        title="Kahve turu"
+        meta="7 / 12 kart · Kadıköy civarı"
+        likesMeta="3 beğeni"
+        progress={7 / 12}
+        onSeeAll={() => {}}
+      />
     </div>
   );
 }
 
-/** Son kart — sayacın iki tarafı da dolu, en geniş hâli. */
+/** Son kart — şerit dolu. */
 export function LastCard() {
   return (
     <div className={FRAME}>
-      <DeckHeader current={12} total={12} onSeeAll={() => {}} />
+      <DeckHeader
+        title="Kahve turu"
+        meta="12 / 12 kart · Kadıköy civarı"
+        progress={1}
+        onSeeAll={() => {}}
+      />
+    </div>
+  );
+}
+
+/** `onSeeAll` yoksa aksiyon hiç render edilmez — başlık satırı tek sütuna düşer. */
+export function NoAction() {
+  return (
+    <div className={FRAME}>
+      <DeckHeader title="Akşam yemeği" meta="2 / 8 kart · Karaköy civarı" progress={2 / 8} />
+    </div>
+  );
+}
+
+/** `HeaderButton` — artboard .bsm küçük beyaz buton; DeckHeader'ın aksiyonu ve
+    liste modunun "Desteye dön" kısayolu aynı bileşeni paylaşır. */
+export function ActionButton() {
+  return (
+    <div className={FRAME}>
+      <HeaderButton onClick={() => {}}>Desteye dön</HeaderButton>
     </div>
   );
 }

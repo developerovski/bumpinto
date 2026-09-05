@@ -1,94 +1,129 @@
 import { JoinFormFields } from "@bumpinto/web";
 
-const FRAME = "mx-auto w-full max-w-[27.75rem]";
+const COL = {
+  width: "27.75rem",
+  background: "var(--color-paper)",
+  padding: "1rem",
+} as const;
+
+/* Form denetimli (controlled): her hücre statik bir anlık görüntü, geri çağrılar boş.
+   Etkileşim (yazma, konum izni) statik çekimde temsil edilemez — atlanan hâller NOTES'ta. */
 const NOOP = {
   onNameChange: () => {},
   onAddressChange: () => {},
   onUseLocation: () => {},
+  onOtherAddress: () => {},
+  onTravelModeChange: () => {},
+  onSubmit: (e: { preventDefault: () => void }) => e.preventDefault(),
 };
 
-/** W1 · formun açılış hâli — ad boş, konum seçilmemiş, "Katıl" ad girilene
-    kadar devre dışı. Etiket/placeholder/gizlilik notu i18n'den (`join.*`). */
+/** W1 · boş form — ad girilmediği için gönder butonu devre dışı (`disabled:opacity-45`).
+    Konum bloğu "idle": otomatik konum butonu + adres alternatifi. */
 export function Empty() {
   return (
-    <div className={FRAME}>
+    <div style={COL}>
       <JoinFormFields
+        {...NOOP}
         name=""
         address=""
+        locationState="idle"
         locationLabel={null}
+        travelMode="CAR"
         error={null}
         busy={false}
-        onSubmit={(e) => e.preventDefault()}
-        {...NOOP}
       />
     </div>
   );
 }
 
-/** Adres yolundan doldurulmuş hâli — ad ve adres girili, gönderim açık. */
-export function Filled() {
+/** Konum izni verilmiş — yeşil onay kartı + "Konum tamam" rozeti, altında
+    "başka adres" kısayolu. Ulaşım türü toplu taşımaya çekilmiş. */
+export function LocationGranted() {
   return (
-    <div className={FRAME}>
+    <div style={COL}>
       <JoinFormFields
+        {...NOOP}
         name="Mehmet"
-        address="Kadıköy, İstanbul"
-        locationLabel={null}
-        error={null}
-        busy={false}
-        onSubmit={(e) => e.preventDefault()}
-        {...NOOP}
-      />
-    </div>
-  );
-}
-
-/** Tarayıcı konumu alındı — buton metni "Mevcut konumumu kullan" yerine
-    dönen etiketi basar; adres alanı yedek yol olarak açık kalır. */
-export function LocationResolved() {
-  return (
-    <div className={FRAME}>
-      <JoinFormFields
-        name="Elif"
         address=""
-        locationLabel="Mevcut konumun"
+        locationState="granted"
+        locationLabel="Moda"
+        travelMode="TRANSIT"
         error={null}
         busy={false}
-        onSubmit={(e) => e.preventDefault()}
-        {...NOOP}
       />
     </div>
   );
 }
 
-/** Geocode başarısız — hata satırı adres bloğu ile gönder butonu arasına girer. */
+/** İzin reddedilmiş/atlanmış — elle adres girişi dalı. */
+export function ManualAddress() {
+  return (
+    <div style={COL}>
+      <JoinFormFields
+        {...NOOP}
+        name="Elif"
+        address="Moda Sahil, Kadıköy"
+        locationState="denied"
+        locationLabel={null}
+        travelMode="BIKE"
+        error={null}
+        busy={false}
+      />
+    </div>
+  );
+}
+
+/** Sunucu hatası — `ErrorText` gönder butonunun ÜSTÜNDE, tuğla kırmızısıyla. */
 export function WithError() {
   return (
-    <div className={FRAME}>
+    <div style={COL}>
       <JoinFormFields
-        name="Deniz"
-        address="Moda Sahil"
-        locationLabel={null}
-        error="Bu adres bulunamadı — yakındaki bir şehri dene."
-        busy={false}
-        onSubmit={(e) => e.preventDefault()}
         {...NOOP}
+        name="Deniz"
+        address=""
+        locationState="granted"
+        locationLabel="Beşiktaş"
+        travelMode="CAR"
+        error="Bu buluşmaya katılım kapanmış."
+        busy={false}
       />
     </div>
   );
 }
 
-/** Gönderim sürerken — `busy` yalnız "Katıl" butonunu kilitler, alanlar açık. */
+/** Gönderim sürerken — buton devre dışı; `TextInput`'ün disabled stili YOK
+    (ürün boşluğu, NOTES'ta kayıtlı), o yüzden alanlar dolu görünmeye devam eder. */
 export function Submitting() {
   return (
-    <div className={FRAME}>
+    <div style={COL}>
       <JoinFormFields
+        {...NOOP}
         name="Mehmet"
         address=""
-        locationLabel="Mevcut konumun"
+        locationState="granted"
+        locationLabel="Moda"
+        travelMode="TRANSIT"
         error={null}
         busy
-        onSubmit={(e) => e.preventDefault()}
+      />
+    </div>
+  );
+}
+
+/** Konum alınıyor — `locationBusy` yalnız konum bloğunu meşgul eder, form açık kalır. */
+export function LocatingBusy() {
+  return (
+    <div style={COL}>
+      <JoinFormFields
         {...NOOP}
+        name="Selin"
+        address=""
+        locationState="idle"
+        locationLabel={null}
+        locationBusy
+        travelMode="WALK"
+        error={null}
+        busy={false}
       />
     </div>
   );

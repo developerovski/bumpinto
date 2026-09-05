@@ -38,7 +38,7 @@ class FoursquareVenueProviderTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 1000, 1000),
+                new AppProps.Quota(1000, 1000),
                 new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
@@ -80,11 +80,26 @@ class FoursquareVenueProviderTest {
         assertThat(result).isEmpty();
     }
 
+    /**
+     * Kimlik BICIMI koruma altinda: FSQ 5 haneli taksonomi kodunu ({@code 13032}) HTTP 400
+     * ile reddediyor, mock'lu testler ise gonderileni sorgulamadan yansittigi icin bozulmayi
+     * goremiyor. Bu iddia tek basina yeter: yanlis BICIM her aramayi 500'e cevirir.
+     * (Gecerli-ama-yanlis kimlik hala sessizdir — o yalniz gercek istekle dogrulanir,
+     * bkz. CATEGORIES javadoc'undaki 2026-09-06 olcumu.)
+     */
+    @Test
+    void everyCategoryIdKeepsTheFormatFoursquareAccepts() {
+        assertThat(FoursquareVenueProvider.CATEGORIES.values())
+                .isNotEmpty()
+                .allSatisfy(id -> assertThat(id).matches("[0-9a-f]{24}"));
+    }
+
     /** Hepsi esleniyorsa kategoriler virgulle birlesir: yine TEK istek. */
     @Test
     void joinsCategoryIdsWhenEveryActivityIsMapped() {
         assertThat(FoursquareVenueProvider.categoryIds(
-                List.of(ActivityType.COFFEE, ActivityType.BAR))).isEqualTo("13032,13003");
+                List.of(ActivityType.COFFEE, ActivityType.BAR)))
+                .isEqualTo("4bf58dd8d48988d1e0931735,4bf58dd8d48988d116941735");
     }
 
     @Test
@@ -181,7 +196,7 @@ class FoursquareVenueProviderTest {
         mock.expect(HttpMethod.GET, SEARCH_URL)
                 .header("Authorization", "Bearer fsq-key")
                 .header("X-Places-Api-Version", "2025-06-17")
-                .queryString("fsq_category_ids", "13032") // COFFEE
+                .queryString("fsq_category_ids", "4bf58dd8d48988d1e0931735") // COFFEE
                 .queryString("limit", "50")               // 200 istendi, 50'ye clamp
                 .thenReturn("{}");
 
@@ -242,28 +257,6 @@ class FoursquareVenueProviderTest {
         assertThat(q.source()).isEqualTo(ProviderQuota.Source.HEADER);
     }
 
-    /** Prob: limit=1, tek alan — cevap degil basliklar okunur. */
-    @Test
-    void probeReadsQuotaFromHeaders() {
-        UnirestInstance http = Unirest.spawnInstance();
-        MockClient mock = MockClient.register(http);
-        // Yalniz en ucuz istek (limit=1, tek alan) eslesir; baska bir sey gonderilirse
-        // varsayilan (bos) yanit doner ve basliklar okunamaz — test bu yuzden dusmeli.
-        mock.expect(HttpMethod.GET, SEARCH_URL)
-                .queryString("limit", "1")
-                .queryString("fields", "fsq_place_id")
-                .thenReturn("{\"results\":[]}")
-                .withHeader("x-ratelimit-limit", "180000")
-                .withHeader("x-ratelimit-remaining", "5")
-                .withHeader("x-ratelimit-reset", "1788382514");
-
-        ProviderQuota q = provider(http).measureQuota();
-
-        assertThat(q.remaining()).isEqualTo(5);
-        assertThat(q.source()).isEqualTo(ProviderQuota.Source.PROBE);
-        mock.verifyAll();
-    }
-
     /**
      * Kredi bitti (limit: 0) ≠ saatlik limit. Krediler kendiliginden dolmaz: 24 saat kapali.
      * Saatlik limitte reset basligi ne diyorsa o.
@@ -296,19 +289,5 @@ class FoursquareVenueProviderTest {
                 .search(new GeoPoint(51.5, 5.5), 5.0, List.of(ActivityType.COFFEE), 10))
                 .isInstanceOfSatisfying(QuotaExceededException.class, e ->
                         assertThat(e.resetAt()).isEqualTo(Instant.ofEpochSecond(1788382514L)));
-    }
-
-    /** Prob 429 gorurse patlamaz: EXHAUSTED olarak doner, scheduler cache'e yazar. */
-    @Test
-    void probeReportsExhaustedOn429() {
-        UnirestInstance http = Unirest.spawnInstance();
-        MockClient mock = MockClient.register(http);
-        mock.expect(HttpMethod.GET, SEARCH_URL).thenReturn("{}").withStatus(429)
-                .withHeader("x-ratelimit-limit", "0");
-
-        ProviderQuota q = provider(http).measureQuota();
-
-        assertThat(q.source()).isEqualTo(ProviderQuota.Source.EXHAUSTED);
-        assertThat(q.available(NOW)).isFalse();
     }
 }

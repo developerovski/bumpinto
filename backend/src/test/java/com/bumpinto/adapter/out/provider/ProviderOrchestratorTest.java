@@ -48,9 +48,15 @@ class ProviderOrchestratorTest {
         return o.search(CENTER, 5.0, List.of(ActivityType.COFFEE), 10);
     }
 
-    /** Kota oranı yüksek olan kazanır — @Order sırası değil. */
+    /**
+     * SIRA SABIT: kota orani ne olursa olsun @Order once gelen denenir. Bu testin varlik
+     * sebebi gercek bir uretim hatasi — eski oran siralamasi Google'in aylik butce oranini
+     * (1000/1000 = 1.0) Foursquare'in saatlik istek limiti oraniyla (179995/180000 = 0.99997)
+     * kiyasliyor ve her aramayi once ucretli saglayiciya gonderiyordu. Buradaki fark
+     * (%5'e karsi %80) o siralamayi kullanan her surumu kirmiyorsa test degersizdir.
+     */
     @Test
-    void picksProviderWithHighestRemainingRatio() {
+    void alwaysTriesProvidersInDeclaredOrderNoMatterTheQuotaRatio() {
         QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
         QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
         ProviderQuotaCache cache = new ProviderQuotaCache();
@@ -58,30 +64,18 @@ class ProviderOrchestratorTest {
         cache.record(quota("google", 5000, 4000));     // %80
 
         assertThat(search(new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK)))
-                .containsExactly(G_CAND);
-        verify(fsq, never()).search(any(), anyDouble(), any(), anyInt());
+                .containsExactly(FSQ_CAND);
+        verify(google, never()).search(any(), anyDouble(), any(), anyInt());
     }
 
-    /** Kota bilinmiyorsa (cache boş — yeni pod) @Order sırası geçerli, seçim kararsız değil. */
+    /** Kota hic bilinmiyorsa da (cache bos — yeni pod) ayni sira gecerli. */
     @Test
-    void fallsBackToOrderWhenQuotaUnknown() {
+    void orderHoldsWhenQuotaIsUnknown() {
         QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
         QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
 
         assertThat(search(new ProviderOrchestrator(List.of(fsq, google), new ProviderQuotaCache(), CLOCK)))
                 .containsExactly(FSQ_CAND);
-    }
-
-    /** Kotası bilinen, bilinmeyenden önce gelir: bilinen 0 oran bile "hiç bilgi yok"tan iyidir. */
-    @Test
-    void knownQuotaOutranksUnknown() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-        ProviderQuotaCache cache = new ProviderQuotaCache();
-        cache.record(quota("google", 5000, 1));
-
-        assertThat(search(new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK)))
-                .containsExactly(G_CAND);
     }
 
     /** EXHAUSTED sağlayıcı hiç denenmez; yenilenme anı geçince yeniden aday olur. */

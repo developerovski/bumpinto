@@ -71,7 +71,12 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
      *                                 oturum basina en buyuk kalem). Bitince foto cozulmez,
      *                                 photoUrl null gelir ve kart monograma duser.
      */
-    public record Quota(Duration refresh, int googleMonthlyBudget, int googlePhotoMonthlyBudget) {
+    /**
+     * {@code refresh} YOK: periyodik kota olcumu (ProviderQuotaScheduler) kaldirildi, kota
+     * yalniz gercek aramalarin yanitindan ogreniliyor. Ayar kalsaydi hicbir seyi ayarlamayan
+     * bir dugme olurdu.
+     */
+    public record Quota(int googleMonthlyBudget, int googlePhotoMonthlyBudget) {
     }
 
     /**

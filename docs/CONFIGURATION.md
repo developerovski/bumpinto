@@ -18,7 +18,6 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `GOOGLE_PLACES_API_KEY` | Places API (New) sunucu anahtarı | Google Cloud → Keys & Credentials → API key | **Evet** |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Postgres | — | Parola **evet** |
 | `TRUST_FORWARDED_FOR` | XFF'e güven bayrağı | — | Hayır |
-| `PROVIDER_QUOTA_REFRESH` | Kota scheduler aralığı (ISO süre, varsayılan `PT5M`) | — | Hayır |
 | `GOOGLE_MONTHLY_BUDGET` | Nearby Search için **sert** aylık tavan (varsayılan `1000` — açılış maliyet modeli §5.A.5: Google'ın ücretsiz aylık katmanı, sonrası $35/1000). Google kota telemetrisi vermediği için kota = bütçe − yerel sayaç; aşılırsa istek atılmaz, orkestratör Foursquare'e düşer | Cloud Console → Maps Platform → Quotas'taki ücretsiz hakkına ya da harcamak istediğine göre | Hayır |
 | `GOOGLE_PHOTO_MONTHLY_BUDGET` | Place Photo medya çağrıları için **ayrı SKU**'lu sert tavan (varsayılan `1000` — 1.000 ücretsiz/ay, sonrası $7/1000). Bitince foto çözülmez, `photoUrl` null gelir, kart monograma düşer; arama etkilenmez | Cloud Console → Maps Platform → Quotas | Hayır |
 | `NOMINATIM_CONTACT` | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi (varsayılan `dev@bumpinto.test`) | Preprod/prod'da gerçek bir adres verin | Hayır |
@@ -180,11 +179,16 @@ Kodumuza özel riskler:
   seferinde Google'a gidiliyor.
 - Google yedeğinde her Nearby Search sonucu için **mekan başına bir Places Photo isteği**
   yapılıyor (foto adresi arama anında çözülüyor). 20 mekan = 20 foto isteği.
-- Sağlayıcı seçimi kotaya göre (`ProviderOrchestrator`): 429 dönen sağlayıcı yenilenme anına
-  kadar dışarıda (FSQ kredi-429'u: 24 saat; saatlik: `x-ratelimit-reset`). Scheduler 5 dk'da
-  bir kota ölçer ama FSQ probu **ücretli bir Pro çağrısıdır**; gerçek arama olan pencerede
-  atlanır, 429'lu sağlayıcı problanmaz. Trafiksiz bir ortamda yine de saatte 12 prob = ayda
-  ~8.600 Pro çağrısı → ücretsiz 500'ü aşar. Trafiksiz ortamda `PROVIDER_QUOTA_REFRESH=PT1H` ver.
+- Sağlayıcı sırası **sabittir** (`ProviderOrchestrator`): önce Foursquare, sonra Google.
+  Kota yalnız elemeye yarar — 429 dönen sağlayıcı yenilenme anına kadar dışarıda (FSQ
+  kredi-429'u: 24 saat; saatlik: `x-ratelimit-reset`).
+- **Boşta duran süreç artık para harcamıyor.** Eskiden `ProviderQuotaScheduler` 5 dk'da bir
+  kota ölçüyordu; FSQ probu **ücretli bir Pro çağrısıdır** ve trafiksiz ortamda saatte 12 prob
+  = ayda ~8.600 çağrı → ücretsiz 500'ü kat kat aşıyordu. 2026-09-06'da kaldırıldı; kota yalnız
+  gerçek aramaların yanıt başlıklarından okunuyor.
+- **Google sayacı yalnız faturalanan çağrıyı sayar** (2xx ve 429). Yetki hatası (401/403)
+  bütçeden düşmez — sayaç eskiden istekten önce artıyordu ve anahtar 403 verirken bile aylık
+  bütçe eriyordu.
 
 Frenler: rate limit 3/dk ve 30 dakikalık sonuç cache'i (foto adresleri sonuçla birlikte
 saklandığı için onları da kapsar).

@@ -36,7 +36,7 @@ class GooglePlacesVenueProviderTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), searches, photos),
+                new AppProps.Quota(searches, photos),
                 new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
     }
 
@@ -426,6 +426,27 @@ class GooglePlacesVenueProviderTest {
                 .isInstanceOf(QuotaExceededException.class);
         mock.assertThat(HttpMethod.POST, NEARBY_URL).wasInvokedTimes(1);
         assertThat(provider.measureQuota().remaining()).isZero();
+    }
+
+    /**
+     * Yetki hatasi butceden DUSMEZ. Gercek ariza: anahtar 403 verirken sayac istekten once
+     * artiyordu, yani hicbir mekan gelmeden aylik 1000'lik butce eriyor ve saglayici bir sure
+     * sonra kendini "butce bitti" diye kapatiyordu. Google 403'u faturalandirmiyor.
+     */
+    @Test
+    void rejectedRequestDoesNotSpendTheMonthlyBudget() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.POST, NEARBY_URL)
+                .thenReturn("{\"error\":{\"status\":\"PERMISSION_DENIED\"}}")
+                .withStatus(403);
+        GooglePlacesVenueProvider p = provider(http);
+
+        assertThatThrownBy(() -> p.search(new GeoPoint(51.5, 5.5), 5.0,
+                List.of(ActivityType.COFFEE), 10))
+                .isInstanceOf(ProviderException.class);
+
+        assertThat(p.measureQuota().remaining()).isEqualTo(1000);
     }
 
     @Test

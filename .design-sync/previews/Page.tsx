@@ -7,7 +7,6 @@ import {
   JoinIntro,
   Note,
   Page,
-  Progress,
   ViralCard,
   VenueCard,
   WinnerCard,
@@ -28,7 +27,7 @@ const WINNER_VENUE = {
   travelMinutes: { "p-self": 14, "p-elif": 11 },
 };
 
-const TRAVEL = { "p-self": "Sana", "p-elif": "Elif" };
+const TRAVEL = { labels: { "p-self": "Sana", "p-elif": "Elif" }, selfId: "p-self" };
 
 /** W1 · varsayılan varyant — davet ekranı: marka, başlık bloğu, form alanları,
     ana çağrı. Kolonlar 15px `gap` ile üst üste akar. */
@@ -36,7 +35,7 @@ export function JoinScreen() {
   return (
     <Page>
       <Wordmark />
-      <JoinIntro />
+      <JoinIntro hostName="Mehmet" sessionName="Kahve turu" activities={["COFFEE"]} count={3} />
       <Field id="pg-name" label="Adın" placeholder="Arkadaşların sana ne der?" />
       <Field id="pg-addr" label="Neredesin?" defaultValue="Moda Sahil, Kadıköy" />
       <Button type="button">Katıl</Button>
@@ -50,10 +49,12 @@ export function JoinScreen() {
 export function DeckScreen() {
   return (
     <Page variant="deck">
-      <DeckHeader current={4} total={12} onSeeAll={() => {}} />
-      <div className="mb-3.5">
-        <Progress value={4 / 12} />
-      </div>
+      <DeckHeader
+        title="Kahve turu"
+        meta="4 / 12 kart · Kadıköy civarı"
+        progress={4 / 12}
+        onSeeAll={() => {}}
+      />
       <VenueCard
         venue={{
           id: "v-bebek",
@@ -63,7 +64,7 @@ export function DeckScreen() {
           deckOrder: 1,
           travelMinutes: { "p-self": 18, "p-elif": 9 },
         }}
-        travelLabels={TRAVEL}
+        travel={TRAVEL}
       />
     </Page>
   );
@@ -75,7 +76,7 @@ export function ResultScreen() {
   return (
     <Page variant="result">
       <Wordmark />
-      <WinnerCard venue={WINNER_VENUE} travelLabels={TRAVEL} />
+      <WinnerCard venue={WINNER_VENUE} travel={TRAVEL} />
       <ViralCard />
     </Page>
   );

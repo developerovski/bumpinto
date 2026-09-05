@@ -18,6 +18,8 @@ function Col({ children }: { children: ReactNode }) {
 const SELF = "5b0e2a4c-3f77-4a19-9d21-0f6c8a1e5d33";
 const ELIF = "c41d9b6e-2a08-4f5b-8e72-1b93d4a7c610";
 const LABELS = { [SELF]: "Sana", [ELIF]: "Elif" };
+// TravelInfo: labels + selfId TEK nesne (lib/useTravelLabels.ts) — ayrı proplar ayrışırdı.
+const TRAVEL = { labels: LABELS, selfId: SELF };
 
 const MODA = {
   id: "1f0a7c22-5b64-4d18-9a3e-8c2f61d70b45",
@@ -59,7 +61,7 @@ const BEBEK = {
 export function Polaroid() {
   return (
     <Col>
-      <VenueCard venue={MODA} travelLabels={LABELS} />
+      <VenueCard venue={MODA} travel={TRAVEL} />
     </Col>
   );
 }
@@ -74,7 +76,7 @@ export function ResultCard() {
         photoHeight={150}
         hideTitle
         bodyGap="md"
-        travelLabels={LABELS}
+        travel={TRAVEL}
         className="transform-[rotate(-1.4deg)] shadow-sh2"
       />
     </Col>
@@ -85,7 +87,7 @@ export function ResultCard() {
 export function RunoffRow() {
   return (
     <Col>
-      <VenueCard venue={MODA} variant="row" travelLabels={LABELS} />
+      <VenueCard venue={MODA} variant="row" travel={TRAVEL} />
     </Col>
   );
 }
@@ -95,7 +97,7 @@ export function RunoffRow() {
 export function RunoffRowSelected() {
   return (
     <Col>
-      <VenueCard venue={KARAKOY} variant="row" selected travelLabels={LABELS} />
+      <VenueCard venue={KARAKOY} variant="row" selected travel={TRAVEL} />
     </Col>
   );
 }
@@ -119,7 +121,7 @@ export function DeckStack() {
         />
         <VenueCard
           venue={MODA}
-          travelLabels={LABELS}
+          travel={TRAVEL}
           className="z-2 transform-[rotate(-1.6deg)] shadow-sh2"
         />
       </div>

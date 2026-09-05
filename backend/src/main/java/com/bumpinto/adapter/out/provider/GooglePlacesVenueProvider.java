@@ -102,9 +102,11 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
     /** Google'in ucretsiz aylik katmani Pasifik takvim ayinda doner (faturalama saati burasi). */
     private static final ZoneId BILLING_ZONE = ZoneId.of("America/Los_Angeles");
 
-    /** Kota = aylik butce − bu ay yapilan arama; ay donunce sayac sifirlanir. */
-    @Override
-    public ProviderQuota measureQuota() {
+    /**
+     * Kota = aylik butce − bu ay yapilan arama; ay donunce sayac sifirlanir. Arayuzde DEGIL:
+     * yerel bir hesap, ag istegi yok — {@link #search} kendi butce kapisi icin cagirir.
+     */
+    ProviderQuota measureQuota() {
         Instant now = clock.instant();
         // Ay siniri UTC DEGIL Pasifik: Google'in faturalama ayi oradan doner, UTC kullansaydik
         // sayac Google'dan saatler once/sonra sifirlanirdi.
@@ -134,7 +136,6 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
             throw new QuotaExceededException("google nearby monthly budget spent",
                     quota.resetAt());
         }
-        calls.incrementAndGet();
         HttpResponse<JsonNode> response = http.post(NEARBY_URL)
                 .header("Content-Type", "application/json")
                 .header("X-Goog-Api-Key", apiKey)
@@ -149,6 +150,13 @@ public class GooglePlacesVenueProvider implements QuotaAwareVenueProvider {
                                 + "places.primaryType,places.types")
                 .body(body.toString())
                 .asJson();
+        // Sayac yalniz FATURALANAN cagriyi sayar: 2xx ve 429. Yetki hatasi (401/403) ya da
+        // sunucu hatasi Google tarafinda ucretlendirilmez, ama eski surumde sayac istekten
+        // ONCE artiyordu — anahtar 403 verirken bile aylik butce eriyor ve saglayici bir sure
+        // sonra "butce bitti" diye kendini kapatiyordu. Gercek bir uretim arizasiydi.
+        if (response.isSuccess() || response.getStatus() == 429) {
+            calls.incrementAndGet();
+        }
         if (response.getStatus() == 429) {
             // Google yenilenme anini soylemez; gunluk kota gece yarisi (Pasifik) doner,
             // aylik butce ay basinda. Tahmin: bir sonraki UTC gun basi.

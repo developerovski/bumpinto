@@ -12,14 +12,14 @@
     "../../.design-sync/ds-preview-context.tsx"
   ],
   "provider": {
-    "component": "BumpIntoProvider"
+    "component": "BumpIntoPreviewRoot"
   },
   "libOverrides": {
     "dts.mjs": "jsdocFor sanitiser stripped Turkish letters (\\w is ASCII-only without the u flag)"
   },
   "dtsPropsFor": {
-    "JoinedCard": "  /** Katılan kişi; henüz katılmadıysa `null` — kart o zaman alt satırı basmaz. */\n  self: { id?: string; name: string; locationLabel: string | null } | null;",
-    "JoinFormFields": "  name: string;\n  address: string;\n  /** Konum alındıysa etiketi; yoksa buton \"Mevcut konumumu kullan\" der. */\n  locationLabel: string | null;\n  /** Hata metni; yoksa `null`. */\n  error: string | null;\n  /** Gönderim sürerken — submit butonu devre dışı. */\n  busy: boolean;\n  onNameChange: (value: string) => void;\n  onAddressChange: (value: string) => void;\n  onUseLocation: () => void;\n  onSubmit: (e: React.FormEvent) => void;"
+    "JoinedCard": "  /** Katılan kişi (ParticipantDto); henüz katılmadıysa `null` — kart o zaman alt satırı basmaz.\n      Alt satır `locationLabel · displayName` olarak birleşir; etiket yoksa yalnız ad. */\n  self: {\n    id?: string;\n    displayName?: string;\n    locationLabel?: string;\n    host?: boolean;\n    hasLocation?: boolean;\n  } | null;",
+    "JoinFormFields": "  name: string;\n  address: string;\n  /** Konum bloğunun dalı — `granted` yeşil onay kartı, `denied` elle adres girişi. */\n  locationState: \"idle\" | \"granted\" | \"denied\";\n  /** Konum alındıysa etiketi (ör. \"Moda\"); yoksa `null`. */\n  locationLabel: string | null;\n  /** Yalnız konum bloğunu meşgul eder — formun geri kalanı açık kalır. */\n  locationBusy?: boolean;\n  /** Ulaşım türü — orta nokta ve yol süresi bununla hesaplanır. */\n  travelMode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\";\n  /** Hata metni; yoksa `null`. */\n  error: string | null;\n  /** Gönderim sürerken — submit butonu devre dışı. */\n  busy: boolean;\n  onNameChange: (value: string) => void;\n  onAddressChange: (value: string) => void;\n  onUseLocation: () => void;\n  onOtherAddress: () => void;\n  /** Verilirse \"haritadan seç\" düğmesi çıkar (harita AÇILINCA mount edilir). */\n  onPickOnMap?: () => void;\n  onTravelModeChange: (mode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\") => void;\n  onSubmit: (e: React.FormEvent) => void;"
   },
   "overrides": {
     "ParticipantRow": {
@@ -32,6 +32,77 @@
       "cardMode": "column"
     },
     "WinnerCard": {
+      "cardMode": "column"
+    },
+    "JoinFormFields": {
+      "cardMode": "column"
+    },
+    "JoinIntro": {
+      "cardMode": "column"
+    },
+    "RunoffIntro": {
+      "cardMode": "column"
+    },
+    "WaitingStatus": {
+      "cardMode": "column"
+    },
+    "PolaroidFan": {
+      "viewport": "1120x560"
+    },
+    "TwoZone": {
+      "cardMode": "column",
+      "viewport": "1120x700"
+    },
+    "OneZone": {
+      "cardMode": "column"
+    },
+    "Lead": {
+      "cardMode": "column"
+    },
+    "Overline": {
+      "cardMode": "column"
+    },
+    "DesktopOnly": {
+      "cardMode": "column",
+      "viewport": "1280x700"
+    },
+    "HeaderButton": {
+      "cardMode": "column"
+    },
+    "FinishedCard": {
+      "cardMode": "column"
+    },
+    "IdentityCard": {
+      "cardMode": "column"
+    },
+    "PageHeader": {
+      "cardMode": "column"
+    },
+    "PastSessionRow": {
+      "cardMode": "column"
+    },
+    "PrefRow": {
+      "cardMode": "column"
+    },
+    "ProfileStats": {
+      "cardMode": "column"
+    },
+    "RunoffStatus": {
+      "cardMode": "column"
+    },
+    "SessionCard": {
+      "cardMode": "column"
+    },
+    "SessionHeader": {
+      "cardMode": "column"
+    },
+    "PastSessionList": {
+      "cardMode": "column"
+    },
+    "ProfilePrefs": {
+      "cardMode": "column"
+    },
+    "MobileCta": {
       "cardMode": "column"
     }
   },

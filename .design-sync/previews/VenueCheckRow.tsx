@@ -16,6 +16,7 @@ function Col({ children }: { children: ReactNode }) {
 const SELF = "5b0e2a4c-3f77-4a19-9d21-0f6c8a1e5d33";
 const ELIF = "c41d9b6e-2a08-4f5b-8e72-1b93d4a7c610";
 const LABELS = { [SELF]: "Sana", [ELIF]: "Elif" };
+const TRAVEL = { labels: LABELS, selfId: SELF };
 
 const MODA = {
   id: "1f0a7c22-5b64-4d18-9a3e-8c2f61d70b45",
@@ -57,7 +58,7 @@ const BALAT = {
 export function Unchecked() {
   return (
     <Col>
-      <VenueCheckRow venue={BEBEK} checked={false} onChange={() => {}} travelLabels={LABELS} />
+      <VenueCheckRow venue={BEBEK} checked={false} onChange={() => {}} travel={TRAVEL} />
     </Col>
   );
 }
@@ -66,7 +67,7 @@ export function Unchecked() {
 export function Checked() {
   return (
     <Col>
-      <VenueCheckRow venue={MODA} checked onChange={() => {}} travelLabels={LABELS} />
+      <VenueCheckRow venue={MODA} checked onChange={() => {}} travel={TRAVEL} />
     </Col>
   );
 }
@@ -77,8 +78,8 @@ export function ListMode() {
   return (
     <Col>
       <div className="flex flex-col gap-[0.9375rem]">
-        <VenueCheckRow venue={KARAKOY} checked onChange={() => {}} travelLabels={LABELS} />
-        <VenueCheckRow venue={BALAT} checked={false} onChange={() => {}} travelLabels={LABELS} />
+        <VenueCheckRow venue={KARAKOY} checked onChange={() => {}} travel={TRAVEL} />
+        <VenueCheckRow venue={BALAT} checked={false} onChange={() => {}} travel={TRAVEL} />
       </div>
     </Col>
   );

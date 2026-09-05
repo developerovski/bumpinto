@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { ParticipantRow } from "@bumpinto/web";
+import { DENIZ_P, ELIF_P, MEHMET, SELIN_P } from "./_fixtures";
 
 /* W2 · satırlar ParticipantList'in kart kabuğunda yaşar; tek satır da orada gösterilmeli.
    Dış çerçeve satır içi stille: `.design-sync/previews` sınıfları hızlı döngüde
-   compile olmuyor — kart kabuğu ise ParticipantList'ten birebir alındığı için sınıfla. */
+   (preview-rebuild) compile olmuyor — kart kabuğu ise ParticipantList'ten birebir alındı. */
 const COL = {
   width: "27.75rem",
   background: "var(--color-paper)",
@@ -18,32 +19,8 @@ function RowCard({ children }: { children: ReactNode }) {
   );
 }
 
-const MEHMET = {
-  id: "5b0e2a4c-3f77-4a19-9d21-0f6c8a1e5d33",
-  displayName: "Mehmet",
-  host: true,
-  hasLocation: true,
-};
-const ELIF = {
-  id: "c41d9b6e-2a08-4f5b-8e72-1b93d4a7c610",
-  displayName: "Elif",
-  host: false,
-  hasLocation: true,
-};
-const DENIZ = {
-  id: "a72f3c15-9d4e-4b60-b1a8-7e05f2c9d844",
-  displayName: "Deniz",
-  host: false,
-  hasLocation: false,
-};
-const SELIN = {
-  id: "e08b41d7-6c2a-4f39-95b0-72da8e1c4b06",
-  displayName: "Selin",
-  host: false,
-  hasLocation: true,
-};
-
-/** W2 · buluşmayı kuran: rozet önceliği "Kuran"da — hazır/bekliyor rozeti basılmaz. */
+/** W2 · buluşmayı kuran: rozet önceliği "Kuran"da — hazır/bekliyor rozeti basılmaz.
+    Alt satır semt + ulaşım ikonu + orta noktaya dakika. */
 export function Host() {
   return (
     <RowCard>
@@ -52,30 +29,42 @@ export function Host() {
   );
 }
 
-/** Konumunu atmış katılımcı — halkalı avatar + yeşil "Hazır" rozeti. */
+/** Konumunu atmış katılımcı — halkalı avatar, yeşil "Hazır", araba ikonu. */
 export function Ready() {
   return (
     <RowCard>
-      <ParticipantRow participant={ELIF} index={1} />
+      <ParticipantRow participant={ELIF_P} index={1} />
     </RowCard>
   );
 }
 
-/** Henüz konum göndermemiş katılımcı — soluk avatar, "Konum bekleniyor…" alt satırı,
-    amber "Bekliyor" rozeti. */
+/** Henüz konum göndermemiş — soluk avatar, "Konum bekleniyor…" alt satırı,
+    amber "Bekliyor" rozeti; ulaşım ikonu hiç çizilmez. */
 export function WaitingLocation() {
   return (
     <RowCard>
-      <ParticipantRow participant={DENIZ} index={2} />
+      <ParticipantRow participant={DENIZ_P} index={2} />
     </RowCard>
   );
 }
 
-/** Kendi satırın — adın yanında "(sen)" ve yalnız burada dolan konum etiketi. */
+/** Kendi satırın — adın yanında "(sen)". Konum etiketi katılımcı nesnesinden gelir,
+    ayrı prop DEĞİL (B-7:T1 — `travelMode`/`midpointMinutes` de aynı nesnede). */
 export function Self() {
   return (
     <RowCard>
-      <ParticipantRow participant={SELIN} index={3} isSelf locationLabel="Mevcut konumun" />
+      <ParticipantRow participant={MEHMET} index={0} isSelf />
+    </RowCard>
+  );
+}
+
+/** Çevrimdışı satır: `online === false` → %55 opaklık + alt satıra tek kelime.
+    Ayrı rozet YOK, "geç kaldı" damgası YOK — ürünün dil kuralları suçlayıcı ifadeyi yasaklar.
+    EBIKE tek glif değil, iki glifle (şimşek + bisiklet) temsil edilir. */
+export function Offline() {
+  return (
+    <RowCard>
+      <ParticipantRow participant={SELIN_P} index={3} />
     </RowCard>
   );
 }
@@ -84,13 +73,13 @@ export function Self() {
 export function Roster() {
   return (
     <RowCard>
-      <ParticipantRow participant={MEHMET} index={0} />
+      <ParticipantRow participant={MEHMET} index={0} isSelf />
       <div className="mx-4 h-px bg-line" />
-      <ParticipantRow participant={ELIF} index={1} />
+      <ParticipantRow participant={ELIF_P} index={1} />
       <div className="mx-4 h-px bg-line" />
-      <ParticipantRow participant={DENIZ} index={2} />
+      <ParticipantRow participant={DENIZ_P} index={2} />
       <div className="mx-4 h-px bg-line" />
-      <ParticipantRow participant={SELIN} index={3} isSelf locationLabel="Mevcut konumun" />
+      <ParticipantRow participant={SELIN_P} index={3} />
     </RowCard>
   );
 }

@@ -21,8 +21,6 @@ public record ProviderQuota(String provider, long limit, long remaining, Instant
     public enum Source {
         /** Gercek bir aramanin yanit basliklarindan — bedava, en taze. */
         HEADER,
-        /** Scheduler'in yalniz kota okumak icin attigi minimal istek — ucretli olabilir. */
-        PROBE,
         /** Yerel sayac: yapilandirilmis aylik butce − yapilan cagri (Google). */
         BUDGET,
         /** 429 sonrasi orkestratorun koydugu "kapali" isareti. */
@@ -38,12 +36,12 @@ public record ProviderQuota(String provider, long limit, long remaining, Instant
         return remaining > 0 || !now.isBefore(resetAt);
     }
 
-    /** 0..1 — orkestratorun siralama olcusu. Limit bilinmiyorsa 0. */
+    /**
+     * 0..1 — YALNIZ log/teshis icin. Secim olcusu DEGIL: saglayicilarin kotalari ayni seyi
+     * olcmuyor (Google aylik butce, FSQ saatlik istek limiti), o yuzden oranlari kiyaslamak
+     * anlamsizdi — bkz. ProviderOrchestrator javadoc'u.
+     */
     public double ratio() {
         return limit <= 0 ? 0 : Math.min(1.0, (double) remaining / limit);
-    }
-
-    public boolean isFresherThan(Instant threshold) {
-        return measuredAt.isAfter(threshold);
     }
 }

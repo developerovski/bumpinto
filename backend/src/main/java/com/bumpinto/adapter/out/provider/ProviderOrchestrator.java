@@ -14,19 +14,23 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Kotaya gore saglayici secimi + sonuc onbellegi.
+ * SABIT sirali saglayici zinciri + sonuc onbellegi.
  *
- * <p>Siralama: kotasi tukenmemis saglayicilar, kalan oran ({@link ProviderQuota#ratio()})
- * buyukten kucuge; oran esit ya da kota bilinmiyorsa {@code @Order} sirasi. Ilk DOLU sonucu
- * donduren kazanir; bos donen ya da gecici hata veren atlanir. 429 gelirse saglayici
- * yenilenme anina kadar EXHAUSTED isaretlenir — sonraki aramalar ona hic gitmez.
+ * <p>Sira {@code @Order}'dir ve DEGISMEZ: Foursquare, sonra Google. Ilk DOLU sonucu donduren
+ * kazanir; bos donen ya da gecici hata veren atlanir. 429 gelirse saglayici yenilenme anina
+ * kadar EXHAUSTED isaretlenir — sonraki aramalar ona hic gitmez.
+ *
+ * <p>Onceki surum kalan kota ORANINA gore siralardi ve bu, niyetin TERSINI yapiyordu:
+ * Google'in olcusu aylik butce (taze pod'da 1000/1000 = 1.0), Foursquare'inki saatlik istek
+ * limiti (180000'de 179995 = 0.99997). Iki oran ayni seyi olcmedigi icin Google neredeyse her
+ * zaman one geciyor, {@code @Order} tie-break'i ise oranlar TAM esit olmadikca hic
+ * calismiyordu. Sonuc: her arama once ucretli Google'a gidiyordu. Olcek farkli iki kotayi tek
+ * sayiya indirip kiyaslamak bastan yanlisti; secim artik acikca yazilmis siradan gelir.
  *
  * <p>Herkes hata verirse "mekan yok" DENMEZ: o yanit kullaniciya "cevrende hicbir sey yok"
  * der, oysa sorun bizde. Istisna yukari gider (500), log'da gorunur.
@@ -69,7 +73,7 @@ public class ProviderOrchestrator implements VenueProviderPort {
         if (cached != null) {
             return cached;
         }
-        List<VenueCandidate> result = searchRanked(center, radiusKm, types, limit);
+        List<VenueCandidate> result = searchInOrder(center, radiusKm, types, limit);
         // BOS sonuc CACHE'LENMEZ: seyrek bolgede gecici bir bosluk 30 dk boyunca
         // "mekan yok"a donusurdu. Hata durumu da cache'lenmez (istisna yukari gider).
         if (!result.isEmpty()) {
@@ -78,35 +82,34 @@ public class ProviderOrchestrator implements VenueProviderPort {
         return result;
     }
 
-    /** Secim sirasi — test ve teshis icin acik. */
-    List<QuotaAwareVenueProvider> ranked(Instant now) {
+    /**
+     * Denenecek saglayicilar, {@code @Order} sirasinda — test ve teshis icin acik.
+     * Tek eleme kotasi TUKENMIS olandir: cevabi zaten bildigimiz bir istegi atmanin anlami yok.
+     */
+    List<QuotaAwareVenueProvider> available(Instant now) {
         return providers.stream()
                 .filter(p -> quotas.get(p.id()).map(q -> q.available(now)).orElse(true))
-                // Stabil sort: oran esitse @Order korunur.
-                .sorted(Comparator.comparingDouble(
-                        (QuotaAwareVenueProvider p) -> ratio(p, now)).reversed())
                 .toList();
     }
 
-    private double ratio(QuotaAwareVenueProvider p, Instant now) {
-        Optional<ProviderQuota> q = quotas.get(p.id());
-        // Kota bilinmiyor: bilinenlerin ARKASINA degil, @Order'a gore aralarina girmesin
-        // diye 0 — bilinen kotasi olan her saglayici bilinmeyenden once gelir.
-        return q.map(ProviderQuota::ratio).orElse(0.0);
-    }
-
-    private List<VenueCandidate> searchRanked(GeoPoint center, double radiusKm,
+    private List<VenueCandidate> searchInOrder(GeoPoint center, double radiusKm,
                                               List<ActivityType> types, int limit) {
         Instant now = clock.instant();
         RuntimeException lastFailure = null;
-        for (QuotaAwareVenueProvider provider : ranked(now)) {
+        for (QuotaAwareVenueProvider provider : available(now)) {
             try {
                 List<VenueCandidate> result = provider.search(center, radiusKm, types, limit);
                 if (!result.isEmpty()) {
-                    // Hangi saglayicinin desteyi urettigi loglardan izlenir (kota satirlariyla
-                    // birlikte okununca "neden Google'a dustuk" sorusunu cevaplar).
-                    log.info("venues from {}: {} results for {} r={}km", provider.id(),
-                            result.size(), types, radiusKm);
+                    // Hangi saglayicinin desteyi urettigi + o anda bilinen kotasi. Kota
+                    // satirinin ayri ve PERIYODIK bir log olmasi gerekmiyor: burasi zaten
+                    // yalniz gercek bir arama olunca yazilir ve "neden Google'a dustuk"
+                    // sorusunu tek satirda cevaplar.
+                    log.info("venues from {}: {} results for {} r={}km (quota {})",
+                            provider.id(), result.size(), types, radiusKm,
+                            quotas.get(provider.id())
+                                    .map(q -> q.remaining() + "/" + q.limit() + " "
+                                            + Math.round(q.ratio() * 100) + "% [" + q.source() + "]")
+                                    .orElse("unknown"));
                     return result;
                 }
             } catch (QuotaExceededException e) {

@@ -108,7 +108,7 @@ com.bumpinto                                   (76 sınıf)
 │   │                          WebPrincipals, WebSocketConfig
 │   └── out/
 │       ├── persistence/  15 — *Entity, *Repository, *StoreAdapter
-│       ├── provider/      9 — Foursquare · GooglePlaces · ProviderOrchestrator · ProviderQuotaScheduler
+│       ├── provider/      8 — Foursquare · GooglePlaces · ProviderOrchestrator
 │       │                       ProviderQuotaCache · ProviderQuota · QuotaAwareVenueProvider
 │       │                       ProviderException · QuotaExceededException
 │       └── events/        1 — StompSessionEvents
@@ -450,30 +450,35 @@ en fazla 3 olduğu için ayrı tablo açılmadı; sorgulanmıyor, yalnız okunup
 Üç parça, tek kota modeli (`ProviderQuota{limit, remaining, resetAt, measuredAt, source}`):
 
 ```
-                 ┌──────────────────────┐   her 5 dk (bumpinto.quota.refresh)
-                 │ ProviderQuotaScheduler│──── measureQuota() ──┐
-                 └──────────────────────┘                      ▼
   gerçek arama ── x-ratelimit-* (FSQ) ────────────▶ ProviderQuotaCache ◀── 429 → EXHAUSTED
                                                           │
-                 ┌──────────────────────┐   ratio() sırası │
+                 ┌──────────────────────┐  yalnız "tükendi mi"
   DeckFlow ────▶ │ ProviderOrchestrator │◀─────────────────┘
                  └──────────────────────┘
-                   Foursquare(@Order 1) · GooglePlaces(@Order 2) · …
+                   Foursquare(@Order 1) ──▶ GooglePlaces(@Order 2) ──▶ …
+                   SABİT sıra; kota sıralamayı DEĞİL, yalnız elemeyi etkiler
 ```
+
+> **Periyodik kota ölçümü YOK** (2026-09-06'da kaldırıldı). Kota yalnız gerçek aramaların
+> yanıtından öğrenilir. Eskiden `ProviderQuotaScheduler` 5 dakikada bir `measureQuota()`
+> çağırıyordu; FSQ'nunki **ücretli** bir Pro çağrısıydı ve boş duran bir süreçte bile günde
+> ~288 istek harcıyordu.
 
 - **Kota sinyali sağlayıcıya göre farklı** (2026-09-02 araştırması): FSQ her yanıtta
   `x-ratelimit-limit/remaining/reset` verir (`HEADER`, bedava); Google **hiç header vermez**,
   kota yalnız Cloud Monitoring'de (servis hesabı ister, dakikalar gecikmeli) → yerel sayaç:
   `bumpinto.quota.google-monthly-budget − bu ayki searchNearby` (`BUDGET`); TripAdvisor'da ne
   header ne API var → yalnız 429 ve yerel sayaç. Orkestratör bu farkı görmez.
-- **Scheduler** her aralıkta `measureQuota()` çağırır ama iki fren var, ikisi de para için:
-  cache o pencerede gerçek bir yanıtla tazelendiyse prob atılmaz (FSQ probu **ücretli Pro
-  çağrısı** — 5 dk'da bir boşuna atmak tek başına aylık ücretsiz 500'ü yer); 429 ile kapatılmış
-  sağlayıcı yenilenme anı gelmeden problanmaz. İlk tur da bir aralık sonra (testler API'ye
-  vurmasın).
-- **Orkestratör** kotası tükenmemiş sağlayıcıları `ratio()` (kalan/limit) büyükten küçüğe
-  sıralar; eşitlikte ve kota bilinmiyorken `@Order`. Kotası *bilinen* sağlayıcı bilinmeyenden
-  önce gelir. İlk dolu sonuç kazanır; boş/geçici hata → sıradaki. 429 →
+- **Google sayacı yalnız FATURALANAN çağrıyı sayar** (2xx ve 429). Yetki/sunucu hatası
+  bütçeden düşmez: sayaç eskiden istekten *önce* artıyordu ve anahtar 403 verirken bile aylık
+  bütçe eriyordu.
+- **Orkestratör sırası SABİTTİR**: `@Order`, yani Foursquare → Google. Kota yalnız *eleme*
+  ölçütüdür (tükenmiş sağlayıcı atlanır), sıralama ölçütü **değildir**. Eski sürüm `ratio()`
+  (kalan/limit) ile sıralıyordu ve bu niyetin tersini yapıyordu: Google'ın oranı aylık bütçeden
+  (taze pod'da `1000/1000 = 1.0`), FSQ'nunki saatlik istek limitinden (`179995/180000 =
+  0.99997`) geliyor — iki oran aynı şeyi ölçmediği için Google neredeyse her zaman öne geçiyor
+  ve her arama önce ücretli sağlayıcıya gidiyordu. İlk dolu sonuç kazanır; boş/geçici hata →
+  sıradaki. 429 →
   `QuotaExceededException.resetAt()`'e kadar `EXHAUSTED`. FSQ'da kredi-429'u
   (`x-ratelimit-limit: 0`, kendiliğinden dolmaz → 24 saat) ile saatlik-429'u (`reset`
   başlığı) ayrılır. Herkes hata verirse "mekan yok" **denmez**, istisna yukarı gider (500).

@@ -33,17 +33,33 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
     static final Duration CREDIT_COOLDOWN = Duration.ofHours(24);
 
     /**
-     * FSQ OS Places kategori kimlikleri. Bilerek EKSIK: yalnizca Plan 2'den devralinan bes tur
-     * burada. FSQ taksonomiyi yalnız Observable iframe'inde yayinladigi icin yeni turlerin
-     * kimligi dogrulanamiyor; tahmin kimlik hata vermez, sessizce yanlis mekan listeler.
+     * FSQ kategori kimlikleri — 24 HANELI kimlikler, 5 haneli taksonomi kodlari DEGIL.
+     * {@code places-api.foursquare.com} 5 haneli kodu (eski {@code 13032} vb.) reddediyor:
+     * {@code HTTP 400 "fsq_category_ids: invalid id"}. Kod eski kodlarla kaldigi icin her
+     * COFFEE/FOOD/BAR/WALK/ACTIVITY aramasi 400 aliyordu; Google da ayni anda 403 verince
+     * orkestrator son hatayi yukari atiyor ve "Mekanlari bul" 500 donuyordu.
+     *
+     * <p>Bes kimligin BESI de gercek istekle dogrulandi (2026-09-06, ll=51.8,4.85 r=25km):
+     * her biri 200 dondu ve yanittaki {@code categories} adlari beklenen turu gosterdi.
+     * Ust duzey kimlik alt turleri de kapsar (Park -> National Park, Bar -> Wine Bar).
+     * KOSULLU dogrulama sart: gecersiz kimlik artik 400 verir ama GECERLI-AMA-YANLIS kimlik
+     * 200 ile sessizce yanlis mekan listeler.
+     *
+     * <p>COFFEE icin "Café" DEGIL "Coffee Shop": Hollandaca'da café bir bruin kafe/bardir,
+     * o kimlik COFFEE'yi BAR'a bulastiriyordu (olcumde Stadscafé, Wine Bar dondu).
+     *
+     * <p>FOOD icin ust duzey "Food": ozel "Restaurant" kimligi ({@code ...1c4941735}) olcumde
+     * BOS dondu — mekanlar mutfak alt turleriyle etiketli ve o kimlik onlari toplamiyor.
+     *
+     * <p>Bilerek EKSIK: yalnizca Plan 2'den devralinan bes tur burada.
      * Eslenmemis tur Google'a devredilir (bkz. search + ProviderOrchestrator).
      */
     static final Map<ActivityType, String> CATEGORIES = Map.of(
-            ActivityType.COFFEE, "13032",
-            ActivityType.FOOD, "13065",
-            ActivityType.BAR, "13003",
-            ActivityType.WALK, "16032",
-            ActivityType.ACTIVITY, "10027");
+            ActivityType.COFFEE, "4bf58dd8d48988d1e0931735",
+            ActivityType.FOOD, "4d4b7105d754a06374d81259",
+            ActivityType.BAR, "4bf58dd8d48988d116941735",
+            ActivityType.WALK, "4bf58dd8d48988d163941735",
+            ActivityType.ACTIVITY, "4bf58dd8d48988d1e4931735");
 
     private static final String SEARCH_URL = "https://places-api.foursquare.com/places/search";
     private static final String API_VERSION = "2025-06-17";
@@ -75,31 +91,10 @@ public class FoursquareVenueProvider implements QuotaAwareVenueProvider {
         return ID;
     }
 
-    /**
-     * Kota probu: en ucuz gecerli istek (limit=1, yalniz kimlik alani) — cevap degil,
-     * basliklar okunur. UCRETLI bir Pro cagrisidir; scheduler yalniz cache bayatladiginda
-     * cagirir, gercek aramalar zaten her yanitta {@link #harvest} ile ayni bilgiyi bedava verir.
-     */
-    @Override
-    public ProviderQuota measureQuota() {
-        HttpResponse<JsonNode> response = http.get(SEARCH_URL)
-                .header("Authorization", "Bearer " + apiKey)
-                .header("X-Places-Api-Version", API_VERSION)
-                .header("Accept", "application/json")
-                .queryString("ll", "0,0")
-                .queryString("radius", 100)
-                .queryString("limit", 1)
-                .queryString("fields", "fsq_place_id")
-                .asJson();
-        if (response.getStatus() == 429) {
-            QuotaExceededException e = classify429(response);
-            return ProviderQuota.exhausted(ID, e.resetAt(), clock.instant());
-        }
-        if (!response.isSuccess()) {
-            throw new ProviderException("foursquare probe returned " + response.getStatus());
-        }
-        return harvest(response, ProviderQuota.Source.PROBE);
-    }
+    // Kota PROBU YOK (bilincli): eski surumde limit=1'lik "sadece basliklari oku" istegi vardi
+    // ve scheduler onu 5 dakikada bir atiyordu — ucretli bir Pro cagrisi, bos duran surecte
+    // bile gunde ~288 istek. Ayni basliklar zaten her GERCEK aramanin yanitinda geliyor;
+    // bkz. search icindeki harvest cagrisi.
 
     /** {@code x-ratelimit-*} → ProviderQuota; basliklar yoksa (proxy/degisiklik) null. */
     private ProviderQuota harvest(HttpResponse<?> response, ProviderQuota.Source source) {
