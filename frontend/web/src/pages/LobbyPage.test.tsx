@@ -74,4 +74,14 @@ describe("LobbyPage", () => {
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
   });
+
+  /** B-10 çapalı oturumda `find-venues` önkoşulunu kaldırdı (DeckFlow.findVenues artık
+      SessionCenter.of null mı diye bakar ve çapa varsa asla null olmaz). Kapı bunu bilmezse
+      oturum COLLECTING'de kilitli kalır: backend kabul eder, düğme basılamaz. */
+  it("çapalı oturumda hiç konum olmasa da CTA açık", () => {
+    const view = { ...base, anchored: true, participants: [kerem] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    render(<LobbyPage view={view as never} />);
+    expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
+  });
 });

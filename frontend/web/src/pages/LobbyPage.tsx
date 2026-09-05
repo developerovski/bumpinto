@@ -90,7 +90,13 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                 {t("lobby.openMap")}
               </Button>
             )}
-            <Button onClick={() => void run(findVenues, "lobby.errFind")} disabled={located < 2 || busy}>
+            {/* Çapalı oturumda merkez katılımcılardan türemez, bu yüzden backend'in konum
+                önkoşulu B-10'da DÜŞTÜ (DeckFlow.findVenues). Kapı da bilmeli — yoksa backend
+                kabul ederken düğme kapalı kalır ve oturum COLLECTING'de asılı kalır. */}
+            <Button
+              onClick={() => void run(findVenues, "lobby.errFind")}
+              disabled={(!view.anchored && located < 2) || busy}
+            >
               {t("newSession.findVenues")}
             </Button>
             {error && <ErrorText>{error}</ErrorText>}

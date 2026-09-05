@@ -75,10 +75,18 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
                 if (id) void run(() => removePoint(id), "lobby.errPoint");
               }}
             />
-            <Button onClick={() => void run(findVenues, "lobby.errFind")} disabled={count < 2 || busy}>
+            {/* Çapalı oturumda konum önkoşulu B-10'da düştü (DeckFlow.findVenues). */}
+            <Button
+              onClick={() => void run(findVenues, "lobby.errFind")}
+              disabled={(!view.anchored && count < 2) || busy}
+            >
               {t("newSession.findVenues")}
             </Button>
-            <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
+            {/* Not, düğmeyle AYNI kapıya bağlı: açık bir düğmenin altında "En az 2 konum
+                gerekir." yalan olurdu. */}
+            {!view.anchored && (
+              <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
+            )}
             {error && <ErrorText>{error}</ErrorText>}
           </>
         }

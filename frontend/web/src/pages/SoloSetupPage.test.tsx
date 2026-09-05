@@ -47,4 +47,28 @@ describe("SoloSetupPage", () => {
     expect(await screen.findByTestId("mapview")).toBeInTheDocument();
     window.matchMedia = original;
   });
+
+  /** Çapalı SOLO: host konum vermemiş, elle nokta yok. Backend bu oturumda find-venues'u
+      KABUL EDER (SessionCenter.of çapa varsa asla null dönmez), dolayısıyla düğme açık olmalı. */
+  const anchoredView = {
+    ...view,
+    anchored: true,
+    participants: [
+      { id: "h", displayName: "Mehmet", host: true, hasLocation: false, manual: false },
+    ],
+  } as const;
+
+  it("çapalı oturumda hiç konum olmasa da CTA açık", () => {
+    useSessionStore.setState({ slug: "s9k2m", view: anchoredView as never });
+    render(<SoloSetupPage view={anchoredView as never} />);
+    expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
+  });
+
+  /** Not düğmeyle AYNI kapıya bağlı olmalı: açık bir düğmenin altında "En az 2 konum
+      gerekir." yazmak yalandır (NewSessionPage aynı gerekçeyi taşıyor). */
+  it("çapalı oturumda 'en az 2 konum' notu basılmaz", () => {
+    useSessionStore.setState({ slug: "s9k2m", view: anchoredView as never });
+    render(<SoloSetupPage view={anchoredView as never} />);
+    expect(screen.queryByText("En az 2 konum gerekir.")).not.toBeInTheDocument();
+  });
 });
