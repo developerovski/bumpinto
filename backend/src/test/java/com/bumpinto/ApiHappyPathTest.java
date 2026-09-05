@@ -505,4 +505,59 @@ class ApiHappyPathTest {
                                 + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))
                 .andExpect(status().isCreated());
     }
+
+    /** Konum da capa da yoksa 400. R1: bu test Hibernate Validator'in record uzerinde
+        @AssertTrue getter'ini tariyor olmasina BAGLI — kirmizi kalirsa yedek yol
+        SessionCommands icinde acik kontroldur (plan T5 Step 5). */
+    @Test
+    void createWithoutLocationOrAnchorIsRejected() throws Exception {
+        when(google.verify("gid-anchorless"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("anchorless@bumpinto.test", "Mehmet"));
+        String loginBody = mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-anchorless\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = json.readTree(loginBody).get("accessToken").asString();
+
+        mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /** Capa varsa host konumu ZORUNLU DEGIL: 201 doner, capa goruntude okunur ve etiket
+        find-venues'i beklemeden Lobi'de gorunur. */
+    @Test
+    void createWithAnchorAndNoHostLocationSucceeds() throws Exception {
+        when(google.verify("gid-anchor"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("anchor@bumpinto.test", "Mehmet"));
+        String loginBody = mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-anchor\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = json.readTree(loginBody).get("accessToken").asString();
+
+        String createBody = mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"displayName\":\"Mehmet\","
+                                + "\"anchor\":{\"lat\":52.3676,\"lng\":4.9041,"
+                                + "\"label\":\"Amsterdam\"}}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode created = json.readTree(createBody);
+
+        String viewBody = mvc.perform(get("/api/sessions/" + created.get("slug").asString())
+                        .header(ParticipantTokenFilter.HEADER,
+                                created.get("participantToken").asString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode view = json.readTree(viewBody);
+        assertThat(view.get("anchored").asBoolean()).isTrue();
+        assertThat(view.get("midpointLabel").asString()).isEqualTo("Amsterdam");
+        // Yuvarlanmamis: capa kamu bilgisi (spec K3)
+        assertThat(view.get("midpoint").get("lat").asDouble()).isEqualTo(52.3676);
+        assertThat(view.get("radiusKm").asDouble()).isEqualTo(2.0);
+    }
 }

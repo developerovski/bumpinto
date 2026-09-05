@@ -6,8 +6,11 @@ import java.util.List;
 
 /**
  * Oturumun merkezi ve arama yaricapi — TEK kaynak. Once DeckFlow ve SessionViewAssembler
- * ayni hesabi kopyalayarak yapiyordu; capa iki yere birden eklenseydi ayrisma riski ikiye
- * cikardi.
+ * ayni hesabi kendi iclerinde kopyalayarak yapiyordu; capa iki yere birden eklenseydi
+ * ayrisma riski ikiye cikardi. Ikisi de artik buradan geciyor.
+ *
+ * <p>{@link #radiusKm()} HAM double doner: SessionViewAssembler'in 1 ondaliga yuvarlamasi
+ * sunum karari, DTO sinirinda kalir.
  */
 public record SessionCenter(GeoPoint point, double radiusKm, boolean anchored) {
 

@@ -66,6 +66,19 @@ docs:
     `name` max 60, `displayName` max 40 (`Texts` ile normalize edilir).
     `lat` -90..90, `lng` -180..180 — disina cikan deger 400 doner.
 
+    `lat`/`lng` ile `anchor` arasinda EN AZ BIRI zorunlu; ikisi de yoksa 400 doner.
+
+    `anchor`: `{ "lat": 52.3676, "lng": 4.9041, "label": "Amsterdam" }` — host'un sabit
+    bulusma noktasi. Verilirse merkez ORTA NOKTA DEGIL bu noktadir, arama yaricapi 2 km'ye
+    sabitlenir (yeterli mekan cikmazsa arama x2 merdiveniyle gecici olarak genisler;
+    `radiusKm` yine 2 doner), `find-venues`in "en az 2 konumlu katilimci" onkosulu DUSER ve
+    `SessionView.anchored` `true` doner. `label` opsiyoneldir (max 80): verilirse istemcinin
+    cozdugu addir, sunucu ikinci kez geocode etmez ve onu `midpointLabel` olarak olusturmada
+    yazar. Verilmezse etiket `find-venues` sirasinda capa noktasindan ters-geocode edilir.
+
+    Capali oturumda host kendi konumunu vermeyebilir (`lat`/`lng` atlanir); veren host icin
+    yol suresi yine hesaplanir.
+
     `sessionType`: `GROUP` (varsayilan) | `SOLO`. SOLO'da davet linki calismaz, konumlar
     `points` ile eklenir.
 

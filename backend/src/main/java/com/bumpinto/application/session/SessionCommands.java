@@ -51,15 +51,29 @@ public class SessionCommands {
     public record CreateSessionResult(Session session, Participant hostParticipant) {
     }
 
+    /**
+     * Host'un sabit bulusma noktasi; null ise orta nokta modu. Nokta ve etiket TEK nesnede:
+     * ayri iki parametre olsalardi "koordinat var, ad yok" hali sessizce olusabilirdi ve
+     * createSession 9 yerine 10 parametreye cikardi.
+     */
+    public record Anchor(GeoPoint point, String label) {
+    }
+
     @Transactional
     public CreateSessionResult createSession(UUID hostUserId, String name,
                                              List<ActivityType> types,
                                              SessionType sessionType, GeoPoint hostLocation,
                                              String hostDisplayName, String hostLocationLabel,
-                                             TravelMode hostTravelMode) {
+                                             TravelMode hostTravelMode, Anchor anchor) {
+        // Kolaylik ctor'u degil TAM ctor: capali oturumda merkezin adi find-venues'i
+        // BEKLEMEDEN yazilir, boylece Lobi'de capa aninda gorunur ve sunucu istemcinin
+        // zaten cozdugu adi ikinci kez geocode etmez.
         Session session = store.saveSession(new Session(UUID.randomUUID(), Ids.slug(), hostUserId,
                 Texts.sessionName(name), types, sessionType, SessionStatus.COLLECTING,
-                clock.instant().plus(SESSION_TTL), null, List.of()));
+                clock.instant().plus(SESSION_TTL), null, List.of(),
+                null, null, null,
+                anchor == null ? null : Texts.label(anchor.label()),
+                anchor == null ? null : anchor.point()));
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(hostDisplayName), hostLocation, true,

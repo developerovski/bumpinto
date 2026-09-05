@@ -202,8 +202,8 @@ class WebSecuritySliceTest {
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, null, false, null, null);
-        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new SessionCommands.CreateSessionResult(session, host));
+        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any(),
+                any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
         MvcResult created = mvc.perform(post("/api/sessions")
@@ -229,8 +229,8 @@ class WebSecuritySliceTest {
         Session session = session(hostId);
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, null, false, null, null);
-        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new SessionCommands.CreateSessionResult(session, host));
+        when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any(),
+                any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         MvcResult result = mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + tokens.issueAccessToken(hostId, "m@x.dev"))

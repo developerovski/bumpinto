@@ -29,9 +29,15 @@ runtime:
 docs:
   type: text/markdown
   content: |-
-    Host JWT gerekir. Orta noktayi hesaplar, mekan saglayicisindan desteyi kurar
+    Host JWT gerekir. Merkezi belirler, mekan saglayicisindan desteyi kurar
     ve oturumu SWIPING'e gecirir. Sonuc bulunamazsa yaricap genisletilir
     (en fazla `SearchRadius.MAX_EXPANSIONS`); hic mekan yoksa 422 doner.
+
+    **Capasiz oturumda** merkez konumlu katilimcilarin agirlikli orta noktasi, yaricap
+    yayilimdan gelir ve EN AZ 2 KONUMLU KATILIMCI sarttir (aksi halde 409).
+    **Capali oturumda** (`POST /api/sessions` ile `anchor` verilmisse) merkez capanin
+    kendisidir, yaricap 2 km'ye sabittir ve bu onkosul DUSER — hic konumlu katilimci
+    olmadan da deste kurulur.
 
     `422 NoVenuesFound` yalniz HICBIR aktiviteden mekan gelmediginde doner. Kismi sonuc
     (secilen 3 alandan 1'i bos) BASARIDIR; eksik alan `emptyActivityTypes`'ta bildirilir.
@@ -40,13 +46,15 @@ docs:
 
     Rate limit: 3/dk — bu ucta en dar limit, saglayici kotasini korur.
 
-    Orta noktanin kasaba kelimesi burada BIR KEZ cozulur (Nominatim, `zoom=10`, yuvarlanmis
-    koordinattan) ve `sessions.midpoint_label`'a yazilir; `GET /api/sessions/{slug}` bunu
-    `midpointLabel` olarak doner. Cozulemezse null — akis etkilenmez.
+    Merkezin kasaba kelimesi CAPASIZ oturumda burada BIR KEZ cozulur (Nominatim, `zoom=10`,
+    yuvarlanmis koordinattan) ve `sessions.midpoint_label`'a yazilir; `GET /api/sessions/{slug}`
+    bunu `midpointLabel` olarak doner. Cozulemezse null — akis etkilenmez.
+    Capali oturumda alan ZATEN dolu (host'un `anchor.label`'i olusturmada yazildi): burada
+    ne ezilir ne de ikinci bir ters-geocode istegi atilir.
     Atif: bu alani gosteren her ekranda "© OpenStreetMap contributors".
 
     Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir (ayni `SessionViewAssembler`) —
     `venues[]` burada ilk kez `travelMinutes`, `fairness{maxMinutes,spreadMinutes,longestParticipantId}`,
     `provider`, `category`, `address`, `locality`, `ratingCount`, `hoursToday`, `placeLink` dolu
-    olarak doner (alan detaylari icin `get-session.yml` docs). `deckOrder` adalet siralamasiyla
-    burada ilk kez yazilir.
+    olarak doner (alan detaylari icin `get-session.yml` docs). `deckOrder` burada ilk kez
+    yazilir: capasiz oturumda adalet siralamasiyla, capali oturumda puan siralamasiyla.

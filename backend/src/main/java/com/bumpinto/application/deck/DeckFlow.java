@@ -10,9 +10,9 @@ import com.bumpinto.domain.deck.DeckOrdering;
 import com.bumpinto.domain.deck.DeckOutcome;
 import com.bumpinto.domain.deck.ParticipantLikes;
 import com.bumpinto.domain.geo.Fairness;
-import com.bumpinto.domain.geo.GeoMath;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
+import com.bumpinto.domain.geo.SessionCenter;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.port.PresencePort;
@@ -79,18 +79,16 @@ public class DeckFlow {
             throw new ConflictException("deck already built: " + session.status());
         }
         List<Participant> located = geometryPopulation(session.id());
-        if (located.size() < 2) {
+        SessionCenter center = SessionCenter.of(session.anchor(), located);
+        if (center == null) {
             throw new ConflictException("need at least 2 participants with location");
         }
-        List<GeoPoint> points = located.stream().map(Participant::location).toList();
-        GeoPoint center = GeoMath.centroid(points,
-                located.stream().map(p -> p.travelMode().weight()).toList());
-        double baseKm = SearchRadius.baseKm(points, center);
         store.saveSession(session.withStatus(SessionStatus.SUGGESTING));
 
         List<VenueCandidate> found = List.of();
         for (int attempt = 0; attempt <= SearchRadius.MAX_EXPANSIONS; attempt++) {
-            found = provider.search(center, SearchRadius.expandedKm(baseKm, attempt),
+            found = provider.search(center.point(),
+                    SearchRadius.expandedKm(center.radiusKm(), attempt),
                     session.activityTypes(), DECK_MAX);
             if (found.size() >= DECK_MIN) {
                 break;
@@ -108,9 +106,9 @@ public class DeckFlow {
                 .sorted(canonicalOrder(VenueCandidate::rating, VenueCandidate::externalId))
                 .limit(DECK_MAX)
                 .toList();
-        // Sira = adalet (spec §4.5): en uzun yol → fark → esitlerde oturum tohumlu karisik.
-        List<VenueCandidate> ordered = DeckOrdering.fairnessFirst(shortlist,
-                c -> fairnessOf(located, c.location()), seedOf(session));
+        // Sira = adalet (spec §4.5) ya da capalida puan — tek karar noktasi deckOrder.
+        List<VenueCandidate> ordered = deckOrder(session, shortlist,
+                VenueCandidate::location, located);
 
         List<Venue> venues = new ArrayList<>(ordered.size());
         for (int i = 0; i < ordered.size(); i++) {
@@ -121,9 +119,14 @@ public class DeckFlow {
                     c.hoursToday(), c.placeLink(), c.activityType()));
         }
         List<Venue> saved = deck.saveVenues(venues);
-        // Etiket BIR KEZ burada cozulur: orta nokta bundan sonra degismez (konumlar donuyor)
-        // ve her SessionView okumasinda ag istegi atmak politikaya da mantiga da aykiri olurdu.
-        String label = geocoder.label(center).orElse(null);
+        // Etiket capasiz oturumda BIR KEZ burada cozulur: orta nokta bundan sonra degismez
+        // (konumlar donuyor) ve her SessionView okumasinda ag istegi atmak politikaya da
+        // mantiga da aykiri olurdu.
+        // Etiket ZATEN varsa (capali oturumda olusturmada yazildi) dokunulmaz: hem ag
+        // cagrisi bosa gider hem de host'un yazdigi ad ters-geocode ciktisiyla ezilirdi.
+        // Capasiz oturumda alan bu noktada hep null oldugu icin davranis degismez.
+        String label = session.midpointLabel() != null ? session.midpointLabel()
+                : geocoder.label(center.point()).orElse(null);
         store.saveSession(session.withStatus(SessionStatus.BROWSING).withMidpointLabel(label));
         events.publish(slug, SessionEvent.venuesReady(saved.size()));
         return saved;
@@ -166,8 +169,7 @@ public class DeckFlow {
         List<Venue> canonical = deck.venuesOf(session.id()).stream()
                 .sorted(canonicalOrder(Venue::rating, Venue::externalId))
                 .toList();
-        List<UUID> ids = DeckOrdering.fairnessFirst(canonical,
-                        v -> fairnessOf(located, v.location()), seedOf(session))
+        List<UUID> ids = deckOrder(session, canonical, Venue::location, located)
                 .stream().map(Venue::id).toList();
         deck.reorderVenues(session.id(), ids);
         store.saveSession(session.withStatus(SessionStatus.SWIPING));
@@ -364,6 +366,25 @@ public class DeckFlow {
         return id.getMostSignificantBits() ^ id.getLeastSignificantBits();
     }
 
+    /**
+     * Deste sirasi. Capali oturumda ADALET AYIRT ETMEZ: konum onkosulu dustugu icin
+     * katilimcilarin HICBIRI konum vermemis olabilir, o zaman Fairness her mekan icin (0,0)
+     * doner, fairnessFirst desteyi tek esitlik grubu gorur ve sira tohumlu karisima duser.
+     * Konum veren olsa bile merkez artik onlardan turemiyor, yani adalet sirasi capayi temsil
+     * etmez. O yuzden capalida kanonik (puan) sirasi korunur. (Araba icin 2 km'lik daire
+     * zaten TravelMinutes.STEP'in altinda kalir; yaya/bisiklette kalmaz — gerekce bu degil.)
+     *
+     * <p>findVenues ve shuffle IKISI de buradan gecer: dallanmayi iki yere ayri yazmak,
+     * birini unutup destenin iki cagri arasinda farkli siralanmasina yol acardi.
+     */
+    private <T> List<T> deckOrder(Session session, List<T> canonical,
+                                  Function<T, GeoPoint> location, List<Participant> located) {
+        if (session.anchor() != null) {
+            return canonical;
+        }
+        return DeckOrdering.fairnessFirst(canonical,
+                t -> fairnessOf(located, location.apply(t)), seedOf(session));
+    }
 
     /**
      * TEK kanonik siralama: puan azalan (yoksa sona), sonra sabit kimlik (externalId) — hem

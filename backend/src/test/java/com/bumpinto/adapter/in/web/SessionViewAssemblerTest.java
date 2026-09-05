@@ -347,4 +347,41 @@ class SessionViewAssemblerTest {
 
         assertThat(assembler.toView(snap, null).emptyActivityTypes()).isEmpty();
     }
+
+    /** Capa host'un ACIKCA yazdigi kamu bilgisi: yuvarlamak harita cemberini secilen
+        yerden ~1 km kaydirirdi ve korudugu bir sey yok. */
+    @Test
+    void anchoredMidpointIsExactAndFlagged() {
+        GeoPoint amsterdam = new GeoPoint(52.36761, 4.90412);
+        Session s = new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(3600), null, List.of(),
+                null, null, null, "Amsterdam", amsterdam);
+
+        ApiDtos.SessionView view = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(), List.of(), Map.of(), Map.of(), Map.of()), null);
+
+        assertThat(view.anchored()).isTrue();
+        assertThat(view.midpoint().lat()).isEqualTo(52.36761);
+        assertThat(view.midpoint().lng()).isEqualTo(4.90412);
+        // SessionCenter.ANCHOR_RADIUS_KM paket-ozel: bu katmandan okunamaz, 2.0 yazilir.
+        assertThat(view.radiusKm()).isEqualTo(2.0);
+    }
+
+    /** Capasiz oturumda yuvarlama AYNEN durur — gizlilik kurali degismedi. */
+    @Test
+    void unanchoredMidpointStaysRounded() {
+        Session s = new Session(UUID.randomUUID(), "s2", UUID.randomUUID(), "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(3600), null, List.of());
+
+        ApiDtos.SessionView view = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false),
+                        person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false)),
+                List.of(), Map.of(), Map.of(), Map.of()), null);
+
+        assertThat(view.anchored()).isFalse();
+        // 2 ondalik = ~1 km (TravelMinutes.approx)
+        assertThat(view.midpoint().lat()).isEqualTo(Math.round(view.midpoint().lat() * 100) / 100.0);
+    }
 }

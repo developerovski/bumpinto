@@ -9,6 +9,8 @@ public final class SearchRadius {
     static final double ABSOLUTE_MAX_KM = 40.0;
     public static final int MAX_EXPANSIONS = 3;
     private static final double SPREAD_FACTOR = 0.25;
+    // Besinci yaricap sabiti burada DEGIL: capali oturumun sabiti
+    // SessionCenter.ANCHOR_RADIUS_KM — o bir arama merdiveni degil, capa semantigi.
 
     private SearchRadius() {
     }

@@ -7,6 +7,7 @@ import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -38,6 +39,15 @@ public final class ApiDtos {
         return secret == null ? "null" : "***";
     }
 
+    /**
+     * Host'un sabit bulusma noktasi. Lat/lng birlikte zorunlu — yarim capa yok.
+     * {@code label} istemcinin Nominatim'den okudugu ad; sunucu ikinci kez cozmez.
+     */
+    public record AnchorDto(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
+                            @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
+                            @Size(max = 80) String label) {
+    }
+
     public record CreateSessionRequest(
                                        /**
                                         * 1-3 ilgi alani, TEKRARSIZ; siralama host'un secim
@@ -50,12 +60,25 @@ public final class ApiDtos {
                                        @Size(max = 60) String name,
                                        /** null → GROUP (M-1 mobil istemcisi alani gondermez). */
                                        SessionType sessionType,
-                                       @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
-                                       @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng,
+                                       /** Capa varsa opsiyonel; bkz. {@link #isOriginPresent()}. */
+                                       @DecimalMin("-90") @DecimalMax("90") Double lat,
+                                       @DecimalMin("-180") @DecimalMax("180") Double lng,
                                        @NotBlank @Size(max = 40) String displayName,
                                        @Size(max = 80) String locationLabel,
                                        /** null → CAR (spec §4.5b varsayilani). */
-                                       TravelMode travelMode) {
+                                       TravelMode travelMode,
+                                       /** null → orta nokta modu (bugunku davranis). */
+                                       @Valid AnchorDto anchor) {
+
+        /**
+         * Konum ya da capa: ikisinden biri sart. Capali oturumda host kendi konumunu
+         * vermeyebilir (isteyen verir, yol suresi ona gosterilir); capasiz oturumda merkez
+         * konumlardan turedigi icin host konumu zorunludur.
+         */
+        @AssertTrue(message = "either location or anchor is required")
+        public boolean isOriginPresent() {
+            return (lat != null && lng != null) || anchor != null;
+        }
     }
 
     public record CreateSessionResponse(String slug, UUID sessionId, UUID participantId,
@@ -161,7 +184,11 @@ public final class ApiDtos {
                               List<ParticipantDto> participants, List<VenueDto> venues,
                               List<UUID> runoffVenueIds, UUID decidedVenueId,
                               Map<UUID, Long> voteTally,
-                              /** Konumu olan >=2 nokta varsa; yoksa null. */
+                              /**
+                               * Oturumun merkezi: capaliysa capanin kendisi (katilimci
+                               * gerekmez), capasizsa konumu olan &gt;=2 noktanin orta noktasi;
+                               * ikisi de yoksa null.
+                               */
                               GeoPointDto midpoint, Double radiusKm,
                               List<UUID> runoffVotedParticipantIds,
                               /** Istegi yapanin bu oturumdaki satiri; uye degilse null. */
@@ -173,7 +200,9 @@ public final class ApiDtos {
                               /** Mekan -> begeni sayisi; YALNIZ DECIDED'da dolu. */
                               Map<UUID, Long> likeCounts,
                               /** Secili ama hic mekan uretmemis alanlar; BROWSING oncesi bos. */
-                              List<ActivityType> emptyActivityTypes) {
+                              List<ActivityType> emptyActivityTypes,
+                              /** Merkez host'un sectigi sabit nokta mi (orta nokta degil). */
+                              boolean anchored) {
     }
 
     /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si, mekan YOK. */

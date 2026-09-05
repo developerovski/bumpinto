@@ -2,9 +2,8 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.Fairness;
-import com.bumpinto.domain.geo.GeoMath;
 import com.bumpinto.domain.geo.GeoPoint;
-import com.bumpinto.domain.geo.SearchRadius;
+import com.bumpinto.domain.geo.SessionCenter;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.session.ActivityType;
@@ -36,18 +35,14 @@ public class SessionViewAssembler {
                 .filter(Participant::hasLocation).toList();
 
         // Orta nokta ONCE: katilimci satirlarindaki midpointMinutes buna dayanir.
-        ApiDtos.GeoPointDto midpoint = null;
-        Double radiusKm = null;
-        GeoPoint center = null;
-        if (located.size() >= 2) {
-            List<GeoPoint> points = located.stream().map(Participant::location).toList();
-            // Hiza TERS agirlik (spec §4.5b): yavas gelen orta noktayi kendine ceker.
-            List<Double> weights = located.stream().map(p -> p.travelMode().weight()).toList();
-            center = GeoMath.centroid(points, weights);
-            midpoint = approx(center);
-            radiusKm = Math.round(SearchRadius.baseKm(points, center) * 10) / 10.0;
-        }
-        GeoPoint midpointFor = center;
+        SessionCenter center = SessionCenter.of(snap.session().anchor(), located);
+        // Capali merkez YUVARLANMAZ: yuvarlama gizlilik onlemidir ve capa kamu bilgisidir.
+        ApiDtos.GeoPointDto midpoint = center == null ? null
+                : center.anchored()
+                        ? new ApiDtos.GeoPointDto(center.point().lat(), center.point().lng())
+                        : approx(center.point());
+        Double radiusKm = center == null ? null : Math.round(center.radiusKm() * 10) / 10.0;
+        GeoPoint midpointFor = center == null ? null : center.point();
         Set<UUID> present = presence.presentIn(snap.session().id());
 
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
@@ -83,7 +78,7 @@ public class SessionViewAssembler {
                 WebPrincipals.viewerOf(snap, auth),
                 snap.session().midpointLabel(), snap.session().decisionKind(),
                 snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts(),
-                emptyActivityTypes(snap));
+                emptyActivityTypes(snap), center != null && center.anchored());
     }
 
     /**

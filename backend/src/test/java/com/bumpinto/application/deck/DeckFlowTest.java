@@ -5,6 +5,7 @@ import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.domain.deck.DecisionEngine;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.domain.session.ActivityType;
@@ -24,6 +25,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -549,5 +551,79 @@ class DeckFlowTest {
         flow.shuffle("s1", host.id());
 
         assertThat(store.sessions.get(session.id()).status()).isEqualTo(SessionStatus.SWIPING);
+    }
+
+    /** Capali destede 2 km'lik daire icinde mekanlar arasi yol farki TravelMinutes.STEP'in
+        (5 dk) altinda kalir: fairnessFirst her mekani berabere gorup sirayi tohumlu karisima
+        birakirdi. Sessizce dejenere olmasindansa acikca puan sirasi. */
+    @Test
+    void anchoredDeckIsOrderedByRating() {
+        providerResult.addAll(List.of(cand(0, 4.2), cand(1, 4.8), cand(2, 3.9), cand(3, 4.5),
+                cand(4, 4.1), cand(5, 4.6)));
+        Session anchored = store.saveSession(new Session(UUID.randomUUID(), "anch", hostUser,
+                null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING, Instant.now().plusSeconds(3600), null, List.of(),
+                null, null, null, "Amsterdam", new GeoPoint(52.3676, 4.9041)));
+        Participant host = store.saveParticipant(new Participant(UUID.randomUUID(),
+                anchored.id(), "Mehmet", new GeoPoint(51.6978, 5.3037), true, null, false,
+                null, TravelMode.CAR, hostUser));
+
+        List<Venue> venues = flow.findVenues(anchored.slug(), host.id());
+
+        assertThat(venues).isNotEmpty();
+        assertThat(venues).extracting(Venue::rating).isSortedAccordingTo(
+                Comparator.nullsLast(Comparator.reverseOrder()));
+    }
+
+    /** Capali oturumda HIC konumlu katilimci olmasa da deste kurulur — onkosul duser. */
+    @Test
+    void anchoredSessionFindsVenuesWithoutAnyLocation() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        Session anchored = store.saveSession(new Session(UUID.randomUUID(), "anch0", hostUser,
+                null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING, Instant.now().plusSeconds(3600), null, List.of(),
+                null, null, null, "Amsterdam", new GeoPoint(52.3676, 4.9041)));
+        Participant host = store.saveParticipant(new Participant(UUID.randomUUID(),
+                anchored.id(), "Mehmet", null, true, null, false, null, TravelMode.CAR,
+                hostUser));
+
+        assertThat(flow.findVenues(anchored.slug(), host.id())).isNotEmpty();
+    }
+
+    /** Capasiz oturumda onkosul AYNEN durur. */
+    @Test
+    void unanchoredSessionStillNeedsTwoLocations() {
+        Session plain = store.saveSession(new Session(UUID.randomUUID(), "plain", hostUser,
+                null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING, Instant.now().plusSeconds(3600), null, List.of()));
+        Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), plain.id(),
+                "Mehmet", new GeoPoint(51.6978, 5.3037), true, null, false, null,
+                TravelMode.CAR, hostUser));
+
+        assertThatThrownBy(() -> flow.findVenues(plain.slug(), host.id()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("at least 2 participants");
+    }
+
+    /** Capali oturumda etiket olusturmada yazildi: find-venues onu EZMEZ ve gereksiz bir
+        ters-geocode agi cagrisi yapmaz. */
+    @Test
+    void anchoredSessionKeepsCreationLabelAndSkipsGeocode() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+        Session anchored = store.saveSession(new Session(UUID.randomUUID(), "anchlbl", hostUser,
+                null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                SessionStatus.COLLECTING, Instant.now().plusSeconds(3600), null, List.of(),
+                null, null, null, "Amsterdam", new GeoPoint(52.3676, 4.9041)));
+        Participant host = store.saveParticipant(new Participant(UUID.randomUUID(),
+                anchored.id(), "Mehmet", null, true, null, false, null, TravelMode.CAR,
+                hostUser));
+
+        flow.findVenues(anchored.slug(), host.id());
+
+        assertThat(store.sessionBySlug("anchlbl").orElseThrow().midpointLabel())
+                .isEqualTo("Amsterdam");
+        // geocoder gercek bir Mockito mock'u degil (FakeStores.FakeReverseGeocoder): cagri
+        // sayaci verify(never()) ile ayni seyi soyler.
+        assertThat(geocoder.calls).isZero();
     }
 }

@@ -1,7 +1,7 @@
 # BumpInto Backend — Mimari
 
-Son güncelleme: 2026-09-04 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 + Plan 15 (B-7)
-+ Plan 18 (B-8) `done`, 265/265 test yeşil.
+Son güncelleme: 2026-09-05 · Karşılığı olan kod: Plan 1 + Plan 2 + Plan 9 + Plan 10 + Plan 15 (B-7)
++ Plan 18 (B-8) + Plan 22 (B-10) `done`, 303/303 test yeşil.
 
 ## Bu belge ne değildir
 
@@ -87,6 +87,7 @@ com.bumpinto                                   (76 sınıf)
 ├── domain/                                    22 sınıf — saf Java
 │   ├── deck/      DecisionEngine · DeckOutcome · ParticipantLikes
 │   ├── geo/       GeoPoint · GeoMath · SearchRadius · TravelEstimate
+│   │              SessionCenter (merkezin + yarıçapın TEK kaynağı, B-10)
 │   ├── port/      SessionStorePort · DeckStorePort · UserStorePort
 │   │              VenueProviderPort · SessionEventsPort · SessionEvent
 │   ├── session/   Session · SessionStatus · SessionType · Participant · ActivityType
@@ -236,14 +237,18 @@ Sıralama tamamen deterministiktir (son kırıcı `UUID::compareTo`) — aynı g
 
 `SearchRadius.baseKm` = (katılımcıların merkeze en uzak mesafesi × 0.25), **1–10 km** arasına
 kırpılır. Yeterli mekan bulunamazsa `expandedKm` ile en fazla 3 kez ikiye katlanır, **mutlak
-tavan 40 km**. `DeckFlow` en az 6, en çok 20 mekanlık deste hedefler.
+tavan 40 km**. `DeckFlow` en az 6, en çok 20 mekanlık deste hedefler. Bu taban yalnız
+**çapasız** oturum içindir; `Session.anchor` doluysa merkez ve yarıçap çapadan gelir
+(yarıçap sabit 2 km) — bkz. §7 "Çapalı oturum ve merkezin tek kaynağı".
 
 ### Deste popülasyonu kuralı: geometri / oy ikilisi
 
 İki ayrı katılımcı kümesi vardır ve karıştırılmamalı:
 
 - **Geometri kümesi** — konumu olan **tüm** katılımcılar (elle eklenen `manual=true` noktalar
-  dahil). `midpoint`, `radiusKm` ve mekan araması bu kümeden hesaplanır.
+  dahil). `midpoint`, `radiusKm` ve mekan araması bu kümeden hesaplanır — **çapasız**
+  oturumda; `Session.anchor` doluysa `SessionCenter.of` bu kümeye hiç bakmaz, merkez ve
+  yarıçap çapadan gelir (bkz. §7 "Çapalı oturum ve merkezin tek kaynağı").
 - **Oy kümesi** — deste akışına giren katılımcılar (`manual=false`, konumu olan). `done/total`
   sayımı, runoff finishers ve karar motoru girdisi **hep** bu kümeyi kullanır — aksi halde
   konumsuz veya elle eklenmiş biri yüzünden eksik/yanlış oyla erken karar çıkar.
@@ -262,11 +267,14 @@ TravelMinutes  between(from, mode, to) = round5( fromCrowKm( distance(approx(fro
 Fairness       { maxMinutes (minimax, birincil), spreadMinutes (max−min, ikincil), longestParticipantId }
 DeckOrdering   maxMinutes ↑ → spreadMinutes ↑ → eşitlerde Random(seedOf(session)) ile karışık
                (seedOf = session.id() MSB ^ LSB — 128 bitin ikisi XOR'lanır, id değişmedikçe sabit)
-Session        + decidedAt, decisionKind, runoffReason, midpointLabel
+Session        + decidedAt, decisionKind, runoffReason, midpointLabel, anchor (null = orta nokta)
+SessionCenter  of(anchor, located) → çapa varsa {çapa, 2 km, anchored} ; yoksa {centroid,
+               baseKm, false} ; çapa yok + <2 konum → null (çağıran 409'a çevirir)
 DecisionKind   UNANIMOUS | SINGLE_LIKE | RUNOFF | FORCED | PARTIAL
 RunoffReason   INTERSECTION | FALLBACK      (INTERSECTION finalist tavanı = 4)
 Venue          + category, address, locality, ratingCount, hoursToday, placeLink
 SessionView    + midpointLabel, decisionKind, decidedAt, runoffReason, likeCounts (yalnız DECIDED)
+               + anchored (true → midpoint yuvarlanmaz, radiusKm sabit 2.0)
 ParticipantDto + travelMode, midpointMinutes
 VenueDto       + provider, category, address, locality, ratingCount, hoursToday, placeLink, fairness
 ```
@@ -281,6 +289,38 @@ sırasını belirler, karar motorunun girdisine girmez (bkz. §14 borç tablosu 
 çalışmaz). SOLO'da host `POST /points` ile başkalarının konumunu elle ekler: token verilmez,
 oy vermez (`manual=true`), yalnız geometri kümesindedir. `COLLECTING` dışında veya `GROUP`'ta
 eklenemez/silinemez (409); silme yalnız `manual=true` satırlar için, host'un kendi satırı hariç.
+
+### Çapalı oturum ve merkezin tek kaynağı (B-10, 2026-09-05)
+
+`Session.anchor` (nullable `GeoPoint`) doluysa oturumun merkezi katılımcı orta noktası
+değil o noktadır. Üç sonuç:
+
+- **Yarıçap sabit** (`SessionCenter.ANCHOR_RADIUS_KM = 2 km`). Yayılım kuralı çapada
+  saçmalar: Amsterdam çapası + dağınık katılımcılar tabanı 10 km'ye çakıp 40 km'ye
+  genişletirdi. Kırsal çapada mekan çıkmazsa `SearchRadius.expandedKm` zaten ×2 açıyor.
+- **`midpoint` yuvarlanmaz.** Yuvarlama gizlilik önlemidir ve özel konumlardan türeyen
+  noktayı korur; çapa host'un açıkça yazdığı kamu bilgisidir, yuvarlamak harita çemberini
+  seçilen yerden ~1 km kaydırmaktan başka bir şey yapmaz.
+- **Deste sırası puana geçer.** Çapalı oturumda katılımcıların hiçbiri konum vermemiş
+  olabilir — `find-venues`in "en az 2 konumlu katılımcı" önkoşulu düştüğü için bu normal
+  bir durumdur. O hâlde `Fairness.of(boş harita)` her mekan için `(0, 0)` döner,
+  `DeckOrdering.fairnessFirst` desteyi tek bir eşitlik grubu görüp tamamını tohumlu
+  karışıma atar. Konum veren katılımcılar olsa bile merkez artık onlardan türemediği için
+  adalet sırası çapayı temsil etmez. Bu yüzden çapalıda kanonik (puan) sırası korunur.
+  `DeckFlow.deckOrder` bu dallanmayı **tek yerde** yapar — `findVenues` ve `shuffle` ikisi
+  de oradan geçer.
+
+Bu kod tabanında **`midpoint` = oturumun merkezi**; çapa onu üretme yollarından biridir.
+`SessionView.midpointLabel` alanı da bu yüzden yeniden adlandırılmadı: kablodaki alanı
+değiştirmenin bedeli kozmetik kazancından büyük.
+
+`SessionCenter` merkezi hesaplayan **tek** yerdir. Öncesinde `DeckFlow` ve
+`SessionViewAssembler` aynı ağırlıklı centroid + yarıçap hesabını kopyalıyordu; çapayı iki
+yere birden eklemek ayrışma riskini ikiye çıkarırdı.
+
+**Garanti edilmeyen:** çapalı oturumda seçilen noktanın çevresinde mekan bulunacağı.
+Bulunamazsa `NoVenuesFoundException` döner — telafi amaçlı ikinci bir Places çağrısı
+yapılmaz (B-9 bütçe kısıtı).
 
 ---
 
@@ -590,7 +630,7 @@ puan/fiyat/foto **yoktur** ve kart bunu açıkça söyler.
 
 ## 13. Test mimarisi
 
-265 test. Katman katman:
+303 test. Katman katman:
 
 | Tür | Kapsam | Örnek |
 |---|---|---|

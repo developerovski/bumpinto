@@ -39,14 +39,26 @@ docs:
 
     Bu istek destedeki ilk mekani `venueId` degiskenine yazar; Deck istekleri onu kullanir.
 
-    Yeni alanlar: `sessionType`, `midpoint{lat,lng}` + `radiusKm` (konumlu >=2 nokta varsa),
+    Yeni alanlar: `sessionType`, `midpoint{lat,lng}` + `radiusKm` (capa varsa hep; capasizda
+    konumlu >=2 nokta varsa), `anchored` (asagida),
     `participants[].approxLocation` (2 ondalik), `locationLabel`, `manual`,
     `participants[].travelMode` (`WALK|BIKE|EBIKE|TRANSIT|CAR`, varsayilan `CAR`),
     `runoffVotedParticipantIds` (yalniz RUNOFF'ta dolu; kimin kilitledigi, ne sectigi degil).
     Durum listesine `BROWSING` eklendi.
 
-    Gizlilik: `midpoint` ve `radiusKm` de yuvarlanir (2 ondalik / 1 ondalik). Ham orta nokta
-    2 kisilik oturumda kendi konumunu bilen tarafa digerinin tam koordinatini verirdi.
+    Gizlilik: CAPASIZ oturumda `midpoint` ve `radiusKm` yuvarlanir (2 ondalik / 1 ondalik).
+    Ham orta nokta 2 kisilik oturumda kendi konumunu bilen tarafa digerinin tam koordinatini
+    verirdi.
+
+    `anchored` (boolean): merkez host'un sectigi sabit nokta mi, yoksa katilimci orta noktasi
+    mi. `true` iken:
+    - `midpoint` capanin TAM koordinatidir, YUVARLANMAZ — yuvarlama ozel konumlari korumak
+      icindir, capa ise host'un acikca yazdigi kamu bilgisidir ve yuvarlamak harita cemberini
+      secilen yerden ~1 km kaydirirdi.
+    - `radiusKm` sabit `2.0`; katilimci yayilimindan hesaplanmaz.
+    - `midpoint` HIC konumlu katilimci olmadan da dolu gelir.
+    - UI'da `FairnessBadge` cizilmez (rozet mekanlari kiyaslar; sabit bir daire icinde 20
+      kartin hepsinde ayni seyi yazardi). `travelMinutes` ve tek mekanlik adalet ozeti kalir.
 
     `viewer{participantId, host}`: istegi yapanin oturumdaki satiri — katilimci token'i kendi
     satiri, host JWT host satiri; uye degilse null. Sayfa yenilemede 'ben kimim' bunu kullanir.
@@ -54,14 +66,19 @@ docs:
     `venues[].travelMinutes`: katilimci id -> ~dakika (5 dk basamagi, yuvarlanmis konumdan,
     kisinin `travelMode`'una gore). KONUMU OLAN HERKES icindir — istegi yapan dahil.
     `venues[].fairness`: `{ maxMinutes, spreadMinutes, longestParticipantId }` (spec §4.1).
-    `participants[].midpointMinutes`: kisinin yuvarlanmis konumundan agirlikli ORTA NOKTAYA,
-    kendi `travelMode`'uyla, 5 dk basamaginda; konumu yoksa ya da konumlu katilimci 2'den azsa null.
+    `participants[].midpointMinutes`: kisinin yuvarlanmis konumundan oturumun MERKEZINE
+    (capasizda agirlikli orta nokta, capalida capa), kendi `travelMode`'uyla, 5 dk
+    basamaginda; kisinin konumu yoksa null — capasiz oturumda ayrica konumlu katilimci
+    2'den azsa null (merkez yok).
     Lobi/Bekle karti "herkes ~min–max dk" araligini bu alandan yazar.
     **Alan adlari W-6 ile sozlesme:** katilimci/oturum uclarinda `travelMode`
     (`POST /participants`, `PUT /location`, `POST /sessions`), profil ucunda `defaultTravelMode`
     (`GET`/`PUT /api/me`). Baska bir ad kullanilmaz.
-    `venues[]` sirasi (`deckOrder`) ADALET onceliklidir: en uzun yol artan → fark artan →
-    esitlerde oturum tohumlu sabit karisim. Herkes ayni sirayi gorur.
+    `venues[]` sirasi (`deckOrder`) capasiz oturumda ADALET onceliklidir: en uzun yol artan →
+    fark artan → esitlerde oturum tohumlu sabit karisim. Capali oturumda (`anchored: true`)
+    sira PUANDIR (puan azalan, esitlerde sabit kimlik): merkez katilimcilardan turemedigi ve
+    hic konum verilmemis olabilecegi icin adalet sirasi orada bir sey ayirt etmez. Her iki
+    halde de herkes ayni sirayi gorur.
 
     `decisionKind`: `UNANIMOUS|SINGLE_LIKE|RUNOFF|FORCED|PARTIAL` (yalniz DECIDED'da dolu).
     `decidedAt`: karar ani (ISO-8601, yalniz DECIDED).
@@ -71,7 +88,9 @@ docs:
     "kim kilitledi" bilgisi `runoffVotedParticipantIds`'ten, kendi secimin `viewer.runoffVoteVenueId`'den
     okunur. Baskasinin ne sectigi API'de HIC yoktur.
 
-    `midpointLabel`: orta noktanin kasaba/semt kelimesi (null olabilir).
+    `midpointLabel`: merkezin adi (null olabilir). Capasiz oturumda `find-venues`'te
+    cozulur — yani deste kurulmadan once null'dur; capali oturumda host'un `anchor.label`'i
+    olusturmada yazildigi icin Lobi'de ANINDA gorunur.
 
     `venues[].provider`: `google` | `foursquare` — kart altindaki atif satirini belirler
     ("Google Maps" / "Powered by Foursquare"; saglayici puanlari KARISTIRILMAZ).

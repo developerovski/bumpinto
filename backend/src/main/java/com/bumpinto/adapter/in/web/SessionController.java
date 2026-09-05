@@ -57,11 +57,19 @@ class SessionController {
     ResponseEntity<ApiDtos.CreateSessionResponse> create(@AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client,
             @Valid @RequestBody ApiDtos.CreateSessionRequest request) {
+        // Capali oturumda lat/lng gelmeyebilir: dogrudan new GeoPoint(...) unboxing NPE
+        // atardi (500), oysa dogru cevap konumsuz host'tur.
+        GeoPoint hostLocation = request.lat() == null && request.lng() == null
+                ? null : new GeoPoint(request.lat(), request.lng());
+        SessionCommands.Anchor anchor = request.anchor() == null ? null
+                : new SessionCommands.Anchor(
+                        new GeoPoint(request.anchor().lat(), request.anchor().lng()),
+                        request.anchor().label());
         SessionCommands.CreateSessionResult result = commands.createSession(
                 WebPrincipals.accountId(jwt), request.name(), request.activityTypes(),
                 request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
-                new GeoPoint(request.lat(), request.lng()), request.displayName(),
-                request.locationLabel(), request.travelMode());
+                hostLocation, request.displayName(),
+                request.locationLabel(), request.travelMode(), anchor);
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, result.session().slug(),
