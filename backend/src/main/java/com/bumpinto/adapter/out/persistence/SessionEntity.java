@@ -28,4 +28,6 @@ class SessionEntity {
     String decisionKind;
     String runoffReason;
     String midpointLabel;
+    Double anchorLat;
+    Double anchorLng;
 }

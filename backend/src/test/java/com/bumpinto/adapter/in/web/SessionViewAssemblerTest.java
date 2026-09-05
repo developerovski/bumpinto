@@ -229,7 +229,7 @@ class SessionViewAssemblerTest {
         Session s = new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
                 List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.RUNOFF,
                 Instant.parse("2026-09-04T10:00:00Z"), null, List.of(V1),
-                null, null, RunoffReason.INTERSECTION, "Eindhoven");
+                null, null, RunoffReason.INTERSECTION, "Eindhoven", null);
         Participant me = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
         Participant other = person(s.id(), new GeoPoint(51.69, 5.30), "Den Bosch", false);
 

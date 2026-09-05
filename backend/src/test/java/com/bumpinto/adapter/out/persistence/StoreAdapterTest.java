@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -328,6 +329,34 @@ class StoreAdapterTest {
                 "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
+    }
+
+    /** Capa yazilip okunur; yarim capa domain'de zaten uretilemez (GeoPoint), kisit son kapi. */
+    @Test
+    void anchorSurvivesRoundTrip() {
+        GeoPoint anchor = new GeoPoint(52.3676, 4.9041);
+        Session saved = sessions.saveSession(new Session(UUID.randomUUID(), "anchor1",
+                users.upsertByEmail("anchor1@x.dev", "Anchor"), "Amsterdam kahvesi",
+                List.of(ActivityType.COFFEE),
+                SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plus(Duration.ofHours(24)), null, List.of(),
+                null, null, null, "Amsterdam", anchor));
+
+        Session read = sessions.sessionBySlug(saved.slug()).orElseThrow();
+        assertThat(read.anchor()).isEqualTo(anchor);
+        assertThat(read.midpointLabel()).isEqualTo("Amsterdam");
+    }
+
+    /** Capasiz oturum null okur — "0,0" gibi bir yalan koordinat uretilmez. */
+    @Test
+    void missingAnchorReadsBackAsNull() {
+        Session saved = sessions.saveSession(new Session(UUID.randomUUID(), "anchor0",
+                users.upsertByEmail("anchor0@x.dev", "Anchorless"), "Orta nokta",
+                List.of(ActivityType.COFFEE),
+                SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plus(Duration.ofHours(24)), null, List.of()));
+
+        assertThat(sessions.sessionBySlug(saved.slug()).orElseThrow().anchor()).isNull();
     }
 
     private Session newSession(String slug) {

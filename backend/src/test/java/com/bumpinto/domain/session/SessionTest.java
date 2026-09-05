@@ -1,5 +1,6 @@
 package com.bumpinto.domain.session;
 
+import com.bumpinto.domain.geo.GeoPoint;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -40,5 +41,34 @@ class SessionTest {
                 .containsExactly(ActivityType.COFFEE, ActivityType.BAR);
         assertThat(session.decided(venue, DecisionKind.FORCED, Instant.now()).activityTypes())
                 .containsExactly(ActivityType.COFFEE, ActivityType.BAR);
+    }
+
+    private static Session anchored(GeoPoint anchor) {
+        return new Session(UUID.randomUUID(), "abc123", UUID.randomUUID(), "Cuma kahvesi",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.parse("2026-09-05T10:00:00Z"), null, List.of(),
+                null, null, null, "Amsterdam", anchor);
+    }
+
+    /** 4 wither de anchor'i elle tasiyor: biri unutulursa capa sessizce duser.
+        `withStatus` find-venues'te aramadan HEMEN once cagriliyor — dusen anchor,
+        oturumu sessizce orta nokta moduna geri atardi. */
+    @Test
+    void witherOperationsPreserveAnchor() {
+        GeoPoint anchor = new GeoPoint(52.3676, 4.9041);
+        Session session = anchored(anchor);
+        UUID venue = UUID.randomUUID();
+        assertThat(session.withStatus(SessionStatus.SUGGESTING).anchor()).isEqualTo(anchor);
+        assertThat(session.withMidpointLabel("Utrecht").anchor()).isEqualTo(anchor);
+        assertThat(session.inRunoff(List.of(venue), RunoffReason.INTERSECTION).anchor())
+                .isEqualTo(anchor);
+        assertThat(session.decided(venue, DecisionKind.FORCED, Instant.now()).anchor())
+                .isEqualTo(anchor);
+    }
+
+    /** Kolaylik ctor'u capasiz oturum uretir — 17 mevcut cagri yeri bu yuzden derlenir. */
+    @Test
+    void convenienceConstructorLeavesAnchorNull() {
+        assertThat(sample(List.of(ActivityType.COFFEE)).anchor()).isNull();
     }
 }

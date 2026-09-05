@@ -55,6 +55,8 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.decisionKind = s.decisionKind() == null ? null : s.decisionKind().name();
         e.runoffReason = s.runoffReason() == null ? null : s.runoffReason().name();
         e.midpointLabel = s.midpointLabel();
+        e.anchorLat = s.anchor() == null ? null : s.anchor().lat();
+        e.anchorLng = s.anchor() == null ? null : s.anchor().lng();
         sessions.save(e);
         return s;
     }
@@ -142,12 +144,13 @@ public class SessionStoreAdapter implements SessionStorePort {
         // yolu @NotEmpty ile korunuyor — bos dize buraya ulasamaz.
         List<ActivityType> activities = Arrays.stream(e.activityTypes.split(","))
                 .map(ActivityType::valueOf).toList();
+        GeoPoint anchor = e.anchorLat == null ? null : new GeoPoint(e.anchorLat, e.anchorLng);
         return new Session(e.id, e.slug, e.hostId, e.name, activities,
                 SessionType.valueOf(e.sessionType), SessionStatus.valueOf(e.status), e.expiresAt,
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
                 e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
-                e.midpointLabel);
+                e.midpointLabel, anchor);
     }
 
     static Participant toParticipant(ParticipantEntity e) {
