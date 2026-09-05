@@ -19,7 +19,7 @@ import { DEFAULT_MAP_CENTER, centroid } from "../lib/geo";
 import { geocode } from "../lib/geocode";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useAuthStore } from "../store/authStore";
-import { pointCount, previewParticipants, useNewSessionStore } from "../store/newSessionStore";
+import { pointCount, previewParticipants, useNewSessionStore, type Loc } from "../store/newSessionStore";
 import { useOwnLocation } from "../store/useOwnLocation";
 
 /* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
@@ -72,22 +72,30 @@ export default function NewSessionPage() {
   const anchorReq = useRef(0);
 
   /** Adres yazıp alandan çıkınca çözülür — her tuşta değil: Nominatim politikası. */
-  async function resolveAnchor() {
+  /** En son BASARIYLA çözülmüş sorgu. `create()` bunu `anchorQuery` ile karşılaştırır: alan
+      değişmişse (ya da hiç çözülmemişse) göndermeden ÖNCE çözer. Aynı sorgu için ikinci bir
+      Nominatim çağrısı yapılmaz — politika "onayda bir kez". */
+  const resolvedQuery = useRef("");
+
+  async function resolveAnchor(): Promise<Loc | null> {
     const q = anchorQuery.trim();
     const gen = ++anchorReq.current;
     // Alan boşaltıldıysa çapa DA düşer: görünmeyen bir çapayla oturum kurulmaz.
     if (!q) {
       setAnchor(null);
-      return;
+      resolvedQuery.current = "";
+      return null;
     }
     const found = await geocode(q);
-    if (anchorReq.current !== gen) return; // bayat cevap
+    if (anchorReq.current !== gen) return null; // bayat cevap
     if (found) {
       setAnchor(found);
+      resolvedQuery.current = q;
       setLocalError(null);
-    } else {
-      setLocalError(t("join.errGeocode"));
+      return found;
     }
+    setLocalError(t("join.errGeocode"));
+    return null;
   }
 
   useEffect(() => {
@@ -108,7 +116,13 @@ export default function NewSessionPage() {
         setLocalError(t(loc.address.trim() ? "join.errGeocode" : "join.errGeolocation"));
         return;
       }
-      if (anchorMode === "ANCHOR" && !anchor) {
+      // Alan çözülmemiş ya da DEĞİŞMİŞ olabilir: blur ile submit aynı tıkta yarışıyor.
+      // Beklemezsek kullanıcının yazdığından BAŞKA bir yerde buluşma kurulur.
+      let effectiveAnchor = anchor;
+      if (anchorMode === "ANCHOR" && anchorQuery.trim() !== resolvedQuery.current) {
+        effectiveAnchor = await resolveAnchor();
+      }
+      if (anchorMode === "ANCHOR" && !effectiveAnchor) {
         setLocalError(t("newSession.errNoAnchor"));
         return;
       }
@@ -223,6 +237,7 @@ export default function NewSessionPage() {
                       if (picker === "anchor") {
                         anchorReq.current += 1; // uçuştaki geocode cevabını geçersiz kıl
                         setAnchor(picked);
+                        resolvedQuery.current = picked.label ?? "";
                         setAnchorQuery(picked.label ?? "");
                       } else {
                         loc.setPicked(picked);

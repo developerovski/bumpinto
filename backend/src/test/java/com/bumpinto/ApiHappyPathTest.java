@@ -526,6 +526,29 @@ class ApiHappyPathTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /** Yarim koordinat BOZUK istektir, sessizce dusurulmez: lat/lng birlikte gelir ya da hic
+        gelmez (AnchorDto'nun @NotNull ciftiyle ayni degismez). Onceden controller'daki `&&`
+        yuzunden new GeoPoint(lat, null) unboxing NPE atip 500 doner idi. */
+    @Test
+    void createWithHalfACoordinateIsRejected() throws Exception {
+        when(google.verify("gid-half"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("half@bumpinto.test", "Mehmet"));
+        String loginBody = mvc.perform(post("/api/auth/google")
+                        .contentType(JSON).content("{\"idToken\":\"gid-half\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String accessToken = json.readTree(loginBody).get("accessToken").asString();
+
+        mvc.perform(post("/api/sessions")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"displayName\":\"Mehmet\","
+                                + "\"lat\":52.3676,"
+                                + "\"anchor\":{\"lat\":52.3676,\"lng\":4.9041,"
+                                + "\"label\":\"Amsterdam\"}}"))
+                .andExpect(status().isBadRequest());
+    }
+
     /** Capa varsa host konumu ZORUNLU DEGIL: 201 doner, capa goruntude okunur ve etiket
         find-venues'i beklemeden Lobi'de gorunur. */
     @Test

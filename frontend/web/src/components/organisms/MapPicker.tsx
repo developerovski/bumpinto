@@ -36,6 +36,9 @@ export default function MapPicker(props: {
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const [point, setPoint] = useState<LatLng>(props.center);
   const [busy, setBusy] = useState(false);
+  /** Harita yuklenemedi: onay dugmesi KILITLENIR, yoksa kullanici hic gormedigi bir
+      koordinati onaylar ve oturum yanlis yerde kurulur. */
+  const [failed, setFailed] = useState(false);
   const configured = mapsConfigured();
 
   useEffect(() => {
@@ -71,7 +74,8 @@ export default function MapPicker(props: {
         });
       })
       .catch(() => {
-        /* yapılandırma yoksa aşağıdaki not zaten basılı */
+        // Bos catch, kullaniciya GORMEDIGI bir koordinati onaylatirdi.
+        if (alive) setFailed(true);
       });
     return () => {
       alive = false;
@@ -93,7 +97,7 @@ export default function MapPicker(props: {
   return (
     <div className="flex flex-col gap-2">
       <div className="h-[16rem] overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7]">
-        {configured ? (
+        {configured && !failed ? (
           <div ref={box} className="h-full w-full" />
         ) : (
           <div className="flex h-full items-center justify-center p-6">
@@ -103,7 +107,8 @@ export default function MapPicker(props: {
       </div>
       <Note>{t("map.pickHint")}</Note>
       <div className="flex gap-2">
-        <Button type="button" size="fit" onClick={() => void confirm()} disabled={busy || !configured}>
+        <Button type="button" size="fit" onClick={() => void confirm()}
+                disabled={busy || !configured || failed}>
           {t("map.pickConfirm")}
         </Button>
         <Button type="button" kind="white" size="fit" onClick={props.onCancel}>

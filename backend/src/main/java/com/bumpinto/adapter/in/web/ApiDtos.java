@@ -79,6 +79,16 @@ public final class ApiDtos {
         public boolean isOriginPresent() {
             return (lat != null && lng != null) || anchor != null;
         }
+
+        /**
+         * lat/lng birlikte gelir ya da hic gelmez. Yarim koordinat bozuk ISTEKTIR: sessizce
+         * dusurulurse host konumsuz sayilir ve bunu kimse fark etmez; controller'da
+         * new GeoPoint(lat, null) ise unboxing NPE ile 500 verirdi.
+         */
+        @AssertTrue(message = "lat and lng must be given together")
+        public boolean isLocationWhole() {
+            return (lat == null) == (lng == null);
+        }
     }
 
     public record CreateSessionResponse(String slug, UUID sessionId, UUID participantId,

@@ -59,7 +59,7 @@ class SessionController {
             @Valid @RequestBody ApiDtos.CreateSessionRequest request) {
         // Capali oturumda lat/lng gelmeyebilir: dogrudan new GeoPoint(...) unboxing NPE
         // atardi (500), oysa dogru cevap konumsuz host'tur.
-        GeoPoint hostLocation = request.lat() == null && request.lng() == null
+        GeoPoint hostLocation = request.lat() == null || request.lng() == null
                 ? null : new GeoPoint(request.lat(), request.lng());
         SessionCommands.Anchor anchor = request.anchor() == null ? null
                 : new SessionCommands.Anchor(

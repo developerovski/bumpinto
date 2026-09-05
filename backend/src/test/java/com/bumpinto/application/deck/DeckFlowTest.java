@@ -45,6 +45,7 @@ class DeckFlowTest {
     FakeStores.FakeReverseGeocoder geocoder;
     FakeStores.FakePresence presence;
     List<Double> requestedRadii;
+    List<GeoPoint> requestedCenters;
     List<VenueCandidate> providerResult;
     DeckFlow flow;
     Clock clock;
@@ -70,9 +71,11 @@ class DeckFlowTest {
         events = new FakeStores.RecordingEvents();
         geocoder = new FakeStores.FakeReverseGeocoder();
         requestedRadii = new ArrayList<>();
+        requestedCenters = new ArrayList<>();
         providerResult = new ArrayList<>();
         VenueProviderPort provider = (center, radiusKm, type, limit) -> {
             requestedRadii.add(radiusKm);
+            requestedCenters.add(center);
             return List.copyOf(providerResult);
         };
         clock = Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC);
@@ -710,5 +713,34 @@ class DeckFlowTest {
 
         assertThat(store.sessionBySlug("vote3").orElseThrow().status())
                 .isEqualTo(SessionStatus.DECIDED);
+    }
+
+    /** Capanin TEK vaadi: mekanlar CAPANIN cevresinde aranir. Bu tutulmazsa capa yalnizca bir
+        etiket olur ve merkez sessizce baska bir yere kayabilir. */
+    @Test
+    void anchoredSearchUsesTheAnchorAsCentre() {
+        Session anchored = anchoredSession("centre1");
+        Participant h = memberOf(anchored, "Mehmet", null, true);
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+
+        flow.findVenues("centre1", h.id());
+
+        assertThat(requestedCenters).isNotEmpty();
+        assertThat(requestedCenters.get(0)).isEqualTo(new GeoPoint(52.3676, 4.9041));
+    }
+
+    /** Capasizda merkez AGIRLIKLI ORTA NOKTADIR — gerileme korumasi: capa dali yanlislikla
+        capasiz oturuma da uygulanmasin. */
+    @Test
+    void unanchoredSearchUsesTheParticipantMidpoint() {
+        providerResult.addAll(List.of(cand(0, 4.6), cand(1, 4.1)));
+
+        flow.findVenues("s1", host.id());
+
+        assertThat(requestedCenters).isNotEmpty();
+        GeoPoint centre = requestedCenters.get(0);
+        // Den Bosch (51.6978) ile Someren (51.3855) ARASINDA; ikisinin de kendisi degil.
+        assertThat(centre.lat()).isBetween(51.39, 51.70);
+        assertThat(centre).isNotEqualTo(DEN_BOSCH).isNotEqualTo(SOMEREN);
     }
 }

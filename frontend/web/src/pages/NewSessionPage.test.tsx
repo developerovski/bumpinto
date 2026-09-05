@@ -8,6 +8,7 @@ vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }))
 import { api } from "../lib/api";
 import { geocode } from "../lib/geocode";
 import { useAuthStore } from "../store/authStore";
+import { useNewSessionStore } from "../store/newSessionStore";
 import NewSessionPage from "./NewSessionPage";
 
 describe("NewSessionPage", () => {
@@ -98,6 +99,60 @@ describe("NewSessionPage", () => {
     await waitFor(() =>
       expect(api.createSession).toHaveBeenCalledWith(
         expect.objectContaining({ anchor: { lat: 52.3676, lng: 4.9041, label: "Amsterdam" }, lat: undefined }),
+      ),
+    );
+  });
+
+  /** POZITIF KONTROL: bu test duzeltmeden ONCE de sonra da yesildir. Amaci, create() icine
+      eklenen "bekleyen sorguyu coz" adiminin MUTLU YOLU bozmamasi — ayni adres icin ikinci bir
+      Nominatim cagrisi yapilmamali ve gonderim yine capayi tasimali.
+      (Not: "ilk gonderim kaybolur" senaryosu jsdom'da yeniden URETILEMEDI; blur/submit
+      siralamasi tarayiciya ozgu. Kanitlanan yari asagidaki bayat-capa testidir.) */
+  it("adres yazıp doğrudan gönderince çapa çözülür ve isteğe girer", async () => {
+    // Zustand store testler arasi SIZIYOR: onceki test capayi Amsterdam birakiyor ve
+    // sifirlamazsak bu test kendi cozumunu degil o kalintiyi dogrular (sahte yesil).
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(geocode).mockResolvedValue({ lat: 52.3676, lng: 4.9041, label: "Amsterdam" });
+    vi.mocked(api.createSession).mockResolvedValue({ slug: "x7k2m" } as never);
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+    fireEvent.change(screen.getByLabelText("Buluşma yeri"), { target: { value: "Amsterdam" } });
+    fireEvent.click(screen.getByRole("button", { name: "Buluşmayı kur" }));
+
+    await waitFor(() =>
+      expect(api.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ anchor: { lat: 52.3676, lng: 4.9041, label: "Amsterdam" } }),
+      ),
+    );
+  });
+
+  /** Adres DEGISTIRILIRSE eski capa gonderilmez: kullanici sectiginden baska bir yerde
+      bulusma kurulmasi sessiz ve pahali bir hatadir. */
+  it("adres değiştirilince eski çapa değil yenisi gönderilir", async () => {
+    // Zustand store testler arasi SIZIYOR: onceki test capayi Amsterdam birakiyor ve
+    // sifirlamazsak bu test kendi cozumunu degil o kalintiyi dogrular (sahte yesil).
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(geocode)
+      .mockResolvedValueOnce({ lat: 52.3676, lng: 4.9041, label: "Amsterdam" })
+      .mockResolvedValueOnce({ lat: 51.4416, lng: 5.4697, label: "Eindhoven" });
+    vi.mocked(api.createSession).mockResolvedValue({ slug: "x7k2m" } as never);
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+    const field = screen.getByLabelText("Buluşma yeri");
+    fireEvent.change(field, { target: { value: "Amsterdam" } });
+    fireEvent.blur(field);
+    await screen.findByText("Amsterdam çevresinde aranacak");
+
+    fireEvent.change(field, { target: { value: "Eindhoven" } });
+    fireEvent.click(screen.getByRole("button", { name: "Buluşmayı kur" }));
+
+    await waitFor(() =>
+      expect(api.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ anchor: { lat: 51.4416, lng: 5.4697, label: "Eindhoven" } }),
       ),
     );
   });

@@ -79,4 +79,18 @@ describe("MidpointCard", () => {
     render(<MidpointCard view={{ anchored: false, midpointLabel: null, radiusKm: null, participants: [] } as unknown as SessionView} />);
     expect(screen.queryByText("Buluşma yeri")).not.toBeInTheDocument();
   });
+
+  /** "Orta nokta {{name}} tarafinda" merkezin katilimcilardan TUREDIGINI soyler. Capalida
+      merkez host'un sectigi sabit noktadir — bu cumle orada YALANDIR. (Mevcut capali test
+      participants: [] kullandigi icin `near` null kaliyor ve notu hic tetiklemiyordu.) */
+  it("çapalı oturumda 'orta nokta ... tarafında' notu basılmaz", () => {
+    render(<MidpointCard view={{ ...bikeView, anchored: true } as unknown as SessionView} />);
+    expect(screen.queryByText(/tarafında/)).not.toBeInTheDocument();
+  });
+
+  /** Capasizda not AYNEN durur — gerileme korumasi. */
+  it("çapasız oturumda yan not basılmaya devam eder", () => {
+    render(<MidpointCard view={bikeView} />);
+    expect(screen.getByText(/tarafında/)).toBeInTheDocument();
+  });
 });

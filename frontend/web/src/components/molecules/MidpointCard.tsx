@@ -42,7 +42,7 @@ export default function MidpointCard(props: { view: SessionView }) {
                 ? t("midpoint.metaKm", { km })
                 : t("midpoint.pending")}
         </span>
-        {near?.travelMode && near.travelMode !== "CAR" && (
+        {!anchored && near?.travelMode && near.travelMode !== "CAR" && (
           // TÜRKÇE EK YOK: "Orta nokta {{name}} tarafında · bisikletle geliyor"
           <Note>
             {t("midpoint.sideNote", {
