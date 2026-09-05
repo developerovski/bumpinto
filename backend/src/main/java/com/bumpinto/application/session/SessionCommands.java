@@ -6,6 +6,7 @@ import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.text.Ids;
 import com.bumpinto.application.text.Texts;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.SpreadLimit;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
@@ -20,6 +21,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -74,6 +76,7 @@ public class SessionCommands {
                 null, null, null,
                 anchor == null ? null : Texts.label(anchor.label()),
                 anchor == null ? null : anchor.point()));
+        requireWithinSpread(session, hostLocation, null);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(hostDisplayName), hostLocation, true,
@@ -110,6 +113,7 @@ public class SessionCommands {
         if (CLOSED_TO_NEW_SEATS.contains(session.status())) {
             throw new ConflictException("session is closed for new participants: " + session.status());
         }
+        requireWithinSpread(session, location, null);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant joined = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(displayName), location, false, null,
@@ -167,6 +171,7 @@ public class SessionCommands {
         Participant participant = store.participantsOf(session.id()).stream()
                 .filter(p -> p.id().equals(participantId)).findFirst()
                 .orElseThrow(() -> new NotFoundException("participant not in session"));
+        requireWithinSpread(session, location, participantId);
         String resolvedLabel = label == null ? participant.locationLabel() : Texts.label(label);
         store.saveParticipant(participant.locatedAt(location, resolvedLabel, travelMode));
         events.publish(slug, SessionEvent.locationUpdated());
@@ -188,6 +193,7 @@ public class SessionCommands {
         if (session.status() != SessionStatus.COLLECTING) {
             throw new ConflictException("points are frozen after venues are found");
         }
+        requireWithinSpread(session, location, null);
         Participant point = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(displayName), location, false, null, true,
                 Texts.label(locationLabel), travelMode));
@@ -224,6 +230,30 @@ public class SessionCommands {
                 .findFirst().map(Participant::host).orElse(false);
         if (!host) {
             throw new ForbiddenException("only the host can do this");
+        }
+    }
+
+    /**
+     * Capasiz oturumda hicbir iki konum birbirinden {@link SpreadLimit#MAX_SPREAD_KM}'den uzak
+     * olamaz. Dort yazma yolu da buradan gecer: kural bir DEGISMEZ'dir, ihlal eden oturum hic
+     * olusamaz, dolayisiyla okuma tarafi (SessionCenter, SessionView, Lobi kapilari) bundan
+     * habersiz kalabilir (spec S3).
+     *
+     * <p>KENDINI DISLAR: kisi kendi eski konumuyla kisitlanamaz. A Amsterdam'dan Eindhoven'e
+     * tasiniyorsa ve B Utrecht'teyse tasinma mesrudur (76 km), ama A'nin eskisi kumede kalirsa
+     * Amsterdam-Eindhoven (110 km) olculur ve haksiz yere reddedilirdi.
+     */
+    private void requireWithinSpread(Session session, GeoPoint candidate, UUID selfId) {
+        if (candidate == null || session.anchor() != null) {
+            return;
+        }
+        List<GeoPoint> existing = store.participantsOf(session.id()).stream()
+                .filter(p -> !p.id().equals(selfId))
+                .map(Participant::location)
+                .filter(Objects::nonNull)
+                .toList();
+        if (SpreadLimit.exceeded(candidate, existing)) {
+            throw new ConflictException("participants_too_far_apart");
         }
     }
 

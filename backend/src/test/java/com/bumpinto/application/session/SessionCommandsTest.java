@@ -396,4 +396,96 @@ class SessionCommandsTest {
 
         assertThat(again.id()).isEqualTo(ayse.id());
     }
+
+    // Yayilim kurali fiksturleri — mesafeler haversine ile hesaplandi:
+    // Amsterdam-Utrecht 34,16 · Utrecht-Eindhoven 76,05 · Amsterdam-Eindhoven 110,03 (asar)
+    // Den Bosch-Someren 44,76 (mevcut testler guvende) · Den Bosch-Istanbul 2156,02 (asar)
+    static final GeoPoint AMSTERDAM = new GeoPoint(52.3676, 4.9041);
+    static final GeoPoint UTRECHT = new GeoPoint(52.0907, 5.1214);
+    static final GeoPoint EINDHOVEN = new GeoPoint(51.4416, 5.4697);
+    static final GeoPoint ISTANBUL = new GeoPoint(41.0082, 28.9784);
+
+    /** Capasiz oturumda 100 km'yi asan katilim REDDEDILIR: orta nokta Balkanlar'da bir tarla
+        olurdu ve urun tezi grup uzlasmasi. */
+    @Test
+    void joiningFromTooFarAwayIsRejected() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                DEN_BOSCH, "Mehmet", null, null, null);
+
+        assertThatThrownBy(() -> commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe",
+                ISTANBUL, null, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("participants_too_far_apart");
+    }
+
+    /** Sinir icindeki katilim etkilenmez (Den Bosch-Someren 44,76 km) — pozitif kontrol,
+        yoksa test "her katilimi reddet" mutasyonuna karsi kor olurdu. */
+    @Test
+    void joiningFromWithinTheLimitStillWorks() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                DEN_BOSCH, "Mehmet", null, null, null);
+
+        assertThat(commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null)
+                .hasLocation()).isTrue();
+    }
+
+    /** CAPALI oturumda kural ISLEMEZ: capa sabit bir yerdir, uzaktan katilmak katilanin
+        bilecegi istir (spec S4). */
+    @Test
+    void anchoredSessionAcceptsFarAwayParticipants() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                DEN_BOSCH, "Mehmet", null, null,
+                new SessionCommands.Anchor(DEN_BOSCH, "Den Bosch"));
+
+        assertThat(commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", ISTANBUL, null, null)
+                .hasLocation()).isTrue();
+    }
+
+    /** updateLocation KENDINI DISLAR: kisi kendi eski konumuyla kisitlanamaz.
+        Utrecht ortada; Amsterdam ve Eindhoven ikisi de ona yakin (34 / 76 km) ama birbirinden
+        110 km uzak. Kendi eskisi kumede kalsaydi bu MESRU tasinma haksiz yere reddedilirdi. */
+    @Test
+    void updatingOwnLocationIgnoresYourPreviousPosition() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                AMSTERDAM, "Mehmet", null, null, null);
+        commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", UTRECHT, null, null);
+
+        commands.updateLocation(r.session().slug(), r.hostParticipant().id(), EINDHOVEN,
+                null, null);
+
+        assertThat(store.participantsOf(r.session().id()).stream()
+                .filter(p -> p.id().equals(r.hostParticipant().id())).findFirst().orElseThrow()
+                .location()).isEqualTo(EINDHOVEN);
+    }
+
+    /** Ama BASKASINDAN uzaklasan tasinma yine reddedilir. */
+    @Test
+    void updatingOwnLocationBeyondTheGroupIsRejected() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.GROUP,
+                DEN_BOSCH, "Mehmet", null, null, null);
+        commands.join(r.session().slug(), Caller.ANONYMOUS, "Ayşe", SOMEREN, null, null);
+
+        assertThatThrownBy(() -> commands.updateLocation(r.session().slug(),
+                r.hostParticipant().id(), ISTANBUL, null, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("participants_too_far_apart");
+    }
+
+    /** SOLO elle nokta da ayni kuraldan gecer — hatayi ekleyen host gorur (spec R3). */
+    @Test
+    void addingAFarAwayManualPointIsRejected() {
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                UUID.randomUUID(), null, List.of(ActivityType.COFFEE), SessionType.SOLO,
+                DEN_BOSCH, "Mehmet", null, null, null);
+
+        assertThatThrownBy(() -> commands.addPoint(r.session().slug(),
+                r.hostParticipant().id(), "Ayşe", null, ISTANBUL, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("participants_too_far_apart");
+    }
 }

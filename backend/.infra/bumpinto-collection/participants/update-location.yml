@@ -39,3 +39,10 @@ docs:
     Baska oturumun slug'i ile denerseniz 401 alirsiniz.
 
     `travelMode` null gonderilirse mevcut tercih KORUNUR; konum guncellemesi modu silmez.
+
+    **409 `participants_too_far_apart`** — capasiz oturumda gonderilen konum, gruptaki mevcut
+    konumlardan birine 100 km'den uzaksa reddedilir (`SpreadLimit.MAX_SPREAD_KM`). Orta nokta
+    katilimci konumlarindan turedigi icin cok dagilmis bir grupta anlamsiz bir merkez
+    uretirdi — Hollanda + Turkiye ikilisinin "orta noktasi" Balkanlar'da bir tarladir.
+    Cikis yolu CAPADIR: host sabit bir bulusma yeri secerse kural HIC islemez ve ayni konum
+    kabul edilir. Konum GUNCELLEMEDE kisi kendi eski konumuyla kiyaslanmaz.

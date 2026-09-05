@@ -92,6 +92,25 @@ describe("WaitingRoom", () => {
     );
   });
 
+  /** Konum GUNCELLEMEDE de ayni 409 gelebilir: tasindigi yer grubu 100 km'nin disina
+      cikariyorsa. Genel "guncellenemedi" mesaji kullanicinin ne yapabilecegini soylemezdi. */
+  it("participants_too_far_apart özel mesajı basar", async () => {
+    vi.mocked(geocode).mockResolvedValueOnce({ lat: 41.0082, lng: 28.9784, label: "İstanbul" });
+    vi.mocked(api.updateLocation).mockRejectedValueOnce({
+      response: { data: { error: "participants_too_far_apart" } },
+    });
+    render(<WaitingRoom view={view as never} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Konum ve ulaşım" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Şehir ya da adres" }),
+      { target: { value: "İstanbul" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    expect(await screen.findByText(
+      "Bu buluşma katılımcıların orta noktasında yapılıyor ve sen gruptan çok uzaktasın. Host'tan sabit bir buluşma yeri seçmesini iste.",
+    )).toBeInTheDocument();
+  });
+
   it("çevrimdışı katılımcı roster'da işaretlenir, çevrimiçi olan işaretlenmez", () => {
     const withPresence = {
       ...view,

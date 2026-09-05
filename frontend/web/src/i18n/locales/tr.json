@@ -37,6 +37,7 @@
     "errGeolocation": "Konum izni alınamadı — adres yazabilirsin.",
     "errGeocode": "Bu adres bulunamadı — yakındaki bir şehri dene.",
     "errJoin": "Katılamadın — bu oturum kapanmış olabilir.",
+    "errTooFar": "Bu buluşma katılımcıların orta noktasında yapılıyor ve sen gruptan çok uzaktasın. Host'tan sabit bir buluşma yeri seçmesini iste.",
     "whoCopy": "{{names}} hazır. Sıra sende — konumunu at, orta nokta belli olsun.",
     "hand": "ortada buluşuyoruz, adil olsun diye →",
     "invitedBy": "<0>{{host}}</0> seni buluşmaya çağırdı",

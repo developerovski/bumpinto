@@ -37,6 +37,7 @@
     "errGeolocation": "Couldn't get your location — you can type an address.",
     "errGeocode": "Address not found — try a city nearby.",
     "errJoin": "Couldn't join — this session may have closed.",
+    "errTooFar": "This meetup is held at the participants' midpoint and you are too far from the group. Ask the host to pick a fixed meeting place.",
     "whoCopy": "{{names}} are ready. Your turn — drop your location so the midpoint is set.",
     "hand": "we meet in the middle, to keep it fair →",
     "invitedBy": "<0>{{host}}</0> invited you to meet up",

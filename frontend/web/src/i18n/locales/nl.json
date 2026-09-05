@@ -37,6 +37,7 @@
     "errGeolocation": "Geen toegang tot je locatie — typ anders een adres.",
     "errGeocode": "Dit adres is niet gevonden — probeer een stad in de buurt.",
     "errJoin": "Meedoen lukte niet — deze sessie is misschien gesloten.",
+    "errTooFar": "Deze afspraak vindt plaats op het middelpunt van de deelnemers en jij bent te ver van de groep. Vraag de host om een vaste ontmoetingsplek te kiezen.",
     "whoCopy": "{{names}} zijn klaar. Jouw beurt — deel je locatie, dan ligt het midden vast.",
     "hand": "we spreken in het midden af, wel zo eerlijk →",
     "invitedBy": "<0>{{host}}</0> nodigt je uit om af te spreken",

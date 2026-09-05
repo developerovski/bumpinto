@@ -7,6 +7,7 @@ import LazyBoundary from "../components/molecules/LazyBoundary";
 import TwoZone from "../components/molecules/TwoZone";
 import WhoIsHere from "../components/molecules/WhoIsHere";
 import type { ParticipantDto } from "@bumpinto/shared";
+import { apiErrorCode } from "../lib/apiError";
 import { DEFAULT_MAP_CENTER, approx } from "../lib/geo";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { useAuthStore } from "../store/authStore";
@@ -84,8 +85,11 @@ export default function JoinForm() {
         locationLabel: location?.label ?? undefined,
         travelMode,
       });
-    } catch {
-      setError(t("join.errJoin"));
+    } catch (e) {
+      // Kod, prose değil: backend 409'u `participants_too_far_apart` ile işaretliyor, çünkü
+      // kullanıcının yapabileceği somut bir şey var — host'tan sabit bir yer istemek.
+      setError(t(apiErrorCode(e) === "participants_too_far_apart"
+        ? "join.errTooFar" : "join.errJoin"));
     } finally {
       setSubmitting(false);
     }

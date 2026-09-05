@@ -108,3 +108,42 @@ describe("JoinForm — haritadan seç", () => {
     expect(await screen.findByRole("button", { name: "Burayı seç" })).toBeInTheDocument();
   });
 });
+
+/** Backend 409'u `participants_too_far_apart` KODUYLA isaretliyor; istemci prose eslestirmeden
+    dallanabilsin diye. Genel "katilamadin" mesaji burada yalan olurdu: kullanicinin yapabilecegi
+    somut bir sey var — host'tan sabit bir bulusma yeri istemek. */
+describe("JoinForm — gruptan çok uzak", () => {
+  beforeEach(() => {
+    useAuthStore.setState({ status: "anon", me: null });
+  });
+
+  it("participants_too_far_apart özel mesajı basar", async () => {
+    useSessionStore.setState({
+      slug: "x7k2m", preview: null,
+      join: vi.fn().mockRejectedValue({
+        response: { data: { error: "participants_too_far_apart" } },
+      }),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Ayşe" } });
+    fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
+
+    expect(await screen.findByText(
+      "Bu buluşma katılımcıların orta noktasında yapılıyor ve sen gruptan çok uzaktasın. Host'tan sabit bir buluşma yeri seçmesini iste.",
+    )).toBeInTheDocument();
+  });
+
+  /** Baska bir hata GENEL mesaja duser — gerileme korumasi. */
+  it("başka bir hata genel mesajı basar", async () => {
+    useSessionStore.setState({
+      slug: "x7k2m", preview: null,
+      join: vi.fn().mockRejectedValue(new Error("network")),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Ayşe" } });
+    fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
+
+    expect(await screen.findByText("Katılamadın — bu oturum kapanmış olabilir."))
+      .toBeInTheDocument();
+  });
+});

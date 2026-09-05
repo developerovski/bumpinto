@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from "react";
+import { apiErrorCode } from "../lib/apiError";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
 import { Button, Note, Page } from "../components/atoms";
@@ -56,8 +57,9 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
       }
       await updateLocation({ lat: resolved.lat, lng: resolved.lng, label: resolved.label ?? undefined, travelMode });
       setOpen(false);
-    } catch {
-      setError(t("waiting.errUpdate"));
+    } catch (e) {
+      setError(t(apiErrorCode(e) === "participants_too_far_apart"
+        ? "join.errTooFar" : "waiting.errUpdate"));
     } finally {
       setBusy(false);
     }
