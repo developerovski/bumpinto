@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,6 +61,10 @@ public class VenueSourceConfigValidator {
             }
             if (d.requiresKey()) {
                 AppProps.required("bumpinto.venues.sources." + d.id() + ".key", config.key());
+            }
+            if (config.tier() != null && !Set.of("pro", "premium").contains(config.tier().trim().toLowerCase(Locale.ROOT))) {
+                throw new IllegalStateException("bumpinto.venues.sources." + d.id()
+                        + ".tier must be 'pro' or 'premium' but is '" + config.tier() + "'");
             }
             if (d.requiredMapEngine() != MapEngine.ANY
                     && !d.requiredMapEngine().name().toLowerCase(Locale.ROOT).equals(engine)) {

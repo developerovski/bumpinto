@@ -43,8 +43,10 @@ public class FoursquareVenueSource implements VenueSource {
 
     private static final String SEARCH_URL = "https://places-api.foursquare.com/places/search";
     private static final String API_VERSION = "2025-06-17";
-    private static final String FIELDS = "fsq_place_id,name,latitude,longitude,categories,"
-            + "location,website,hours,rating,price,popularity,photos,closed_bucket";
+    /** Pro alanlari: Sandbox'in 500 ucretsiz cagrisi icinde kalir; foto/puan/saat GELMEZ. */
+    static final String PRO_FIELDS = "fsq_place_id,name,latitude,longitude,categories,location,website";
+    /** Premium alanlari: ayni cagri $18,75/1k faturalanir, ucretsiz payi yok (2026-09-06 olcumu: 429). */
+    static final String PREMIUM_FIELDS = PRO_FIELDS + ",hours,rating,price,popularity,photos,closed_bucket";
     private static final String PHOTO_SIZE = "original";
 
     private static final VenueSourceDescriptor DESCRIPTOR = new VenueSourceDescriptor(
@@ -53,13 +55,16 @@ public class FoursquareVenueSource implements VenueSource {
 
     private final VenueSourceSupport support;
     private final String apiKey;
+    private final String fields;
     private final CategoryMapping categories;
     private final Clock clock;
 
     public FoursquareVenueSource(VenueSourceSupport support, AppProps props,
                                  CategoryMappingLoader loader, Clock clock) {
         this.support = support;
-        this.apiKey = props.venues().sources().get(ID).key();
+        AppProps.VenueSourceProps config = props.venues().sources().get(ID);
+        this.apiKey = config.key();
+        this.fields = config.premium() ? PREMIUM_FIELDS : PRO_FIELDS;
         this.categories = loader.load(ID);
         this.clock = clock;
     }
@@ -88,7 +93,7 @@ public class FoursquareVenueSource implements VenueSource {
                 .queryString("radius", (int) Math.min(request.radiusKm() * 1000, 100000))
                 .queryString("fsq_category_ids", String.join(",", ids))
                 .queryString("limit", Math.min(request.limit(), 50))
-                .queryString("fields", FIELDS)
+                .queryString("fields", fields)
                 .asJson();
         if (response.getStatus() == 429) {
             throw classify429(response);

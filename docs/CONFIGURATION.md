@@ -3,8 +3,9 @@
 Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe için
 [`backend/ARCHITECTURE.md`](../backend/ARCHITECTURE.md) §12.
 
-> **Bu dosyaya asla gerçek değer yazılmaz.** Değer taşıyan tek yerel dosya `backend/.env.local`'dir
-> ve `.gitignore` onu yoksayar. Prod değerleri yalnızca K8s Secret'ında yaşar.
+> **Bu dosyaya asla gerçek değer yazılmaz.** Backend `.env` dosyası okumaz; yapılandırma yalnız
+> `application*.yml`'den gelir. Değer taşıyan tek yerel dosya `backend/config/application-local.yml`'dir
+> (`.gitignore`'da). Prod değerleri yalnızca K8s Secret'ında yaşar ve ortam değişkeni olarak gelir.
 
 ---
 
@@ -17,17 +18,15 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `FOURSQUARE_API_KEY` | Places Service Key — **zorunlu**, Premium katman | FSQ Developer Console → proje → Settings → Service API Keys | **Evet** |
 | `FSQ_PREMIUM_MONTHLY_BUDGET` | Foursquare Premium aylık çağrı bütçesi (varsayılan `5000`); dolunca `open` katmanına düşülür, uygulama çökmez | Bütçe planınıza göre siz belirlersiniz | Hayır |
 | `GOOGLE_PLACES_API_KEY` | Places API (New) sunucu anahtarı — **opsiyonel**; `bumpinto.venues.sources.google.enabled=true` ise zorunlu, o durumda `MAP_ENGINE=google` da şart | Google Cloud → Keys & Credentials → API key | **Evet** |
-| `TRIPADVISOR_API_KEY` | Tripadvisor Content API anahtarı — **aşama 1b, şu an kapalı** (`bumpinto.venues.sources.tripadvisor.enabled=false`) | Tripadvisor Content API başvurusu | **Evet** |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Postgres | — | Parola **evet** |
 | `TRUST_FORWARDED_FOR` | XFF'e güven bayrağı | — | Hayır |
 | `MAP_ENGINE` | Harita motoru seçimi: `maplibre` (açık, ücretsiz) veya `google` | — | Hayır |
 | `MAP_TILES_STYLE_URL` | MapLibre tile stil URL'i (`MAP_ENGINE=maplibre` iken kullanılır) | Tile sağlayıcınızdan | Hayır |
-| `GEOCODE_ENGINE` | Ters/coğrafi kodlama motoru seçimi (varsayılan `nominatim`) | — | Hayır |
 | `GEOCODE_BASE_URL` | Geocode motorunun taban URL'i (kendi Nominatim-uyumlu sunucunuz olabilir) | — | Hayır |
 | `OSRM_CAR_URL` / `OSRM_BICYCLE_URL` / `OSRM_FOOT_URL` | Profil başına OSRM `/table` taban URL'i; **boş = haversine tahminine düşülür** | Kendi OSRM sunucunuz | Hayır |
 | `NOMINATIM_CONTACT` | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi (varsayılan `dev@bumpinto.test`) | Preprod/prod'da gerçek bir adres verin | Hayır |
 | `NOMINATIM_MIN_INTERVAL` | Nominatim'e en fazla 1 istek/saniye (ISO süre, varsayılan `PT1S`) | — | Hayır |
-| `OVERTURE_RELEASE` | İthal işinin okuduğu Overture sürümü (örn. `2026-08-20.0`); yalnız `venues-open-import` CronJob'ında | https://docs.overturemaps.org/release/ | Hayır |
+| `OVERTURE_RELEASE` | İthal işinin okuduğu Overture sürümü (örn. `2026-08-19.0`); yalnız `venues-open-import` CronJob'ında | https://docs.overturemaps.org/release/ | Hayır |
 | `PBF_URL` | Geofabrik NL extract adresi; OSM ithali ve OSRM hazırlığı bunu kullanır | — | Hayır |
 | `VOICE_MAX_DURATION` | Ses odasının azami süresi (ISO süre, varsayılan `PT2H`); `endsAt = min(şimdi + bu süre, oturumun bitişi)` | — | Hayır |
 | `CLOUDFLARE_TURN_KEY_ID` | Cloudflare Realtime TURN anahtar kimliği | Cloudflare Dashboard → Realtime → TURN keys | Hayır |
@@ -41,17 +40,20 @@ kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local
 toplu sorguları (`tools/venues-open/wikidata_photos.py`). Boş bırakılırsa ithal işi açılışta
 patlar — Wikimedia politikası gerçek bir iletişim adresi ister.
 
-### Frontend hiçbir anahtar taşımaz
+### Frontend sır taşımaz
 
-`frontend/web/.env.*` dosyaları **depoda takip edilir** çünkü içlerinde yalnız public URL var:
+`frontend/web/.env.*` dosyaları **depoda takip edilir** çünkü içlerinde yalnız herkese açık değerler var:
 
 ```
-VITE_API_URL / VITE_WS_URL             ← sadece bunlar, sır değil
-VITE_GOOGLE_MAPS_KEY / _MAP_ID         ← YALNIZ Google motorunda kullanılır
+VITE_API_URL / VITE_WS_URL     ← ortamın backend adresi; dev'de boş (vite proxy, same-origin)
+VITE_GOOGLE_CLIENT_ID          ← OAuth Web client id; sır değil, her giriş sayfasına gömülür.
+                                  Ortamın alan adı Google Cloud'da "Authorized JavaScript origins"da olmalı.
 ```
 
-`.gitignore` bu üç dosya için özel negasyon taşır. Web'e anahtar eklemeniz gereken **hiçbir**
-durum yok — web katılım tarafıdır, giriş yapmaz, token'lar HttpOnly cookie'de yaşar.
+Harita motoru `/api/config`'ten gelir; varsayılan `maplibre` anahtarsızdır. `VITE_GOOGLE_MAPS_KEY` ve
+`VITE_GOOGLE_MAPS_MAP_ID` **yalnız** `MAP_ENGINE=google` provasında okunur ve gitignore'daki
+`.env.development.local` dosyasında durur. Web'e başka anahtar eklemeniz gereken durum yok; token'lar
+HttpOnly cookie'de yaşar.
 
 Harita motoru istemciye SUNUCUDAN gelir: `GET /api/config` (`mapEngine` `maplibre`|`google`,
 `tiles.styleUrl`, `sources[]` — spec §7). `maplibre` motorunda Google anahtarı hiç okunmaz ve
@@ -65,17 +67,30 @@ istemci Nominatim'e doğrudan gitmez. `.env.*` dosyalarını yalnız KULLANICI d
 
 ## 2. Yerel geliştirme
 
-### 2.1 Şablonu kopyalayın
+### 2.1 Yerel değerleri yazın
+
+Spring Boot çalışma dizinindeki `./config/` klasörünü kendiliğinden yükler ve classpath'taki
+`application-local.yml`'i ezer. Gerçek değerler oraya yazılır, depodaki dosyaya değil:
 
 ```bash
-cp backend/.env.example backend/.env.local
-$EDITOR backend/.env.local          # değerleri doldurun
+mkdir -p backend/config
+$EDITOR backend/config/application-local.yml
 ```
 
-`.env.local` `.gitignore` tarafından yakalanır (`.env.*` deseni). Doğrulayın:
+```yaml
+bumpinto:
+  security:
+    google-client-id: <web-client-id>
+    token-secret: <rastgele >= 32 bayt; openssl rand -base64 48>
+  venues:
+    sources:
+      foursquare: { key: <Foursquare Service Key> }
+```
+
+`backend/config/` `.gitignore`'dadır. Doğrulayın:
 
 ```bash
-git check-ignore -v backend/.env.local     # bir satır dönmeli
+git check-ignore -v backend/config/application-local.yml     # bir satır dönmeli
 ```
 
 ### 2.2 Postgres
@@ -84,25 +99,24 @@ git check-ignore -v backend/.env.local     # bir satır dönmeli
 docker compose up -d postgres              # 5432
 ```
 
-**5432 başka bir projede doluysa** alternatif porta alın ve `.env.local`'e `DB_URL` ekleyin:
+**5432 başka bir projede doluysa** alternatif porta alın ve `backend/config/application-local.yml`'e yazın:
 
 ```bash
 docker run -d --name bumpinto-postgres-alt -p 5434:5432 \
   -e POSTGRES_DB=bumpinto -e POSTGRES_USER=bumpinto -e POSTGRES_PASSWORD=bumpinto \
   -v bumpinto_pgdata:/var/lib/postgresql/data postgres:16-alpine
-# .env.local: DB_URL=jdbc:postgresql://localhost:5434/bumpinto
+# config/application-local.yml:  spring.datasource.url: jdbc:postgresql://localhost:5434/bumpinto
 ```
 
 ### 2.3 Çalıştırın
 
 ```bash
-set -a && source backend/.env.local && set +a
 cd backend && JAVA_HOME=$(/usr/libexec/java_home -v 25) JENV_VERSION=25 mvn -o spring-boot:run
 ```
 
-`set -a` kabuk değişkenlerini otomatik **export** eder — Spring yalnız gerçek ortam
-değişkenlerini görür, `.env` dosyalarını kendiliğinden okumaz. Bu satır olmadan değerler
-uygulamaya ulaşmaz.
+Spring `.env` dosyası okumaz. Öncelik sırası: gerçek ortam değişkeni > `./config/application-local.yml`
+> classpath `application-local.yml` > `application.yml`. Kabukta eski bir `FOURSQUARE_API_KEY` export
+edilmişse dosyadaki değeri ezer; `env | grep -E 'GOOGLE_|TOKEN_|FOURSQUARE'` boş olmalı.
 
 > **Sırsız da açılır.** `local` profilinde `application-local.yml` sahte default'lar veriyor;
 > uygulama ayağa kalkar ama **sağlayıcı çağrıları 401 alır** ve Google girişi çalışmaz.
@@ -133,14 +147,17 @@ docker compose --profile geo up -d
 | Nominatim NL | `http://localhost:8070` | **1–3 saat** ithal (konteyner log'unda `Import finished`) |
 | OSRM car / bicycle / foot | `http://localhost:5001` / `:5002` / `:5003` | hazırlık bitmişse saniyeler |
 
-`backend/.env.local`'e:
+`backend/config/application-local.yml`'e:
 
-```
-GEOCODE_BASE_URL=http://localhost:8070
-GEOCODE_ENGINE=nominatim
-OSRM_CAR_URL=http://localhost:5001
-OSRM_BICYCLE_URL=http://localhost:5002
-OSRM_FOOT_URL=http://localhost:5003
+```yaml
+bumpinto:
+  geocode:
+    base-url: http://localhost:8070
+  routing:
+    osrm:
+      car: http://localhost:5001
+      bicycle: http://localhost:5002
+      foot: http://localhost:5003
 ```
 
 > **Uyarı:** `postgres` imajı `postgis/postgis:16-3.4`'e geçti. Düz `postgres:16-alpine` ile
@@ -266,7 +283,7 @@ diskinde ~30 GB (bkz. `deploy/k8s/README.md`). Ayrıntılı maliyet:
 Anahtarları koyduktan sonra bir kez koşun — ikisi de kapatılmamış borç:
 
 - [ ] **Uygulama gerçek sırlarla açılıyor**
-      `set -a && source backend/.env.local && set +a && mvn -o spring-boot:run`
+      `cd backend && mvn -o spring-boot:run` (değerler `backend/config/application-local.yml`'de)
 - [ ] **Foursquare kategori ID'leri doğru.** `FoursquarePremiumContractTest`'i **gerçek
       anahtarla** koşun (`@EnabledIfEnvironmentVariable`) — yaklaşık 17 Premium çağrı, **~$0,32**
       maliyet. Yanlış ID hata vermez, yalnızca yanlış mekan listeler; testin yakaladığı budur.

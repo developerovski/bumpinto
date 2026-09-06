@@ -10,6 +10,7 @@ import com.bumpinto.domain.venue.RetentionRule;
 import com.bumpinto.domain.venue.SearchRequest;
 import com.bumpinto.domain.venue.SearchResult;
 import com.bumpinto.domain.venue.VenueCandidate;
+import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.TestProps;
 import kong.unirest.core.HttpMethod;
 import kong.unirest.core.MockClient;
@@ -82,6 +83,36 @@ class FoursquareVenueSourceTest {
 
         assertThat(source.descriptor().ratingScale()).isEqualTo(10);
         assertThat(source.descriptor().retention()).isEqualTo(RetentionRule.STRIP_AT_EXPIRY);
+    }
+
+    @Test
+    void proTierAsksOnlyProFieldsSoTheSandboxQuotaAnswers() {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        // Beklenti `fields`e bagli: Premium alan istenirse eslesme olmaz ve arama patlar.
+        mock.expect(HttpMethod.GET, SEARCH_URL)
+                .queryString("fields", FoursquareVenueSource.PRO_FIELDS)
+                .thenReturn("""
+                        {"results":[{"fsq_place_id":"5a1b2c3d4e5f60718293a4b5","name":"Koffie Bar",
+                         "latitude":51.44,"longitude":5.47,
+                         "categories":[{"id":"4bf58dd8d48988d1e0931735","name":"Coffee Shop"}],
+                         "location":{"locality":"Eindhoven"},"website":"https://koffie.example"}]}
+                        """);
+        java.util.Map<String, AppProps.VenueSourceProps> sources = new java.util.HashMap<>(TestProps.venues().sources());
+        sources.put("foursquare", new AppProps.VenueSourceProps(true, "fsq-key", 450, "pro"));
+        AppProps props = TestProps.of(new AppProps.Venues(sources, TestProps.venues().route()));
+        FoursquareVenueSource source = new FoursquareVenueSource(new VenueSourceSupport(http), props,
+                new CategoryMappingLoader(), CLOCK);
+
+        SearchResult result = source.search(new SearchRequest(new GeoPoint(51.44, 5.47), 5.0,
+                List.of(ActivityType.COFFEE), 20));
+
+        VenueCandidate c = result.candidates().get(0);
+        assertThat(c.name()).isEqualTo("Koffie Bar");
+        assertThat(c.rating()).isNull();
+        assertThat(c.photoUrl()).isNull();
+        assertThat(c.hoursToday()).isNull();
+        mock.verifyAll();
     }
 
     @Test

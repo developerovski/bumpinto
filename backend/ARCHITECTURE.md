@@ -673,11 +673,10 @@ secret` komutlarını kullanıcı çalıştırır.
 
 | Ayar | Varsayılan | Ne yapar |
 |---|---|---|
-| `bumpinto.venues.sources.<id>.enabled` | sağlayıcıya göre | O sağlayıcıyı açar/kapatır (ör. `foursquare`, `google`, `tripadvisor`). |
+| `bumpinto.venues.sources.<id>.enabled` | sağlayıcıya göre | O sağlayıcıyı açar/kapatır (ör. `foursquare`, `google`). |
 | `bumpinto.venues.sources.<id>.key` | — | Sağlayıcının API anahtarı (`FOURSQUARE_API_KEY` vb.). |
 | `bumpinto.venues.sources.<id>.budget` | sağlayıcıya göre | `BudgetGate`'in okuduğu aylık çağrı tavanı (`provider_usage` üzerinden); dolunca `open` katmana düşülür, çökmez. |
 | `bumpinto.map.engine` (`MAP_ENGINE`) | `maplibre` | `maplibre` veya `google`; `google` seçilirse `GOOGLE_PLACES_API_KEY` zorunlu olur. |
-| `bumpinto.geocode.engine` (`GEOCODE_ENGINE`) | `nominatim` | Ters/coğrafi kodlama motoru. |
 | `bumpinto.geocode.base-url` (`GEOCODE_BASE_URL`) | Nominatim genel adresi | Kendi Nominatim-uyumlu sunucunuz olabilir. |
 | `bumpinto.routing.osrm.*` (`OSRM_CAR_URL`/`OSRM_BICYCLE_URL`/`OSRM_FOOT_URL`) | boş | Profil başına OSRM `/table` taban URL'i; boş = haversine tahmini. |
 | `bumpinto.retention.enabled` (`RETENTION_ENABLED`) | `true` | Saatlik `VenueContentRetention` işini açar/kapatır. |

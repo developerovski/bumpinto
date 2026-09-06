@@ -22,7 +22,7 @@ class NominatimContractTest {
     static NominatimGeocoder geocoder() {
         UnirestInstance http = Unirest.spawnInstance();
         AppProps props = TestProps.withGeocode(new AppProps.Geocode("ops@bumpinto.test",
-                Duration.ofSeconds(1), "nominatim", System.getenv("GEOCODE_BASE_URL")));
+                Duration.ofSeconds(1), System.getenv("GEOCODE_BASE_URL")));
         return new NominatimGeocoder(http, props);
     }
 

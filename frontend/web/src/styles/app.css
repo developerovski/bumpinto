@@ -184,6 +184,12 @@
       overflow: clip;
     }
   }
+  /* Deste animasyonları kartı ±90vw'ye uçurur; kabuk yatayda kırpar ki gövde genişlemesin ve
+     altta yatay kaydırma çubuğu belirmesin (ölçüldü 2026-09-06). `clip`: kaydırma kabı yaratmaz,
+     dikey akış ve sticky üst çubuk aynen kalır. */
+  [data-app-shell] {
+    overflow-x: clip;
+  }
   body {
     margin: 0;
     background: var(--color-paper);

@@ -59,4 +59,12 @@ class OpenVenueSourceTest {
         assertThat(park.activityType()).isEqualTo(ActivityType.WALK);
         assertThat(source.descriptor().retention()).isEqualTo(RetentionRule.KEEP);
     }
+
+    @Test
+    void categoryIsAHumanLabelNotARawSourceTag() {
+        assertThat(OpenVenueSource.categoryLabel("amenity=pub")).isEqualTo("Pub");
+        assertThat(OpenVenueSource.categoryLabel("leisure=sports_centre")).isEqualTo("Sports centre");
+        assertThat(OpenVenueSource.categoryLabel("coffee_shop")).isEqualTo("Coffee shop");
+        assertThat(OpenVenueSource.categoryLabel(null)).isNull();
+    }
 }

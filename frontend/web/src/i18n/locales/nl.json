@@ -438,7 +438,8 @@
     "fitOk": "Voor {{activity}}: {{category}}",
     "fitOff": "Geen {{activity}}: {{category}}",
     "hoursToday": "Vandaag {{hours}}",
-    "openInMaps": "Open in Google Maps"
+    "openInMaps": "Open in Google Maps",
+    "website": "Website"
   },
   "voice": {
     "region": "Spraakchat",

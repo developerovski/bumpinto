@@ -30,7 +30,7 @@ function buildView(overrides: Partial<View> = {}): View {
         travelMinutes: { me: 30, a: 25, k: 35 },
         address: "Kleine Berg 16, Eindhoven merkez",
         category: "espresso bar",
-        placeLink: "https://www.google.com/maps/place/?q=place_id:xyz",
+        mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=51.4416,5.4697",
         provider: "GOOGLE",
       },
     ],

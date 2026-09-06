@@ -12,12 +12,14 @@ import DecisionBurst, { type BurstKind } from "../molecules/DecisionBurst";
 import SwipeCard, { type SwipeEnter, type SwipeFrom } from "../molecules/SwipeCard";
 import VenueCard from "../molecules/VenueCard";
 
-// ui.css `.a-deck > .a-pol` bir bağlam kuralıydı — çocuk varyantı olarak kapta durur.
-// `!absolute`: karttaki taban `relative` ile özgüllük eşit (0,1,0); sıralamayı Tailwind'in
-// yayın sırası belirliyor (`.relative`, `.absolute`ten sonra) — kalıcı kısıt, önem şart.
-const DECK = "relative h-[27.5rem] flex-none [&>*]:!absolute [&>*]:inset-x-0 [&>*]:mx-auto";
+// Kabın yüksekliği ÖNDEKİ karttan gelir (akışta kalır): kart anatomisi büyüdükçe (seyahat çipleri,
+// uyum satırı, atıf) sabit yükseklik aksiyon satırını örtüyordu (2026-09-06). Arka katmanlar ve
+// uçan kart mutlak konumlu, üstten hizalı. `!absolute`: karttaki taban `relative` ile özgüllük
+// eşit (0,1,0); sıralamayı Tailwind'in yayın sırası belirliyor (`.relative`, `.absolute`ten sonra).
+const DECK = "relative flex-none";
+const LAYER = "!absolute inset-x-0 top-0 mx-auto";
 const D1 = "transform-[rotate(-1.6deg)] shadow-sh2";
-const D2 = "z-1 h-[25rem] shadow-sh1 animate-promote";
+const D2 = `${LAYER} z-1 h-[25rem] shadow-sh1 animate-promote`;
 // Sürükleme ilerlemesiyle (`--swipe-p`, SwipeCard.onProgress) d2 d1'in yerine yaklaşır.
 const D2_STYLE: CSSProperties = {
   transform:
@@ -27,8 +29,8 @@ const D2_STYLE: CSSProperties = {
   opacity: "calc(0.75 + 0.25 * var(--swipe-p, 0))",
   transition: "transform 0.25s var(--ease-swipe), opacity 0.25s var(--ease-swipe)",
 };
-const D3 = "z-0 h-[24.375rem] opacity-45 transform-[rotate(-5deg)_translateY(1.25rem)_scale(0.94)] animate-appear";
-const FLY = "z-3 pointer-events-none animate-fly-out";
+const D3 = `${LAYER} z-0 h-[24.375rem] opacity-45 transform-[rotate(-5deg)_translateY(1.25rem)_scale(0.94)] animate-appear`;
+const FLY = `${LAYER} z-3 pointer-events-none animate-fly-out`;
 
 const KBD =
   "inline-flex h-6 min-w-[1.625rem] items-center justify-center rounded-[0.4375rem] " +

@@ -430,7 +430,8 @@
     "fitOk": "{{activity}} için: {{category}}",
     "fitOff": "{{activity}} değil: {{category}}",
     "hoursToday": "Bugün {{hours}}",
-    "openInMaps": "Google Maps'te aç"
+    "openInMaps": "Google Maps'te aç",
+    "website": "Web sitesi"
   },
   "voice": {
     "region": "Sesli sohbet",

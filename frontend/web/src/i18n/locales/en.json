@@ -438,7 +438,8 @@
     "fitOk": "For {{activity}}: {{category}}",
     "fitOff": "Not {{activity}}: {{category}}",
     "hoursToday": "Today {{hours}}",
-    "openInMaps": "Open in Google Maps"
+    "openInMaps": "Open in Google Maps",
+    "website": "Website"
   },
   "voice": {
     "region": "Voice chat",

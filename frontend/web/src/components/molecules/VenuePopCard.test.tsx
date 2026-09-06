@@ -7,15 +7,18 @@ const venue = {
   name: "Café Berlage",
   lat: 52.36,
   lng: 4.9,
-  placeLink: "https://maps/place/berlage",
+  mapsUrl: "https://maps/dir/berlage",
+  placeLink: "https://cafe-berlage.example",
 } as never;
 
 describe("VenuePopCard", () => {
   it("Google Haritalar bağlantısını basar — pini tıklayan zaten inceleme modunda", () => {
     render(<VenuePopCard venue={venue} tint={0} travel={{ labels: {} }} />);
     const link = screen.getByRole("link", { name: "Google Maps'te aç" });
-    expect(link).toHaveAttribute("href", "https://maps/place/berlage");
+    // Maps düğmesi yol tarifine gider; mekanın sitesi (placeLink) AYRI bağlantıdır (2026-09-06 hatası).
+    expect(link).toHaveAttribute("href", "https://maps/dir/berlage");
     expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: "Web sitesi" })).toHaveAttribute("href", "https://cafe-berlage.example");
   });
 
   it("action yuvası doluyken de bağlantı durur — ikisi aynı yeri paylaşmıyor", () => {

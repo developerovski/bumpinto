@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
-import { venueLink } from "../../lib/venueLink";
+import { venueLink, websiteLink } from "../../lib/venueLink";
 import { LinkButton, Overline } from "../atoms";
 import VenueMeta from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
@@ -11,6 +11,8 @@ import VenueThumb from "./VenueThumb";
 /** Haritadaki seçili mekan kartı (artboard `.popcard`). UI review 2026-09-03: 52px küçük resim
     kartın yarısını kaplayan boşlukla birlikte okunmuyordu — fotoğraf artık tam genişlik afiş,
     metin altında tek sütun akıyor ve dokunmatikte kartı kapatmak için bir düğme var. */
+const SITE_LINK = "self-start text-[0.75rem] text-ink3 underline underline-offset-2 hover:text-ink";
+
 export default function VenuePopCard(props: {
   venue: VenueDto;
   tint: number;
@@ -24,6 +26,7 @@ export default function VenuePopCard(props: {
   const { t } = useTranslation();
   const v = props.venue;
   const link = venueLink(v);
+  const site = websiteLink(v);
 
   return (
     <div className="absolute left-4 top-4 z-[5] flex w-[19.5rem] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[1.25rem] border border-line bg-white shadow-sh2">
@@ -53,6 +56,11 @@ export default function VenuePopCard(props: {
           <LinkButton href={link} target="_blank" rel="noreferrer" kind="ghost" size="fit">
             {t("venue.openInMaps")}
           </LinkButton>
+        )}
+        {site && (
+          <a href={site} target="_blank" rel="noreferrer" className={SITE_LINK}>
+            {t("venue.website")}
+          </a>
         )}
         {props.action}
       </div>

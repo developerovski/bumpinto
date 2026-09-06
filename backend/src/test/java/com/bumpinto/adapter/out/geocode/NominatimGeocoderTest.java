@@ -24,7 +24,7 @@ class NominatimGeocoderTest {
 
     static AppProps props(Duration minInterval) {
         return TestProps.withGeocode(new AppProps.Geocode("ops@bumpinto.test", minInterval,
-                "nominatim", "https://nominatim.openstreetmap.org"));
+                "https://nominatim.openstreetmap.org"));
     }
 
     static NominatimGeocoder geocoder(UnirestInstance http, Duration minInterval) {

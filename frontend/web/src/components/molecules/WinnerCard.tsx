@@ -4,7 +4,7 @@ import type { VenueDto as Venue } from "@bumpinto/shared";
 import { roundedMidpointMeters } from "../../lib/geo";
 import type { DecisionKind } from "../../lib/serverEnums";
 import type { TravelInfo } from "../../lib/useTravelLabels";
-import { venueLink } from "../../lib/venueLink";
+import { venueLink, websiteLink } from "../../lib/venueLink";
 import { Heading, Highlight, LinkButton, Note, Sticker } from "../atoms";
 import Attribution from "./Attribution";
 import VenueCard from "./VenueCard";
@@ -77,6 +77,7 @@ export default function WinnerCard(props: {
   // "Yol tarifi al" kalktı (§4.7 harita politikası) — tek bağlantı, tek href kaynağı.
   // href yoksa buton HİÇ render edilmez (ölü href="#" düzelir).
   const href = venueLink(props.venue);
+  const site = websiteLink(props.venue);
 
   return (
     <>
@@ -120,6 +121,16 @@ export default function WinnerCard(props: {
         >
           {t("venue.openInMaps")}
         </LinkButton>
+      )}
+      {site && (
+        <a
+          href={site}
+          target="_blank"
+          rel="noreferrer"
+          className="self-center text-[0.75rem] text-ink3 underline underline-offset-2 hover:text-ink"
+        >
+          {t("venue.website")}
+        </a>
       )}
       <Attribution providers={props.venue.provider ? [props.venue.provider] : []} center />
     </>

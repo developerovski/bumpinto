@@ -89,7 +89,7 @@ public final class TestProps {
                               AppProps.Cookies cookies, AppProps.RateLimit rateLimit,
                               AppProps.Turn turn, AppProps.Venues venues) {
         return new AppProps(security, cors, cookies, rateLimit,
-                new AppProps.Geocode("dev@bumpinto.test", Duration.ofMillis(1), "nominatim",
+                new AppProps.Geocode("dev@bumpinto.test", Duration.ofMillis(1),
                         "https://nominatim.openstreetmap.org"),
                 new AppProps.Voice(Duration.ofHours(2)), turn,
                 venues,

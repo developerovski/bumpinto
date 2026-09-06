@@ -64,9 +64,24 @@ public class OpenVenueSource implements VenueSource {
     private VenueCandidate toCandidate(OpenVenueRow row, List<ActivityType> requested) {
         return new VenueCandidate(ID, row.getId(), row.getName(),
                 new GeoPoint(row.getLat(), row.getLng()),
-                null, null, row.getPhotoUrl(), row.getCategory(), row.getAddress(),
+                null, null, row.getPhotoUrl(), categoryLabel(row.getCategory()), row.getAddress(),
                 row.getLocality(), null, row.getOpeningHours(), row.getWebsite(),
                 attribution(row, requested), null, null, null);
+    }
+
+    /** Tabloda ham kaynak kategorisi durur: OSM {@code amenity=pub}, Overture {@code coffee_shop}.
+     *  Kart bunu basar (uyum satiri, ustyazi) — ham etiket kullaniciya anlamsiz (2026-09-06 manuel test).
+     *  Foursquare/Google zaten gorunen ad verir; sozlesme "category = gorunen etiket" burada tamamlanir:
+     *  {@code amenity=pub} → "Pub", {@code leisure=sports_centre} → "Sports centre", {@code coffee_shop} → "Coffee shop". */
+    static String categoryLabel(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.substring(raw.indexOf('=') + 1).replace('_', ' ').replace(';', ' ').trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     /** Satirin turleriyle SECILEN turlerin ilk kesisimi; kesismiyorsa null (uydurulmaz). */

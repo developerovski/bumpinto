@@ -2,6 +2,7 @@ package com.bumpinto.infra.config;
 
 import com.bumpinto.domain.session.ActivityType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -57,9 +58,9 @@ public record AppProps(Security security, Cors cors, Cookies cookies, RateLimit 
      * uygulamayi ve ILETISIM ADRESINI tasiyan bir User-Agent ZORUNLU, saniyede en fazla 1
      * istek, sonuclar onbelleklenir. Ucu de burada: {@code contact} User-Agent'a girer,
      * {@code minInterval} throttle'i besler, onbellek adapterdedir.
-     * {@code engine}/{@code baseUrl}: kendi kumemizdeki Nominatim'e gecis tek env ile olur.
+     * {@code baseUrl}: kendi kumemizdeki Nominatim'e gecis tek env ile olur.
      */
-    public record Geocode(String contact, Duration minInterval, String engine, String baseUrl) {
+    public record Geocode(String contact, Duration minInterval, String baseUrl) {
     }
 
     /** maxDuration: ses odasinin sert omru (spec K7). TURN kimligi de bu sureye baglanir. */
@@ -88,12 +89,31 @@ public record AppProps(Security security, Cors cors, Cookies cookies, RateLimit 
      * Kaynak basina ayar. {@code budget} 0 = sinirsiz (yerel kaynaklar). {@code key} yalniz
      * {@code requiresKey} kaynaklarda zorunlu — kontrol VenueSourceConfigValidator'da.
      */
-    public record VenueSourceProps(boolean enabled, String key, int budget) {
+    public record VenueSourceProps(boolean enabled, String key, int budget, String tier) {
+
+        /** Iki ctor var: Spring baglamayi kanonik olana yonlendirmek icin isaret sart. */
+        @ConstructorBinding
+        public VenueSourceProps {
+        }
+
+        /** Testler ve eski cagiranlar: tier verilmezse premium. */
+        public VenueSourceProps(boolean enabled, String key, int budget) {
+            this(enabled, key, budget, null);
+        }
+
+        /**
+         * {@code tier}: yalniz Foursquare okur. {@code premium} (varsayilan) foto/puan/saat ister ve
+         * cagri Premium faturalanir ($18,75/1k, ucretsiz payi YOK); {@code pro} yalniz temel alanlari
+         * ister, Sandbox'in aylik 500 ucretsiz Pro cagrisi icinde kalir — foto ve puan gelmez.
+         */
+        public boolean premium() {
+            return tier == null || !"pro".equalsIgnoreCase(tier.trim());
+        }
 
         @Override
         public String toString() {
             return "VenueSourceProps[enabled=" + enabled + ", key=" + MASK
-                    + ", budget=" + budget + "]";
+                    + ", budget=" + budget + ", tier=" + tier + "]";
         }
     }
 

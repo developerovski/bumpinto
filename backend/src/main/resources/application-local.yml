@@ -1,21 +1,26 @@
 bumpinto:
   security:
     # YALNIZCA local: bilinen bir sir/kimlik prod'a sizmasin diye application.yml'de default yok.
-    google-client-id: ${GOOGLE_CLIENT_ID:dev-client-id}
+    # !! BU DOSYA GIT'TE IZLENIYOR. Gercek anahtari commit ETME; kalici yer backend/.env.local (gitignore).
+    google-client-id: ${GOOGLE_CLIENT_ID:750329001960-0itr2hjlo1c66nrirknhvor2nakoq564.apps.googleusercontent.com}
+    # Kendi JWT'lerimizi imzalar; Google OAuth "client secret" ile ILGISI YOK (ID token dogrulamasi
+    # yalniz client-id ister). >= 32 bayt.
     token-secret: ${TOKEN_SECRET:local-only-secret-change-me-0123456789}
   venues:
     sources:
       # YALNIZCA local: anahtar yoksa saglayici cagrisi 401 alir, uygulama yine de ayaga kalkar.
-      foursquare: { key: "${FOURSQUARE_API_KEY:local-only-fsq-key}" }
-      google:     { key: "${GOOGLE_PLACES_API_KEY:local-only-google-key}" }
-    # YALNIZCA local: FSQ Premium alanlarinin (foto/puan) ucretsiz payi yok; gelistirmede odeme
-    # acilmadigi icin dort tur de acik tabana gider. Prod yonlendirmesi application.yml'de kalir.
-    # FSQ'yu yerelde denemek icin FSQ_ROUTE=foursquare,open ver.
+      # Sekil: her kaynak bir NESNE (key/enabled/budget); duz metin baglanamaz ve acilis patlar.
+      # tier=pro: Sandbox hesabi, ayda 500 ucretsiz Pro cagrisi; foto/puan GELMEZ. Odeme acilinca
+      # FSQ_TIER=premium ver (ya da satiri sil), budget'i de yukselt.
+      foursquare: { key: "${FOURSQUARE_API_KEY:D5VIQQ3YNA2DLHAMA2F1NWYCWSGTBIHUV14XJYVZ3ZUPEL2T}", tier: "${FSQ_TIER:pro}", budget: "${FSQ_PREMIUM_MONTHLY_BUDGET:450}" }
+      google:     { key: "${GOOGLE_PLACES_API_KEY:AIzaSyC-hScvufLrDgc1xo6kcuK2GGGndzNIwgk}" }
+    # YALNIZCA local: FSQ Premium alanlarinin (foto/puan) ucretsiz payi yok; hesapta kredi yoksa
+    # 429 gelir ve orkestrator acik tabana duser. Yalniz acik tabani gormek icin FSQ_ROUTE=open ver.
     route:
-      COFFEE: ${FSQ_ROUTE:open}
-      FOOD: ${FSQ_ROUTE:open}
-      BAR: ${FSQ_ROUTE:open}
-      NIGHTLIFE: ${FSQ_ROUTE:open}
+      COFFEE: ${FSQ_ROUTE:foursquare,open}
+      FOOD: ${FSQ_ROUTE:foursquare,open}
+      BAR: ${FSQ_ROUTE:foursquare,open}
+      NIGHTLIFE: ${FSQ_ROUTE:foursquare,open}
   cors:
     allowed-origins:
       - http://localhost:5173
