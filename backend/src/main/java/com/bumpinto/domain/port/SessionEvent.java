@@ -1,5 +1,8 @@
 package com.bumpinto.domain.port;
 
+import com.bumpinto.domain.voice.EndReason;
+
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -71,5 +74,19 @@ public record SessionEvent(String type, Map<String, Object> payload) {
 
     public static SessionEvent sessionDecided(UUID venueId) {
         return new SessionEvent("session_decided", Map.of("venueId", venueId.toString()));
+    }
+
+    public static SessionEvent voiceStarted(Instant endsAt) {
+        return new SessionEvent("voice_started", Map.of("endsAt", endsAt.toString()));
+    }
+
+    /** Istemci dock metnini sebepten secer (HOST | TIME_LIMIT | EMPTY). */
+    public static SessionEvent voiceEnded(EndReason reason) {
+        return new SessionEvent("voice_ended", Map.of("reason", reason.name()));
+    }
+
+    /** Biri odaya girdi/cikti. Govde bos: presence_changed ile ayni "tazele" zili. */
+    public static SessionEvent voiceRosterChanged() {
+        return new SessionEvent("voice_roster_changed", Map.of());
     }
 }

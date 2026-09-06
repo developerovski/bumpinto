@@ -1,4 +1,6 @@
+import type { SessionView } from "@bumpinto/shared";
 import { useParams } from "react-router-dom";
+import VoiceDock from "../components/organisms/VoiceDock";
 import { useSessionLive } from "../store/useSessionLive";
 import { isHost, useSessionStore } from "../store/sessionStore";
 import DeckScreen from "./DeckScreen";
@@ -26,8 +28,18 @@ export default function SessionPage() {
     if (preview?.status === "EXPIRED") return <ErrorPage kind="expired" />;
     return <JoinForm />;
   }
-  const host = isHost(view);
   const solo = view.sessionType === "SOLO";
+  const page = pageFor(view, slug, isHost(view), solo);
+  // Dock durum anahtarının DIŞINDA: aşama geçişi sayfayı değiştirir, dock'u değil (spec §7). SOLO'da ses
+  // yok; sayfa bir hata ekranıysa (süresi dolmuş / karar geçersizleşmiş) da dock basılmaz.
+  const dockable =
+    !solo &&
+    view.status !== "EXPIRED" &&
+    !(view.status === "DECIDED" && !(view.venues ?? []).some((v) => v.id === view.decidedVenueId));
+  return dockable ? <>{page}<VoiceDock view={view} /></> : page;
+}
+
+function pageFor(view: SessionView, slug: string, host: boolean, solo: boolean) {
   switch (view.status) {
     case "COLLECTING":
     case "SUGGESTING":

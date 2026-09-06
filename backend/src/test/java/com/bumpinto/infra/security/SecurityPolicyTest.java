@@ -64,7 +64,8 @@ class SecurityPolicyTest {
                 new AppProps.Cookies(secureCookies, domain),
                 new AppProps.RateLimit(false),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
     }
 
     /**
@@ -81,21 +82,32 @@ class SecurityPolicyTest {
                 new AppProps.Cookies(true, ""),
                 new AppProps.RateLimit(false),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)),
+                new AppProps.Turn("cf-key-id", "turn-secret-token"));
 
         String printed = props.toString();
 
         assertThat(printed)
                 .doesNotContain("super-secret-token-0123456789abcd")
                 .doesNotContain("fsq-secret-key")
-                .doesNotContain("gplaces-secret-key");
+                .doesNotContain("gplaces-secret-key")
+                .doesNotContain("turn-secret-token");
         assertThat(props.security().toString()).doesNotContain("super-secret-token-0123456789abcd");
         assertThat(props.providers().toString())
                 .doesNotContain("fsq-secret-key")
                 .doesNotContain("gplaces-secret-key");
         // Teshis degeri kaybolmaz: TTL, origin listesi, client-id ve XFF karari okunur.
         assertThat(printed).contains("PT12H", "https://bumpinto.app", "cid",
-                "trustForwardedFor=false");
+                "trustForwardedFor=false", "cf-key-id");
+    }
+
+    @Test
+    void turnConfiguredRequiresBothNonBlankAndResolved() {
+        assertThat(new AppProps.Turn("cf-key-id", "turn-secret-token").configured()).isTrue();
+        assertThat(new AppProps.Turn("", "turn-secret-token").configured()).isFalse();
+        assertThat(new AppProps.Turn("cf-key-id", "").configured()).isFalse();
+        assertThat(new AppProps.Turn("cf-key-id", "${CLOUDFLARE_TURN_API_TOKEN}").configured()).isFalse();
     }
 
     @Test

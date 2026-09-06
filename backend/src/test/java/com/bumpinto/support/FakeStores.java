@@ -8,11 +8,14 @@ import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
+import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.domain.venue.Venue;
+import com.bumpinto.domain.voice.Seat;
+import com.bumpinto.domain.voice.VoiceRoom;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -239,6 +243,68 @@ public class FakeStores {
 
         @Override public Set<UUID> presentIn(UUID sessionId) {
             return Set.copyOf(present.getOrDefault(sessionId, Set.of()));
+        }
+    }
+
+    /** Zamanlayicisiz oda: sure dolumu {@link #expire} ile elle tetiklenir. */
+    public static class FakeVoiceRooms implements VoiceRoomsPort {
+        public final Map<UUID, VoiceRoom> rooms = new HashMap<>();
+        public final Map<UUID, Runnable> expiries = new HashMap<>();
+
+        @Override public VoiceRoom open(UUID sessionId, String slug, Instant endsAt, Runnable onExpire) {
+            return rooms.computeIfAbsent(sessionId, key -> {
+                expiries.put(sessionId, onExpire);
+                return new VoiceRoom(sessionId, slug, Instant.EPOCH, endsAt, Map.of());
+            });
+        }
+
+        @Override public Optional<VoiceRoom> close(UUID sessionId) {
+            expiries.remove(sessionId);
+            return Optional.ofNullable(rooms.remove(sessionId));
+        }
+
+        @Override public Optional<VoiceRoom> join(UUID sessionId, UUID participantId, Seat seat) {
+            return update(sessionId, members -> {
+                members.put(participantId, seat);
+                return true;
+            });
+        }
+
+        @Override public Optional<VoiceRoom> leaveSeat(UUID sessionId, String wsSessionId, String subscriptionId) {
+            return update(sessionId, members -> members.entrySet().removeIf(e ->
+                    e.getValue().wsSessionId().equals(wsSessionId)
+                            && e.getValue().subscriptionId().equals(subscriptionId)));
+        }
+
+        @Override public Optional<VoiceRoom> leaveSocket(UUID sessionId, String wsSessionId) {
+            return update(sessionId, members -> members.entrySet().removeIf(e ->
+                    e.getValue().wsSessionId().equals(wsSessionId)));
+        }
+
+        @Override public Optional<VoiceRoom> roomOf(UUID sessionId) {
+            return Optional.ofNullable(rooms.get(sessionId));
+        }
+
+        public void expire(UUID sessionId) {
+            Runnable onExpire = expiries.get(sessionId);
+            if (onExpire != null) {
+                onExpire.run();
+            }
+        }
+
+        private Optional<VoiceRoom> update(UUID sessionId, Predicate<Map<UUID, Seat>> mutate) {
+            VoiceRoom room = rooms.get(sessionId);
+            if (room == null) {
+                return Optional.empty();
+            }
+            Map<UUID, Seat> members = new HashMap<>(room.members());
+            if (!mutate.test(members)) {
+                return Optional.empty();
+            }
+            VoiceRoom next = new VoiceRoom(room.sessionId(), room.slug(), room.startedAt(),
+                    room.endsAt(), members);
+            rooms.put(sessionId, next);
+            return Optional.of(next);
         }
     }
 }

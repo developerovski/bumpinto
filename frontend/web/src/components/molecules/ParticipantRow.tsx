@@ -1,7 +1,9 @@
 /* Kaynak: ui.css .row / .field / .label / .a-m2 / .muted + W2 satır ölçüleri */
+import { Microphone } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { MODE_ICON, MODE_LABEL_KEY } from "../../lib/travelMode";
+import { useVoiceStore } from "../../store/voiceStore";
 import { Avatar, Badge } from "../atoms";
 
 /** Artboard W2 · .srow — avatar + ad/alt satır + tek rozet.
@@ -10,7 +12,8 @@ import { Avatar, Badge } from "../atoms";
     alanları ZATEN katılımcı nesnesinin üstünde (B-7:T1, üretilmiş tipte), ayrı prop olarak
     THREAD edilmez. Geliş animasyonu: `animate-appear` (reduced-motion `@layer base`'te kapalı).
     Çevrimdışı satır SOLUKLAŞTIRILIR ve alt satıra tek kelime eklenir — ayrı bir rozet YOK,
-    "geç kaldı" damgası YOK (ürünün dil kuralları katılımcıyı suçlayan ifadeyi yasaklar). */
+    "geç kaldı" damgası YOK (ürünün dil kuralları katılımcıyı suçlayan ifadeyi yasaklar).
+    Ses: `inVoice` görünümden, mikrofon ikonu; konuşma halkası `voiceStore`'dan (K12). */
 export default function ParticipantRow(props: {
   participant: ParticipantDto;
   index: number;
@@ -24,20 +27,36 @@ export default function ParticipantRow(props: {
   // (yeni alan gelmeden once render edilen gorunumler kisiyi haksiz yere solutmasin).
   // Elle eklenen noktalar (SOLO) soket acamaz, onlarda gosterilmez.
   const away = p.online === false && !p.manual;
+  // K12: konuşma bilgisi ses deposundan (istemcide ölçülür); üyelik görünümden (`inVoice`).
+  const speaking = useVoiceStore((s) =>
+    props.isSelf ? s.selfSpeaking : !!(p.id && s.peers[p.id]?.speaking),
+  );
+  const inVoice = !!p.inVoice;
   return (
     <div
       className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away ? " opacity-55" : ""}`}
     >
-      <Avatar
-        name={p.displayName ?? "?"}
-        index={props.index}
-        ring={p.hasLocation}
-        waiting={!p.hasLocation}
-      />
+      <span
+        className={`inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}`}
+      >
+        <Avatar
+          name={p.displayName ?? "?"}
+          index={props.index}
+          ring={p.hasLocation}
+          waiting={!p.hasLocation}
+        />
+      </span>
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-[0.875rem] font-bold">
           {p.displayName}
           {props.isSelf && <span className="font-normal text-ink2"> {t("waiting.you")}</span>}
+          {inVoice && (
+            <span className="ml-1.5 inline-flex items-center align-middle text-grass">
+              <Microphone size={14} aria-hidden />
+              <span className="sr-only">{t("voice.inVoice")}</span>
+            </span>
+          )}
+          {speaking && <span className="sr-only">{t("voice.speaking")}</span>}
         </span>
         <span className="flex items-center gap-1.5 text-[0.8125rem] text-ink2">
           {p.hasLocation ? p.locationLabel : t("waiting.waitingLocation")}

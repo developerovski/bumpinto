@@ -81,37 +81,45 @@ atomikliği (iki yazma, tek transaction) kaybedildi ve geri alındı. Tekrarlama
 ## 3. Paket haritası
 
 ```
-com.bumpinto                                   (76 sınıf)
+com.bumpinto                                   (111 sınıf)
 ├── BumpintoApplication                        ← kökte duran TEK sınıf (kural 4)
 │
-├── domain/                                    22 sınıf — saf Java
+├── domain/                                    39 sınıf — saf Java
 │   ├── deck/      DecisionEngine · DeckOutcome · ParticipantLikes
 │   ├── geo/       GeoPoint · GeoMath · SearchRadius · TravelEstimate
 │   │              SessionCenter (merkezin + yarıçapın TEK kaynağı, B-10)
 │   ├── port/      SessionStorePort · DeckStorePort · UserStorePort
-│   │              VenueProviderPort · SessionEventsPort · SessionEvent
+│   │              VenueProviderPort · SessionEventsPort · SessionEvent ·
+│   │              TurnCredentialsPort · VoiceRoomsPort (B-12, ses odası)
 │   ├── session/   Session · SessionStatus · SessionType · Participant · ActivityType
 │   │              SessionSummary (liste satırı: sayımlar + karar mekanı)
 │   ├── user/      UserProfile (hesap + tercihler)
-│   └── venue/     Venue · VenueCandidate
+│   ├── venue/     Venue · VenueCandidate
+│   └── voice/     VoiceRoom · Seat · IceConfig · EndReason (B-12, ses odası)
 │
-├── application/                               12 sınıf — use-case'ler
-│   ├── session/   SessionCommands · SessionQueries · SessionExpiry
+├── application/                               15 sınıf — use-case'ler
+│   ├── session/   SessionCommands · SessionQueries · SessionExpiry ·
+│   │              VoiceCommands · SessionGates (host kuralı, B-12)
 │   ├── deck/      DeckFlow
 │   ├── user/      UserPreferences · UserProfileQueries
 │   ├── text/      Ids · Texts
 │   └── error/     NotFound · Conflict · Forbidden · NoVenuesFound Exception
 │
-├── adapter/                                   32 sınıf
-│   ├── in/web/           12 — Session/Participant/Deck/Points/Me/Auth controller, ApiDtos, ApiExceptionHandler,
-│   │                          SessionViewAssembler, ParticipantTokenDelivery,
-│   │                          WebPrincipals, WebSocketConfig
+├── adapter/                                   47 sınıf
+│   ├── in/web/           19 — Session/Participant/Deck/Points/Me/Auth/Voice controller, ApiDtos,
+│   │                          ApiExceptionHandler, SessionViewAssembler, ParticipantTokenDelivery,
+│   │                          WebPrincipals, WebSocketConfig, SessionWsHandshake ·
+│   │                          VoiceDestinations · VoiceSignalController · VoiceRoomListener ·
+│   │                          VoiceInboundGuard · PresenceListener
 │   └── out/
 │       ├── persistence/  15 — *Entity, *Repository, *StoreAdapter
 │       ├── provider/      8 — Foursquare · GooglePlaces · ProviderOrchestrator
 │       │                       ProviderQuotaCache · ProviderQuota · QuotaAwareVenueProvider
 │       │                       ProviderException · QuotaExceededException
-│       └── events/        1 — StompSessionEvents
+│       ├── events/        1 — StompSessionEvents
+│       ├── turn/          1 — CloudflareTurnCredentials (Cloudflare TURN kimliği)
+│       ├── presence/      2 — InMemoryPresence · InMemoryVoiceRooms
+│       └── geocode/       1 — NominatimReverseGeocoder
 │
 └── infra/                                      9 sınıf — iş kuralı YOK
     ├── security/  SecurityConfig · TokenService · GoogleIdVerifier · AuthCookies
@@ -542,7 +550,8 @@ kullanıcıya hangi alandan mekân bulunamadığını söyler.
 
 ## 11. Olaylar (WebSocket)
 
-STOMP, `/api/sessions/{slug}/ws` uç noktası, konu `/topic/session/{slug}`.
+STOMP, `/api/sessions/{slug}/ws` uç noktası, konu `/topic/session/{slug}`. Kanal sunucudan
+istemciye tek yönlüdür — tek istisna ses sinyali (kural 5).
 
 | Olay | Yük |
 |---|---|
@@ -558,10 +567,15 @@ STOMP, `/api/sessions/{slug}/ws` uç noktası, konu `/topic/session/{slug}`.
 | `runoff_tie` | `finalistCount` |
 | `no_likes` | *(boş)* |
 | `session_decided` | `venueId` |
+| `voice_started` | `endsAt` |
+| `voice_ended` | `reason` (`HOST` \| `TIME_LIMIT` \| `EMPTY`) |
+| `voice_roster_changed` | — |
 
 Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buraya da satır düşer.
+`voice_roster_changed` yalnız üye kümesi **gerçekten** değiştiğinde yayınlanır — SUBSCRIBE/
+UNSUBSCRIBE gürültüsünün tamamı zil çalmaz.
 
-Üç kural:
+Beş kural:
 
 1. **Commit'ten sonra yayınlanır.** Aktif transaction varsa olay `afterCommit`'e kaydedilir;
    rollback'te hiç gitmez. İstemci var olmayan bir durumu görmez. Use-case'ler saf kalır —
@@ -589,13 +603,37 @@ Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buray
    Presence yalnız **geri alınabilir giriş** kararlarını kapatır (`shuffle`); deste bitişi gibi
    geri alınamaz kararlar satıra bakmaya devam eder — bir ağ dalgalanması kalıcı bir kararı
    erken tetiklememelidir.
+5. **Ses kanalı tek istisnadır — istemci burada SEND de yapar.** İstemci SEND'i yalnız
+   `/app/sessions/{slug}/voice/signal` adresine (kendi slug'ı) geçer, **başka hiçbir adrese değil**
+   ve asla `/topic` altına değil. `VoiceSignalController` gövdeyi (`from` sunucu tarafından
+   damgalanır; `type`, `sdp?`, `candidate?`) hedefin özel konusuna
+   `/topic/session/{slug}/voice/{participantId}` iletir, saklamaz. Özel konuya yalnız sahibi abone
+   olabilir ve **abone olmak ses üyeliğidir** (`VoiceRoomListener`): SUBSCRIBE koltuk açar,
+   UNSUBSCRIBE o koltuğu, DISCONNECT soketin tüm koltuklarını düşürür. Inbound interceptor
+   `VoiceInboundGuard` hedefleri tam eşleşmeyle denetler ve soket başına bütçe uygular
+   (SUBSCRIBE+UNSUBSCRIBE 20/dk, SEND 240/dk; aşımda sessizce düşer). Yük 16 KB'a, `candidate`
+   alanı en fazla 16 alana kırpılıdır; taşıma çerçevesi 32 KB'a (Tomcat'in metin tamponu
+   `WebSocketConfig`'te bir `ServletServerContainerFactoryBean` ile 32 KB'a çıkarılmıştır).
+   Oda `InMemoryVoiceRooms`'da yaşar (presence ile aynı süreç içi borç: Caffeine + `Clock` +
+   `TaskScheduler`); `endsAt = min(şimdi + azami süre, oturumun bitişi)`, süre dolunca zamanlayıcı
+   odayı kapatır ve tahliye kendi zamanlayıcısını iptal eder. Bu `TaskScheduler` Spring Boot'un
+   otomatik kurduğu `messageBrokerTaskScheduler` bean'idir (havuz = CPU çekirdek sayısı) — oda
+   süre dolumu ve `PresenceListener`'ın grace zili bu havuzu paylaşır; STOMP heartbeat'i ise
+   `WebSocketConfig.heartbeatScheduler()`'ın kendi tek iş parçacıklı (bean OLMAYAN)
+   zamanlayıcısındadır, ikisi karışmaz. Grace zilinde oturumda kimse
+   kalmadıysa `PresenceListener` `endIfEmpty` ile odayı kapatır. Host kuralı
+   `SessionGates.requireHost`'ta paylaşılır (`SessionCommands`, `DeckFlow`, `VoiceCommands`).
+   TURN kimliği `CloudflareTurnCredentials`'tan gelir; Cloudflare'e ulaşılamazsa yalnız STUN ile
+   (`relay=false`) devam edilir. Karar dokümanı:
+   `docs/superpowers/specs/2026-09-06-voice-chat-design.md`.
 
 ---
 
 ## 12. Yapılandırma ve sırlar
 
 `AppProps` (`@ConfigurationProperties("bumpinto")`) — `security`, `providers`, `cors`, `cookies`,
-`rateLimit`, `quota`, `geocode`. Sır taşıyan alanlar `toString()`'de maskelenir.
+`rateLimit`, `quota`, `geocode`, `voice` (azami süre), `turn` (Cloudflare anahtarı; `api-token` sır).
+Sır taşıyan alanlar `toString()`'de maskelenir.
 
 **`bumpinto.geocode`** (`NominatimReverseGeocoder`, `adapter/out/geocode`) — orta noktanın kasaba
 kelimesi (spec §5.A.4). `contact` (`NOMINATIM_CONTACT`, varsayılan `dev@bumpinto.test`) Nominatim

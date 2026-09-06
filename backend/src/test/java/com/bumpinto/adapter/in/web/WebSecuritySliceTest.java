@@ -3,15 +3,19 @@ package com.bumpinto.adapter.in.web;
 import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.application.session.VoiceCommands;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.SessionStorePort;
+import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.voice.IceConfig;
+import com.bumpinto.domain.voice.VoiceRoom;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
 import com.bumpinto.infra.security.ParticipantTokenFilter;
@@ -44,13 +48,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {SessionController.class, ParticipantController.class, DeckController.class})
+@WebMvcTest(controllers = {SessionController.class, ParticipantController.class, DeckController.class,
+        VoiceController.class})
 // ParticipantTokenFilter BILEREK import edilmez: bean olursa servlet zincirine de kaydolur ve
 // OncePerRequestFilter'in "already filtered" isareti zincir icindeki gercek ornegi atlatir.
 @Import({SecurityConfig.class, SessionViewAssembler.class, AuthCookies.class, TokenService.class,
@@ -71,7 +77,8 @@ class WebSecuritySliceTest {
                     new AppProps.Cookies(false, ""),
                     new AppProps.RateLimit(false),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
         }
 
         @Bean
@@ -90,6 +97,9 @@ class WebSecuritySliceTest {
     @MockitoBean UserProfileQueries profiles;
     // SessionViewAssembler artik PresencePort ister; bu paket InMemoryPresence'i taramaz.
     @MockitoBean PresencePort presence;
+    @MockitoBean VoiceCommands voice;
+    // SessionViewAssembler artik VoiceRoomsPort da ister; Optional donen metodlar bos doner.
+    @MockitoBean VoiceRoomsPort rooms;
 
     static final UUID SESSION_ID = UUID.randomUUID();
 
@@ -113,6 +123,8 @@ class WebSecuritySliceTest {
                 .doesNotContain("pt-secret-value").contains(id.toString());
         assertThat(new ApiDtos.CreateSessionResponse("x7k2m", id, id, "pt-secret-value",
                 Instant.EPOCH).toString()).doesNotContain("pt-secret-value").contains("x7k2m");
+        assertThat(new ApiDtos.IceServerDto(List.of("turn:x"), "u", "turn-secret").toString())
+                .doesNotContain("turn-secret").contains("turn:x");
     }
 
     static final UUID AYSE_ID = UUID.randomUUID();
@@ -266,6 +278,15 @@ class WebSecuritySliceTest {
                         .contentType("application/json")
                         .content("{\"venueId\":\"" + UUID.randomUUID() + "\",\"liked\":true}"))
                 .andExpect(status().isForbidden());
+        mvc.perform(post("/api/sessions/abc/voice")
+                        .header("Authorization", "Bearer " + bearer))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/sessions/abc/voice/credentials")
+                        .header("Authorization", "Bearer " + bearer))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/sessions/abc/voice")
+                        .header("Authorization", "Bearer " + bearer))
+                .andExpect(status().isForbidden());
     }
 
     /**
@@ -363,7 +384,40 @@ class WebSecuritySliceTest {
                         .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.slug").value("abc"))
-                .andExpect(jsonPath("$.participants[0].displayName").value("Ayşe"));
+                .andExpect(jsonPath("$.participants[0].displayName").value("Ayşe"))
+                // Ses odasi kapali: mock VoiceRoomsPort.roomOf Optional.empty() doner.
+                .andExpect(jsonPath("$.voice").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.participants[0].inVoice").value(false));
+    }
+
+    @Test
+    void voiceEndpointsNeedAParticipantToken() throws Exception {
+        mvc.perform(post("/api/sessions/abc/voice")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/sessions/abc/voice")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/sessions/abc/voice/credentials")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void participantTokenOpensVoiceStartCredentialsAndEnd() throws Exception {
+        Instant endsAt = Instant.parse("2026-09-06T12:00:00Z");
+        when(voice.start("abc", AYSE_ID))
+                .thenReturn(new VoiceRoom(SESSION_ID, "abc", Instant.EPOCH, endsAt, Map.of()));
+        when(voice.credentials("abc", AYSE_ID))
+                .thenReturn(new VoiceCommands.Credentials(IceConfig.stunOnly(), endsAt));
+
+        mvc.perform(post("/api/sessions/abc/voice")
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.endsAt").value("2026-09-06T12:00:00Z"));
+        mvc.perform(post("/api/sessions/abc/voice/credentials")
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.relay").value(false))
+                .andExpect(jsonPath("$.iceServers[0].urls[0]").value("stun:stun.cloudflare.com:3478"))
+                .andExpect(jsonPath("$.endsAt").value("2026-09-06T12:00:00Z"));
+        mvc.perform(delete("/api/sessions/abc/voice")
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
+                .andExpect(status().isNoContent());
     }
 
     /**

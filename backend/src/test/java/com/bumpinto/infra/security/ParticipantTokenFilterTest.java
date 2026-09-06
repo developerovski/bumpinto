@@ -41,7 +41,8 @@ class ParticipantTokenFilterTest {
                 new AppProps.Cookies(true, ""),
                 new AppProps.RateLimit(false),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO)), clock);
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", "")), clock);
     }
 
     @AfterEach

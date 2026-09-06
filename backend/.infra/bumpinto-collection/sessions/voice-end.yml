@@ -1,0 +1,26 @@
+info:
+  name: Voice — Bitir
+  type: http
+  seq: 10
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/sessions/{{slug}}/voice"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host'un katilimci token'i gerekir (host degilse 403, bilinmeyen slug 404). Herkes icin
+    kapatir: uyeler silinir, `voice_ended{reason: HOST}` yayinlanir. Idempotent (oda kapaliysa
+    da 204). Suresi dolmus oturumda da calisir. Rate limit: `api` kovasi.

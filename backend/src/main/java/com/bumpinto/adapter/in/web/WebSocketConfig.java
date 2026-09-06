@@ -1,33 +1,31 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.infra.config.AppProps;
+import jakarta.servlet.ServletContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Canlı olay kanalı: sunucudan istemciye tek yön (uygulamada tek bir {@code @MessageMapping}
- * yok), yayınlar {@code /topic/session/{slug}} altında.
+ * Canlı olay kanalı: sunucudan istemciye tek yön (istemciden sunucuya tek adres WebRTC
+ * sinyalidir (aşağıda)), yayınlar {@code /topic/session/{slug}} altında.
  *
- * <p>Kanal SALT OKUNUR: istemciden gelen mesaj frame'leri düşürülür
- * ({@link #configureClientInboundChannel}). Bu kendiliğinden gelmiyordu — Spring'in simple
- * broker'ı, hedefi broker önekiyle başlayan İSTEMCİ SEND frame'lerini de abonelere röleler.
- * Handshake kimliksizken slug'ı bilen biri sahte olay basıp oturumdaki HERKESİN sekmesine tam
- * bir {@code GET /api/sessions/{slug}} yaptırabiliyordu (1 frame → N ağır istek). Handshake artık
- * kimlikli (aşağıda) ama kural KALDI: üye de olsa istemcinin yayın yapmasının meşru kullanımı yok.
- * Uygulamada tek bir {@code @MessageMapping} yok.
+ * <p>Kanal bir istisna disinda SALT OKUNURDUR: istemciden gelen SEND frame'leri dusurulur
+ * ({@link VoiceInboundGuard}, {@link #configureClientInboundChannel}); tek gecis
+ * {@code /app/sessions/{slug}/voice/signal} (kendi slug'i) — WebRTC sinyali,
+ * {@link VoiceSignalController}. Spring'in simple broker'i, hedefi broker onekiyle baslayan
+ * ISTEMCI SEND frame'lerini de abonelere roleler; handshake kimliksizken slug'i bilen biri sahte
+ * olay basip oturumdaki HERKESIN sekmesine tam bir GET yaptirabiliyordu. Kural KALDI: {@code
+ * /topic} altina istemci yayini yok.
  *
  * <p>Handshake KİMLİKLİDİR: uç nokta {@code /api/sessions/{slug}/ws} altındadır ve katılımcı
  * çerezinin path'i tam olarak {@code /api/sessions/{slug}} olduğu için tarayıcı çerezi handshake'e
@@ -45,6 +43,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     /** Cift yonlu STOMP heartbeat araligi. */
     private static final long HEARTBEAT_MS = 10_000;
+    /**
+     * SDP birkac KB'dir; 32 KB hem STOMP mesaj limiti ({@link #configureWebSocketTransport}) hem
+     * Tomcat'in metin arabellegi ({@link #webSocketContainer}) icin AYNI deger — biri digeri
+     * olmadan gecersiz kalirdi: Tomcat varsayilani 8 KB'dir ve o tavan asilinca Spring'in limiti
+     * hic devreye girmeden soket kapanir.
+     */
+    private static final int MESSAGE_SIZE_LIMIT = 32 * 1024;
 
     private final AppProps props;
 
@@ -64,6 +69,47 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.enableSimpleBroker("/topic")
                 .setTaskScheduler(heartbeatScheduler())
                 .setHeartbeatValue(new long[] {HEARTBEAT_MS, HEARTBEAT_MS});
+        registry.setApplicationDestinationPrefixes(VoiceDestinations.APP_PREFIX);
+    }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.setMessageSizeLimit(MESSAGE_SIZE_LIMIT);
+    }
+
+    /**
+     * Spring'in STOMP mesaj limiti Tomcat'in kendi metin/ikili arabellegini BUYUTMEZ; o hala 8
+     * KB varsayilaninda kalir ve daha buyuk bir frame Spring'e hic ulasmadan soketi kapatir. Ikisi
+     * ayni deger olmali (bkz. {@link #MESSAGE_SIZE_LIMIT}).
+     *
+     * <p>{@code afterPropertiesSet} ezilir: taban sinif, ServletContext'te canli bir
+     * {@code jakarta.websocket.server.ServerContainer} nitelik BULAMAZSA firlatir. Bu nitelik
+     * yalniz GERCEK bir Tomcat baslayinca (RANDOM_PORT/uretim) yazilir; {@code @SpringBootTest}
+     * varsayilani olan MOCK ortaminda (ApiHappyPathTest, AccountApiTest) hicbir sunucu
+     * baslamadigindan nitelik yoktur — dokunacak canli bir kap olmadigi icin sessizce atlanir.
+     */
+    @Bean
+    ServletServerContainerFactoryBean webSocketContainer() {
+        ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean() {
+            private ServletContext servletContext;
+
+            @Override
+            public void setServletContext(ServletContext servletContext) {
+                this.servletContext = servletContext;
+                super.setServletContext(servletContext);
+            }
+
+            @Override
+            public void afterPropertiesSet() {
+                if (servletContext != null && servletContext.getAttribute(
+                        "jakarta.websocket.server.ServerContainer") != null) {
+                    super.afterPropertiesSet();
+                }
+            }
+        };
+        container.setMaxTextMessageBufferSize(MESSAGE_SIZE_LIMIT);
+        container.setMaxBinaryMessageBufferSize(MESSAGE_SIZE_LIMIT);
+        return container;
     }
 
     private static ThreadPoolTaskScheduler heartbeatScheduler() {
@@ -74,29 +120,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         return scheduler;
     }
 
-    /** Yalniz kendi oturumunun aboneligi gecer; istemcinin yayin yapmasi sessizce dusurulur. */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new ChannelInterceptor() {
-            @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                SimpMessageType type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
-                if (type == SimpMessageType.MESSAGE) {
-                    return null;
-                }
-                if (type == SimpMessageType.SUBSCRIBE && !ownTopic(message)) {
-                    return null;
-                }
-                return message;
-            }
-        });
-    }
-
-    private static boolean ownTopic(Message<?> message) {
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(message);
-        Map<String, Object> attributes = accessor.getSessionAttributes();
-        Object slug = attributes == null ? null : attributes.get(SessionWsHandshake.SLUG);
-        return slug != null && ("/topic/session/" + slug).equals(accessor.getDestination());
+        registration.interceptors(new VoiceInboundGuard());
     }
 
     @Override

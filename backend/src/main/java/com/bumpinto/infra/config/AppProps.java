@@ -7,7 +7,8 @@ import java.util.List;
 
 @ConfigurationProperties(prefix = "bumpinto")
 public record AppProps(Security security, Providers providers, Cors cors, Cookies cookies,
-                       RateLimit rateLimit, Quota quota, Geocode geocode) {
+                       RateLimit rateLimit, Quota quota, Geocode geocode,
+                       Voice voice, Turn turn) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -86,5 +87,27 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
      * {@code minInterval} throttle'i besler, onbellek adapterdedir.
      */
     public record Geocode(String contact, Duration minInterval) {
+    }
+
+    /** maxDuration: ses odasinin sert omru (spec K7). TURN kimligi de bu sureye baglanir. */
+    public record Voice(Duration maxDuration) {
+    }
+
+    /**
+     * Cloudflare Realtime TURN anahtari. Bos birakilabilir: uygulama ayaga kalkar, kimlik
+     * yerine yalniz STUN verilir ve acilista bir kez WARN loglanir (K11) — ses yan ozelliktir,
+     * giris degil; {@link AppProps#required} kurali burada bilincli olarak uygulanmaz.
+     */
+    public record Turn(String keyId, String apiToken) {
+
+        public boolean configured() {
+            return keyId != null && !keyId.isBlank() && !keyId.startsWith("${")
+                    && apiToken != null && !apiToken.isBlank() && !apiToken.startsWith("${");
+        }
+
+        @Override
+        public String toString() {
+            return "Turn[keyId=" + keyId + ", apiToken=" + MASK + "]";
+        }
     }
 }

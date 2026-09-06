@@ -427,5 +427,35 @@
     "fitOff": "{{activity}} değil: {{category}}",
     "hoursToday": "Bugün {{hours}}",
     "openInMaps": "Google Maps'te aç"
+  },
+  "voice": {
+    "region": "Sesli sohbet",
+    "start": "Sesli sohbeti başlat",
+    "restart": "Yeniden başlat",
+    "open": "Sesli sohbet açık",
+    "members": "{{count}} kişi",
+    "remaining": "{{time}} kaldı",
+    "join": "Katıl",
+    "joining": "Bağlanıyor…",
+    "retry": "Tekrar dene",
+    "leave": "Ayrıl",
+    "end": "Herkes için bitir",
+    "mute": "Mikrofonu kapat",
+    "unmute": "Mikrofonu aç",
+    "micDenied": "Mikrofon izni gerekli. Tarayıcı ayarlarından izin verip tekrar dene.",
+    "connectFailed": "Sesli sohbete bağlanılamadı — tekrar dene.",
+    "inVoice": "sesli sohbette",
+    "speaking": "konuşuyor",
+    "peerFailed": "sesi gelmiyor",
+    "errStart": "Sesli sohbet başlatılamadı — tekrar dene.",
+    "errEnd": "Sesli sohbet bitirilemedi — tekrar dene.",
+    "errSolo": "Sesli sohbet yalnız grup buluşmalarında.",
+    "errExpiring": "Buluşma bitmek üzere, sesli sohbet başlatılamaz.",
+    "errClosed": "Bu buluşma kapandı.",
+    "ended": {
+      "HOST": "Sesli sohbet bitirildi",
+      "TIME_LIMIT": "Süre doldu",
+      "EMPTY": "Herkes ayrıldı, sesli sohbet kapandı"
+    }
   }
 }

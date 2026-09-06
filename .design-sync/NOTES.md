@@ -163,6 +163,18 @@ doğrulanacağını düşünsün.
 - **Barrel dışı kalan store'lar**: `useAuthStore` ve `useSessionStore` export edilmiyor.
   Sonuç: `AvatarMenu` (propsuz, `me`'yi store'dan okuyor) ve `RequireAuth`'un "signed"
   dalı preview'dan sürülemiyor → **ikisi bilerek floor card'da kaldı.**
+  `TopBar`'ı BLOKLAMIYOR: `status` preview harness'ında hep `"unknown"` kalıyor
+  (`load()` yalnız `main.tsx`'te çağrılıyor) ve bu görsel olarak `"anon"` ile aynı —
+  yani kartta gösterilen dal gerçek ürün dalı. Ama durum bağımlı yeni bir bileşen
+  aynı tavana toslar.
+- **`AppShell` preview'lanamıyor (floor card, bilinçli).** `<Outlet/>` rota bağlamını
+  `_ds_bundle.js`'in içindeki react-router örneğinden okuyor; `Routes`/`Route`/`Outlet`
+  barrel'dan export EDİLMİYOR, dolayısıyla preview'dan gerçek sayfa içeriği enjekte
+  edilemiyor. `useOutlet()` çökmüyor, sessizce `null` dönüyor — ve asıl sorun bu:
+  `flex-1` boşluğu oluşmadığı için OSM atıf altbilgisi başlığın hemen altına çöküyor,
+  altında büyük ölü bir alan kalıyor. **Hiçbir gerçek sayfanın göstermediği bir düzen**,
+  o yüzden yayınlanmadı. Açmak isteyen: `Outlet`'i (veya bir `children` prop'unu)
+  barrel'dan export etsin.
 - **Barrel dışı kalan moleküller** (Lobi/Bekle/Landing bileşimlerinin 1:1 taşınmasını
   sınırlıyor): `MidpointCard`, `ActivityStrip`, `SessionSteps`, `InviteCard`,
   `ActivityBadges`, `SignInBlock`.
@@ -196,7 +208,43 @@ doğrulanacağını düşünsün.
   parçacık türlerine uymaz** — `confetti`/`pop` `-0.3s`, `poof` `-0.12s` istedi.
 - **`travelMinutes` anahtarları ile `TRAVEL.labels` anahtarları AYNI olmalı**, yoksa rozet
   sessizce "Yol" fallback'ine düşer.
+- **Fixture nit**: `BEBEK` ("Bebek Kahve") ve `BALAT` ("Balat Kahvesi") aynı monogramı
+  ("bk") üretiyor — iki mekânı yan yana basan kartlarda (`LikedList`) ikisi tıpatıp aynı
+  görünüyor. Render kusuru değil, veri seçimi. Düzeltmek isteyen `_fixtures.ts`'te BALAT'ı
+  farklı baş harflere sahip bir adla değiştirsin — ama bu dosya grade anahtarına GİRMEDİĞİ
+  için (§3) etkilenen bileşenleri elle yeniden çekmek gerekir.
 - `photoUrl` her yerde bilerek boş: repoda yerel görsel yok, dış URL sandbox'ta yüklenmez.
+
+# 9b. Derecelendirme turunun yakaladıkları (2. tur)
+
+Kartları körlemesine "good" saymamak işe yaradı — dört gerçek sorun buradan çıktı:
+
+- **`Button.RoundControls` bayat preview'dı.** Kaldırılmış `c-ico-undo`/`c-ico-x`/
+  `c-ico-heart` gliflerini kullanıyordu → üç yuvarlak buton BOŞ daire basıyordu.
+  Üründeki `DeckActions` deseniyle değiştirildi (Phosphor `ArrowCounterClockwise`/`X`/
+  `Heart`, `size={24}`). **Aynı kök sebep `conventions.md`'de de vardı (§11b)** — bir
+  sınıf silindiğinde onu adlandıran HER yeri (preview + conventions) tara.
+- **`Overline` Türkçe büyütmesi harness kusuruydu, ürün kusuru DEĞİL.** CSS
+  `text-transform: uppercase` dile duyarlıdır; uygulamada `i18n/index.ts:11`
+  `document.documentElement.lang`i kuruyor, preview kartlarında o kod yolu koşmuyordu ve
+  `<html>` dilsiz kalıp "KIMLER VAR" (noktasız I) basıyordu. `BumpIntoPreviewRoot` artık
+  `lang="tr"` sabitliyor → "KİMLER VAR". **Yeni bir preview kökü yazan bunu korusun.**
+- **`PageHeader.WithAction`** hiçbir aksiyon göstermiyordu: `action` üründe
+  `hidden lg:block`. `cfg.overrides.PageHeader.viewport = "1280x700"` ile gerçek dal
+  render oluyor. (§9'daki `lg:` kuralının bir örneği daha.)
+- **`StatCard` eğimi GERÇEKTEN uygulanıyor** ama yalnız 1° ("hafif eğik"); piksel
+  ölçümüyle yanlışlıkla "eğim yok" sanıldı. `transform-[rotate(±1deg)]` sınıfları
+  derlenmiş durumda. Kusur değil.
+
+İki "bulgu" ise yanlış alarmdı, bir dahaki tur aynı tuzağa düşmesin:
+- **"Kuran" rozeti** = `waiting.host`, yani buluşmayı KURAN kişi (fiil `kurmak`).
+  Türkçe bilmeyen bir derecelendirici bunu dinî bir metin sanabiliyor.
+- **`PastSessionRow`/`PastSessionList` monogramı yok** — `photoOnly` dalının tasarımı
+  (`VenueCard.tsx:182` monogramı `!photoOnly` ile kapıyor, çünkü `VenueDeck`'in hayalet
+  kartlarında metin istenmiyor). Yükseklik çökmesi ayrı bir konuydu ve düzeltildi (§8).
+
+**Ders:** derecelendiriciye ürünün dilini ve bilinen ürün boşluklarını brifingde ver,
+yoksa gerçek bulgularla yanlış alarmlar aynı kutuda gelir.
 
 # 10. Statik render edilemeyen, bilinçli atlanan hâller
 

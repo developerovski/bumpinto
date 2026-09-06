@@ -6,9 +6,6 @@ info:
 http:
   method: GET
   url: "{{baseUrl}}/api/sessions/{{slug}}"
-  headers:
-    - name: X-Participant-Token
-      value: "{{participantToken}}"
   auth:
     type: bearer
     token: "{{accessToken}}"

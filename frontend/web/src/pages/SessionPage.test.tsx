@@ -73,3 +73,25 @@ describe("SessionPage — kapanmış buluşma linki", () => {
     expect(screen.getByRole("button", { name: "Katıl" })).toBeInTheDocument();
   });
 });
+
+describe("SessionPage — ses dock'u", () => {
+  it("GROUP + host → 'Sesli sohbeti başlat' sayfanın altında", () => {
+    at({ ...base, status: "COLLECTING", viewer: { participantId: "h", host: true } });
+    expect(screen.getByRole("button", { name: /Sesli sohbeti başlat/ })).toBeInTheDocument();
+  });
+  it("SOLO → dock yok", () => {
+    at({ ...base, status: "COLLECTING", sessionType: "SOLO", viewer: { participantId: "h", host: true } });
+    expect(screen.queryByRole("button", { name: /Sesli sohbeti başlat/ })).not.toBeInTheDocument();
+  });
+  it("BROWSING + host → dock hâlâ görünür (aşama geçişi switch'i değiştirir, dock'u değil)", () => {
+    at({ ...base, status: "BROWSING", viewer: { participantId: "h", host: true } });
+    expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sesli sohbeti başlat/ })).toBeInTheDocument();
+  });
+
+  it("EXPIRED + host → dock yok (sayfa hata ekranına düştü)", () => {
+    at({ ...base, status: "EXPIRED", viewer: { participantId: "h", host: true } });
+    expect(screen.getByText("Bu oturumun süresi dolmuş.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sesli sohbeti başlat/ })).not.toBeInTheDocument();
+  });
+});

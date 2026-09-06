@@ -6,17 +6,20 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SessionCenter;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.venue.Venue;
+import com.bumpinto.domain.voice.VoiceRoom;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,9 +28,11 @@ import java.util.stream.Collectors;
 public class SessionViewAssembler {
 
     private final PresencePort presence;
+    private final VoiceRoomsPort rooms;
 
-    public SessionViewAssembler(PresencePort presence) {
+    public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms) {
         this.presence = presence;
+        this.rooms = rooms;
     }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
@@ -44,6 +49,7 @@ public class SessionViewAssembler {
         Double radiusKm = center == null ? null : Math.round(center.radiusKm() * 10) / 10.0;
         GeoPoint midpointFor = center == null ? null : center.point();
         Set<UUID> present = presence.presentIn(snap.session().id());
+        Optional<VoiceRoom> room = rooms.roomOf(snap.session().id());
 
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
                 .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
@@ -52,7 +58,8 @@ public class SessionViewAssembler {
                         // Orta nokta yoksa ya da kisinin konumu yoksa satir cizilmez → null.
                         midpointFor == null || !p.hasLocation() ? null
                                 : TravelMinutes.between(p.location(), p.travelMode(), midpointFor),
-                        present.contains(p.id())))
+                        present.contains(p.id()),
+                        room.map(r -> r.hasMember(p.id())).orElse(false)))
                 .toList();
 
         // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
@@ -78,7 +85,8 @@ public class SessionViewAssembler {
                 WebPrincipals.viewerOf(snap, auth),
                 snap.session().midpointLabel(), snap.session().decisionKind(),
                 snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts(),
-                emptyActivityTypes(snap), center != null && center.anchored());
+                emptyActivityTypes(snap), center != null && center.anchored(),
+                room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null));
     }
 
     /**

@@ -27,7 +27,8 @@ class RateLimitFilterTest {
                 new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(trustForwardedFor),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
     }
 
     static MockHttpServletRequest post(String ip) {

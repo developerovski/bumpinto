@@ -238,9 +238,9 @@ public interface TurnCredentialsPort {
         return new SessionEvent("voice_started", Map.of("endsAt", endsAt.toString()));
     }
 
-    /** reason: HOST | TIME_LIMIT | EMPTY (VoiceCommands.EndReason). Istemci dock metnini bundan secer. */
-    public static SessionEvent voiceEnded(String reason) {
-        return new SessionEvent("voice_ended", Map.of("reason", reason));
+    /** Istemci dock metnini sebepten secer (HOST | TIME_LIMIT | EMPTY). */
+    public static SessionEvent voiceEnded(EndReason reason) {
+        return new SessionEvent("voice_ended", Map.of("reason", reason.name()));
     }
 
     /** Biri odaya girdi/cikti. Govde bos: presence_changed ile ayni "tazele" zili. */
@@ -249,7 +249,14 @@ public interface TurnCredentialsPort {
     }
 ```
 
-`import java.time.Instant;` ekle.
+`import java.time.Instant;` ve `import com.bumpinto.domain.voice.EndReason;` ekle. `domain/voice/EndReason.java`:
+
+```java
+package com.bumpinto.domain.voice;
+
+/** Odanin neden kapandigi; olay yukunde `name()` olarak gider. */
+public enum EndReason { HOST, TIME_LIMIT, EMPTY }
+```
 
 - [ ] **Step 6: `AppProps`'a `Voice` ve `Turn` ekle**
 
@@ -594,7 +601,7 @@ import kong.unirest.core.HttpMethod;
 import kong.unirest.core.Unirest;
 import kong.unirest.core.UnirestInstance;
 import kong.unirest.core.json.JSONObject;
-import kong.unirest.modules.mocks.MockClient;
+import kong.unirest.core.MockClient;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -612,7 +619,7 @@ class CloudflareTurnCredentialsTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 1000, 1000),
+                new AppProps.Quota(1000, 1000),
                 new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
                 new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn(keyId, token));
     }
@@ -690,7 +697,6 @@ import com.bumpinto.domain.voice.IceConfig;
 import com.bumpinto.infra.config.AppProps;
 import kong.unirest.core.HttpResponse;
 import kong.unirest.core.JsonNode;
-import kong.unirest.core.UnirestException;
 import kong.unirest.core.UnirestInstance;
 import kong.unirest.core.json.JSONArray;
 import kong.unirest.core.json.JSONObject;
@@ -713,6 +719,7 @@ public class CloudflareTurnCredentials implements TurnCredentialsPort {
     private static final Logger log = LoggerFactory.getLogger(CloudflareTurnCredentials.class);
     private static final String URL =
             "https://rtc.live.cloudflare.com/v1/turn/keys/{keyId}/credentials/generate-ice-servers";
+    private static final int REQUEST_TIMEOUT_MS = 2000;
 
     private final UnirestInstance http;
     private final AppProps.Turn turn;
@@ -731,8 +738,10 @@ public class CloudflareTurnCredentials implements TurnCredentialsPort {
             return IceConfig.stunOnly();
         }
         try {
+            // "Katil" yolundadir: paylasilan 5 sn'lik istek butcesi burada fazla, STUN'a dusmek ucuz.
             HttpResponse<JsonNode> response = http.post(URL)
                     .routeParam("keyId", turn.keyId())
+                    .requestTimeout(REQUEST_TIMEOUT_MS)
                     .header("Authorization", "Bearer " + turn.apiToken())
                     .header("Content-Type", "application/json")
                     .body("{\"ttl\":" + ttl.toSeconds() + "}")
@@ -742,9 +751,14 @@ public class CloudflareTurnCredentials implements TurnCredentialsPort {
                 return IceConfig.stunOnly();
             }
             List<IceConfig.IceServer> servers = parse(response.getBody().getObject());
-            return servers.isEmpty() ? IceConfig.stunOnly() : new IceConfig(servers, true);
-        } catch (UnirestException e) {
-            log.warn("TURN credentials unreachable", e);
+            if (servers.isEmpty()) {
+                log.warn("TURN credentials response carried no usable iceServers");
+                return IceConfig.stunOnly();
+            }
+            return new IceConfig(servers, true);
+        } catch (RuntimeException e) {
+            // UnirestException (ag) ve JSONException (beklenmeyen govde) ayni kapiya: hic firlatmaz.
+            log.warn("TURN credentials unreachable: {}", e.getMessage());
             return IceConfig.stunOnly();
         }
     }
@@ -755,15 +769,22 @@ public class CloudflareTurnCredentials implements TurnCredentialsPort {
         JSONArray array = body.optJSONArray("iceServers");
         if (array != null) {
             for (int i = 0; i < array.length(); i++) {
-                out.add(server(array.getJSONObject(i)));
+                add(out, server(array.getJSONObject(i)));
             }
             return out;
         }
         JSONObject single = body.optJSONObject("iceServers");
         if (single != null) {
-            out.add(server(single));
+            add(out, server(single));
         }
         return out;
+    }
+
+    /** urls'siz sunucu RTCPeerConnection kurucusunu patlatir; listeye girmez. */
+    private static void add(List<IceConfig.IceServer> out, IceConfig.IceServer server) {
+        if (!server.urls().isEmpty()) {
+            out.add(server);
+        }
     }
 
     private static IceConfig.IceServer server(JSONObject node) {
@@ -930,7 +951,7 @@ class VoiceCommandsTest {
                 new AppProps.Providers("fsq-key", "g-key"),
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(Duration.ofMinutes(5), 1000, 1000),
+                new AppProps.Quota(1000, 1000),
                 new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
                 new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
     }
@@ -1014,6 +1035,19 @@ class VoiceCommandsTest {
         assertThatThrownBy(() -> voice.start(slug, host)).isInstanceOf(ConflictException.class);
         voice.end(slug, host);
         assertThat(rooms.roomOf(sessionId)).isEmpty();
+    }
+
+    /** Zamanlayici ile start arasindaki dar pencere: suresi gecmis oda taze acilir, once TIME_LIMIT gider. */
+    @Test
+    void startAfterEndsAtReplacesTheStaleRoom() {
+        VoiceRoom first = voice.start(slug, host);
+        clock.advance(Duration.ofHours(2).plusSeconds(1));
+
+        VoiceRoom second = voice.start(slug, host);
+
+        assertThat(second.endsAt()).isAfter(first.endsAt());
+        assertThat(events.published.get(1).event().payload()).containsEntry("reason", "TIME_LIMIT");
+        assertThat(lastEventType()).isEqualTo("voice_started");
     }
 
     @Test
@@ -1116,6 +1150,7 @@ import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.TurnCredentialsPort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.Session;
+import com.bumpinto.domain.voice.EndReason;
 import com.bumpinto.domain.voice.IceConfig;
 import com.bumpinto.domain.voice.VoiceRoom;
 import com.bumpinto.infra.config.AppProps;
@@ -1124,6 +1159,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -1133,8 +1169,6 @@ import java.util.UUID;
  */
 @Service
 public class VoiceCommands {
-
-    public enum EndReason { HOST, TIME_LIMIT, EMPTY }
 
     /** Kimlik odanin kalan omrunden bu kadar uzun yasar: son saniyede katilan relay'siz kalmasin. */
     static final Duration CREDENTIAL_MARGIN = Duration.ofSeconds(60);
@@ -1157,6 +1191,9 @@ public class VoiceCommands {
         this.events = events;
         this.clock = clock;
         this.maxDuration = props.voice().maxDuration();
+        if (maxDuration.isZero() || maxDuration.isNegative()) {
+            throw new IllegalStateException("bumpinto.voice.max-duration must be positive");
+        }
     }
 
     /** Idempotent: acik oda oldugu gibi doner, ikinci voice_started gitmez. */
@@ -1166,12 +1203,17 @@ public class VoiceCommands {
         if (session.isSolo()) {
             throw new ConflictException("voice chat is only for group sessions");
         }
-        return rooms.roomOf(session.id()).orElseGet(() -> {
-            VoiceRoom room = rooms.open(session.id(), slug, clock.instant().plus(maxDuration),
-                    () -> end(session.id(), slug, EndReason.TIME_LIMIT));
-            events.publish(slug, SessionEvent.voiceStarted(room.endsAt()));
-            return room;
-        });
+        Instant now = clock.instant();
+        Optional<VoiceRoom> current = rooms.roomOf(session.id());
+        if (current.isPresent() && current.get().endsAt().isAfter(now)) {
+            return current.get();
+        }
+        // Suresi gecmis ama zamanlayicisi henuz kapatmamis oda: once kapat, sonra taze ac.
+        current.ifPresent(stale -> end(session.id(), slug, EndReason.TIME_LIMIT));
+        VoiceRoom room = rooms.open(session.id(), slug, now.plus(maxDuration),
+                () -> end(session.id(), slug, EndReason.TIME_LIMIT));
+        events.publish(slug, SessionEvent.voiceStarted(room.endsAt()));
+        return room;
     }
 
     public void end(String slug, UUID hostParticipantId) {
@@ -1201,14 +1243,14 @@ public class VoiceCommands {
 
     private void end(UUID sessionId, String slug, EndReason reason) {
         rooms.close(sessionId)
-                .ifPresent(room -> events.publish(slug, SessionEvent.voiceEnded(reason.name())));
+                .ifPresent(room -> events.publish(slug, SessionEvent.voiceEnded(reason)));
     }
 }
 ```
 
 - [ ] **Step 6: Testleri çalıştır**
 
-Run: `MVN_TEST VoiceCommandsTest` → `Tests run: 9, Failures: 0`.
+Run: `MVN_TEST VoiceCommandsTest` → `Tests run: 10, Failures: 0`.
 Run: `MVN_TEST SessionCommandsTest` → hâlâ yeşil (imza değişikliği).
 
 - [ ] **Step 7: Değişen dosyaları listele**
@@ -1344,6 +1386,7 @@ Run: `MVN_TEST SessionViewAssemblerTest` → PASS. `MVN_TEST WebSecuritySliceTes
 - Modify: `backend/src/main/java/com/bumpinto/adapter/in/web/ApiDtos.java` (3 cevap kaydı)
 - Modify: `backend/src/test/java/com/bumpinto/adapter/in/web/WebSecuritySliceTest.java`
 - Create: `backend/.infra/bumpinto-collection/sessions/voice-start.yml`, `voice-credentials.yml`, `voice-end.yml`
+- Modify: `backend/.infra/bumpinto-collection/sessions/folder.yml` (klasör düzeyinde `X-Participant-Token: {{participantToken}}` başlığı — oturum uçları katılımcı token'ı ister; `deck/folder.yml` deseni)
 
 - [ ] **Step 1: Dilim testini güncelle ve başarısız iki test ekle**
 
@@ -1521,8 +1564,9 @@ runtime:
 docs:
   type: text/markdown
   content: |-
-    Host'un oturum ici kimligi gerekir (host JWT koltuga cozulur). Yalniz GROUP; SOLO → 409.
-    Suresi dolmus oturum → 409. Idempotent: acik oda varsa ayni `endsAt` doner.
+    Host'un katilimci token'i gerekir (`X-Participant-Token`, klasor duzeyinde). Host degilse 403,
+    bilinmeyen slug 404, SOLO → 409, suresi dolmus oturum → 409. Idempotent: acik oda varsa ayni
+    `endsAt` doner.
 
     `endsAt` = simdi + `bumpinto.voice.max-duration` (varsayilan 2 saat). Sure dolunca oda
     kendiliginden kapanir (`voice_ended{reason: TIME_LIMIT}`). Rate limit: `api` kovasi (120/dk).
@@ -1558,7 +1602,8 @@ runtime:
 docs:
   type: text/markdown
   content: |-
-    Oturum uyesi (katilimci token'i) gerekir; oda kapaliysa 409 `voice not active`.
+    Oturum uyesi (katilimci token'i) gerekir; uye degilse 403, oda kapaliysa 409 `voice not active`,
+    suresi dolmus oturum 409.
     Cevap: `iceServers[{urls, username?, credential?}]`, `relay` (TURN var mi), `endsAt`.
     Kimlik omru = odanin kalan suresi + 60 sn; Cloudflare ayarsiz/erisilemezse yalniz STUN ve
     `relay=false`. Kimlik sunucuda saklanmaz. Rate limit: `api` kovasi.
@@ -1590,7 +1635,7 @@ runtime:
 docs:
   type: text/markdown
   content: |-
-    Host'un oturum ici kimligi gerekir. Herkes icin kapatir: uyeler silinir,
+    Host'un katilimci token'i gerekir (host degilse 403, bilinmeyen slug 404). Herkes icin kapatir: uyeler silinir,
     `voice_ended{reason: HOST}` yayinlanir. Idempotent (oda kapaliysa da 204).
     Suresi dolmus oturumda da calisir. Rate limit: `api` kovasi.
 ```
@@ -2329,7 +2374,8 @@ Expected: BUILD SUCCESS, önceki sayı + 28 yeni test (T1 2, T2 5, T3 4, T4 9, T
 ### Task 8: Belgeler ve API sözleşmesi
 
 **Files:**
-- Modify: `backend/ARCHITECTURE.md` §11 (olay tablosu + kural 5)
+- Modify: `backend/ARCHITECTURE.md` §11 (olay tablosu + kural 5) ve §12 (`AppProps` bileşen listesine `voice`, `turn`)
+- Modify: `docs/CONFIGURATION.md` §1 anahtar envanteri (3 satır)
 - Modify: `docs/superpowers/plans/INDEX.md` (B-12 satırı)
 - Regenerate: `frontend/shared/openapi.json`, `frontend/shared/src/api-types.ts`
 
@@ -2355,7 +2401,9 @@ Kuralların sonuna (4'ten sonra) 5. madde:
    Karar dokümanı: `docs/superpowers/specs/2026-09-06-voice-chat-design.md`.
 ```
 
-§2/§3'teki paket listesine (`adapter/out/presence`, `adapter/out/turn`) bir satır düşür: "`turn/` Cloudflare TURN kimliği".
+§2/§3'teki paket listesine (`adapter/out/presence`, `adapter/out/turn`) bir satır düşür: "`turn/` Cloudflare TURN kimliği". §12'deki `AppProps` bileşen sayımına `voice` (süre) ve `turn` (Cloudflare anahtarı, `api-token` sır) eklenir.
+
+`docs/CONFIGURATION.md` §1 "Anahtar envanteri" tablosuna üç satır (mevcut satır biçimiyle): `VOICE_MAX_DURATION` (sır değil, varsayılan `PT2H`, ses odası sert sınırı) · `CLOUDFLARE_TURN_KEY_ID` (sır değil; Cloudflare Dashboard → Realtime → TURN keys) · `CLOUDFLARE_TURN_API_TOKEN` (**sır**, K8s Secret; boşsa yalnız STUN, `relay=false`).
 
 - [ ] **Step 2: INDEX.md B tablosundaki B-12 satırını güncelle** — `Durum` `ready` → `done`, `Son adım` → "Task 8/8", `Not`'a test sayısını ekle. Satır yoksa (INDEX'e plan yazılırken eklendi, olmalı) şu satırı B-11'den sonra ekle:
 
@@ -2399,4 +2447,15 @@ Expected: hata yok (yeni alanlar opsiyonel/ek; mevcut kod etkilenmez). Hata vars
 
 **Yer tutucu taraması:** "TBD/TODO/uygun hata işleme" yok; her adımda kod var.
 
-**Tip tutarlılığı:** `VoiceRoomsPort.open(UUID, String, Instant, Runnable)` T1 = T2 = T4 (FakeVoiceRooms) = T5 test · `join(UUID, UUID, Seat)` · `leaveSeat(UUID, String, String)` / `leaveSocket(UUID, String)` T1 = T2 = T7 listener · `VoiceCommands.Credentials(IceConfig, Instant)` T4 = T6 · `IceConfig.IceServer(urls, username, credential)` T1 = T3 = T6 · `SessionViewAssembler(PresencePort, VoiceRoomsPort)` T5 = T6 mock · `SessionEvent.voiceEnded(String)` T1 = T4 (`reason.name()`) · `VoiceDestinations.inbox/signal/sessionTopic` T7 iç tutarlı, test aynı dizeleri elle kurar (bilinçli: test sözleşmeyi bağımsız doğrular).
+**Tip tutarlılığı:** `VoiceRoomsPort.open(UUID, String, Instant, Runnable)` T1 = T2 = T4 (FakeVoiceRooms) = T5 test · `join(UUID, UUID, Seat)` · `leaveSeat(UUID, String, String)` / `leaveSocket(UUID, String)` T1 = T2 = T7 listener · `VoiceCommands.Credentials(IceConfig, Instant)` T4 = T6 · `IceConfig.IceServer(urls, username, credential)` T1 = T3 = T6 · `SessionViewAssembler(PresencePort, VoiceRoomsPort)` T5 = T6 mock · `SessionEvent.voiceEnded(EndReason)` T1 = T4 (`domain/voice/EndReason`, inceleme sonrası) · `VoiceDestinations.inbox/signal/sessionTopic` T7 iç tutarlı, test aynı dizeleri elle kurar (bilinçli: test sözleşmeyi bağımsız doğrular).
+
+---
+
+## İnceleme ekleri (2026-09-06, kod bloklarından sapmalar; ağaç doğrudur)
+
+- T1: `domain/voice/EndReason` enum'u; `SessionEvent.voiceEnded(EndReason)`; `IceConfig` defansif kopyalar ve maskeli `IceServer.toString`; `VoiceRoomsPort` metot başına sözleşme metni.
+- T2: `InMemoryVoiceRooms` `Predicate`+`AtomicReference` ile `update`; tahliye dinleyicisi zamanlayıcıyı iptal eder; test kurucusu `(Clock, TaskScheduler, maximumSize)`; Caffeine `executor(Runnable::run)`.
+- T3: `CloudflareTurnCredentials` `RuntimeException` yakalar, url'siz sunucuyu eler, boş listede WARN, 2 sn istek zaman aşımı.
+- T4: `SessionGates.requireHost` (SessionCommands/DeckFlow/VoiceCommands); `endsAt = min(now+max, session.expiresAt)`; 5 sn'den az ömürlü oda reddi; `endIfStillScheduled` bayat zamanlayıcı koruması; `endIfEmpty` `PresencePort` ile boşluğu kendi kontrol eder.
+- T6: Bruno `sessions/folder.yml` klasör düzeyinde `X-Participant-Token`; docs metinleri.
+- T7: `VoiceInboundGuard` ayrı sınıf, soket başına bucket4j bütçeleri (ses kutusu SUBSCRIBE/UNSUBSCRIBE 20/dk, SEND 240/dk); `ServletServerContainerFactoryBean` 32 KB (MOCK ortamda no-op); `@MessageExceptionHandler`; `candidate` ≤ 16 alan + değer uzunluğu; roster olayı yalnız üye kümesi değişince; `VoiceOverWebSocketTest` 10 senaryo.

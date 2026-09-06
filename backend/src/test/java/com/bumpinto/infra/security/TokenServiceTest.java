@@ -28,7 +28,8 @@ class TokenServiceTest {
             new AppProps.Cookies(false, ""),
             new AppProps.RateLimit(false),
                 new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
 
     final TokenService tokens = new TokenService(PROPS, Clock.systemUTC());
 
@@ -55,7 +56,7 @@ class TokenServiceTest {
         AppProps weak = new AppProps(
                 new AppProps.Security("cid", "kisa", Duration.ofHours(1)),
                 PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota(),
-                PROPS.geocode());
+                PROPS.geocode(), PROPS.voice(), PROPS.turn());
         assertThatThrownBy(() -> new TokenService(weak, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -87,7 +88,7 @@ class TokenServiceTest {
                 new AppProps.Security("cid", "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}",
                         Duration.ofHours(1)),
                 PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota(),
-                PROPS.geocode());
+                PROPS.geocode(), PROPS.voice(), PROPS.turn());
         assertThatThrownBy(() -> new TokenService(unresolved, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("TOKEN_SECRET is not configured");

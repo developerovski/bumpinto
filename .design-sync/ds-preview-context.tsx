@@ -38,6 +38,11 @@ export function BumpIntoProvider({ children }: { children: ReactNode }) {
     Bu modül ise cfg.extraEntries ile _ds_bundle.js'in İÇİNE derleniyor, dolayısıyla
     buradaki react-router-dom bileşenlerin kullandığı AYNI örnek. */
 export function BumpIntoPreviewRoot({ children }: { children: ReactNode }) {
+  // Uygulamada `i18n/index.ts:11` `document.documentElement.lang`i kuruyor. Preview
+  // kartlarında o kod yolu koşmuyor ve `<html>` dilsiz kalıyor; CSS
+  // `text-transform: uppercase` de dile duyarlı olduğu için `Overline` "Kimler var"ı
+  // "KIMLER VAR" (noktasız I) diye basıyordu. Ürün DOĞRU, bozuk olan harness'tı.
+  if (typeof document !== "undefined") document.documentElement.lang = "tr";
   return (
     <MemoryRouter>
       <BumpIntoProvider>{children}</BumpIntoProvider>

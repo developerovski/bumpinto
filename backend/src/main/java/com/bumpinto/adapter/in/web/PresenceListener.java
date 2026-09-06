@@ -1,8 +1,11 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.session.VoiceCommands;
 import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Component;
@@ -26,17 +29,22 @@ import java.util.UUID;
 @Component
 class PresenceListener {
 
+    private static final Logger log = LoggerFactory.getLogger(PresenceListener.class);
+
     /** Grace tam sinirinda okumamak icin kucuk pay — saat cozunurlugu ve is sirasi icin. */
     private static final long GRACE_MARGIN_MS = 250;
 
     private final PresencePort presence;
     private final SessionEventsPort events;
     private final TaskScheduler scheduler;
+    private final VoiceCommands voice;
 
-    PresenceListener(PresencePort presence, SessionEventsPort events, TaskScheduler scheduler) {
+    PresenceListener(PresencePort presence, SessionEventsPort events, TaskScheduler scheduler,
+                     VoiceCommands voice) {
         this.presence = presence;
         this.events = events;
         this.scheduler = scheduler;
+        this.voice = voice;
     }
 
     /**
@@ -62,23 +70,39 @@ class PresenceListener {
         // poll'une kadar goremezdi. Kullanici gozlemi (2026-09-04) tam olarak buydu: "biri
         // girdiginde aninda online oluyor ama cikinca sayfayi yenilemeden offline'a gecmiyor."
         // Ikinci zil, durumun gercekten degistigi anda calar.
-        slugOf(event).ifPresent(this::ringWhenGraceExpires);
+        roomOf(event).ifPresent(this::ringWhenGraceExpires);
     }
 
-    private void ringWhenGraceExpires(String slug) {
+    private record Room(UUID sessionId, String slug) {
+    }
+
+    private void ringWhenGraceExpires(Room room) {
         Duration grace = presence.graceWindow();
         if (grace.isZero() || grace.isNegative()) {
             return; // pencere yoksa ilk yayin zaten dogruyu soyluyordu
         }
-        scheduler.schedule(() -> events.publish(slug, SessionEvent.presenceChanged()),
-                Instant.now().plus(grace).plusMillis(GRACE_MARGIN_MS));
+        scheduler.schedule(() -> {
+            try {
+                events.publish(room.slug(), SessionEvent.presenceChanged());
+                // Katman 2 (voice spec §5): bos kontrolu artik VoiceCommands.endIfEmpty'nin kendi isi.
+                voice.endIfEmpty(room.sessionId());
+            } catch (RuntimeException e) {
+                // Zamanlayici thread'inde yutulmayan bir istisna sessizce ses odasini sonsuza
+                // kadar acik birakirdi (bu zil olmadan endIfEmpty hic cagrilmaz).
+                log.warn("grace bell failed for {}: {}", room.slug(), e.getMessage());
+            }
+        }, Instant.now().plus(grace).plusMillis(GRACE_MARGIN_MS));
     }
 
-    private static Optional<String> slugOf(AbstractSubProtocolEvent event) {
+    private static Optional<Room> roomOf(AbstractSubProtocolEvent event) {
         Map<String, Object> attributes =
                 SimpMessageHeaderAccessor.wrap(event.getMessage()).getSessionAttributes();
-        Object slug = attributes == null ? null : attributes.get(SessionWsHandshake.SLUG);
-        return slug instanceof String value ? Optional.of(value) : Optional.empty();
+        if (attributes == null
+                || !(attributes.get(SessionWsHandshake.SESSION_ID) instanceof UUID sessionId)
+                || !(attributes.get(SessionWsHandshake.SLUG) instanceof String slug)) {
+            return Optional.empty();
+        }
+        return Optional.of(new Room(sessionId, slug));
     }
 
     private void apply(AbstractSubProtocolEvent event, PresenceChange change) {

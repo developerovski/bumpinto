@@ -4,6 +4,9 @@ info:
   seq: 2
 
 http:
+  headers:
+    - name: X-Participant-Token
+      value: "{{participantToken}}"
   auth:
     type: bearer
     token: "{{accessToken}}"

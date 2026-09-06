@@ -589,6 +589,20 @@ describe("VoiceMesh", () => {
     expect(h.levels.attach).toHaveBeenCalledWith("b", remote);
   });
 
+  it("ölü bağlantıya gelen offer PC'yi yeniden kurar (WS kopması sonrası)", async () => {
+    const h = harness("z");
+    h.mesh.setRoster(["a", "z"]);
+    const dead = FakePeer.all[0];
+    dead.setState("failed");
+
+    await h.mesh.handleSignal({ from: "a", type: "offer", sdp: "o2" });
+
+    expect(dead.closed).toBe(true);
+    expect(FakePeer.all).toHaveLength(2);
+    expect(FakePeer.all[1].remoteDescription).toEqual({ type: "offer", sdp: "o2" });
+    expect(h.sent.at(-1)).toEqual({ to: "a", type: "answer", sdp: "answer-1" });
+  });
+
   it("roster'dan düşen peer kapanır ve örnekleyiciden çıkar", async () => {
     const h = harness("a");
     h.mesh.setRoster(["a", "b"]);
@@ -715,8 +729,15 @@ export class VoiceMesh {
 
   async handleSignal(signal: IncomingSignal) {
     if (this.closed) return;
-    const peer = this.peers.get(signal.from) ?? this.createPeer(signal.from);
+    let peer = this.peers.get(signal.from) ?? this.createPeer(signal.from);
     if (signal.type === "offer" && signal.sdp) {
+      // Karsi taraf bizi dusurup yeniden gorduyse (WS kopmasi) taze bir baglantiyla teklif eder;
+      // olu PC'ye remote description yazilmaz, PC yeniden kurulur.
+      const state = peer.pc.connectionState;
+      if (state === "failed" || state === "closed" || state === "disconnected") {
+        this.drop(signal.from);
+        peer = this.createPeer(signal.from);
+      }
       await peer.pc.setRemoteDescription({ type: "offer", sdp: signal.sdp });
       await this.flushIce(peer);
       const answer = await peer.pc.createAnswer();
@@ -851,7 +872,7 @@ export class VoiceMesh {
 
 - [ ] **Step 7: Çalıştır**
 
-Run: `PNPM_TEST src/lib/voiceMesh.test.ts` → 8 passed. `tsc -b` temiz. `RTCPeerConnectionState`/`RTCIceCandidateInit` tipleri `lib.dom`'dan gelir; `tsconfig` `lib` listesinde `DOM` var (mevcut kod `navigator`/`location` kullanıyor).
+Run: `PNPM_TEST src/lib/voiceMesh.test.ts` → 9 passed. `tsc -b` temiz. `RTCPeerConnectionState`/`RTCIceCandidateInit` tipleri `lib.dom`'dan gelir; `tsconfig` `lib` listesinde `DOM` var (mevcut kod `navigator`/`location` kullanıyor).
 
 - [ ] **Step 8: Dosya listesi**
 
@@ -1316,6 +1337,7 @@ Run: `PNPM_TEST src/store/useSessionLive.test.ts` → 1 passed. `PNPM_TEST src/s
     "mute": "Sustur",
     "unmute": "Sesi aç",
     "micDenied": "Mikrofon izni gerekli. Tarayıcı ayarlarından izin verip tekrar dene.",
+    "connectFailed": "Sesli sohbete bağlanılamadı — tekrar dene.",
     "inVoice": "sesli sohbette",
     "speaking": "konuşuyor",
     "peerFailed": "bağlanamadı",
@@ -1348,6 +1370,7 @@ Run: `PNPM_TEST src/store/useSessionLive.test.ts` → 1 passed. `PNPM_TEST src/s
     "mute": "Mute",
     "unmute": "Unmute",
     "micDenied": "Microphone access is needed. Allow it in your browser settings and try again.",
+    "connectFailed": "Couldn't connect to voice chat — try again.",
     "inVoice": "in voice chat",
     "speaking": "speaking",
     "peerFailed": "could not connect",
@@ -1380,6 +1403,7 @@ Run: `PNPM_TEST src/store/useSessionLive.test.ts` → 1 passed. `PNPM_TEST src/s
     "mute": "Dempen",
     "unmute": "Dempen opheffen",
     "micDenied": "Microfoontoegang is nodig. Sta het toe in je browserinstellingen en probeer opnieuw.",
+    "connectFailed": "Kon geen verbinding maken met de spraakchat — probeer opnieuw.",
     "inVoice": "in spraakchat",
     "speaking": "aan het woord",
     "peerFailed": "kon niet verbinden",
@@ -1425,7 +1449,7 @@ const inTenMinutes = () => new Date(Date.now() + 10 * 60_000).toISOString();
 
 function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getState>> = {}) {
   useSessionStore.setState({ slug: "x", view: view as never, error: null });
-  useVoiceStore.setState({ phase: "idle", muted: false, peers: {}, selfSpeaking: false, endedReason: null, micDenied: false, ...voice });
+  useVoiceStore.setState({ phase: "idle", muted: false, peers: {}, selfSpeaking: false, endedReason: null, micDenied: false, connectFailed: false, ...voice });
   return render(<VoiceDock view={view as never} />);
 }
 
@@ -1486,6 +1510,15 @@ describe("VoiceDock", () => {
     dock({ ...base, voice: null, viewer: { participantId: "h", host: true } }, { endedReason: "TIME_LIMIT" });
     expect(screen.getByText("Süre doldu")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Yeniden başlat/ })).toBeInTheDocument();
+  });
+
+  it("kimlik alınamadı (ağ) → bağlanılamadı ve Tekrar dene", () => {
+    dock(
+      { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "b", host: false } },
+      { phase: "error", connectFailed: true },
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("bağlanılamadı");
+    expect(screen.getByRole("button", { name: "Tekrar dene" })).toBeInTheDocument();
   });
 
   it("mikrofon reddi → açıklama ve Tekrar dene", () => {
@@ -1602,6 +1635,7 @@ export default function VoiceDock(props: { view: SessionView }) {
           {t("voice.members", { count: members.length })} · {remaining}
         </span>
         {voice.phase === "error" && voice.micDenied && <ErrorText>{t("voice.micDenied")}</ErrorText>}
+        {voice.phase === "error" && voice.connectFailed && <ErrorText>{t("voice.connectFailed")}</ErrorText>}
         <div className="ml-auto flex items-center gap-2">
           <Button kind="flame" size="sm" disabled={voice.phase === "joining"} onClick={() => void voice.join()}>
             {joinLabel}
@@ -1666,7 +1700,7 @@ export default function VoiceDock(props: { view: SessionView }) {
 
 - [ ] **Step 5: Çalıştır**
 
-Run: `PNPM_TEST src/components/organisms/VoiceDock.test.tsx` → 7 passed. Düşerse: `Button` `size="sm"` yalnız `shape="pill"` (varsayılan) ile — `round-sm`'de `size` verilmez; `ring-grass`/`ring-offset-card` Tailwind v4 `@theme` renk token'larıdır (`text-grass`, `bg-card` mevcut), derleme hatası vermez.
+Run: `PNPM_TEST src/components/organisms/VoiceDock.test.tsx` → 8 passed. Düşerse: `Button` `size="sm"` yalnız `shape="pill"` (varsayılan) ile — `round-sm`'de `size` verilmez; `ring-grass`/`ring-offset-card` Tailwind v4 `@theme` renk token'larıdır (`text-grass`, `bg-card` mevcut), derleme hatası vermez.
 
 - [ ] **Step 6: `SessionPage.tsx`'i dock'la sar**
 
@@ -1916,3 +1950,13 @@ Backend `VOICE_MAX_DURATION=PT3M` ile başlat (süre dolumunu 3 dk'da görmek i�
 **Yer tutucu taraması:** yok; her adımda kod.
 
 **Tip tutarlılığı:** `OutgoingSignal`/`IncomingSignal`/`PeerSnapshot` T3 = T4 = T5 · `MeshDeps.createLevels(cb) → LevelSampler` T3 test = T3 kod · `liveChannel.subscribe(dest, handler) → () => void`, `publish → boolean`, `open(slug, onConnect) → () => void` T2 = T4 = T5 mock'ları · `useVoiceStore` alanları (`phase, muted, peers, selfSpeaking, endedReason, micDenied`) T4 = T5 = T6 · `rosterOf` T4 · `EndReason` T4 = `useSessionLive` · `VoiceDock` prop `view: SessionView` T5 = `SessionPage`.
+
+---
+
+## İnceleme ekleri (2026-09-06, kod bloklarından sapmalar; ağaç doğrudur)
+
+- T2: `liveChannel` geri çağrıları ve disposer kendi istemcisine kilitli (`client === c`); `open` önceki istemciyi kapatır; kayıtlar slug taşır ve `open(slug)` yabancı kayıtları siler; `sessionTopic/voiceInbox/voiceSignal` yardımcıları.
+- T3: `voiceMesh` ICE restart yerine PC yeniden kurma (bir kez/arıza bölümü, `connected`'da sıfırlanır); 15 sn müzakere bekçisi (`watchdogMs`); yeniden offer ⇒ yeniden kurma (`remoteDescription` doluysa); `fail(id, e, expected)` kimlik korumalı; yetim ICE kuyruğu (≤32); yinelenen answer no-op; `failed` peer roster değişince yeniden kurulur; uzak `Audio` DOM'a eklenir (`playsinline`); `audioLevels` paylaşılan tek `AudioContext` (`sharedAudioContext`, jest anında).
+- T4: `voiceStore` katılım jetonu (yarıda kesilen katılım mikrofonu bırakır); `ended` → `leave`; kimlik hatası 409 → idle, diğer → `connectFailed`; roster kimlik kapısı (`lastRoster`, `resetRoster` yeniden bağlanınca); mesh kurulumu try/catch; 1 sn yeniden katılım bekleme; iki tazelemede üye değilse `connectFailed`; `START_ERROR_BY_SERVER` eşlemesi.
+- T5: Dock `sticky bottom-0` + `order-last` (spacer yok); bitiş sebebi bayat `endsAt`'i ezer; halka yalnız konuşma halkası (`ring-[3px]`); odak yalnız gerçek faz geçişinde; `Button` `forwardRef`; kopya: "Mikrofonu kapat/aç", "sesi gelmiyor"; `useShallow` seçici; hata sayfası dallarında dock yok.
+- T6: sarmalayıcı `flex-none`, `title` yok.

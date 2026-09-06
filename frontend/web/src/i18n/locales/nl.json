@@ -435,5 +435,36 @@
     "fitOff": "Geen {{activity}}: {{category}}",
     "hoursToday": "Vandaag {{hours}}",
     "openInMaps": "Open in Google Maps"
+  },
+  "voice": {
+    "region": "Spraakchat",
+    "start": "Spraakchat starten",
+    "restart": "Opnieuw starten",
+    "open": "Spraakchat staat aan",
+    "members_one": "{{count}} persoon",
+    "members_other": "{{count}} personen",
+    "remaining": "nog {{time}}",
+    "join": "Meedoen",
+    "joining": "Verbinden…",
+    "retry": "Opnieuw proberen",
+    "leave": "Verlaten",
+    "end": "Voor iedereen beëindigen",
+    "mute": "Dempen",
+    "unmute": "Dempen opheffen",
+    "micDenied": "Microfoontoegang is nodig. Sta het toe in je browserinstellingen en probeer opnieuw.",
+    "connectFailed": "Kon geen verbinding maken met de spraakchat — probeer opnieuw.",
+    "inVoice": "in spraakchat",
+    "speaking": "aan het woord",
+    "peerFailed": "geen geluid",
+    "errStart": "Spraakchat kon niet starten — probeer opnieuw.",
+    "errEnd": "Spraakchat kon niet worden beëindigd — probeer opnieuw.",
+    "errSolo": "Spraakchat is alleen voor groepsafspraken.",
+    "errExpiring": "Deze afspraak loopt bijna af; spraakchat kan niet starten.",
+    "errClosed": "Deze afspraak is gesloten.",
+    "ended": {
+      "HOST": "Spraakchat is beëindigd",
+      "TIME_LIMIT": "De tijd is om",
+      "EMPTY": "Iedereen is weg, spraakchat gesloten"
+    }
   }
 }

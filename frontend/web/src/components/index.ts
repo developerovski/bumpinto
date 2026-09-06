@@ -51,4 +51,5 @@ export { default as ProfilePrefs } from "./organisms/ProfilePrefs";
 export { default as RequireAuth } from "./organisms/RequireAuth";
 export { default as RunoffList } from "./organisms/RunoffList";
 export { default as VenueDeck } from "./organisms/VenueDeck";
+export { default as VoiceDock } from "./organisms/VoiceDock";
 

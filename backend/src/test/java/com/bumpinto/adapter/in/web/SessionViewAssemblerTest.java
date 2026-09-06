@@ -13,6 +13,7 @@ import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.venue.Venue;
+import com.bumpinto.domain.voice.Seat;
 import com.bumpinto.infra.security.ParticipantPrincipal;
 import com.bumpinto.support.FakeStores;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +29,8 @@ class SessionViewAssemblerTest {
     static final UUID V1 = UUID.randomUUID();
 
     FakeStores.FakePresence presence = new FakeStores.FakePresence();
-    SessionViewAssembler assembler = new SessionViewAssembler(presence);
+    FakeStores.FakeVoiceRooms rooms = new FakeStores.FakeVoiceRooms();
+    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -292,6 +294,27 @@ class SessionViewAssemblerTest {
         assertThat(view.participants()).extracting(ApiDtos.ParticipantDto::id,
                         ApiDtos.ParticipantDto::online)
                 .containsExactlyInAnyOrder(tuple(here.id(), true), tuple(gone.id(), false));
+    }
+
+    @Test
+    void voiceIsNullWhenClosedAndCarriesEndsAtAndMembersWhenOpen() {
+        Session s = session(SessionType.GROUP);
+        Participant ayse = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        Participant mehmet = person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(s,
+                List.of(ayse, mehmet), List.of(), Map.of(), Map.of(), Map.of());
+
+        ApiDtos.SessionView closed = assembler.toView(snap, null);
+        assertThat(closed.voice()).isNull();
+        assertThat(closed.participants()).noneMatch(ApiDtos.ParticipantDto::inVoice);
+
+        Instant endsAt = Instant.parse("2026-09-06T12:00:00Z");
+        rooms.open(s.id(), "s1", endsAt, () -> { });
+        rooms.join(s.id(), ayse.id(), new Seat("ws-1", "sub-1"));
+        ApiDtos.SessionView open = assembler.toView(snap, null);
+        assertThat(open.voice().endsAt()).isEqualTo(endsAt);
+        assertThat(open.participants().stream().filter(ApiDtos.ParticipantDto::inVoice)
+                .map(ApiDtos.ParticipantDto::id)).containsExactly(ayse.id());
     }
 
     @Test

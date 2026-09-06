@@ -1,4 +1,7 @@
 import { Button } from "@bumpinto/web";
+// El yapımı `c-ico-*` glifleri KALDIRILDI (DeckActions.tsx:1 — Phosphor ikonları geldi).
+// Bu hücre üründeki DeckActions deseninin aynısını kullanır.
+import { ArrowCounterClockwise, Heart, X } from "@phosphor-icons/react";
 
 /** W1 · formun ana çağrısı. */
 export function PrimaryPill() {
@@ -29,15 +32,13 @@ export function RoundControls() {
   return (
     <div className="flex items-center justify-center gap-5">
       <Button type="button" kind="white" shape="round-sm" aria-label="Geri al">
-        <span className="c-ico-undo" aria-hidden />
+        <ArrowCounterClockwise size={24} weight="bold" className="text-ink2" aria-hidden />
       </Button>
       <Button type="button" kind="white" shape="round" aria-label="Geç">
-        <span className="c-ico-x" aria-hidden />
+        <X size={24} weight="bold" className="text-ink" aria-hidden />
       </Button>
       <Button type="button" kind="grad" shape="round" aria-label="Beğen">
-        <span className="c-ico-heart" aria-hidden>
-          <i />
-        </span>
+        <Heart size={24} weight="fill" className="text-white" aria-hidden />
       </Button>
     </div>
   );

@@ -1,0 +1,33 @@
+info:
+  name: Voice — Başlat
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/voice"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("endsAt tasir", function() {
+          expect(res.body.endsAt).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Host'un katilimci token'i gerekir (`X-Participant-Token`, klasor duzeyinde). Host degilse
+    403, bilinmeyen slug 404, SOLO → 409, suresi dolmus oturum → 409. Idempotent: acik oda
+    varsa ayni `endsAt` doner.
+
+    `endsAt` = simdi + `bumpinto.voice.max-duration` (varsayilan 2 saat), ama oturumu asamaz:
+    `endsAt = min(simdi + max-duration, oturumun expiresAt'i)`. Sure dolunca oda kendiliginden
+    kapanir (`voice_ended{reason: TIME_LIMIT}`). Rate limit: `api` kovasi (120/dk).

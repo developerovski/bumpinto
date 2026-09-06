@@ -1,7 +1,6 @@
 package com.bumpinto.application.session;
 
 import com.bumpinto.application.error.ConflictException;
-import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.text.Ids;
 import com.bumpinto.application.text.Texts;
@@ -186,7 +185,7 @@ public class SessionCommands {
     public Participant addPoint(String slug, UUID hostParticipantId, String displayName,
                                 String locationLabel, GeoPoint location, TravelMode travelMode) {
         Session session = required(slug);
-        requireHost(session, hostParticipantId);
+        SessionGates.requireHost(store, session, hostParticipantId);
         if (!session.isSolo()) {
             throw new ConflictException("manual points are only for solo sessions");
         }
@@ -204,7 +203,7 @@ public class SessionCommands {
     @Transactional
     public void removePoint(String slug, UUID hostParticipantId, UUID participantId) {
         Session session = required(slug);
-        requireHost(session, hostParticipantId);
+        SessionGates.requireHost(store, session, hostParticipantId);
         if (session.status() != SessionStatus.COLLECTING) {
             throw new ConflictException("points are frozen after venues are found");
         }
@@ -216,21 +215,6 @@ public class SessionCommands {
         }
         store.deleteParticipant(participantId);
         events.publish(slug, SessionEvent.participantLeft(store.participantsOf(session.id()).size()));
-    }
-
-    /**
-     * Host da bir katilimcidir: oda ici yetki oturuma kapsamli KATILIMCI kimliginden gelir, hesap
-     * JWT'sinden degil. Hesap token'i 12 saat, oturum 24 saat yasiyordu; yetki hesaba bagliyken
-     * host arada kendi oturumunu yonetemez oluyordu. Imzali claim'e korukorune guvenilmez —
-     * koltuk DB'den okunur, boylece silinmis bir host koltugunun token'i de is gormez.
-     */
-    private void requireHost(Session session, UUID participantId) {
-        boolean host = store.participantsOf(session.id()).stream()
-                .filter(p -> p.id().equals(participantId))
-                .findFirst().map(Participant::host).orElse(false);
-        if (!host) {
-            throw new ForbiddenException("only the host can do this");
-        }
     }
 
     /**

@@ -135,8 +135,8 @@ uzatma sınırı sınır olmaktan çıkarır.
 ## 6. Backend
 
 ```text
-domain/port/VoiceRoomsPort          open(sessionId, slug, endsAt, onExpire) · close(sessionId) · join(sessionId, participantId, wsSessionId)
-                                    · leave(sessionId, participantId, wsSessionId) · roomOf(sessionId): Optional<VoiceRoom>
+domain/port/VoiceRoomsPort          open(sessionId, slug, endsAt, onExpire) · close(sessionId) · join(sessionId, participantId, Seat)
+                                    · leaveSeat(sessionId, wsSessionId, subscriptionId) · leaveSocket(sessionId, wsSessionId) · roomOf(sessionId)
 domain/port/TurnCredentialsPort     issue(Duration ttl): IceConfig(iceServers, relay)
 adapter/out/presence/InMemoryVoiceRooms   Caffeine + Clock (InMemoryPresence deseni); TaskScheduler ile onExpire; close iptal eder
 adapter/out/turn/CloudflareTurnCredentials Unirest; hata/eksik ayar → STUN listesi, relay=false, WARN
@@ -146,7 +146,9 @@ adapter/in/web/VoiceSignalController  @MessageMapping relay
 adapter/in/web/VoiceRoomListener    SessionSubscribeEvent / SessionUnsubscribeEvent / SessionDisconnectEvent → üyelik + voice_roster_changed
 ```
 
-`VoiceRoom(sessionId, slug, startedAt, endsAt, Map<participantId, wsSessionId> members)`.
+`VoiceRoom(sessionId, slug, startedAt, endsAt, Map<participantId, Seat(wsSessionId, subscriptionId)> members)`.
+Koltuk soket + abonelik çiftidir: UNSUBSCRIBE yalnız o çifti (`leaveSeat`), DISCONNECT soketin tüm
+koltuklarını (`leaveSocket`) düşürür. `EndReason {HOST, TIME_LIMIT, EMPTY}` domain enum'udur.
 Aynı katılımcının ikinci soketten aboneliği **öncekini ezer** (son abone kazanır); iki sekmeden ses
 desteklenmez, §11. Oda kapalıyken gelen abonelik üyelik yaratmaz, yok sayılır. `leave` yalnız kendi
 `wsSessionId`'sine ait koltuğu düşürür: eski soketin kopması yeni koltuğu silmez.
@@ -160,7 +162,8 @@ desteklenmez, §11. Oda kapalıyken gelen abonelik üyelik yaratmaz, yok sayıl�
 | `credentials` | oturum üyesi (katılımcı token'ı) · oda açık | 409 `voice not active` |
 
 `start` ve `end` **idempotent**: açık odaya `start` mevcut `endsAt`'i döner; kapalı odaya `end` 204.
-`requireHost` `SessionCommands`'tan tek yardımcıya çıkar, kopyalanmaz (iki çağrı yeri).
+**Oda oturumu aşmaz:** `endsAt = min(now + maxDuration, session.expiresAt)`; TURN kimliği de bu sınıra bağlı kalır (uygulama incelemesi 2026-09-06).
+`requireHost` tek yardımcıya çıkar (`application/session/SessionGates`, `SessionExpiry` deseni); `SessionCommands`, `DeckFlow` ve `VoiceCommands` aynı kuralı kullanır, kopya kalmaz.
 DECIDED durumunda ses **açık kalabilir** ("orada görüşürüz"); yalnız EXPIRED kapatır.
 
 **Zamanlayıcı** adapterdedir: `open(..., onExpire)` bitiş anına `TaskScheduler` işi kurar,
@@ -177,7 +180,7 @@ uygulama katmanında kalır.
 | SEND `/app/sessions/{slug}/voice/signal` | ses üyesi | `{to, type: offer\|answer\|ice, sdp?, candidate?}` |
 | SUBSCRIBE `/topic/session/{slug}/voice/{me}` | üye | sunucudan `{from, type, sdp?, candidate?}` |
 
-Üç REST ucu Bruno'ya girer (`sessions/` klasörü, `docs:` bloğu: yetki, 16 KB, `api` kovası).
+Üç REST ucu Bruno'ya girer (`sessions/` klasörü, `docs:` bloğu: yetki, hata kodları, `api` kovası; 16 KB sınırı yalnız STOMP sinyalinindir). Oturum uçları katılımcı token'ı ister: `sessions/folder.yml` `X-Participant-Token` başlığını klasör düzeyinde taşır.
 
 **SessionView**: `voice: {endsAt} | null` (null = kapalı; SOLO'da hep null) ·
 `ParticipantDto.inVoice: boolean`. `openapi.json` yeniden üretilir.
@@ -209,7 +212,7 @@ TURN ayarı eksikse uygulama **ayağa kalkar**, açılışta tek WARN, `relay=fa
 - Inbound interceptor: MESSAGE yalnız `/app/sessions/{ownSlug}/voice/signal` hedefine geçer,
   başka her SEND düşer. SUBSCRIBE `/topic/session/{ownSlug}` **veya**
   `/topic/session/{ownSlug}/voice/{ownParticipantId}`; başkasının özel konusu düşer.
-- Transport mesaj sınırı 32 KB; handler `sdp`/`candidate` ≤ 16 KB.
+- Transport mesaj sınırı 32 KB (Tomcat metin tamponu da `ServletServerContainerFactoryBean` ile aynı değere çekilir, yoksa 8 KB'de soket kapanır); handler `sdp` ≤ 16 KB, `candidate` en fazla 16 alan ve değerleri toplam 16 KB (istemci `RTCIceCandidate.toJSON()` yollar).
 - Heartbeat ve handshake değişmez.
 
 **PresenceListener**: grace bitiş zilinde `voiceCommands.endIfEmpty(sessionId)` (katman 2).
@@ -228,7 +231,7 @@ pages/SessionPage.tsx     GROUP + view varken dock'u durum anahtarının DIŞIND
 i18n/locales/{tr,en,nl}.json
 ```
 
-**voiceMesh** girdi: `myId`, `iceServers`, `signal {send, onMessage}`, `onPeers(state)`.
+**voiceMesh** girdi: `myId`, `iceServers`, `stream`, `send`, `onChange(peers, selfSpeaking)`, opsiyonel fabrikalar ve `watchdogMs`.
 - `setRoster(ids)`: eksik → K5 kuralıyla PC aç ya da bekle; fazla → PC kapat, Audio bırak.
 - `handleSignal({from, type, ...})`: offer → PC yoksa aç, answer, ice.
 - `setMuted(bool)`: yerel track `enabled`.
@@ -237,7 +240,7 @@ i18n/locales/{tr,en,nl}.json
   için bir AnalyserNode; 200 ms'de bir RMS okunur, eşik üstü `speaking=true`, 300 ms tutma ile titreme
   önlenir. Chrome ve Safari uzak akışı ancak bir Audio elemanına da bağlıysa analizöre verir; playback
   zaten bunu yapıyor. `onPeers` her peer için `{state, speaking}` ve `selfSpeaking` taşır.
-- Peer `failed` → başlatıcı taraf **bir kez** ICE restart; yine olmazsa `failed` durumu.
+- Peer `failed` → başlatıcı taraf PC'yi **bir kez** yeniden kurar ve yeniden teklif eder (ICE restart yerine; DTLS/ufrag belirsizliği yok); 15 sn içinde bağlanmayan peer için bekçi zamanlayıcı aynı yolu kullanır; yine olmazsa `failed`, roster gerçekten değişince yeniden denenir.
 
 **voiceStore**: `phase: idle | joining | in | error` · `muted` · `peers: Record<id, {state: connecting | connected | failed, speaking}>` ·
 `selfSpeaking` · `endedReason`. Aksiyonlar `start(slug)`, `end(slug)`, `join(slug)`, `leave()`, `toggleMute()`.
@@ -254,14 +257,14 @@ Abone olmadan kimlik alınmaz; kimlik almadan PC açılmaz.
 | kapalı, host | "Sesli sohbeti başlat" |
 | kapalı, üye | dock **yok** |
 | açık, dışarıda | "Sesli sohbet açık · N kişi" + Katıl |
-| joining | spinner, Katıl pasif |
+| joining | Katıl pasif, etiket "Bağlanıyor…" (tasarım sisteminde spinner atomu yok, `disabled` konvansiyonu) |
 | in | üye avatarları (bağlantı durumu ile), Sustur, Ayrıl, geri sayım; host'a Bitir |
 | error | mikrofon izni mesajı + tekrar dene |
 | süre doldu | "Süre doldu"; host'a "Yeniden başlat" |
 
 `endedReason` 10 sn sonra silinir; üye için dock kapalı hâle döner, host için "Yeniden başlat" kalır.
 
-Dock görünürken `AppShell` alt boşluk verir (sabit çubuk sayfa dibini örtmesin).
+Dock `sticky bottom-0` ve kabuk flex'inde `order-last`: akışta gerçek yüksekliğini kaplar, sabit boşluk tahmini yok, atıf altbilgisi üstünde kalır (uygulama incelemesi 2026-09-06).
 
 **Konuşma göstergesi (K12)**: dock avatarında ve `ParticipantRow`'da konuşan kişiye vurgu halkası;
 `ParticipantRow` sesdeki katılımcıya mikrofon ikonu basar (`inVoice`, görünümden) ve halkayı
@@ -279,7 +282,7 @@ gösterge yalnız odadakiler için anlamlıdır.
 - TURN kimliği kısa ömürlü; uzun ömürlü anahtar yalnız backend'de.
 - SDP yerel IP taşır: yalnız aynı oturumun ses üyeleri görür. İstemci `iceCandidatePoolSize`
   varsayılan; mDNS adayları tarayıcı varsayılanıyla kalır.
-- Sinyal kanalında hız sınırı **yok** (§11).
+- Sinyal kanalında soket başına çerçeve bütçesi vardır (§11): ses kutusuna SUBSCRIBE/UNSUBSCRIBE 20/dk, SEND 240/dk; aşan çerçeve sessizce düşer.
 
 ---
 
@@ -289,7 +292,8 @@ gösterge yalnız odadakiler için anlamlıdır.
 |---|---|
 | Mikrofon reddi | Sunucuya gidilmez; dock "mikrofon izni gerekli" + tekrar dene |
 | Cloudflare erişilemez / ayarsız | STUN ile devam, `relay=false`, WARN; UI sessiz |
-| Peer `failed` | Başlatıcı bir kez ICE restart; sonra avatar soluk. Diğer peer'ler etkilenmez |
+| Kimlik isteği ağ/5xx hatası | `connectFailed` durumu: dock "bağlanılamadı · tekrar dene" (409 ise oda kapanmıştır, dock kapalı hâle döner) |
+| Peer `failed` | Başlatıcı PC'yi bir kez yeniden kurar (bekçi 15 sn); sonra avatar soluk. Diğer peer'ler etkilenmez |
 | `voice_ended` (HOST / TIME_LIMIT / EMPTY) | Tek kapanış yolu: mesh kapat, mikrofon bırak, abonelik düşür; dock sebebi gösterir |
 | Backend restart | WS yeniden bağlanır, tazelemede `voice` null → aynı kapanış yolu |
 | `credentials` 409 | Oda bu arada kapandı; dock kapalı hâle döner |
@@ -312,7 +316,7 @@ Yeni (yalnız yeni parçalar):
 Zenginleştirilen:
 - `SessionViewAssemblerTest` — `voice` ve `inVoice`; SOLO'da null/false.
 - `WebSecuritySliceTest` — üç uç token ister.
-- `PresenceOverWebSocketTest` — herkes kopunca oda kapanır (`EMPTY`).
+- `VoiceOverWebSocketTest` — herkes kopunca oda kapanır (`EMPTY`); ek: 12 KB SDP geçer / 20 KB düşer, abone ol-çık döngüsü bütçelenir, yeniden abonelik roster'ı çaldırmaz.
 - Web: `voiceMesh.test.ts` (sahte RTCPeerConnection: K5 kuralı, roster farkı, sinyal işleme, sessize
   alma, ICE restart; sahte AnalyserNode: eşik ve 300 ms tutma) · `liveChannel.test.ts` (yeniden abonelik) · `voiceStore.test.ts` (faz geçişleri,
   `voice` null → leave) · `VoiceDock.test.tsx` (yedi durum + konuşma halkası) · `ParticipantRow.test.tsx` (mikrofon ikonu, halka) · `sessionStore.test.ts` (yeni alanlar).
@@ -324,9 +328,8 @@ Zenginleştirilen:
 - **Süreç içi.** Oda ve üyelik tek pod'un hafızasında; çok pod'da paylaşılmaz, restart sohbeti bitirir.
 - **6 kişi tavanı** UI'da zorlanmaz; 7. kişi katılabilir, kalite düşer. Zorlama gerekirse `credentials`
   409 döner (tek satır).
-- **İki sekme.** Aynı katılımcı iki sekmeden sese giremez; son abone kazanır, ilk sekme sinyal almaz.
-- **Sinyal hız sınırı yok.** Üye 16 KB'lık mesajları sınırsız yollayabilir; alıcı aynı arkadaş grubu.
-  Gerekirse soket başına basit sayaç.
+- **İki sekme.** Aynı katılımcı iki sekmeden sese giremez: iki sekme de aynı özel konuya abone olduğu için ikisi de her sinyali alır ve çift bağlantı kurmaya çalışır; koltuk ise son aboneye aittir, ilk sekmenin kapanması üyeliği düşürmez, ikincisinin kapanması düşürür.
+- **Soket başına çerçeve bütçesi (uygulama incelemesi 2026-09-06).** SUBSCRIBE/UNSUBSCRIBE 20/dk, SEND 240/dk; aşan çerçeve sessizce düşer. Roster olayı yalnız üye kümesi gerçekten değişince yayınlanır. Gerekçe: abone ol/çık döngüsü her turda herkese ağır GET yaptırabiliyordu, `/topic`'e istemci yayınının yasaklanma sebebiyle aynı sınıf.
 - **Presence = sekme açık.** Unutulan masaüstü çifti katman 1'e (2 saat) kadar relay tüketir; katman 3
   ikinci sürümde.
 - **TURN üçüncü taraf.** Cloudflare hesabı ve anahtar gerekir; kota `developers.cloudflare.com/realtime`

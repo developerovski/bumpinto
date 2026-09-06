@@ -36,8 +36,8 @@ class PointsController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiDtos.ParticipantDto(
                 point.id(), point.displayName(), false, true, false, true, point.locationLabel(),
                 SessionViewAssembler.approx(point.location()), point.travelMode(), null,
-                // Elle eklenen nokta token tasimaz, soket asamaz → daima cevrimdisi.
-                false));
+                // Elle eklenen nokta token tasimaz, soket asamaz → daima cevrimdisi ve ses disi.
+                false, false));
     }
 
     @DeleteMapping("/{participantId}")

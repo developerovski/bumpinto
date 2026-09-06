@@ -49,6 +49,13 @@ export function createBumpintoApi(http: AxiosInstance) {
     logout: () => http.post("/api/auth/logout").then(() => undefined),
     preview: (slug: string) =>
       http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
+    voiceStart: (slug: string) =>
+      http.post<Schemas["VoiceStartResponse"]>(`/api/sessions/${slug}/voice`).then((r) => r.data),
+    voiceEnd: (slug: string) =>
+      http.delete(`/api/sessions/${slug}/voice`).then(() => undefined),
+    voiceCredentials: (slug: string) =>
+      http.post<Schemas["VoiceCredentialsResponse"]>(`/api/sessions/${slug}/voice/credentials`)
+        .then((r) => r.data),
   };
 }
 

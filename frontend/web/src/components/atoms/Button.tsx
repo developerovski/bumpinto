@@ -1,7 +1,7 @@
 /* Kaynak: ui.css .a-btn* / DS v2. Tailwind zincirleri `./buttonStyles`'ta (Fast Refresh
    bir .tsx modülün TÜM export'larının bileşen olmasını gerektirir; base/kinds/aligns
    `LinkButton` ile ortak olduğundan zaten paylaşılan bir modülde yaşamaları gerekiyordu). */
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { buttonAligns, buttonBase, buttonKinds } from "./buttonStyles";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -28,14 +28,12 @@ const pillSm = "w-auto min-h-[2.625rem] px-4 text-[0.875rem]";
 /* DS .fit — içerik genişliğinde pill (Profil çıkış butonu, masaüstü). */
 const pillFit = "w-auto px-6 text-base min-h-[3.25rem]";
 
-export default function Button({
-  kind = "flame",
-  shape = "pill",
-  size = "md",
-  align = "center",
-  children,
-  ...rest
-}: Props) {
+// forwardRef: odak yönetimi (VoiceDock) gerçek DOM düğümü ister (React 19'da `ref` düz prop olur,
+// bu saracak da kaldırılabilir).
+const Button = forwardRef<HTMLButtonElement, Props>(function Button(
+  { kind = "flame", shape = "pill", size = "md", align = "center", children, ...rest },
+  ref,
+) {
   const sizeClass =
     shape === "pill" && size === "sm"
       ? pillSm
@@ -44,6 +42,7 @@ export default function Button({
         : rounds[shape];
   return (
     <button
+      ref={ref}
       {...rest}
       className={[buttonBase, buttonKinds[kind], sizeClass, buttonAligns[align]]
         .join(" ")
@@ -52,4 +51,6 @@ export default function Button({
       {children}
     </button>
   );
-}
+});
+
+export default Button;

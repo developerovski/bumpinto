@@ -435,5 +435,36 @@
     "fitOff": "Not {{activity}}: {{category}}",
     "hoursToday": "Today {{hours}}",
     "openInMaps": "Open in Google Maps"
+  },
+  "voice": {
+    "region": "Voice chat",
+    "start": "Start voice chat",
+    "restart": "Start again",
+    "open": "Voice chat is on",
+    "members_one": "{{count}} person",
+    "members_other": "{{count}} people",
+    "remaining": "{{time}} left",
+    "join": "Join",
+    "joining": "Connecting…",
+    "retry": "Try again",
+    "leave": "Leave",
+    "end": "End for everyone",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "micDenied": "Microphone access is needed. Allow it in your browser settings and try again.",
+    "connectFailed": "Couldn't connect to voice chat — try again.",
+    "inVoice": "in voice chat",
+    "speaking": "speaking",
+    "peerFailed": "no audio",
+    "errStart": "Couldn't start voice chat — try again.",
+    "errEnd": "Couldn't end voice chat — try again.",
+    "errSolo": "Voice chat is for group meetups only.",
+    "errExpiring": "This meetup is about to expire; voice chat can't start.",
+    "errClosed": "This meetup is closed.",
+    "ended": {
+      "HOST": "Voice chat was ended",
+      "TIME_LIMIT": "Time is up",
+      "EMPTY": "Everyone left, voice chat closed"
+    }
   }
 }

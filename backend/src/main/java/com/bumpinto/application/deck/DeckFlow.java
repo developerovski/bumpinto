@@ -4,6 +4,7 @@ import com.bumpinto.application.error.ConflictException;
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.session.SessionExpiry;
+import com.bumpinto.application.session.SessionGates;
 import com.bumpinto.application.text.Ids;
 import com.bumpinto.domain.deck.DecisionEngine;
 import com.bumpinto.domain.deck.DeckOrdering;
@@ -74,7 +75,7 @@ public class DeckFlow {
     @Transactional
     public List<Venue> findVenues(String slug, UUID hostParticipantId) {
         Session session = required(slug);
-        requireHost(session, hostParticipantId);
+        SessionGates.requireHost(store, session, hostParticipantId);
         if (session.status() != SessionStatus.COLLECTING
                 && session.status() != SessionStatus.SUGGESTING) {
             throw new ConflictException("deck already built: " + session.status());
@@ -146,7 +147,7 @@ public class DeckFlow {
     @Transactional
     public void shuffle(String slug, UUID hostParticipantId) {
         Session session = required(slug);
-        requireHost(session, hostParticipantId);
+        SessionGates.requireHost(store, session, hostParticipantId);
         if (session.status() != SessionStatus.BROWSING) {
             throw new ConflictException("expected BROWSING but was " + session.status());
         }
@@ -213,7 +214,7 @@ public class DeckFlow {
     @Transactional
     public void forceDecision(String slug, UUID hostParticipantId, UUID chosenVenueId) {
         Session session = required(slug);
-        requireHost(session, hostParticipantId);
+        SessionGates.requireHost(store, session, hostParticipantId);
         if (chosenVenueId != null) {
             switch (session.status()) {
                 case BROWSING -> {
@@ -321,16 +322,6 @@ public class DeckFlow {
             throw new ConflictException("expected " + expected + " but was " + session.status());
         }
         return session;
-    }
-
-    /**
-     * Oda ici yetki oturuma kapsamli KATILIMCI kimliginden gelir, hesap JWT'sinden degil (bkz.
-     * SessionCommands#requireHost). Koltuk DB'den okunur: imzali claim tek basina yetmez.
-     */
-    private void requireHost(Session session, UUID participantId) {
-        if (!requireMember(session, participantId).host()) {
-            throw new ForbiddenException("only the host can do this");
-        }
     }
 
     private Participant requireMember(Session session, UUID participantId) {

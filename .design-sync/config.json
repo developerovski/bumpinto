@@ -76,7 +76,8 @@
       "cardMode": "column"
     },
     "PageHeader": {
-      "cardMode": "column"
+      "cardMode": "column",
+      "viewport": "1280x700"
     },
     "PastSessionRow": {
       "cardMode": "column"

@@ -173,7 +173,9 @@ public final class ApiDtos {
                                  GeoPointDto approxLocation, TravelMode travelMode,
                                  Integer midpointMinutes,
                                  /** Acik soketi var ya da 45 sn icinde koptu; manual satirlarda daima false. */
-                                 boolean online) {
+                                 boolean online,
+                                 /** Kendi ses konusuna abone (spec K4); SOLO'da daima false. */
+                                 boolean inVoice) {
     }
 
     /**
@@ -212,7 +214,29 @@ public final class ApiDtos {
                               /** Secili ama hic mekan uretmemis alanlar; BROWSING oncesi bos. */
                               List<ActivityType> emptyActivityTypes,
                               /** Merkez host'un sectigi sabit nokta mi (orta nokta degil). */
-                              boolean anchored) {
+                              boolean anchored,
+                              /** Ses odasi: null = kapali. SOLO'da hep null (start SOLO'yu reddeder). */
+                              VoiceDto voice) {
+    }
+
+    public record VoiceDto(Instant endsAt) {
+    }
+
+    public record VoiceStartResponse(Instant endsAt) {
+    }
+
+    /** credential kisa omurlu bir sirdir: toString maskeler (tokenCarryingDtosMaskSecretsInToString). */
+    public record IceServerDto(List<String> urls, String username, String credential) {
+
+        @Override
+        public String toString() {
+            return "IceServerDto[urls=" + urls + ", username=" + username + ", credential=***]";
+        }
+    }
+
+    /** relay=false: TURN yok, yalniz STUN (Cloudflare ayarsiz/erisilemez). Istemci UI'da gostermez. */
+    public record VoiceCredentialsResponse(List<IceServerDto> iceServers, boolean relay,
+                                           Instant endsAt) {
     }
 
     /** Katilmadan once gorulen kamu bilgisi: koordinat, katilimci id'si, mekan YOK. */

@@ -37,7 +37,8 @@ class GooglePlacesVenueProviderTest {
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
                 new AppProps.Quota(searches, photos),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO));
+                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
     }
 
     @Test

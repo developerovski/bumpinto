@@ -38,3 +38,10 @@ bumpinto:
     # Nominatim politikasi: User-Agent'ta gercek bir iletisim adresi ZORUNLU.
     contact: ${NOMINATIM_CONTACT:dev@bumpinto.test}
     min-interval: ${NOMINATIM_MIN_INTERVAL:PT1S}
+  voice:
+    # Ses odasinin sert omru (spec K7); TURN kimligi kalan sure kadar uretilir.
+    max-duration: ${VOICE_MAX_DURATION:PT2H}
+  turn:
+    # Bos birakilabilir: TURN yok, yalniz STUN (K11). Cloudflare Realtime > TURN keys.
+    key-id: ${CLOUDFLARE_TURN_KEY_ID:}
+    api-token: ${CLOUDFLARE_TURN_API_TOKEN:}

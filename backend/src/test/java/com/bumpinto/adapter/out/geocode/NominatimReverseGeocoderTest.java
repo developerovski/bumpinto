@@ -23,7 +23,8 @@ class NominatimReverseGeocoderTest {
                 new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
                 new AppProps.RateLimit(false),
                 new AppProps.Quota(1000, 1000),
-                new AppProps.Geocode("ops@bumpinto.test", minInterval));
+                new AppProps.Geocode("ops@bumpinto.test", minInterval),
+                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
     }
 
     static NominatimReverseGeocoder geocoder(UnirestInstance http, Duration minInterval) {

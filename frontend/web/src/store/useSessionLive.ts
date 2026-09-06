@@ -1,11 +1,24 @@
-import { Client } from "@stomp/stompjs";
 import { useEffect } from "react";
+import { liveChannel, sessionTopic } from "./liveChannel";
 import { useSessionStore } from "./sessionStore";
+import { useVoiceStore, type EndReason } from "./voiceStore";
 
 /** Emniyet ağı — canlı kanalın YEDEĞİ, birincil yol değil. Olaylar STOMP'tan geliyor; 3 sn'lik
     tur açık sekme başına 20 GET/dk demekti ve tek taşıdığı şey WS kopukluğu + yayınlanmayan
     EXPIRED geçişi. 30 sn ikisini de karşılar, yükü 10 kat düşürür. */
 const POLL_MS = 30000;
+
+/** Olaylar "tazele" zilidir; tek istisna `voice_ended`: sebebi dock'a taşır (spec §6). */
+function endedReasonOf(body: string): EndReason | null {
+  try {
+    const event = JSON.parse(body) as { type?: string; payload?: { reason?: string } };
+    if (event.type !== "voice_ended") return null;
+    const reason = event.payload?.reason;
+    return reason === "HOST" || reason === "TIME_LIMIT" || reason === "EMPTY" ? reason : null;
+  } catch {
+    return null;
+  }
+}
 
 export function useSessionLive(slug: string) {
   const bind = useSessionStore((s) => s.bind);
@@ -15,28 +28,28 @@ export function useSessionLive(slug: string) {
     bind(slug);
     void refresh();
     const timer = setInterval(() => void refresh(), POLL_MS);
-
-    // Kanal artik oturum yolunun ALTINDA: katilimci cerezinin path'i /api/sessions/{slug} oldugu
-    // icin tarayici cerezi handshake'e kendiliginden gonderir ve sunucu soketi kimliklendirir.
-    // VITE_WS_URL artik yalniz ORIGIN tasir, /ws sonekini TASIMAZ.
-    const origin =
-      (import.meta.env.VITE_WS_URL as string | undefined) ||
-      `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;
-    const client = new Client({
-      brokerURL: `${origin}/api/sessions/${slug}/ws`,
-      reconnectDelay: 5000,
-      // Bağlantı kurulunca BİR KEZ tazele: abone olana kadar kaçan olaylar burada kapanır,
-      // yoksa açılıştaki boşluk artık 30 sn sürerdi.
-      onConnect: () => {
-        void refresh();
-        client.subscribe(`/topic/session/${slug}`, () => void refresh());
-      },
+    // Abonelik açılıştan ÖNCE kaydedilir: liveChannel bağlanınca kurar, kaçan olay olmaz.
+    const unsubscribe = liveChannel.subscribe(sessionTopic(slug), (body) => {
+      void refresh();
+      const reason = endedReasonOf(body);
+      if (reason) useVoiceStore.getState().ended(reason);
     });
-    client.activate();
+    // Abonelik zaten bağlanmadan ÖNCE kaydedildi ve kuruluş sırası "onConnect'te attach, sonra
+    // onConnect callback'i" olduğu için buradaki tazeleme "abone olana kadarki boşluğu" değil,
+    // yalnız BAĞLI OLUNMAYAN pencerede kaçan olayları kapatır. resetRoster(): WS yeniden
+    // bağlanınca roster'ı tekrar mesh'e it — arıza sırasında failed'e düşmüş peer'leri canlandırır (I3).
+    const close = liveChannel.open(slug, () => {
+      void refresh();
+      useVoiceStore.getState().resetRoster();
+    });
 
     return () => {
       clearInterval(timer);
-      void client.deactivate();
+      // Mikrofon abonelik hâlâ CANLIYKEN bırakılır: leave() önce, ki ses kutusunun UNSUBSCRIBE
+      // çerçevesi soket kapanmadan gitsin (sonra unsubscribe/close sıralaması önemsizleşir).
+      useVoiceStore.getState().leave();
+      unsubscribe();
+      close();
     };
   }, [slug, bind, refresh]);
 }
