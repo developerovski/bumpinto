@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # PostGIS zorunlu: venues_open geometry(Point,4326) + GiST (spec §5.2).
+    image: postgis/postgis:16-3.4
     environment:
       POSTGRES_DB: bumpinto
       POSTGRES_USER: bumpinto
@@ -10,5 +11,63 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # --- profil: geo (acik veri servisleri, istege bagli) ---
+
+  nominatim:
+    profiles: ["geo"]
+    image: mediagis/nominatim:4.5
+    environment:
+      PBF_URL: https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/europe/netherlands-updates/
+      NOMINATIM_PASSWORD: nominatim
+      IMPORT_WIKIPEDIA: "false"
+      THREADS: "4"
+    ports:
+      - "8070:8080"
+    shm_size: 1g
+    volumes:
+      - nominatimdata:/var/lib/postgresql/16/main
+
+  osrm-car:
+    profiles: ["geo"]
+    image: osrm/osrm-backend:v5.27.1
+    command: ["osrm-routed", "--algorithm", "mld", "/data/car/netherlands-latest.osrm"]
+    ports:
+      - "5001:5000"
+    volumes:
+      - osrmdata:/data
+
+  osrm-bicycle:
+    profiles: ["geo"]
+    image: osrm/osrm-backend:v5.27.1
+    command: ["osrm-routed", "--algorithm", "mld", "/data/bicycle/netherlands-latest.osrm"]
+    ports:
+      - "5002:5000"
+    volumes:
+      - osrmdata:/data
+
+  osrm-foot:
+    profiles: ["geo"]
+    image: osrm/osrm-backend:v5.27.1
+    command: ["osrm-routed", "--algorithm", "mld", "/data/foot/netherlands-latest.osrm"]
+    ports:
+      - "5003:5000"
+    volumes:
+      - osrmdata:/data
+
+  # --- profil: geo-prepare (tek seferlik, ~20-40 dk) ---
+
+  osrm-prepare:
+    profiles: ["geo-prepare"]
+    image: osrm/osrm-backend:v5.27.1
+    entrypoint: ["/bin/bash", "/prepare.sh"]
+    environment:
+      PBF_URL: https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+    volumes:
+      - osrmdata:/data
+      - ./deploy/osrm/prepare.sh:/prepare.sh:ro
+
 volumes:
   pgdata:
+  nominatimdata:
+  osrmdata:

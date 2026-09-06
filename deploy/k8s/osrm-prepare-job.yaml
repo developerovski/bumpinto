@@ -1,0 +1,49 @@
+# osrm.yaml'dan ayrildi: Job alanlari immutable, yeniden kosu icin `kubectl create` gerekir
+# (bkz. deploy/k8s/README.md "osrm-prepare'i yeniden kosma").
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: osrm-prepare
+  namespace: bumpinto
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels: { app.kubernetes.io/part-of: osrm }
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels: { app.kubernetes.io/part-of: osrm }
+      restartPolicy: Never
+      initContainers:
+        - name: fetch-pbf
+          image: curlimages/curl:8.11.1
+          command: ["sh", "-c"]
+          args:
+            - test -s /data/netherlands-latest.osm.pbf ||
+              curl -sSfL -o /data/netherlands-latest.osm.pbf "$PBF_URL"
+          env:
+            - name: PBF_URL
+              value: https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      containers:
+        - name: prepare
+          image: osrm/osrm-backend:v5.27.1
+          command: ["/bin/bash", "/scripts/prepare.sh"]
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: scripts, mountPath: /scripts }
+          resources:
+            requests: { cpu: "2", memory: 4Gi }
+            limits: { memory: 12Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: osrm-data }
+        - name: scripts
+          configMap:
+            name: osrm-prepare
+            defaultMode: 0755

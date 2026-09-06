@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
-import { formatRating } from "../../lib/format";
+import { formatRating, providerMark } from "../../lib/format";
 import { monogram } from "../../lib/monogram";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import Attribution from "./Attribution";
@@ -73,6 +73,7 @@ export default function VenueCard(props: {
   const showPhoto = hasPhoto && !broken;
   const hasPrice = v.priceLevel != null && v.priceLevel > 0;
   const hasMeta = v.rating != null || hasPrice;
+  const mark = providerMark(v.provider);
   // Semt YALNIZ orta nokta şehrinden farklıysa gösterilir — aynıysa tekrar (§4.9).
   const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
 
@@ -130,7 +131,7 @@ export default function VenueCard(props: {
               )}
               {hasMeta && (
                 <span className="text-[0.75rem] text-ink2">
-                  {v.rating != null && `★ ${v.rating}`}
+                  {v.rating != null && `★ ${formatRating(v.rating, v.ratingScale)}`}
                   {v.rating != null && hasPrice && " · "}
                   {hasPrice && "€".repeat(v.priceLevel!)}
                 </span>
@@ -197,7 +198,13 @@ export default function VenueCard(props: {
               {(hasMeta || locality) && (
                 <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
                   {v.rating != null && (
-                    <strong className="font-bold text-ink">★ {formatRating(v.rating)}</strong>
+                    <strong className="font-bold text-ink">★ {formatRating(v.rating, v.ratingScale)}</strong>
+                  )}
+                  {v.rating != null && mark && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{mark}</span>
+                    </>
                   )}
                   {hasPrice && (
                     <>
@@ -231,7 +238,7 @@ export default function VenueCard(props: {
               boş kalıp `flex-col gap-*`'in boşluğunu yerdi (SOLO / travelMinutes yok). */}
           <FairnessBadge venue={v} travel={travel} />
           <TravelChips venue={v} travel={travel} />
-          {(props.attribution ?? true) && <Attribution provider={v.provider} />}
+          {(props.attribution ?? true) && <Attribution providers={v.provider ? [v.provider] : []} />}
         </div>
       )}
     </div>

@@ -7,9 +7,10 @@ import java.util.UUID;
 
 public record Venue(UUID id, UUID sessionId, String provider, String externalId, String name,
                     GeoPoint location, Double rating, Integer priceLevel, String photoUrl,
-                    String mapsUrl, int deckOrder,
+                    int deckOrder,
                     String category, String address, String locality, Integer ratingCount,
-                    String hoursToday, String placeLink, ActivityType activityType) {
+                    String hoursToday, String placeLink, ActivityType activityType,
+                    Double popularity, Integer ratingScale, String photoRef) {
 
     /**
      * Yalnızca TESTLER için kısa imza; üretimde çağrısı yoktur (sağlayıcı alanları her zaman
@@ -18,14 +19,22 @@ public record Venue(UUID id, UUID sessionId, String provider, String externalId,
      */
     public Venue(UUID id, UUID sessionId, String provider, String externalId, String name,
                  GeoPoint location, Double rating, Integer priceLevel, String photoUrl,
-                 String mapsUrl, int deckOrder) {
+                 int deckOrder) {
         this(id, sessionId, provider, externalId, name, location, rating, priceLevel, photoUrl,
-                mapsUrl, deckOrder, null, null, null, null, null, null, null);
+                deckOrder, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    /** Normalize puan: olcekler karistirilmadan kiyaslanabilsin (spec §4.6, §11). */
+    public Double normalizedRating() {
+        if (rating == null || ratingScale == null || ratingScale <= 0) {
+            return null;
+        }
+        return rating / ratingScale;
     }
 
     public Venue withDeckOrder(int newOrder) {
         return new Venue(id, sessionId, provider, externalId, name, location, rating, priceLevel,
-                photoUrl, mapsUrl, newOrder, category, address, locality, ratingCount, hoursToday,
-                placeLink, activityType);
+                photoUrl, newOrder, category, address, locality, ratingCount, hoursToday,
+                placeLink, activityType, popularity, ratingScale, photoRef);
     }
 }

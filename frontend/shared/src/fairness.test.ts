@@ -89,4 +89,13 @@ describe("fairness", () => {
     const c = v("c", { p1: 10 });
     expect([a, c, b].sort(byRating).map((x) => x.id)).toEqual(["b", "a", "c"]);
   });
+
+  it("puan sırası ölçeğe göre normalize edilir — FSQ 10'luk ile TA/Google 5'lik karışmaz (spec §11)", () => {
+    const a = { ...v("a", { p1: 10 }, 8.0), ratingScale: 10 }; // 0.80
+    const b = { ...v("b", { p1: 10 }, 4.5), ratingScale: 5 }; // 0.90 — 10'luk 8.0'ı geçer
+    const c = v("c", { p1: 10 }, 4.8); // ölçek yok → 5 varsayılan, 0.96 en yüksek
+    const d = { ...v("d", { p1: 10 }, 9), ratingScale: 10 }; // 0.90 — b ile eşit
+    const e = v("e", { p1: 10 }); // puansız → sona
+    expect([a, b, c, d, e].sort(byRating).map((x) => x.id)).toEqual(["c", "b", "d", "a", "e"]);
+  });
 });

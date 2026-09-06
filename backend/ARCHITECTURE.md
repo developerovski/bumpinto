@@ -171,6 +171,13 @@ Aşağıdakiler yorum değil, **test**tir (`HexagonalArchitectureTest`). İhlal 
    duramaz; her sınıf bir ilgi alanı alt paketinde yaşar.
    *Gerekçe:* `infra/` 9 düz sınıfa, `application/` 10 düz sınıfa ulaşmıştı. Kural olmadan
    çöp kutusuna dönüş kaçınılmaz; 2026-09-01 yeniden paketlemesinin sebebi buydu.
+5. **`venueSourcesAreSelfContained`** — `adapter.out.{foursquare,google,open}..` yalnız
+   domain, config, `adapter.out.provider`, birbiri ve framework/kütüphane paketlerine bağımlı
+   olabilir; başka bir adapter paketine sızamaz (B-13, `VenueSource` SPI ayrışması).
+6. **`orchestratorKnowsOnlyTheSpi`** — `ProviderOrchestrator` somut sağlayıcı paketlerine
+   (`foursquare`, `google`, `open`) hiç bağımlı olamaz; yalnız `VenueSource` SPI'sini görür.
+7. **`applicationDoesNotSeeVenueSources`** — `application..` somut sağlayıcı paketlerine ve
+   `adapter.out.provider..`'a bağımlı olamaz; `DeckFlow` yalnız `VenueProviderPort`'u bilir.
 
 ---
 
@@ -451,64 +458,68 @@ doğrulanacak).
 **Bilinen basitleştirme:** `sessions.runoff_venue_ids` bir CSV `text` kolonudur. Finalist sayısı
 en fazla 3 olduğu için ayrı tablo açılmadı; sorgulanmıyor, yalnız okunup yazılıyor.
 
+**`provider_usage` (V10)** — `(provider, month)` birincil anahtarlı aylık çağrı sayacı;
+replica'dan ve pod yeniden başlatmasından **bağımsız** olsun diye DB'ye taşındı (eskiden
+süreç-içi sayaçtı). `ProviderUsageAdapter` `REQUIRES_NEW` ile yazar: çağıran işlem geri
+alınsa da sayaç kalıcı kalır.
+
+**`venues` (V10)** — Premium alanlar için `popularity real`, `rating_scale smallint`,
+`photo_ref text`, `fetched_at timestamptz not null default now()` eklendi; saklama kuralının
+kaybeden satırın adını boşaltabilmesi için `name` artık **nullable** (V1'deki `not null` kalktı).
+
+**`venues_open` + PostGIS (V11)** — açık taban (Overture Places NL + OSM NL, aylık ithal) için
+`create extension if not exists postgis` ve `geom geometry(Point, 4326)` sütunlu ayrı tablo;
+`gist` indeksi `geom::geography`'de, `gin` indeksi `activity_types text[]`'te. Yerel compose
+Postgres'i (`postgres:16-alpine`) bu migrasyonu çalıştıramaz — testler ve entegrasyon ortamı
+`postgis/postgis:16-3.4` imajını kullanır (bkz. §13).
+
 ---
 
 ## 10. Dış mekan sağlayıcıları
 
-Üç parça, tek kota modeli (`ProviderQuota{limit, remaining, resetAt, measuredAt, source}`):
+Her sağlayıcı `VenueSource` SPI'sini uygular (`descriptor()`, `categories()`, `search()`);
+somut paketler (`adapter.out.foursquare`, `.google`, `.open`) birbirini görmez (§5 kural
+5–7). Her sağlayıcının kendi `venue-sources/<id>.yml`'i vardır; `bumpinto.venues.route`
+aktivite türünü sağlayıcı(lar)a **böler** ve her küme için **sabit** bir sıra tanımlar —
+kota ORANI ile sıralama YOK (2026-09-06'da geri alındı, bkz. §7 gerekçe geçmişi).
 
 ```
-  gerçek arama ── x-ratelimit-* (FSQ) ────────────▶ ProviderQuotaCache ◀── 429 → EXHAUSTED
-                                                          │
-                 ┌──────────────────────┐  yalnız "tükendi mi"
-  DeckFlow ────▶ │ ProviderOrchestrator │◀─────────────────┘
-                 └──────────────────────┘
-                   Foursquare(@Order 1) ──▶ GooglePlaces(@Order 2) ──▶ …
-                   SABİT sıra; kota sıralamayı DEĞİL, yalnız elemeyi etkiler
+  gerçek arama ── x-ratelimit-* ────▶ ProviderQuotaCache ◀── 429 → EXHAUSTED
+                                            │
+  DeckFlow ─▶ ProviderOrchestrator ◀────────┘  yalnız "tükendi mi"
+       │            │
+       │        BudgetGate ──▶ provider_usage (billingZone bazlı REQUIRES_NEW yazım)
+       ▼
+  30 dk sonuç önbelleği (kova yarıçapı) / 10 dk boş-işaret önbelleği
+  degraded sonuç (haversine'a düşülmüş, düşük güvenli) ÖNBELLEKLENMEZ
 ```
 
-> **Periyodik kota ölçümü YOK** (2026-09-06'da kaldırıldı). Kota yalnız gerçek aramaların
-> yanıtından öğrenilir. Eskiden `ProviderQuotaScheduler` 5 dakikada bir `measureQuota()`
-> çağırıyordu; FSQ'nunki **ücretli** bir Pro çağrısıydı ve boş duran bir süreçte bile günde
-> ~288 istek harcıyordu.
+- **`BudgetGate`** her çağrıdan önce `provider_usage`'daki `(provider, month)` sayacını okur;
+  `descriptor().billingZone()` faturalama ayının başlangıcını belirler. Bütçe dolarsa
+  sağlayıcı `open` (ücretsiz/açık taban) katmana düşer, istek atılmaz, uygulama çökmez.
+- **`ProviderQuotaCache`** 429 yanıtını `EXHAUSTED` olarak işaretler; sağlayıcı `resetAt`'e
+  kadar atlanır. Kota yalnız *eleme* ölçütüdür, sıralama ölçütü değildir.
+- **Sonuç önbelleği** yarıçap **kovası** + aktivite türü anahtarlıdır, 30 dk yaşar; **boş**
+  sonuç ayrı ve kısa (10 dk) ömürlüdür — seyrek bölgede kalıcı "mekan yok" olmaz. Haversine
+  tahminine düşülmüş **degraded** sonuç bilerek önbelleklenmez: gerçek OSRM/servis cevabı
+  geldiğinde bir sonraki çağrı onu yakalasın diye.
+- **`RetentionRule`** üç kural işletir (spec §11); saatlik `VenueContentRetention` işi
+  süresi geçen satırları indirger (`name` V10'dan beri nullable) ve kazanmamış fotoğrafları
+  temizler.
+- **`MapLinks`** API'siz harita bağlantısı üretir (ör. `https://maps.google.com/?q=lat,lng`) —
+  ayrı bir Maps API anahtarı gerektirmez, `MAP_ENGINE` seçiminden bağımsızdır.
+- **`RoutingPort`/OSRM** — `OsrmRouting` `/table` matrisini 60 sn önbellekler ve profil
+  başına 60 sn geri çekilme uygular (bkz. `backend/src/main/java/com/bumpinto/adapter/out/routing/OsrmRouting.java`,
+  B-13 incelemesi); `TRANSIT` için rota servisi yok, her zaman haversine tahminine düşer.
 
-- **Kota sinyali sağlayıcıya göre farklı** (2026-09-02 araştırması): FSQ her yanıtta
-  `x-ratelimit-limit/remaining/reset` verir (`HEADER`, bedava); Google **hiç header vermez**,
-  kota yalnız Cloud Monitoring'de (servis hesabı ister, dakikalar gecikmeli) → yerel sayaç:
-  `bumpinto.quota.google-monthly-budget − bu ayki searchNearby` (`BUDGET`); TripAdvisor'da ne
-  header ne API var → yalnız 429 ve yerel sayaç. Orkestratör bu farkı görmez.
-- **Google sayacı yalnız FATURALANAN çağrıyı sayar** (2xx ve 429). Yetki/sunucu hatası
-  bütçeden düşmez: sayaç eskiden istekten *önce* artıyordu ve anahtar 403 verirken bile aylık
-  bütçe eriyordu.
-- **Orkestratör sırası SABİTTİR**: `@Order`, yani Foursquare → Google. Kota yalnız *eleme*
-  ölçütüdür (tükenmiş sağlayıcı atlanır), sıralama ölçütü **değildir**. Eski sürüm `ratio()`
-  (kalan/limit) ile sıralıyordu ve bu niyetin tersini yapıyordu: Google'ın oranı aylık bütçeden
-  (taze pod'da `1000/1000 = 1.0`), FSQ'nunki saatlik istek limitinden (`179995/180000 =
-  0.99997`) geliyor — iki oran aynı şeyi ölçmediği için Google neredeyse her zaman öne geçiyor
-  ve her arama önce ücretli sağlayıcıya gidiyordu. İlk dolu sonuç kazanır; boş/geçici hata →
-  sıradaki. 429 →
-  `QuotaExceededException.resetAt()`'e kadar `EXHAUSTED`. FSQ'da kredi-429'u
-  (`x-ratelimit-limit: 0`, kendiliğinden dolmaz → 24 saat) ile saatlik-429'u (`reset`
-  başlığı) ayrılır. Herkes hata verirse "mekan yok" **denmez**, istisna yukarı gider (500).
-- **Yeni sağlayıcı** (TripAdvisor vb.) = `QuotaAwareVenueProvider` uygulayan `@Order(n)` bean'i;
-  orkestratör ve scheduler değişmez.
-- **Sınır:** cache ve Google sayacı süreç içi. Pod yeniden başlayınca cache boşalır (ilk tur
-  doldurur, o arada `@Order`), sayaç sıfırlanır (ay içinde eksik sayar). Çok pod'da paylaşılmaz.
+**Yeni sağlayıcı eklemenin DoD'si (6 madde):**
 
-- **15 aktivite türü.** İlk beşinin (`COFFEE FOOD BAR WALK ACTIVITY`) Foursquare kategori
-  eşlemesi vardır; kalan onu (`SWIM HIKE FITNESS CINEMA MUSEUM ART NIGHTLIFE THEME_PARK
-  ADVENTURE GAMES`) **yalnız Google'dan** gelir.
-- **Fotoğraf arama anında çözülür.** FSQ doğrudan CDN adresi verir. Google `searchNearby`
-  ise yalnız bir foto *referansı* döner; referansı resme çevirmek API anahtarı ister ve anahtar
-  istemciye geçemez. Bu yüzden mekan başına bir `photos/*/media?skipHttpRedirect=true` çağrısı
-  yapılır (paralel) ve imzalı CDN adresi `venues.photo_url`'e yazılır — tarayıcı resmi tek
-  istekte çeker, arada kendi ucumuz yok. Adresin ömrü sınırlı; dolarsa kart monograma düşer
-  (`<img onError>`). Foto hatası aramayı düşürmez, o mekan fotosuz kalır.
-- Foursquare eşlemesi olmayan tür için `FoursquareVenueProvider` **HTTP çağrısı yapmadan** boş
-  döner. Kategorisiz arama yapılsaydı FSQ filtresiz sonuç dönerdi ve "yüzme" isteyen kullanıcı
-  kafe listesi görürdü — sessiz ve fark edilmesi zor bir hata. Testle kilitli.
-- Google'da bir aktivite birden çok türe açılır (`includedTypes` OR'lanır), tek istekte daha
-  geniş sonuç: `MUSEUM` → `museum` + `art_museum` + `history_museum`.
+1. `adapter.out.<id>` paketinde `VenueSource` uygulaması.
+2. `venue-sources/<id>.yml` tanım dosyası.
+3. `application.yml`'de `bumpinto.venues.sources.<id>` bloğu.
+4. `docs/CONFIGURATION.md`'ye ilgili anahtar satırı.
+5. Sözleşme testi (`@EnabledIfEnvironmentVariable`, gerçek anahtarla koşulur).
+6. `attribution.<id>` i18n anahtarı ve `docs/superpowers/plans/INDEX.md`'de satır.
 
 ### Çoklu ilgi alanı ve bulk arama (B-9, 2026-09-04)
 
@@ -656,18 +667,25 @@ yalnız uzunluk kontrolü olsaydı, adı uzun bir env değişkeni eksik olduğun
 Sır **değerleri** hiçbir dosyaya yazılmaz. Manifest'ler yalnız isim referanslar; `kubectl create
 secret` komutlarını kullanıcı çalıştırır.
 
-### Sağlayıcı bütçeleri (B-7, açılış maliyet modeli)
+### Sağlayıcı bütçeleri, harita, geocode, rota (B-13'ten sonra)
+
+`bumpinto.providers.*` ve `bumpinto.quota.*` **kalktı**; yerini şunlar aldı:
 
 | Ayar | Varsayılan | Ne yapar |
 |---|---|---|
-| `bumpinto.quota.google-monthly-budget` (`GOOGLE_MONTHLY_BUDGET`) | 1000 | Nearby Search için **sert** aylık tavan. Aşılırsa istek atılmaz, `QuotaExceededException` ile orkestratör Foursquare'e düşer. Maske `rating`+`priceLevel` içerdiği için çağrı Enterprise katmanındadır (1.000 ücretsiz/ay, sonrası $35/1000). |
-| `bumpinto.quota.google-photo-monthly-budget` (`GOOGLE_PHOTO_MONTHLY_BUDGET`) | 1000 | Place Photo medya çağrıları — **ayrı SKU** (1.000 ücretsiz/ay, sonrası $7/1000). Bitince foto çözülmez, `photoUrl` null gelir, kart monograma düşer; arama etkilenmez. |
-| `bumpinto.geocode.contact` (`NOMINATIM_CONTACT`) | dev@bumpinto.test | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi. Preprod/prod'da gerçek adres verilmelidir. |
-| `bumpinto.geocode.min-interval` (`NOMINATIM_MIN_INTERVAL`) | PT1S | Nominatim'e en fazla 1 istek/saniye. |
+| `bumpinto.venues.sources.<id>.enabled` | sağlayıcıya göre | O sağlayıcıyı açar/kapatır (ör. `foursquare`, `google`, `tripadvisor`). |
+| `bumpinto.venues.sources.<id>.key` | — | Sağlayıcının API anahtarı (`FOURSQUARE_API_KEY` vb.). |
+| `bumpinto.venues.sources.<id>.budget` | sağlayıcıya göre | `BudgetGate`'in okuduğu aylık çağrı tavanı (`provider_usage` üzerinden); dolunca `open` katmana düşülür, çökmez. |
+| `bumpinto.map.engine` (`MAP_ENGINE`) | `maplibre` | `maplibre` veya `google`; `google` seçilirse `GOOGLE_PLACES_API_KEY` zorunlu olur. |
+| `bumpinto.geocode.engine` (`GEOCODE_ENGINE`) | `nominatim` | Ters/coğrafi kodlama motoru. |
+| `bumpinto.geocode.base-url` (`GEOCODE_BASE_URL`) | Nominatim genel adresi | Kendi Nominatim-uyumlu sunucunuz olabilir. |
+| `bumpinto.routing.osrm.*` (`OSRM_CAR_URL`/`OSRM_BICYCLE_URL`/`OSRM_FOOT_URL`) | boş | Profil başına OSRM `/table` taban URL'i; boş = haversine tahmini. |
+| `bumpinto.retention.enabled` (`RETENTION_ENABLED`) | `true` | Saatlik `VenueContentRetention` işini açar/kapatır. |
 
-Sayaçlar süreç içidir: pod yeniden başlarsa sıfırlanır ve ay içinde **eksik** sayabilir (borç).
-Foursquare tarafında Premium alanlar (`rating`, `price`, `photos`) istenmez; FSQ oturumlarında
-puan/fiyat/foto **yoktur** ve kart bunu açıkça söyler.
+Sayaçlar artık `provider_usage` tablosunda (bkz. §9), süreç içi **değil**: pod yeniden
+başlasa da ay içi sayım kalıcıdır. Foursquare tarafında Premium alanlar (`rating`, `price`,
+`photos`) artık **isteniyor** (V10, spec §5.1); `open` katmana düşüldüğünde bu alanlar
+boş kalır ve kart bunu açıkça söyler.
 
 ---
 
@@ -688,6 +706,12 @@ puan/fiyat/foto **yoktur** ve kart bunu açıkça söyler.
 ikisi de no-op'tur. Sebep: Rancher Desktop'ın host port yönlendirmesi container "started" olduktan
 sonra kısa süre dalgalanır (bir bağlantıyı kabul edip sonrakini reddeder) ve ~%20 flake üretiyordu.
 `PostgresContainer` art arda 3 başarılı JDBC bağlantısı görene kadar bekler.
+
+**İmaj `postgis/postgis:16-3.4`'tür** (düz `postgres` değil): V11 `create extension postgis`
+çalıştırır, düz Postgres bu migrasyonu geçemez. Geliştiricinin yerel `docker compose`
+Postgres'i (`postgres:16-alpine`) bilerek düz bırakıldı — testler ve OpenAPI/tip üretimi gibi
+tek seferlik işler kendi PostGIS container'ını (`DockerImageName.parse("postgis/postgis:16-3.4")
+.asCompatibleSubstituteFor("postgres")`) ayrı bir porttan açar, geliştiricinin verisine dokunmaz.
 
 **Doğrulama disiplini:** güvenlik ya da invariant koruyan bir test yazıldığında **mutasyonla
 doğrulanır** — korumayı boz, testin kırmızıya döndüğünü gör, geri koy. "Test yeşil" tek başına

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
+import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.RunoffReason;
@@ -20,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,7 +32,8 @@ class SessionViewAssemblerTest {
 
     FakeStores.FakePresence presence = new FakeStores.FakePresence();
     FakeStores.FakeVoiceRooms rooms = new FakeStores.FakeVoiceRooms();
-    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms);
+    RoutingPort routing = (s, d, m) -> Optional.empty();
+    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms, routing);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -44,13 +47,14 @@ class SessionViewAssemblerTest {
 
     Venue venue(UUID sessionId, GeoPoint at) {
         return new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Café", at, 4.6, 2,
-                null, null, 0);
+                null, 0, null, null, null, null, null, "https://maps.example/place/g1",
+                null, 0.8, 10, null);
     }
 
     Venue venue(String externalId, ActivityType activityType) {
         return new Venue(UUID.randomUUID(), UUID.randomUUID(), "google", externalId, "V",
-                new GeoPoint(51.44, 5.47), 4.6, 2, null, null, 0,
-                null, null, null, null, null, null, activityType);
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
+                null, null, null, null, null, null, activityType, null, null, null);
     }
 
     SessionQueries.SessionSnapshot snapshotWith(List<ActivityType> activityTypes,
@@ -125,6 +129,31 @@ class SessionViewAssemblerTest {
         assertThat(fairness.spreadMinutes())
                 .isEqualTo(minutes.get(driver.id()) - minutes.get(walker.id()));
         assertThat(fairness.longestParticipantId()).isEqualTo(driver.id());
+    }
+
+    /** OSRM gercek sure dondurdugunde travel[].estimated hepsi false olmali (haversine degil). */
+    @Test
+    void travelIsRealWhenRoutingAnswers() {
+        Session s = session(SessionType.GROUP);
+        Participant walker = new Participant(UUID.randomUUID(), s.id(), "Yaya",
+                new GeoPoint(51.44123, 5.47456), false, null, false, "Eindhoven", TravelMode.WALK);
+        Participant driver = new Participant(UUID.randomUUID(), s.id(), "Suruc",
+                new GeoPoint(51.69781, 5.30374), false, null, false, "Den Bosch", TravelMode.CAR);
+        Venue v = venue(s.id(), new GeoPoint(51.44, 5.47));
+        RoutingPort canned = (sources, destinations, mode) -> switch (mode) {
+            case WALK -> Optional.of(new int[][] {{300}}); // 5 dk
+            case CAR -> Optional.of(new int[][] {{900}}); // 15 dk
+            default -> Optional.empty();
+        };
+        SessionViewAssembler real = new SessionViewAssembler(presence, rooms, canned);
+
+        ApiDtos.SessionView view = real.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);
+
+        ApiDtos.VenueDto dto = view.venues().get(0);
+        assertThat(dto.travel()).allMatch(t -> !t.estimated());
+        assertThat(dto.travelMinutes().get(walker.id())).isEqualTo(5);
+        assertThat(dto.travelMinutes().get(driver.id())).isEqualTo(15);
     }
 
     /**
@@ -255,9 +284,9 @@ class SessionViewAssemblerTest {
         Participant a = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
         Participant b = person(s.id(), new GeoPoint(51.69, 5.30), "Den Bosch", false);
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "f1", "Café Berlage",
-                new GeoPoint(51.4412, 5.4712), null, null, null, null, 0,
+                new GeoPoint(51.4412, 5.4712), null, null, null, 0,
                 "Coffee Shop", "Eindhoven", "Eindhoven", null, null, "https://berlage.nl",
-                null);
+                null, null, null, null);
 
         ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(a, b), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
@@ -269,9 +298,47 @@ class SessionViewAssemblerTest {
         assertThat(dto.ratingCount()).isNull();
         assertThat(dto.hoursToday()).isNull();
         assertThat(dto.placeLink()).isEqualTo("https://berlage.nl");
-        // mapsUrl bos → yol tarifi baglantisi turetilir (spec §5.A.6; "Yol tarifi al" olu kalmaz)
+        // Uye olmayan (auth null) goruntuleyen icin arac varsayilani CAR'dir (spec §10).
         assertThat(dto.mapsUrl())
-                .isEqualTo("https://www.google.com/maps/dir/?api=1&destination=51.4412,5.4712");
+                .isEqualTo("https://www.google.com/maps/dir/?api=1&destination=51.4412,5.4712&travelmode=driving");
+    }
+
+    /**
+     * mapsUrl artik saglayicidan degil, goruntuleyenin ulasim turundan (MapLinks) uretilir
+     * (spec §10) — ayni mekan icin herkes kendi turune gore FARKLI baglanti gorur.
+     */
+    @Test
+    void mapsUrlUsesTheViewersTravelModeAndCarriesNewFields() {
+        Session s = session(SessionType.GROUP);
+        Participant walker = new Participant(UUID.randomUUID(), s.id(), "Yaya",
+                new GeoPoint(51.44, 5.47), false, null, false, "Eindhoven", TravelMode.WALK);
+        Venue v = venue(s.id(), new GeoPoint(51.4412, 5.4712));
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(walker), List.of(v), Map.of(), Map.of(), Map.of()), authFor(walker))
+                .venues().get(0);
+
+        assertThat(dto.mapsUrl()).endsWith("&travelmode=walking");
+        assertThat(dto.mapsUrl()).contains("destination=51.4412,5.4712");
+        assertThat(dto.placeLink()).isEqualTo(v.placeLink());
+        assertThat(dto.ratingScale()).isEqualTo(v.ratingScale());
+        assertThat(dto.popularity()).isEqualTo(v.popularity());
+        assertThat(dto.travel()).isNotEmpty();
+        assertThat(dto.travel()).allMatch(ApiDtos.TravelDto::estimated);
+    }
+
+    /** Linki acan katilimci degilse (davet linkiyle bakan misafir) araba varsayilir. */
+    @Test
+    void mapsUrlFallsBackToDrivingForNonMembers() {
+        Session s = session(SessionType.GROUP);
+        Participant a = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
+        Venue v = venue(s.id(), new GeoPoint(51.4412, 5.4712));
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(a), List.of(v), Map.of(), Map.of(), Map.of()), null)
+                .venues().get(0);
+
+        assertThat(dto.mapsUrl()).endsWith("&travelmode=driving");
     }
 
     private static UsernamePasswordAuthenticationToken authFor(Participant participant) {

@@ -1,9 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store/authStore";
+import { resetConfig, useConfigStore } from "../store/configStore";
 import { useSessionStore } from "../store/sessionStore";
 import JoinForm from "./JoinForm";
+
+// `getConfig()` gerçek ağa gitmesin — MapView/MapPicker aynı configStore'u paylaşıyor; gerçek
+// fetch'in GEÇ hatası (AggregateError) sonraki testin seed ettiği config'i sessizce eziyordu
+// (MapPicker artık motoru config'ten okuyor, spec §7) ve MapLibre'yi mocksuz çökertiyordu.
+vi.mock("../lib/api", () => ({ api: { getConfig: vi.fn(() => new Promise(() => {})) } }));
 
 /** Katıl formunun ulaşım türü alanı: profil varsayılanından ön-dolar, yoksa CAR'a düşer,
     kullanıcı değiştirirse gönderilen `travelMode` değişir. Konum/geocode akışına GİRMEZ —
@@ -88,6 +94,13 @@ describe("JoinForm — host çevrimiçiliği", () => {
 /** Harita seçici: faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil —
     katılım ekranı bugün 390'da hiç harita mount etmiyor, seçici de ancak düğmeye basılınca gelmeli. */
 describe("JoinForm — haritadan seç", () => {
+  // MapPicker artik motoru config'ten okuyor (spec §7) — api.getConfig burada mock'lu degil,
+  // seed edilmezse gercek fetch'e dusup Burayi sec dugmesi gec/gecersiz belirir.
+  beforeEach(() => {
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
+  });
+  afterEach(() => resetConfig());
+
   function renderJoin() {
     useAuthStore.setState({ status: "anon", me: null });
     useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
@@ -105,7 +118,8 @@ describe("JoinForm — haritadan seç", () => {
   it("'haritadan seç'e basılınca seçici açılır", async () => {
     renderJoin();
     fireEvent.click(screen.getByRole("button", { name: "Haritadan seç" }));
-    expect(await screen.findByRole("button", { name: "Burayı seç" })).toBeInTheDocument();
+    // MapPicker artık lazy chunk (motor anahtarı, spec §7) — Suspense çözümüne biraz pay ver.
+    expect(await screen.findByRole("button", { name: "Burayı seç" }, { timeout: 3000 })).toBeInTheDocument();
   });
 });
 

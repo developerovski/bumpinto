@@ -1,6 +1,7 @@
 package com.bumpinto.infra.security;
 
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -34,15 +35,7 @@ class ParticipantTokenFilterTest {
     final TokenService tokens = tokenService(Clock.systemUTC());
 
     static TokenService tokenService(Clock clock) {
-        return new TokenService(new AppProps(
-                new AppProps.Security("cid", "0123456789abcdef0123456789abcdef", Duration.ofHours(12)),
-                new AppProps.Providers("", ""),
-                new AppProps.Cors(List.of()),
-                new AppProps.Cookies(true, ""),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", "")), clock);
+        return new TokenService(TestProps.defaults(), clock);
     }
 
     @AfterEach

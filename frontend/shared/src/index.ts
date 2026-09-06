@@ -1,7 +1,10 @@
 export { createHttp, type AuthProviders, type HttpOptions } from "./http";
 export {
   createBumpintoApi,
+  type AppConfig,
+  type AppConfigSource,
   type BumpintoApi,
+  type MapEngine,
   type MeResponse,
   type ParticipantDto,
   type Schemas,

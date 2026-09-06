@@ -56,4 +56,31 @@ class HexagonalArchitectureTest {
                     "com.bumpinto.adapter",
                     "com.bumpinto.adapter.in",
                     "com.bumpinto.adapter.out");
+
+    // Bir kaynak paketi yalniz domain'i, paylasilan HTTP altyapisini ve config'i gorur.
+    @ArchTest
+    static final ArchRule venueSourcesAreSelfContained = classes()
+            .that().resideInAnyPackage("com.bumpinto.adapter.out.foursquare..",
+                    "com.bumpinto.adapter.out.google..", "com.bumpinto.adapter.out.open..")
+            .should().onlyDependOnClassesThat()
+            .resideInAnyPackage("com.bumpinto.domain..", "com.bumpinto.infra.config..",
+                    "com.bumpinto.adapter.out.provider", "com.bumpinto.adapter.out.foursquare..",
+                    "com.bumpinto.adapter.out.google..", "com.bumpinto.adapter.out.open..",
+                    "java..", "kong.unirest..", "org.springframework..", "org.slf4j..", "jakarta..");
+
+    // Orkestrator SOMUT kaynagi gormez, yalniz SPI'yi.
+    @ArchTest
+    static final ArchRule orchestratorKnowsOnlyTheSpi = noClasses()
+            .that().haveSimpleName("ProviderOrchestrator")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("com.bumpinto.adapter.out.foursquare..",
+                    "com.bumpinto.adapter.out.google..", "com.bumpinto.adapter.out.open..");
+
+    @ArchTest
+    static final ArchRule applicationDoesNotSeeVenueSources = noClasses()
+            .that().resideInAPackage("com.bumpinto.application..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage("com.bumpinto.adapter.out.foursquare..",
+                    "com.bumpinto.adapter.out.google..", "com.bumpinto.adapter.out.open..",
+                    "com.bumpinto.adapter.out.provider..");
 }

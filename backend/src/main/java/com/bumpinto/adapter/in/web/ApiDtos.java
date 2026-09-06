@@ -178,8 +178,12 @@ public final class ApiDtos {
                                  boolean inVoice) {
     }
 
+    /** OSRM T10'a kadar HER yol suresi tahmindir (estimated=true); gercek deger geldiginde degisir. */
+    public record TravelDto(UUID participantId, int minutes, boolean estimated) {
+    }
+
     /**
-     * mapsUrl: saglayici vermezse yol tarifi adresine duser (spec §5.A.6) — "Yol tarifi al"
+     * mapsUrl: goruntuleyenin ulasim turuyle MapLinks'ten uretilir (spec §10) — "Yol tarifi al"
      * butonu hicbir oturumda olu kalmaz. placeLink: mekanin kendi sayfasi (Maps ya da site).
      */
     public record VenueDto(UUID id, String name, double lat, double lng, Double rating,
@@ -188,7 +192,8 @@ public final class ApiDtos {
                            String provider, String category, String address, String locality,
                            Integer ratingCount, String hoursToday, String placeLink,
                            /** Hangi ilgi alanindan geldigi; atif cozulemediyse null. */
-                           ActivityType activityType) {
+                           ActivityType activityType,
+                           Double popularity, Integer ratingScale, List<TravelDto> travel) {
     }
 
     public record SessionView(String slug, String name, List<ActivityType> activityTypes,
@@ -291,4 +296,13 @@ public final class ApiDtos {
                                   String language,
                                   TravelMode defaultTravelMode) {
     }
+
+    public record ConfigTilesDto(String styleUrl) {}
+    public record ConfigSourceDto(String id, String attributionKey, String attributionUrl, Integer ratingScale) {}
+    public record ConfigResponse(String mapEngine, ConfigTilesDto tiles, List<ConfigSourceDto> sources) {}
+    public record GeocodeRequest(@NotBlank @Size(max = 200) String query, Double biasLat, Double biasLng) {}
+    public record GeocodeResponse(double lat, double lng, String label) {}
+    public record ReverseGeocodeRequest(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
+                                        @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
+    public record ReverseGeocodeResponse(String label) {}
 }

@@ -1,6 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AppConfig } from "@bumpinto/shared";
+import { resetConfig, useConfigStore } from "../../store/configStore";
 import VenueBrowser from "./VenueBrowser";
+
+// Spec §11 — atıf config'ten gelir.
+const CONFIG: AppConfig = {
+  mapEngine: "google",
+  tiles: { styleUrl: "https://example/style" },
+  sources: [
+    { id: "google", attributionKey: "attribution.google", attributionUrl: null, ratingScale: 5 },
+    { id: "foursquare", attributionKey: "attribution.foursquare", attributionUrl: null, ratingScale: 10 },
+  ],
+};
 
 const venues = [
   { id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0, travelMinutes: { h: 30, a: 28 } },
@@ -22,6 +34,8 @@ const base = {
 };
 
 describe("VenueBrowser", () => {
+  afterEach(() => resetConfig());
+
   it("390: harita SEKME AÇILANA KADAR mount edilmez; ghost 'Haritada gör' açar", async () => {
     render(<VenueBrowser {...base} mode="host" />);
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
@@ -138,20 +152,23 @@ describe("VenueBrowser", () => {
     expect(screen.getAllByText(/önce herkese en adil olanlar/)).toHaveLength(1);
   });
 
-  it("sağlayıcı atfı listede görünür (provider bilinmiyorsa iki metin)", () => {
+  it("sağlayıcı bilinmiyorsa listede atıf hiç basılmaz", () => {
+    useConfigStore.setState({ config: CONFIG });
     render(<VenueBrowser {...base} mode="host" />);
-    expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("tüm mekanlar TEK sağlayıcıdaysa listede yalnız o sağlayıcının atfı gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const single = venues.map((v) => ({ ...v, provider: "GOOGLE" }));
     render(<VenueBrowser {...base} venues={single} mode="host" />);
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
     expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
-  it("karışık sağlayıcılı listede union — ikisi de gösterilir", () => {
+  it("karışık sağlayıcılı listede kümenin HER üyesi gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const mixed = [
       { ...venues[0], provider: "GOOGLE" },
       { ...venues[1], provider: "FOURSQUARE" },
@@ -161,12 +178,13 @@ describe("VenueBrowser", () => {
     expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
   });
 
-  // reviewer bulgusu: bir mekanın provider'ı eksikse "bilinmiyor" tek sağlayıcı SAYILMAZ.
-  it("bir mekanın sağlayıcısı bilinmiyorsa tek sağlayıcı varsayılmaz — ikisi de gösterilir", () => {
+  // Spec §11 — kümeye YALNIZ bilinen sağlayıcılar girer; eksik olan hiçbir satır eklemez.
+  it("bir mekanın sağlayıcısı bilinmiyorsa yalnız bilinenin atfı gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const partial = [{ ...venues[0], provider: "GOOGLE" }, venues[1]];
     render(<VenueBrowser {...base} venues={partial} mode="host" />);
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("satır meta çizgisinde semt orta nokta etiketiyle AYNIYSA tekrar edilmez", () => {

@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -19,7 +20,7 @@ class VenueEntity {
     Double rating;
     Integer priceLevel;
     String photoUrl;
-    String mapsUrl;
+    String mapsUrl; // kolon duruyor ama artik yazilmiyor: mapsUrl viewer'in araciyla turetilir
     int deckOrder;
     String category;
     String address;
@@ -28,4 +29,8 @@ class VenueEntity {
     String hoursToday;
     String placeLink;
     String activityType;
+    Double popularity;
+    Integer ratingScale;
+    String photoRef;
+    Instant fetchedAt;
 }

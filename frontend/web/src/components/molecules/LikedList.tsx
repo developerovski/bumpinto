@@ -38,7 +38,7 @@ export default function LikedList(props: {
             <div className="flex flex-1 flex-col gap-0.5">
               <h3>{v.name}</h3>
               {v.rating != null && (
-                <span className="text-[0.75rem] text-ink2">★ {formatRating(v.rating)}</span>
+                <span className="text-[0.75rem] text-ink2">★ {formatRating(v.rating, v.ratingScale)}</span>
               )}
               <FairnessBadge venue={v} travel={travel} />
               <TravelChips venue={v} travel={travel} size="sm" />

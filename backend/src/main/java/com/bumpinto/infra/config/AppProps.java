@@ -1,14 +1,17 @@
 package com.bumpinto.infra.config;
 
+import com.bumpinto.domain.session.ActivityType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @ConfigurationProperties(prefix = "bumpinto")
-public record AppProps(Security security, Providers providers, Cors cors, Cookies cookies,
-                       RateLimit rateLimit, Quota quota, Geocode geocode,
-                       Voice voice, Turn turn) {
+public record AppProps(Security security, Cors cors, Cookies cookies, RateLimit rateLimit,
+                       Geocode geocode, Voice voice, Turn turn,
+                       Venues venues, MapProps map, Routing routing, Retention retention) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -35,14 +38,6 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
         }
     }
 
-    public record Providers(String foursquareKey, String googleKey) {
-
-        @Override
-        public String toString() {
-            return "Providers[foursquareKey=" + MASK + ", googleKey=" + MASK + "]";
-        }
-    }
-
     public record Cors(List<String> allowedOrigins) {
     }
 
@@ -58,35 +53,13 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
     }
 
     /**
-     * Saglayici kota takibi.
-     *
-     * @param refresh                  scheduler araligi; cache bundan tazeyse prob atilmaz
-     * @param googleMonthlyBudget      Nearby Search icin SERT aylik tavan. Google'in kota
-     *                                 telemetrisi yok (header yok, Cloud Monitoring gecikmeli
-     *                                 ve servis hesabi ister); kota = bu butce − yerel sayac.
-     *                                 Acilis modeli (spec §5.A.5): 1.000/ay = ucretsiz katman,
-     *                                 sonrasi $35/1000 (maske Enterprise). Asilirsa arama
-     *                                 yapilmaz, orkestrator Foursquare'e duser.
-     * @param googlePhotoMonthlyBudget Place Photo medya cagrilari icin AYRI sert tavan
-     *                                 (farkli SKU: 1.000 ucretsiz/ay, sonrasi $7/1000 —
-     *                                 oturum basina en buyuk kalem). Bitince foto cozulmez,
-     *                                 photoUrl null gelir ve kart monograma duser.
-     */
-    /**
-     * {@code refresh} YOK: periyodik kota olcumu (ProviderQuotaScheduler) kaldirildi, kota
-     * yalniz gercek aramalarin yanitindan ogreniliyor. Ayar kalsaydi hicbir seyi ayarlamayan
-     * bir dugme olurdu.
-     */
-    public record Quota(int googleMonthlyBudget, int googlePhotoMonthlyBudget) {
-    }
-
-    /**
      * Nominatim kullanim politikasi (operations.osmfoundation.org/policies/nominatim):
      * uygulamayi ve ILETISIM ADRESINI tasiyan bir User-Agent ZORUNLU, saniyede en fazla 1
      * istek, sonuclar onbelleklenir. Ucu de burada: {@code contact} User-Agent'a girer,
      * {@code minInterval} throttle'i besler, onbellek adapterdedir.
+     * {@code engine}/{@code baseUrl}: kendi kumemizdeki Nominatim'e gecis tek env ile olur.
      */
-    public record Geocode(String contact, Duration minInterval) {
+    public record Geocode(String contact, Duration minInterval, String engine, String baseUrl) {
     }
 
     /** maxDuration: ses odasinin sert omru (spec K7). TURN kimligi de bu sureye baglanir. */
@@ -109,5 +82,62 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
         public String toString() {
             return "Turn[keyId=" + keyId + ", apiToken=" + MASK + "]";
         }
+    }
+
+    /**
+     * Kaynak basina ayar. {@code budget} 0 = sinirsiz (yerel kaynaklar). {@code key} yalniz
+     * {@code requiresKey} kaynaklarda zorunlu — kontrol VenueSourceConfigValidator'da.
+     */
+    public record VenueSourceProps(boolean enabled, String key, int budget) {
+
+        @Override
+        public String toString() {
+            return "VenueSourceProps[enabled=" + enabled + ", key=" + MASK
+                    + ", budget=" + budget + "]";
+        }
+    }
+
+    /**
+     * @param sources kaynak id -> ayar
+     * @param route   ActivityType -> virgullu kaynak id listesi; sira SABITTIR (spec §4)
+     */
+    public record Venues(Map<String, VenueSourceProps> sources,
+                         Map<ActivityType, String> route) {
+
+        /** "foursquare,open" -> [foursquare, open]; tanimsiz tur = bos liste. */
+        public List<String> routeFor(ActivityType type) {
+            String raw = route.get(type);
+            if (raw == null || raw.isBlank()) {
+                return List.of();
+            }
+            return Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty())
+                    .toList();
+        }
+
+        /** Kaynagin anahtari; kaynak tanimsizsa null (required() bunu reddeder). */
+        public String keyOf(String sourceId) {
+            VenueSourceProps p = sources.get(sourceId);
+            return p == null ? null : p.key();
+        }
+    }
+
+    /**
+     * Adi {@code MapProps}, yapilandirma yolu {@code bumpinto.map} (baglama BILESEN ADINDAN
+     * gelir, tip adindan degil). {@code Map} adi ayni dosyadaki {@code java.util.Map}'i golgelerdi.
+     */
+    public record MapProps(String engine, Tiles tiles) {
+
+        public record Tiles(String styleUrl) {
+        }
+    }
+
+    /** Profil basina OSRM base URL; bos dize = o profil kapali. */
+    public record Routing(Osrm osrm) {
+
+        public record Osrm(String car, String bicycle, String foot) {
+        }
+    }
+
+    public record Retention(boolean enabled) {
     }
 }

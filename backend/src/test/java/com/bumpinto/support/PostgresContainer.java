@@ -1,6 +1,7 @@
 package com.bumpinto.support;
 
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -26,7 +27,8 @@ public final class PostgresContainer {
 
     public static synchronized PostgreSQLContainer<?> shared() {
         if (instance == null) {
-            PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:16-alpine");
+            PostgreSQLContainer<?> container = new PostgreSQLContainer<>(
+                    DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"));
             container.start();
             awaitStableHostPort(container);
             instance = container;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
-import { unionProvider } from "../lib/provider";
+import { providerIds } from "../lib/provider";
 import { Button, ErrorText, Page } from "../components/atoms";
 import Attribution from "../components/molecules/Attribution";
 import DeckHeader, { HeaderButton } from "../components/molecules/DeckHeader";
@@ -35,7 +35,8 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
     () => venues.map((v) => v.category).filter((c): c is string => !!c),
     [venues],
   );
-  const listProvider = useMemo(() => unionProvider(venues), [venues]);
+  // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
+  const listProviders = useMemo(() => providerIds(venues), [venues]);
   // travelMinutes katılımcı UUID'siyle anahtarlı; artboard "Sen 28 dk · Mehmet 34 dk" diyor.
   const travel = useTravelLabels(props.view);
 
@@ -124,7 +125,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
                 />
               ))}
               {/* Satır başına atıf YOK (12 satır × 2 satır olurdu) — tek birleşik atıf burada. */}
-              <Attribution provider={listProvider} />
+              <Attribution providers={listProviders} />
               <Button type="button" onClick={() => void run(finish, "deck.errSend")} disabled={busy}>
                 {t("deck.send")}
               </Button>

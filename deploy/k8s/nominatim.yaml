@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nominatim-data
+  namespace: bumpinto
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nominatim
+  namespace: bumpinto
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # RWO PVC: iki pod ayni anda baglanamaz
+  selector:
+    matchLabels: { app: nominatim }
+  template:
+    metadata:
+      labels: { app: nominatim }
+    spec:
+      containers:
+        - name: nominatim
+          image: mediagis/nominatim:4.5
+          ports: [{ containerPort: 8080 }]
+          env:
+            - name: PBF_URL
+              value: https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+            - name: REPLICATION_URL
+              value: https://download.geofabrik.de/europe/netherlands-updates/
+            - name: IMPORT_WIKIPEDIA
+              value: "false"
+            - name: THREADS
+              value: "4"
+            - name: NOMINATIM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bumpinto-backend
+                  key: DB_PASSWORD      # konteyner ici Postgres; disariya acilmaz
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/16/main }
+            - { name: dshm, mountPath: /dev/shm }
+          startupProbe:
+            httpGet: { path: /status, port: 8080 }
+            periodSeconds: 60
+            failureThreshold: 240        # ilk ithal icin 4 saat pay
+          readinessProbe:
+            httpGet: { path: /status, port: 8080 }
+            periodSeconds: 15
+            failureThreshold: 4
+          resources:
+            requests: { cpu: "1", memory: 4Gi }
+            limits: { memory: 8Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nominatim-data
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nominatim
+  namespace: bumpinto
+spec:
+  selector: { app: nominatim }
+  ports: [{ port: 8080, targetPort: 8080 }]

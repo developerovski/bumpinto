@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tiles-data
+  namespace: bumpinto
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiles
+  namespace: bumpinto
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: tiles }
+  template:
+    metadata:
+      labels: { app: tiles }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          volumeMounts:
+            - { name: data, mountPath: /srv/tiles }
+            - { name: style, mountPath: /srv/style }
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: tiles-data }
+        - name: style
+          configMap: { name: tiles-style }
+        - name: conf
+          configMap: { name: tiles-nginx }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tiles
+  namespace: bumpinto
+spec:
+  selector: { app: tiles }
+  ports: [{ port: 80, targetPort: 80 }]

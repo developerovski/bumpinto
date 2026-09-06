@@ -4,6 +4,7 @@ import com.bumpinto.application.error.ConflictException;
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.domain.geo.GeocodeBusyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +39,13 @@ class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     ApiError noVenues(NoVenuesFoundException e) {
         return new ApiError(e.getMessage());
+    }
+
+    /** Throttle atlamasi "sonuc yok" degil "tekrar dene"dir: 429. */
+    @ExceptionHandler(GeocodeBusyException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    ApiError geocodeBusy(GeocodeBusyException e) {
+        return new ApiError("geocode_busy");
     }
 
     /**

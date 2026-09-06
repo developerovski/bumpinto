@@ -6,6 +6,7 @@ vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }))
 
 import { api } from "../lib/api";
 import { geocode } from "../lib/geocode";
+import { resetConfig, useConfigStore } from "../store/configStore";
 import WaitingRoom from "./WaitingRoom";
 
 const view = {
@@ -39,6 +40,9 @@ describe("WaitingRoom", () => {
         removeListener: () => {},
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    // MapView artik motoru config'ten okuyor — bu testte "api" mock'u yalniz updateLocation
+    // taniyor, config seed edilmezse load() cokuyordu. Motor secimi burada onemsiz.
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
     try {
       render(<WaitingRoom view={view as never} />);
       const map = await screen.findByTestId("mapview");
@@ -48,6 +52,7 @@ describe("WaitingRoom", () => {
       expect(screen.getByRole("main")).toHaveAttribute("data-fit");
     } finally {
       window.matchMedia = original;
+      resetConfig();
     }
   });
 

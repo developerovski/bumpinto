@@ -35,7 +35,8 @@ public class SecurityConfig {
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/google"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/logout"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/sessions/*/participants"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"));
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/config"));
 
     @Bean
     SecurityFilterChain apiChain(HttpSecurity http, TokenService tokens,

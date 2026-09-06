@@ -7,6 +7,7 @@ import com.bumpinto.infra.security.AuthCookies;
 import com.bumpinto.infra.security.GoogleIdVerifier;
 import com.bumpinto.infra.security.SecurityConfig;
 import com.bumpinto.infra.security.TokenService;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -19,10 +20,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -47,16 +46,7 @@ class AuthControllerTest {
 
         @Bean
         AppProps appProps() {
-            return new AppProps(
-                    new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
-                            Duration.ofHours(12)),
-                    new AppProps.Providers("", ""),
-                    new AppProps.Cors(List.of("http://localhost:5173")),
-                    new AppProps.Cookies(false, ""),
-                    new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+            return TestProps.defaults();
         }
 
         @Bean

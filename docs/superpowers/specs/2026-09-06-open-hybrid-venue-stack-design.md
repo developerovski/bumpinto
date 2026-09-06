@@ -1,6 +1,6 @@
 # Açık hibrit mekan yığını — tasarım
 
-Tarih: 2026-09-06. Durum: kullanıcı incelemesi bekliyor. Maliyet gerekçesi ve fiyat doğrulamaları:
+Tarih: 2026-09-06. Durum: onaylandı; planlar yazıldı — B-13 plan30, W-12 plan31, I-2 plan32. Maliyet gerekçesi ve fiyat doğrulamaları:
 `2026-09-06-google-maps-cost-plan.md` (§7.3 H*). Bu spec o dokümandaki H* paketini ürün ve kod
 kararına çevirir. Plan 7 (B-4, self-host Overpass) bu spec'le **geçersizleşir**; INDEX satırı
 `superseded` olur.

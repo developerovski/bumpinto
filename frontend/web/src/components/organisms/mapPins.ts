@@ -69,3 +69,12 @@ export function venuePin(v: VenueDto, tint: number, selected: boolean, text?: st
   wrap.appendChild(tail);
   return wrap;
 }
+
+/** Nokta seçici pini (MapPicker) — ad yok, tek damla. Google dalı AdvancedMarker'ın varsayılan pinini kullanır; bu yalnız MapLibre için. */
+export function pickPin() {
+  const wrap = el("flex flex-col items-center");
+  wrap.appendChild(el("h-[1.125rem] w-[1.125rem] rounded-full border-[3px] border-white bg-flame-deep shadow-[0_6px_18px_rgba(39,32,59,0.35)]"));
+  wrap.appendChild(el("h-2.5 w-[3px] rounded-sm bg-ink"));
+  wrap.style.cursor = "grab";
+  return wrap;
+}

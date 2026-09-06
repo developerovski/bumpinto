@@ -1,12 +1,12 @@
 package com.bumpinto.infra.security;
 
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -19,16 +19,7 @@ class RateLimitFilterTest {
 
     /** Uretim yolu: filtre AppProps'tan kurulur — varsayilan GUVENLI olmali. */
     static AppProps props(boolean trustForwardedFor) {
-        return new AppProps(
-                new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
-                        Duration.ofHours(12)),
-                new AppProps.Providers("", ""),
-                new AppProps.Cors(List.of()),
-                new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(trustForwardedFor),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+        return TestProps.of(new AppProps.RateLimit(trustForwardedFor));
     }
 
     static MockHttpServletRequest post(String ip) {
@@ -149,6 +140,7 @@ class RateLimitFilterTest {
         assertCapacity(filter, 3, "POST", FIND_VENUES);
         assertCapacity(filter, 10, "POST", "/api/sessions");
         assertCapacity(filter, 120, "GET", "/api/sessions/x7k2m"); // catch-all
+        assertCapacity(filter, 30, "POST", "/api/geocode");
     }
 
     /**

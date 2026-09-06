@@ -297,7 +297,8 @@
     "pickOnMap": "Pick on map",
     "pickHint": "Tap the map or drag the pin",
     "pickConfirm": "Use this spot",
-    "pickCancel": "Cancel"
+    "pickCancel": "Cancel",
+    "engineUnavailable": "The map could not be loaded right now."
   },
   "midpoint": {
     "overline": "Midpoint",
@@ -428,7 +429,10 @@
   "attribution": {
     "google": "Google Maps",
     "foursquare": "Powered by Foursquare",
-    "osm": "© OpenStreetMap contributors"
+    "osm": "© OpenStreetMap contributors",
+    "open": "© OpenStreetMap contributors · Overture Maps Foundation",
+    "tripadvisor": "Data from Tripadvisor",
+    "wikimedia": "Photo: Wikimedia Commons"
   },
   "venue": {
     "fitOk": "For {{activity}}: {{category}}",

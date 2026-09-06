@@ -5,10 +5,18 @@
 export type FairnessVenue = {
   id?: string;
   rating?: number;
+  ratingScale?: number | null;
   deckOrder?: number;
   travelMinutes?: Record<string, number>;
   fairness?: { maxMinutes?: number; spreadMinutes?: number; longestParticipantId?: string };
 };
+
+/** Normalize puan: ölçek farkı sıralamayı bozmasın (FSQ 10'luk, TA/Google 5'lik — spec §11). Ölçek yoksa 5. */
+function normRating(v: FairnessVenue): number {
+  if (v.rating == null) return -1;
+  const scale = v.ratingScale ?? 5;
+  return scale > 0 ? v.rating / scale : -1;
+}
 
 /** Sunucu 5 dk'ya yuvarlıyor (B-7:T1); alan gelene kadar istemci de aynı adımı uygular.
     Sunucu değeri geldiğinde idempotent — ikinci yuvarlama sayıyı değiştirmez. */
@@ -101,7 +109,7 @@ export function byFairness(a: FairnessVenue, b: FairnessVenue): number {
 
 /** "Puan" sırası: puan azalan; puansız kart sona. */
 export function byRating(a: FairnessVenue, b: FairnessVenue): number {
-  return (b.rating ?? -1) - (a.rating ?? -1) || (a.deckOrder ?? 0) - (b.deckOrder ?? 0);
+  return normRating(b) - normRating(a) || (a.deckOrder ?? 0) - (b.deckOrder ?? 0);
 }
 
 /** Beraberlikte "adil olana bırak" seçimi (§5.C Runoff): min fark → min toplam → puan.
@@ -115,7 +123,7 @@ export function fairestOf<T extends FairnessVenue>(venues: T[]): T | null {
     return (
       fa.spread - fb.spread ||
       fa.total - fb.total ||
-      (b.rating ?? -1) - (a.rating ?? -1) ||
+      normRating(b) - normRating(a) ||
       (a.id ?? "").localeCompare(b.id ?? "", "en")
     );
   })[0];

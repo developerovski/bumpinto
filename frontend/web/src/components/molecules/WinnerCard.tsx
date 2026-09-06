@@ -121,7 +121,7 @@ export default function WinnerCard(props: {
           {t("venue.openInMaps")}
         </LinkButton>
       )}
-      <Attribution provider={props.venue.provider} center />
+      <Attribution providers={props.venue.provider ? [props.venue.provider] : []} center />
     </>
   );
 }

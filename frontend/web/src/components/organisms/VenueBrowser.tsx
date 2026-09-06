@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { unionProvider } from "../../lib/provider";
+import { providerIds } from "../../lib/provider";
 import { Button, HandNote, Note } from "../atoms";
 import Attribution from "../molecules/Attribution";
 import LazyBoundary from "../molecules/LazyBoundary";
@@ -58,9 +58,8 @@ export default function VenueBrowser(props: {
   // (mobil) ile; hiçbir şey hover'lanmıyorsa harita nötr kalır (UI review 2026-09-03).
   const selected = sel ?? picked ?? null;
   const selectedVenue = venues.find((v) => v.id === selected);
-  // Sağlayıcı atfı (§4.9, §5.B.9) — listede TEK sağlayıcı varsa ona özgü metin, karışık
-  // (ya da bilinmeyen) sağlayıcılı listede politika gereği ikisi de basılır (union — Attribution.tsx).
-  const listProvider = unionProvider(venues);
+  // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
+  const listProviders = providerIds(venues);
 
   // §5.C "Konumsuz katılımcı notu" — elle nokta ekleyenler (manual) hariç, konumu henüz
   // gelmemiş katılımcılar. TEK, ADLI, POZİTİF not (tekil); sayaç/"geç" etiketi/suçluluk yok.
@@ -204,7 +203,7 @@ export default function VenueBrowser(props: {
           <HandNote>{t("venues.fairHand")}</HandNote>
           {props.mode !== "solo" && <Note>{t("venues.everyoneSees")}</Note>}
           {noLocationNote && <Note>{noLocationNote}</Note>}
-          <Attribution provider={listProvider} />
+          <Attribution providers={listProviders} />
         </div>
         <div className={`relative ${mapOpen ? "" : "hidden"} lg:block lg:min-h-0`}>
           {/* lg'de sağ kolon CSS ile her zaman görünür; Maps JS yine yalnız gerçekten

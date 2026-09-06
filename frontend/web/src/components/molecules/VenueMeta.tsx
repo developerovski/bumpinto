@@ -1,5 +1,5 @@
 import type { VenueDto } from "@bumpinto/shared";
-import { formatRating } from "../../lib/format";
+import { formatRating, providerMark } from "../../lib/format";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import FairnessBadge from "./FairnessBadge";
 import TravelChips from "./TravelChips";
@@ -12,12 +12,18 @@ export default function VenueMeta(props: { venue: VenueDto; travel: TravelInfo; 
   // Semt YALNIZ orta nokta etiketinden farklıysa (§4.9) — VenueCard'daki aynı kural (reviewer bulgusu).
   const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
   const hasMeta = v.rating != null || hasPrice || !!locality;
+  const mark = providerMark(v.provider);
 
   return (
     <>
       {hasMeta && (
         <span className="text-[0.75rem] text-ink2">
-          {v.rating != null && <span>★ {formatRating(v.rating)}</span>}
+          {v.rating != null && (
+            <span>
+              ★ {formatRating(v.rating, v.ratingScale)}
+              {mark && ` · ${mark}`}
+            </span>
+          )}
           {v.rating != null && hasPrice && " · "}
           {hasPrice && <span>{"€".repeat(v.priceLevel!)}</span>}
           {(v.rating != null || hasPrice) && locality && " · "}

@@ -12,6 +12,7 @@ import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.domain.venue.Venue;
+import com.bumpinto.infra.config.AppConfig;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class})
+@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class, AppConfig.class})
 class StoreAdapterTest {
 
     @ServiceConnection
@@ -71,7 +72,7 @@ class StoreAdapterTest {
         assertThat(readHost).isEqualTo(host);
 
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "fsq1", "Café Berlage",
-                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", "https://maps", 0);
+                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", 0);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(s.id())).containsExactly(v); // tüm kolonlar geri okunur
 
@@ -324,9 +325,10 @@ class StoreAdapterTest {
     void venueProviderFieldsRoundTrip() {
         UUID sessionId = newSession("venue-fields").id();
         Venue v = new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Espresso Bar",
-                new GeoPoint(51.44, 5.47), 4.6, 2, null, "https://maps/g1", 0,
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
                 "Espresso bar", "Kleine Berg 16, Eindhoven", "Eindhoven", 312,
-                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE);
+                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE,
+                0.8, 5, "photos/g1/REF1");
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
     }
@@ -384,6 +386,6 @@ class StoreAdapterTest {
 
     private Venue venue(Session s, String externalId, int order) {
         return new Venue(UUID.randomUUID(), s.id(), "foursquare", externalId, "Café " + externalId,
-                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", "https://maps", order);
+                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", order);
     }
 }

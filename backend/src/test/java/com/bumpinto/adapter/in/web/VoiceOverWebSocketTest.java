@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.domain.port.GeocodePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -58,8 +59,7 @@ import static org.mockito.Mockito.when;
         "bumpinto.security.google-client-id=test-client-id",
         "bumpinto.security.token-secret=test-only-secret-not-a-real-key-0123456789",
         "bumpinto.security.token-ttl=12h",
-        "bumpinto.providers.foursquare-key=test-only-fsq-key",
-        "bumpinto.providers.google-key=test-only-google-key",
+        "bumpinto.venues.sources.foursquare.key=test-only-fsq-key",
         "bumpinto.cors.allowed-origins=http://localhost:5173",
         "bumpinto.cookies.secure=false",
         "bumpinto.cookies.domain="
@@ -77,6 +77,7 @@ class VoiceOverWebSocketTest {
     @MockitoBean VenueProviderPort provider;
     @MockitoBean GoogleIdVerifier google;
     @MockitoBean ReverseGeocodePort geocoder;
+    @MockitoBean GeocodePort forwardGeocoder;   // NominatimGeocoder iki portu da uygular; ikisi de mock
 
     private final HttpClient http = HttpClient.newHttpClient();
     private WebSocketStompClient stompClient;

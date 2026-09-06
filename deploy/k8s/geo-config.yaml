@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bumpinto-geo
+  namespace: bumpinto
+data:
+  # Geocode (spec §8) — bos birakilirsa backend public Nominatim'e duser
+  GEOCODE_BASE_URL: "http://nominatim:8080"
+  GEOCODE_ENGINE: "nominatim"
+  NOMINATIM_CONTACT: "DEGISTIR@bumpinto.app"   # Wikimedia + Nominatim politikasi: gercek adres
+
+  # Rota (spec §9) — bos birakilirsa TravelMinutes haversine tahminine duser
+  OSRM_CAR_URL: "http://osrm-car:5000"
+  OSRM_BICYCLE_URL: "http://osrm-bicycle:5000"
+  OSRM_FOOT_URL: "http://osrm-foot:5000"
+
+  # Harita motoru (spec §7) — kendi tile'ina gecis YALNIZ bu satiri degistirir
+  MAP_ENGINE: "maplibre"
+  MAP_TILES_STYLE_URL: "https://tiles.openfreemap.org/styles/positron"
+
+  # Saklama + butce (spec §6, §11)
+  RETENTION_ENABLED: "true"
+  FSQ_PREMIUM_MONTHLY_BUDGET: "5000"

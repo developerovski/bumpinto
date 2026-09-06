@@ -1,17 +1,32 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import type { AppConfig } from "@bumpinto/shared";
+import { resetConfig, useConfigStore } from "../../store/configStore";
 import VenueCard from "./VenueCard";
+
+// Spec §11 — atıf artık config'ten gelir; testler kendi kaynak listesini seed eder.
+const CONFIG: AppConfig = {
+  mapEngine: "google",
+  tiles: { styleUrl: "https://example/style" },
+  sources: [
+    { id: "google", attributionKey: "attribution.google", attributionUrl: null, ratingScale: 5 },
+    { id: "foursquare", attributionKey: "attribution.foursquare", attributionUrl: null, ratingScale: 10 },
+  ],
+};
 
 // Tasarım denetimi bulgusu (2026-09-01): foto üstü rozet yerine artık kart altında gerçek atıf var.
 describe("VenueCard", () => {
-  it("fotoğrafsız kartta ambient gradyan + monogram var, gerçek atıf kart altında", () => {
+  afterEach(() => resetConfig());
+
+  it("fotoğrafsız kartta ambient gradyan + monogram var, sağlayıcı yoksa atıf basılmaz", () => {
     render(<VenueCard venue={{ id: "v1", name: "Café Berlage" }} />);
     expect(screen.getByText("cb")).toBeInTheDocument();
-    expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("provider verilince atıf yalnız o sağlayıcıya ait metni gösterir", () => {
+    useConfigStore.setState({ config: CONFIG });
     render(
       <VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "/p.jpg", provider: "FOURSQUARE" }} />,
     );
@@ -19,8 +34,9 @@ describe("VenueCard", () => {
     expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
   });
 
-  it("boş photoUrl fotoğrafsız sayılır — monogram var, atıf yine gösterilir", () => {
-    render(<VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "" }} />);
+  it("boş photoUrl fotoğrafsız sayılır — monogram var, provider'lı atıf yine gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
+    render(<VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "", provider: "GOOGLE" }} />);
     expect(screen.getByText("cb")).toBeInTheDocument();
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
   });
@@ -135,6 +151,7 @@ describe("VenueCard", () => {
 
   // Kart anatomisi §4.9: DOM sırası foto → ad → FitLine → meta → saat → atıf'tır (tek geçişte).
   it("kart anatomisi DOM sırası §4.9'a birebir uyar", () => {
+    useConfigStore.setState({ config: CONFIG });
     const { container } = render(
       <VenueCard
         venue={{

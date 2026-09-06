@@ -1,0 +1,42 @@
+info:
+  name: Get Config
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/config"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("mapEngine bilinen bir deger", function() {
+          expect(["maplibre", "google"]).to.include(res.body.mapEngine);
+        });
+        test("en az bir kaynak listelenir", function() {
+          expect(res.body.sources.length).to.be.greaterThan(0);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc — kimlik gerekmez. Istemcinin acilista okudugu TEK yapilandirma ucu (spec §7).
+    Sir tasimaz.
+
+    `Cache-Control: max-age=300` (5 dk) doner; istemci yeniden acilista aga cikmayabilir.
+
+    `mapEngine`: `maplibre` | `google` — hangi harita motorunun kullanilacagi (bir `google`
+    mekani gosterilecekse `google` motoru ZORUNLUDUR, aksi halde herhangi biri olur).
+    `tiles.styleUrl`: harita fayans/style URL'i (maplibre icin).
+    `sources[]`: aktif mekan kaynaklari, @Order sirasiyla (atif satirlari da bu sirada cizilir):
+    - `id`: kaynak kimligi (`foursquare` | `google` | `open`)
+    - `attributionKey`: istemci i18n anahtari ("Powered by Foursquare" vb.)
+    - `attributionUrl`: atif linki
+    - `ratingScale`: puanin uzerinden verildigi olcek — `10` (Foursquare), `5` (Google/TripAdvisor),
+      `null` (puan yok, ör. OSM/Overpass)
+
+    Rate limit: `api` havuzu (120/dk) — ayri bir kova yok.

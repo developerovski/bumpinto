@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import java.time.Clock;
+import com.bumpinto.domain.port.GeocodePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -72,8 +73,7 @@ import static org.mockito.Mockito.when;
         "bumpinto.security.google-client-id=test-client-id",
         "bumpinto.security.token-secret=test-only-secret-not-a-real-key-0123456789",
         "bumpinto.security.token-ttl=12h",
-        "bumpinto.providers.foursquare-key=test-only-fsq-key",
-        "bumpinto.providers.google-key=test-only-google-key",
+        "bumpinto.venues.sources.foursquare.key=test-only-fsq-key",
         "bumpinto.cors.allowed-origins=http://localhost:5173",
         "bumpinto.cookies.secure=false",
         "bumpinto.cookies.domain="
@@ -104,6 +104,7 @@ class PresenceOverWebSocketTest {
     @MockitoBean VenueProviderPort provider;   // @Primary ResilientVenueProvider yerine
     @MockitoBean GoogleIdVerifier google;      // dis Google cagrisi yok
     @MockitoBean ReverseGeocodePort geocoder;  // gercek Nominatim adapteri baglamda kalmasin
+    @MockitoBean GeocodePort forwardGeocoder;   // NominatimGeocoder iki portu da uygular; ikisi de mock
 
     private final HttpClient http = HttpClient.newHttpClient();
     private WebSocketStompClient stompClient;

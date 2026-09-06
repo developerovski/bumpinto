@@ -297,7 +297,8 @@
     "pickOnMap": "Kies op de kaart",
     "pickHint": "Tik op de kaart of sleep de speld",
     "pickConfirm": "Kies deze plek",
-    "pickCancel": "Annuleren"
+    "pickCancel": "Annuleren",
+    "engineUnavailable": "De kaart kon nu niet worden geladen."
   },
   "midpoint": {
     "overline": "Middelpunt",
@@ -428,7 +429,10 @@
   "attribution": {
     "google": "Google Maps",
     "foursquare": "Powered by Foursquare",
-    "osm": "© OpenStreetMap contributors"
+    "osm": "© OpenStreetMap contributors",
+    "open": "© OpenStreetMap-bijdragers · Overture Maps Foundation",
+    "tripadvisor": "Gegevens van Tripadvisor",
+    "wikimedia": "Foto: Wikimedia Commons"
   },
   "venue": {
     "fitOk": "Voor {{activity}}: {{category}}",

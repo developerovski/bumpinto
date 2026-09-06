@@ -9,6 +9,20 @@ export type MeResponse = Schemas["MeResponse"];
 export type SessionSummaryDto = Schemas["SessionSummaryDto"];
 export type SessionPreview = Schemas["SessionPreview"];
 
+/* /api/config sözleşmesi (spec §7) ELLE yazılır: üç planın (B-13 / W-12 / I-2) ortak sözleşmesi. */
+export type MapEngine = "maplibre" | "google";
+export type AppConfigSource = {
+  id: string;
+  attributionKey: string;
+  attributionUrl: string | null;
+  ratingScale: 5 | 10 | null;
+};
+export type AppConfig = {
+  mapEngine: MapEngine;
+  tiles: { styleUrl: string };
+  sources: AppConfigSource[];
+};
+
 export function createBumpintoApi(http: AxiosInstance) {
   return {
     loginGoogle: (idToken: string) =>
@@ -49,6 +63,11 @@ export function createBumpintoApi(http: AxiosInstance) {
     logout: () => http.post("/api/auth/logout").then(() => undefined),
     preview: (slug: string) =>
       http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
+    getConfig: () => http.get<AppConfig>("/api/config").then((r) => r.data),
+    geocode: (body: { query: string; biasLat?: number; biasLng?: number }) =>
+      http.post<{ lat: number; lng: number; label: string }>("/api/geocode", body).then((r) => r.data),
+    reverseGeocode: (body: { lat: number; lng: number }) =>
+      http.post<{ label: string | null }>("/api/geocode/reverse", body).then((r) => r.data),
     voiceStart: (slug: string) =>
       http.post<Schemas["VoiceStartResponse"]>(`/api/sessions/${slug}/voice`).then((r) => r.data),
     voiceEnd: (slug: string) =>

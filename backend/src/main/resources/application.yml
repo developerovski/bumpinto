@@ -20,24 +20,10 @@ bumpinto:
     google-client-id: ${GOOGLE_CLIENT_ID}
     token-secret: ${TOKEN_SECRET}
     token-ttl: 12h
-  providers:
-    # Default YOK (bilincli): TOKEN_SECRET ile ayni desen.
-    # Local default'lari application-local.yml'de.
-    foursquare-key: ${FOURSQUARE_API_KEY}
-    google-key: ${GOOGLE_PLACES_API_KEY}
   rate-limit:
     # Default GUVENLI (false): X-Forwarded-For istemci tarafindan uydurulabilir.
     # YALNIZCA header'i ezerek yeniden yazan bir ingress arkasinda true yapilir (Plan 5).
     trust-forwarded-for: ${TRUST_FORWARDED_FOR:false}
-  quota:
-    # Acilis maliyet modeli (spec §5.A.5): ikisi de Google'in ucretsiz aylik katmani.
-    # PROVIDER_QUOTA_REFRESH kalkti: periyodik kota olcumu yok, kota gercek aramalardan gelir.
-    google-monthly-budget: ${GOOGLE_MONTHLY_BUDGET:1000}
-    google-photo-monthly-budget: ${GOOGLE_PHOTO_MONTHLY_BUDGET:1000}
-  geocode:
-    # Nominatim politikasi: User-Agent'ta gercek bir iletisim adresi ZORUNLU.
-    contact: ${NOMINATIM_CONTACT:dev@bumpinto.test}
-    min-interval: ${NOMINATIM_MIN_INTERVAL:PT1S}
   voice:
     # Ses odasinin sert omru (spec K7); TURN kimligi kalan sure kadar uretilir.
     max-duration: ${VOICE_MAX_DURATION:PT2H}
@@ -45,3 +31,45 @@ bumpinto:
     # Bos birakilabilir: TURN yok, yalniz STUN (K11). Cloudflare Realtime > TURN keys.
     key-id: ${CLOUDFLARE_TURN_KEY_ID:}
     api-token: ${CLOUDFLARE_TURN_API_TOKEN:}
+  venues:
+    sources:
+      # key/budget bos birakilamayan tek kaynak foursquare (requiresKey=true, enabled=true).
+      foursquare: { enabled: true,  key: "${FOURSQUARE_API_KEY}", budget: "${FSQ_PREMIUM_MONTHLY_BUDGET:5000}" }
+      tripadvisor: { enabled: false, key: "${TRIPADVISOR_API_KEY:}", budget: 900 }
+      open:        { enabled: true,  key: "", budget: 0 }   # 0 = sinirsiz (yerel PostGIS)
+      google:      { enabled: false, key: "${GOOGLE_PLACES_API_KEY:}", budget: 1000 }
+    route:
+      # Ucretli kaynak YALNIZ dort tabela turunde; kalan 11 tur acik tabandan.
+      COFFEE: foursquare,open
+      FOOD: foursquare,open
+      BAR: foursquare,open
+      NIGHTLIFE: foursquare,open
+      MUSEUM: open          # 1b sonrasi: tripadvisor,open
+      THEME_PARK: open
+      ART: open
+      WALK: open
+      HIKE: open
+      SWIM: open
+      FITNESS: open
+      CINEMA: open
+      GAMES: open
+      ADVENTURE: open
+      ACTIVITY: open
+  map:
+    engine: ${MAP_ENGINE:maplibre}   # maplibre | google
+    tiles:
+      style-url: ${MAP_TILES_STYLE_URL:https://tiles.openfreemap.org/styles/positron}
+  geocode:
+    # Nominatim politikasi: User-Agent'ta gercek bir iletisim adresi ZORUNLU.
+    contact: ${NOMINATIM_CONTACT:dev@bumpinto.test}
+    min-interval: ${NOMINATIM_MIN_INTERVAL:PT1S}
+    engine: ${GEOCODE_ENGINE:nominatim}
+    base-url: ${GEOCODE_BASE_URL:https://nominatim.openstreetmap.org}
+  routing:
+    osrm:
+      # Bos = OSRM yok; TravelMinutes haversine tahminine duser (estimated=true).
+      car: "${OSRM_CAR_URL:}"
+      bicycle: "${OSRM_BICYCLE_URL:}"
+      foot: "${OSRM_FOOT_URL:}"
+  retention:
+    enabled: ${RETENTION_ENABLED:true}

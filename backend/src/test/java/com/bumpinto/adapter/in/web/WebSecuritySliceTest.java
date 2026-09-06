@@ -7,6 +7,7 @@ import com.bumpinto.application.session.VoiceCommands;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
@@ -22,6 +23,7 @@ import com.bumpinto.infra.security.ParticipantTokenFilter;
 import com.bumpinto.infra.security.RateLimitFilter;
 import com.bumpinto.infra.security.SecurityConfig;
 import com.bumpinto.infra.security.TokenService;
+import com.bumpinto.support.TestProps;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.security.oauth2.jwt.Jwt;
 import jakarta.servlet.http.Cookie;
@@ -37,7 +39,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {SessionController.class, ParticipantController.class, DeckController.class,
-        VoiceController.class})
+        VoiceController.class, ConfigController.class, GeocodeController.class})
 // ParticipantTokenFilter BILEREK import edilmez: bean olursa servlet zincirine de kaydolur ve
 // OncePerRequestFilter'in "already filtered" isareti zincir icindeki gercek ornegi atlatir.
 @Import({SecurityConfig.class, SessionViewAssembler.class, AuthCookies.class, TokenService.class,
@@ -69,16 +70,7 @@ class WebSecuritySliceTest {
 
         @Bean
         AppProps appProps() {
-            return new AppProps(
-                    new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
-                            Duration.ofHours(12)),
-                    new AppProps.Providers("", ""),
-                    new AppProps.Cors(List.of("http://localhost:5173")),
-                    new AppProps.Cookies(false, ""),
-                    new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+            return TestProps.defaults();
         }
 
         @Bean
@@ -100,6 +92,11 @@ class WebSecuritySliceTest {
     @MockitoBean VoiceCommands voice;
     // SessionViewAssembler artik VoiceRoomsPort da ister; Optional donen metodlar bos doner.
     @MockitoBean VoiceRoomsPort rooms;
+    // SessionViewAssembler artik RoutingPort da ister; bu paket OsrmRouting'i taramaz.
+    @MockitoBean RoutingPort routing;
+    // ConfigController List<VenueSource> ister; bos liste yeterli (bu sinif kaynak icerigini sinamaz).
+    @MockitoBean com.bumpinto.domain.port.GeocodePort geocodeForward;
+    @MockitoBean com.bumpinto.domain.port.ReverseGeocodePort geocodeReverse;
 
     static final UUID SESSION_ID = UUID.randomUUID();
 
@@ -151,6 +148,20 @@ class WebSecuritySliceTest {
     @Test
     void viewWithoutCredentialsIs401() throws Exception {
         mvc.perform(get("/api/sessions/abc")).andExpect(status().isUnauthorized());
+    }
+
+    /** /api/config PUBLIC_ENDPOINTS'te: acilis ekrani kimlik olmadan okunabilmeli. */
+    @Test
+    void anonymousConfigIs200() throws Exception {
+        mvc.perform(get("/api/config")).andExpect(status().isOk());
+    }
+
+    /** Geocode kimlik ister: PUBLIC_ENDPOINTS'te degil, ne hesap ne katilimci token'i verilmedi. */
+    @Test
+    void anonymousGeocodeIs401() throws Exception {
+        mvc.perform(post("/api/geocode").contentType("application/json")
+                        .content("{\"query\":\"Eindhoven\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

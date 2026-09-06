@@ -2,6 +2,7 @@ package com.bumpinto.adapter.out.turn;
 
 import com.bumpinto.domain.voice.IceConfig;
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import kong.unirest.core.HttpMethod;
 import kong.unirest.core.MockClient;
 import kong.unirest.core.Unirest;
@@ -9,7 +10,6 @@ import kong.unirest.core.UnirestInstance;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,13 +19,7 @@ class CloudflareTurnCredentialsTest {
             "https://rtc.live.cloudflare.com/v1/turn/keys/key-1/credentials/generate-ice-servers";
 
     static AppProps props(String keyId, String token) {
-        return new AppProps(new AppProps.Security("cid", "secret", Duration.ofHours(12)),
-                new AppProps.Providers("fsq-key", "g-key"),
-                new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(1000, 1000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn(keyId, token));
+        return TestProps.of(new AppProps.Turn(keyId, token));
     }
 
     @Test

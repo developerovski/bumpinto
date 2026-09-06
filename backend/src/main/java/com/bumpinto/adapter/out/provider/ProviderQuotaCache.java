@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.out.provider;
 
+import com.bumpinto.domain.venue.ProviderQuota;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

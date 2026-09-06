@@ -289,7 +289,8 @@
     "pickOnMap": "Haritadan seç",
     "pickHint": "Haritaya dokun ya da pini sürükle",
     "pickConfirm": "Burayı seç",
-    "pickCancel": "İptal"
+    "pickCancel": "İptal",
+    "engineUnavailable": "Harita şu an yüklenemedi."
   },
   "midpoint": {
     "overline": "Orta nokta",
@@ -420,7 +421,10 @@
   "attribution": {
     "google": "Google Maps",
     "foursquare": "Powered by Foursquare",
-    "osm": "© OpenStreetMap contributors"
+    "osm": "© OpenStreetMap contributors",
+    "open": "© OpenStreetMap katkıcıları · Overture Maps Foundation",
+    "tripadvisor": "Veriler Tripadvisor'dan",
+    "wikimedia": "Fotoğraf: Wikimedia Commons"
   },
   "venue": {
     "fitOk": "{{activity}} için: {{category}}",

@@ -8,6 +8,7 @@ vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }))
 import { api } from "../lib/api";
 import { geocode } from "../lib/geocode";
 import { useAuthStore } from "../store/authStore";
+import { resetConfig, useConfigStore } from "../store/configStore";
 import { useNewSessionStore } from "../store/newSessionStore";
 import NewSessionPage from "./NewSessionPage";
 
@@ -41,10 +42,14 @@ describe("NewSessionPage", () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })) as typeof window.matchMedia;
+    // MapView artik motoru config'ten okuyor — bu testte "api" mock'u getConfig tanimiyor,
+    // config seed edilmezse load() cokuyordu. Motor secimi burada onemsiz.
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
     render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
     fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
     expect(await screen.findByTestId("mapview")).toBeInTheDocument();
     window.matchMedia = original;
+    resetConfig();
   });
 
   it("varsayılan orta nokta modu — çapa alanı görünmez", () => {

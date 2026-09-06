@@ -1,0 +1,62 @@
+name: venues-open
+
+on:
+  push:
+    branches: [main]
+    paths: ["tools/venues-open/**", ".github/workflows/venues-open.yml"]
+  pull_request:
+    paths: ["tools/venues-open/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: bumpinto
+          POSTGRES_USER: bumpinto
+          POSTGRES_PASSWORD: bumpinto
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bumpinto" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TEST_DB_URL: jdbc:postgresql://localhost:5432/bumpinto
+      NOMINATIM_CONTACT: ci@bumpinto.test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bagimliliklar
+        working-directory: tools/venues-open
+        run: pip install -r requirements.txt
+      - name: Lua sozdizimi
+        run: sudo apt-get update && sudo apt-get install -y lua5.4 && luac5.4 -p tools/venues-open/osm_poi.lua
+      - name: Testler
+        working-directory: tools/venues-open
+        run: python -m pytest -q
+
+  image:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: tools/venues-open
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/venues-open:latest
+            ghcr.io/${{ github.repository }}/venues-open:main
+            ghcr.io/${{ github.repository }}/venues-open:${{ github.sha }}

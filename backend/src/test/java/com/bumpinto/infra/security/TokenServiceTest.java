@@ -2,6 +2,7 @@ package com.bumpinto.infra.security;
 
 import com.bumpinto.infra.config.AppConfig;
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.Banner;
 import org.springframework.boot.WebApplicationType;
@@ -13,7 +14,6 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,15 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TokenServiceTest {
 
-    static final AppProps PROPS = new AppProps(
-            new AppProps.Security("cid", "0123456789abcdef0123456789abcdef", Duration.ofHours(12)),
-            new AppProps.Providers("", ""),
-            new AppProps.Cors(List.of()),
-            new AppProps.Cookies(false, ""),
-            new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+    static final AppProps PROPS = TestProps.defaults();
 
     final TokenService tokens = new TokenService(PROPS, Clock.systemUTC());
 
@@ -53,10 +45,7 @@ class TokenServiceTest {
 
     @Test
     void shortSecretIsRejectedAtConstruction() {
-        AppProps weak = new AppProps(
-                new AppProps.Security("cid", "kisa", Duration.ofHours(1)),
-                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota(),
-                PROPS.geocode(), PROPS.voice(), PROPS.turn());
+        AppProps weak = TestProps.of(new AppProps.Security("cid", "kisa", Duration.ofHours(1)));
         assertThatThrownBy(() -> new TokenService(weak, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -84,11 +73,8 @@ class TokenServiceTest {
 
     @Test
     void unresolvedPlaceholderIsRejectedEvenWhenLongEnough() {
-        AppProps unresolved = new AppProps(
-                new AppProps.Security("cid", "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}",
-                        Duration.ofHours(1)),
-                PROPS.providers(), PROPS.cors(), PROPS.cookies(), PROPS.rateLimit(), PROPS.quota(),
-                PROPS.geocode(), PROPS.voice(), PROPS.turn());
+        AppProps unresolved = TestProps.of(new AppProps.Security("cid",
+                "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}", Duration.ofHours(1)));
         assertThatThrownBy(() -> new TokenService(unresolved, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("TOKEN_SECRET is not configured");

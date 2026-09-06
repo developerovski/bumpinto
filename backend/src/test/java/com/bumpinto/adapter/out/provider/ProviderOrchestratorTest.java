@@ -2,198 +2,235 @@ package com.bumpinto.adapter.out.provider;
 
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.venue.CategoryMapping;
+import com.bumpinto.domain.venue.MapEngine;
+import com.bumpinto.domain.venue.RetentionRule;
+import com.bumpinto.domain.venue.SearchRequest;
+import com.bumpinto.domain.venue.SearchResult;
 import com.bumpinto.domain.venue.VenueCandidate;
+import com.bumpinto.domain.venue.VenueSource;
+import com.bumpinto.domain.venue.VenueSourceDescriptor;
+import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class ProviderOrchestratorTest {
 
-    static final Instant NOW = Instant.parse("2026-09-02T12:00:00Z");
-    static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
-    static final GeoPoint CENTER = new GeoPoint(51.5, 5.5);
-    static final VenueCandidate FSQ_CAND = new VenueCandidate("foursquare", "f1", "FSQ Mekan",
-            CENTER, 4.6, 2, "https://fsq/f1.jpg", "https://maps/f1");
-    static final VenueCandidate G_CAND = new VenueCandidate("google", "g1", "Google Mekan",
-            CENTER, 4.2, 1, null, "https://maps/g1");
+    static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), ZoneOffset.UTC);
+    static final GeoPoint CENTER = new GeoPoint(51.4416, 5.4697);
 
-    static QuotaAwareVenueProvider provider(String id, List<VenueCandidate> result) {
-        QuotaAwareVenueProvider p = mock(QuotaAwareVenueProvider.class);
-        when(p.id()).thenReturn(id);
-        when(p.search(any(), anyDouble(), any(), anyInt())).thenReturn(result);
-        return p;
+    /** Kaydeden sahte kaynak: hangi turlerle kac kez cagrildigini tutar. */
+    static final class RecordingSource implements VenueSource {
+        private final VenueSourceDescriptor descriptor;
+        private final CategoryMapping categories;
+        private final Function<SearchRequest, SearchResult> answer;
+        final List<List<ActivityType>> calls = new ArrayList<>();
+        final List<Double> radii = new ArrayList<>();
+
+        RecordingSource(String id, List<ActivityType> coveredTypes,
+                        Function<SearchRequest, SearchResult> answer) {
+            this.descriptor = new VenueSourceDescriptor(id, "attribution." + id, null, 10,
+                    RetentionRule.STRIP_AT_EXPIRY, false, MapEngine.ANY, ZoneOffset.UTC);
+            Map<ActivityType, List<String>> byType = new LinkedHashMap<>();
+            coveredTypes.forEach(t -> byType.put(t, List.of(t.name())));
+            this.categories = new CategoryMapping(byType);
+            this.answer = answer;
+        }
+
+        @Override
+        public VenueSourceDescriptor descriptor() {
+            return descriptor;
+        }
+
+        @Override
+        public CategoryMapping categories() {
+            return categories;
+        }
+
+        @Override
+        public SearchResult search(SearchRequest request) {
+            calls.add(request.types());
+            radii.add(request.radiusKm());
+            return answer.apply(request);
+        }
     }
 
-    static ProviderQuota quota(String id, long limit, long remaining) {
-        return new ProviderQuota(id, limit, remaining, NOW.plus(Duration.ofHours(1)), NOW,
-                ProviderQuota.Source.HEADER);
+    static VenueCandidate candidate(String source, String id, ActivityType type) {
+        return new VenueCandidate(source, id, id, null, null, null, null,
+                null, null, null, null, null, null, type, null, null, null);
     }
 
-    static List<VenueCandidate> search(ProviderOrchestrator o) {
-        return o.search(CENTER, 5.0, List.of(ActivityType.COFFEE), 10);
+    static ProviderOrchestrator orchestrator(List<VenueSource> sources, AppProps props, BudgetGate gate) {
+        return new ProviderOrchestrator(sources, props, new ProviderQuotaCache(), gate, CLOCK);
     }
 
-    /**
-     * SIRA SABIT: kota orani ne olursa olsun @Order once gelen denenir. Bu testin varlik
-     * sebebi gercek bir uretim hatasi — eski oran siralamasi Google'in aylik butce oranini
-     * (1000/1000 = 1.0) Foursquare'in saatlik istek limiti oraniyla (179995/180000 = 0.99997)
-     * kiyasliyor ve her aramayi once ucretli saglayiciya gonderiyordu. Buradaki fark
-     * (%5'e karsi %80) o siralamayi kullanan her surumu kirmiyorsa test degersizdir.
-     */
-    @Test
-    void alwaysTriesProvidersInDeclaredOrderNoMatterTheQuotaRatio() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-        ProviderQuotaCache cache = new ProviderQuotaCache();
-        cache.record(quota("foursquare", 1000, 50));   // %5
-        cache.record(quota("google", 5000, 4000));     // %80
-
-        assertThat(search(new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK)))
-                .containsExactly(FSQ_CAND);
-        verify(google, never()).search(any(), anyDouble(), any(), anyInt());
-    }
-
-    /** Kota hic bilinmiyorsa da (cache bos — yeni pod) ayni sira gecerli. */
-    @Test
-    void orderHoldsWhenQuotaIsUnknown() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-
-        assertThat(search(new ProviderOrchestrator(List.of(fsq, google), new ProviderQuotaCache(), CLOCK)))
-                .containsExactly(FSQ_CAND);
-    }
-
-    /** EXHAUSTED sağlayıcı hiç denenmez; yenilenme anı geçince yeniden aday olur. */
-    @Test
-    void skipsExhaustedUntilReset() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-        ProviderQuotaCache cache = new ProviderQuotaCache();
-        cache.exhaust("foursquare", NOW.plus(Duration.ofHours(1)), NOW);
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK);
-
-        assertThat(search(o)).containsExactly(G_CAND);
-        verify(fsq, never()).search(any(), anyDouble(), any(), anyInt());
-
-        Clock later = Clock.fixed(NOW.plus(Duration.ofHours(2)), ZoneOffset.UTC);
-        ProviderOrchestrator afterReset = new ProviderOrchestrator(List.of(fsq, google), cache, later);
-        assertThat(afterReset.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10))
-                .containsExactly(FSQ_CAND);
-    }
-
-    /** 429 → cache'e EXHAUSTED yazılır ve aynı çağrıda sıradakine düşülür. */
-    @Test
-    void quotaExceededMarksCacheAndFallsThrough() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of());
-        when(fsq.search(any(), anyDouble(), any(), anyInt()))
-                .thenThrow(new QuotaExceededException("credits", NOW.plus(Duration.ofHours(24))));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-        ProviderQuotaCache cache = new ProviderQuotaCache();
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK);
-
-        assertThat(search(o)).containsExactly(G_CAND);
-        ProviderQuota q = cache.get("foursquare").orElseThrow();
-        assertThat(q.source()).isEqualTo(ProviderQuota.Source.EXHAUSTED);
-        assertThat(q.resetAt()).isEqualTo(NOW.plus(Duration.ofHours(24)));
-
-        o.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10);
-        verify(fsq, times(1)).search(any(), anyDouble(), any(), anyInt());
-    }
-
-    /** Geçici hata (5xx) kota durumunu değiştirmez: bir sonraki aramada yine denenir. */
-    @Test
-    void transientFailureDoesNotTouchQuota() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of());
-        when(fsq.search(any(), anyDouble(), any(), anyInt()))
-                .thenThrow(new ProviderException("503"))
-                .thenReturn(List.of(FSQ_CAND));
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
-        ProviderQuotaCache cache = new ProviderQuotaCache();
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq, google), cache, CLOCK);
-
-        assertThat(search(o)).containsExactly(G_CAND);
-        assertThat(cache.get("foursquare")).isEmpty();
-        assertThat(o.search(new GeoPoint(52.0, 4.0), 5.0, List.of(ActivityType.BAR), 10))
-                .containsExactly(FSQ_CAND);
+    static BudgetGate openGate() {
+        return new BudgetGate(new BudgetGateTest.FakeUsage(), TestProps.defaults(), CLOCK);
     }
 
     @Test
-    void emptyResultFallsThrough() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of());
-        QuotaAwareVenueProvider google = provider("google", List.of(G_CAND));
+    void splitsTypesByRouteMergesSharedRoutesAndDeduplicatesPerSource() {
+        RecordingSource fsq = new RecordingSource("foursquare",
+                List.of(ActivityType.COFFEE, ActivityType.FOOD, ActivityType.BAR, ActivityType.NIGHTLIFE),
+                req -> new SearchResult(List.of(
+                        candidate("foursquare", "f1", ActivityType.COFFEE),
+                        candidate("foursquare", "f1", ActivityType.COFFEE)), null));
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.values()),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.SWIM)), null));
 
-        assertThat(search(new ProviderOrchestrator(List.of(fsq, google), new ProviderQuotaCache(), CLOCK)))
-                .containsExactly(G_CAND);
-    }
+        ProviderOrchestrator orch = orchestrator(List.of(fsq, open), TestProps.defaults(), openGate());
+        List<VenueCandidate> result = orch.search(CENTER, 3.1,
+                List.of(ActivityType.COFFEE, ActivityType.FOOD, ActivityType.SWIM), 10);
 
-    /** Hepsi hata verirse "mekan yok" denmez — istisna yukarı gider. */
-    @Test
-    void propagatesWhenEveryProviderFails() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of());
-        when(fsq.search(any(), anyDouble(), any(), anyInt()))
-                .thenThrow(new QuotaExceededException("credits", NOW.plus(Duration.ofHours(1))));
-        QuotaAwareVenueProvider google = provider("google", List.of());
-        when(google.search(any(), anyDouble(), any(), anyInt()))
-                .thenThrow(new ProviderException("google 500"));
-
-        assertThatThrownBy(() -> search(new ProviderOrchestrator(List.of(fsq, google), new ProviderQuotaCache(), CLOCK)))
-                .isInstanceOf(ProviderException.class)
-                .hasMessageContaining("google 500");
+        assertThat(fsq.calls).containsExactly(List.of(ActivityType.COFFEE, ActivityType.FOOD));
+        assertThat(open.calls).containsExactly(List.of(ActivityType.SWIM));
+        assertThat(result).extracting(VenueCandidate::externalId).containsExactly("f1", "o1");
+        // 3,1 km kovaya yuvarlanir: kaynaga 5,0 km olarak ulasir.
+        assertThat(fsq.radii).containsExactly(5.0);
+        assertThat(open.radii).containsExactly(5.0);
     }
 
     @Test
-    void cachesResultsButNotEmptyOnes() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq), new ProviderQuotaCache(), CLOCK);
-        search(o);
-        search(o);
-        verify(fsq, times(1)).search(any(), anyDouble(), any(), anyInt());
+    void firstSourceWinsAndEmptyFallsThrough() {
+        RecordingSource fsq = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("foursquare", "f1", ActivityType.COFFEE)), null));
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.COFFEE)), null));
+        ProviderOrchestrator orch = orchestrator(List.of(fsq, open), TestProps.defaults(), openGate());
 
-        QuotaAwareVenueProvider empty = provider("google", List.of());
-        ProviderOrchestrator e = new ProviderOrchestrator(List.of(empty), new ProviderQuotaCache(), CLOCK);
-        assertThat(search(e)).isEmpty();
-        assertThat(search(e)).isEmpty();
-        verify(empty, times(2)).search(any(), anyDouble(), any(), anyInt());
+        List<VenueCandidate> result = orch.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+
+        assertThat(result).extracting(VenueCandidate::externalId).containsExactly("f1");
+        assertThat(open.calls).isEmpty();
+
+        RecordingSource fsqEmpty = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> SearchResult.empty());
+        RecordingSource open2 = new RecordingSource("open", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.COFFEE)), null));
+        ProviderOrchestrator orch2 = orchestrator(List.of(fsqEmpty, open2), TestProps.defaults(), openGate());
+
+        List<VenueCandidate> result2 = orch2.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+
+        assertThat(result2).extracting(VenueCandidate::externalId).containsExactly("o1");
     }
 
-    /** Cache anahtari SIRAYA duyarli OLMAMALI: {COFFEE,BAR} ile {BAR,COFFEE} ayni aramadir. */
     @Test
-    void cacheKeyIsOrderIndependentForTheSameActivitySet() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq), new ProviderQuotaCache(),
-                CLOCK);
+    void skipsSourceWhoseMonthlyBudgetIsSpent() {
+        Map<String, AppProps.VenueSourceProps> sources = new LinkedHashMap<>(TestProps.venues().sources());
+        sources.put("foursquare", new AppProps.VenueSourceProps(true, "fsq-key", 1));
+        AppProps props = TestProps.of(new AppProps.Venues(sources, TestProps.venues().route()));
 
-        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE, ActivityType.BAR), 20);
-        o.search(CENTER, 5.0, List.of(ActivityType.BAR, ActivityType.COFFEE), 20);
+        BudgetGateTest.FakeUsage usage = new BudgetGateTest.FakeUsage();
+        usage.increment("foursquare", YearMonth.of(2026, 9));
+        BudgetGate gate = new BudgetGate(usage, props, CLOCK);
 
-        verify(fsq, times(1)).search(any(), anyDouble(), any(), anyInt());
+        RecordingSource fsq = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("foursquare", "f1", ActivityType.COFFEE)), null));
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.COFFEE)), null));
+
+        ProviderOrchestrator orch = orchestrator(List.of(fsq, open), props, gate);
+        List<VenueCandidate> result = orch.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+
+        assertThat(fsq.calls).isEmpty();
+        assertThat(result).extracting(VenueCandidate::externalId).containsExactly("o1");
     }
 
-    /** Farkli kume = farkli anahtar: kahve destesi hike destesini kirletmez. */
     @Test
-    void differentActivitySetsDoNotShareACacheEntry() {
-        QuotaAwareVenueProvider fsq = provider("foursquare", List.of(FSQ_CAND));
-        ProviderOrchestrator o = new ProviderOrchestrator(List.of(fsq), new ProviderQuotaCache(),
-                CLOCK);
+    void marksSourceExhaustedAfterQuotaExceeded() {
+        Instant resetAt = CLOCK.instant().plus(Duration.ofHours(24));
+        RecordingSource fsq = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> {
+                    throw new QuotaExceededException("credits", resetAt);
+                });
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.COFFEE)), null));
 
-        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE), 20);
-        o.search(CENTER, 5.0, List.of(ActivityType.COFFEE, ActivityType.HIKE), 20);
+        ProviderOrchestrator orch = orchestrator(List.of(fsq, open), TestProps.defaults(), openGate());
+        orch.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+        orch.search(CENTER, 40, List.of(ActivityType.COFFEE), 10);
 
-        verify(fsq, times(2)).search(any(), anyDouble(), any(), anyInt());
+        assertThat(fsq.calls).hasSize(1);
+    }
+
+    @Test
+    void cachesFullResultsAndRemembersEmptyOnes() {
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.SWIM),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.SWIM)), null));
+        ProviderOrchestrator orch = orchestrator(List.of(open), TestProps.defaults(), openGate());
+
+        List<VenueCandidate> r1 = orch.search(CENTER, 5, List.of(ActivityType.SWIM), 10);
+        List<VenueCandidate> r2 = orch.search(CENTER, 5, List.of(ActivityType.SWIM), 10);
+
+        assertThat(open.calls).hasSize(1);
+        assertThat(r1).extracting(VenueCandidate::externalId).containsExactly("o1");
+        assertThat(r2).isEqualTo(r1);
+
+        RecordingSource openEmpty = new RecordingSource("open", List.of(ActivityType.SWIM),
+                req -> SearchResult.empty());
+        ProviderOrchestrator orch2 = orchestrator(List.of(openEmpty), TestProps.defaults(), openGate());
+
+        List<VenueCandidate> e1 = orch2.search(CENTER, 5, List.of(ActivityType.SWIM), 10);
+        List<VenueCandidate> e2 = orch2.search(CENTER, 5, List.of(ActivityType.SWIM), 10);
+
+        assertThat(openEmpty.calls).hasSize(1);
+        assertThat(e1).isEmpty();
+        assertThat(e2).isEmpty();
+    }
+
+    @Test
+    void degradedResultIsNotCachedButRecoveredGroupIs() {
+        RecordingSource fsq = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> {
+                    throw new RuntimeException("timeout");
+                });
+        RecordingSource open = new RecordingSource("open", List.of(ActivityType.COFFEE),
+                req -> new SearchResult(List.of(candidate("open", "o1", ActivityType.COFFEE)), null));
+        ProviderOrchestrator orch = orchestrator(List.of(fsq, open), TestProps.defaults(), openGate());
+
+        List<VenueCandidate> r1 = orch.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+        List<VenueCandidate> r2 = orch.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+
+        assertThat(r1).extracting(VenueCandidate::externalId).containsExactly("o1");
+        assertThat(r2).extracting(VenueCandidate::externalId).containsExactly("o1");
+        // Toparlanmis sonuc onbelleklendi: open sadece bir kez cagrildi.
+        assertThat(open.calls).hasSize(1);
+
+        RecordingSource onlyFailing = new RecordingSource("foursquare", List.of(ActivityType.COFFEE),
+                req -> {
+                    throw new RuntimeException("timeout");
+                });
+        ProviderOrchestrator orch2 = orchestrator(List.of(onlyFailing), TestProps.defaults(), openGate());
+
+        orch2.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+        orch2.search(CENTER, 5, List.of(ActivityType.COFFEE), 10);
+
+        // Tamamen bozuk sonuc onbelleklenmez ve BOS isareti de birakmaz: her seferinde tekrar denenir.
+        assertThat(onlyFailing.calls).hasSize(2);
+    }
+
+    @Test
+    void cacheKeyRoundsCenterBucketsRadiusAndSortsTypes() {
+        String a = ProviderOrchestrator.cacheKey(CENTER, 3.0,
+                List.of(ActivityType.FOOD, ActivityType.COFFEE));
+        String b = ProviderOrchestrator.cacheKey(new GeoPoint(51.4444, 5.4666), 4.9,
+                List.of(ActivityType.COFFEE, ActivityType.FOOD));
+        String c = ProviderOrchestrator.cacheKey(CENTER, 12.0, List.of(ActivityType.COFFEE));
+
+        assertThat(a).isEqualTo(b);
+        assertThat(a).isNotEqualTo(c);
     }
 }

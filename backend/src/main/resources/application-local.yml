@@ -3,10 +3,19 @@ bumpinto:
     # YALNIZCA local: bilinen bir sir/kimlik prod'a sizmasin diye application.yml'de default yok.
     google-client-id: ${GOOGLE_CLIENT_ID:dev-client-id}
     token-secret: ${TOKEN_SECRET:local-only-secret-change-me-0123456789}
-  providers:
-    # YALNIZCA local: anahtar yoksa saglayici cagrisi 401 alir, uygulama yine de ayaga kalkar.
-    foursquare-key: ${FOURSQUARE_API_KEY:local-only-fsq-key}
-    google-key: ${GOOGLE_PLACES_API_KEY:local-only-google-key}
+  venues:
+    sources:
+      # YALNIZCA local: anahtar yoksa saglayici cagrisi 401 alir, uygulama yine de ayaga kalkar.
+      foursquare: { key: "${FOURSQUARE_API_KEY:local-only-fsq-key}" }
+      google:     { key: "${GOOGLE_PLACES_API_KEY:local-only-google-key}" }
+    # YALNIZCA local: FSQ Premium alanlarinin (foto/puan) ucretsiz payi yok; gelistirmede odeme
+    # acilmadigi icin dort tur de acik tabana gider. Prod yonlendirmesi application.yml'de kalir.
+    # FSQ'yu yerelde denemek icin FSQ_ROUTE=foursquare,open ver.
+    route:
+      COFFEE: ${FSQ_ROUTE:open}
+      FOOD: ${FSQ_ROUTE:open}
+      BAR: ${FSQ_ROUTE:open}
+      NIGHTLIFE: ${FSQ_ROUTE:open}
   cors:
     allowed-origins:
       - http://localhost:5173

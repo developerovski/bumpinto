@@ -50,6 +50,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 // paylasir; backend restart'indan sonra 5 sn'de bir yeniden baglanan bir grup
                 // daha dar bir kovayi aninda tuketir ve presence hic dolmaz.
                 new Policy("ws", "GET", Pattern.compile("^/api/sessions/[^/]+/ws$"), 240),
+                // Ingress arkasinda TRUST_FORWARDED_FOR kapaliyken tum istemciler tek kovadadir; 30/dk pay birakir.
+                new Policy("geocode", "POST", Pattern.compile("^/api/geocode(/reverse)?$"), 30),
                 new Policy("api", null, Pattern.compile("^/api/.*"), 120));
     }
 

@@ -37,6 +37,15 @@ birlikte uygulanır.
    `grep -rn "className=\|style=" frontend/web/src/pages` → boş kontrolü (W-2/W-3 mimari kuralı)
    bir adım olarak eklenir.
 
+## Ek B — 2026-09-06 I-2 kancası (BAĞLAYICI)
+
+Plan 32 (I-2) `deploy/k8s/` altına açık veri servisleri ekliyor; Task 3 Step 2'deki backend
+`envFrom` bloğuna `configMapRef: { name: bumpinto-geo }` eklenmeli, yoksa B-13'ün okuduğu
+geocode/rota/harita anahtarları pod'a hiç ulaşmaz. Uygulama sırası, disk ve doğrulama:
+`deploy/k8s/README.md` "Açık veri servisleri (I-2)". Task 4 kontrol listesine ek:
+`[ ] I-2 açık veri servisleri uygulandı (Nominatim + OSRM + venues_open)`,
+`[ ] bumpinto-geo ConfigMap'inde NOMINATIM_CONTACT gerçek bir adres`.
+
 ## Bu plana özel kurallar
 
 - **INDEX güncelle**; **git yazma YOK**; komutlar `rtk` ile.
