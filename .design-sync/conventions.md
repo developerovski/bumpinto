@@ -6,7 +6,7 @@ sticker-and-polaroid playfulness. Screens are a single centred 480px column, nev
 
 ### 1. Always mount inside `BumpIntoProvider`
 
-Most of the 67 components call `useTranslation()`. Outside the provider they render raw i18n keys
+Most of the 79 components call `useTranslation()`. Outside the provider they render raw i18n keys
 (`join.title`) instead of copy. The provider ships in the bundle with an initialised i18next
 instance pinned to Turkish, exported alongside the components:
 
@@ -22,13 +22,14 @@ const { BumpIntoProvider, Page, Wordmark, Button } = window.BumpInto;
 ```
 
 `Page` is the layout shell — a 480px max-width, full-viewport-height flex column with the product's own
-gutter and rhythm. Variants: `default`, `deck`, `result`, plus `center`. Start every screen with it.
+gutter and rhythm. `variant` is `default`, `deck`, `result`, or `landing`; a separate `center`
+boolean prop vertically centres the content. Start every screen with it.
 
 ### 2. The styling idiom — read this before writing any class
 
 The stylesheet is compiled Tailwind v4, **but it is a closed set**: it contains only the
-utilities the product itself uses. Verified absent, for example: `p-7`, `gap-9`, `text-right`,
-`grid-cols-3`, `text-sun`. Writing those produces silently unstyled output.
+utilities the product itself uses. Verified absent, for example: `p-7`, `gap-9`, `grid-cols-3`,
+`text-sun`. Writing those produces silently unstyled output.
 
 So, in order of preference:
 

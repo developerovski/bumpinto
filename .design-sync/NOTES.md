@@ -16,6 +16,33 @@ uygulamasının içindeki bileşen kitaplığı. Aşağıdakiler bu gerçeğin s
   ortam, `/design-login` çalıştırılamıyor). Kullanıcı interaktif bir oturumda
   `/design-login` çalıştırıp yetkilendirdikten sonra tekrar dene — build tarafı
   hazır ve temiz, yalnız §5 upload adımı kaldı.
+- 2026-09-07 · 4. tur (aynı gün, /design-sync ile devam): `DesignSync` bu turda
+  yetkiliydi (get_project/list_files/read_file/finalize_plan hepsi çalıştı) — 3. turun
+  yetkilendirme bloke edicisi ORTADAN KALKTI. pnpm workspace catalog geçişi (react
+  ^19.2.8 → tam sabit 19.2.3) + ShareCard tip düzeltmesi dışında kaynakta değişiklik
+  yoktu; resync sürücüsü 15 changed + 13 added + 1 removed (TravelList → TravelBars)
+  buldu, hepsi bu oturumda derecelendirildi (`good`), render check 79/79 temiz,
+  `conventions.md` doğrulandı ve iki bayat iddia düzeltildi (bileşen sayısı 67→79,
+  `Page` varyantları `default/deck/result/landing` + ayrı `center` prop — eski metin
+  yanlışlıkla `center`'ı varyant sanıyordu, `landing`'i hiç saymıyordu).
+  **Upload YİNE YAPILAMADI — ama bu kez FARKLI ve DAHA KALICI bir engelden**:
+  `write_files` yalnızca satır içi (`data`) metin kabul ediyor, `local_path` alanı
+  şemada var ama sunucu tarafında "not yet implemented" — yani sync script'in
+  `finalize_plan`/`write_files` sıralı akışı çalışıyor, ama BÜYÜK dosyalar (`_ds_bundle.js`
+  ~1MB / ~250K token, `_vendor/react.js` ~1.1MB / ~280K token) bu ajanın tek bir tool
+  çağrısında üretebileceği çıktının çok üzerinde. Küçük dosyaların (bileşenler,
+  preview'lar, README, `_ds_bundle.css` 64KB, `_ds_sync.json` 23KB) hepsi güvenle
+  yazılabilir ama BUNU TEK BAŞINA YAPMAK PROJEYİ BOZAR: yeni 79 bileşenin `.html`
+  kartları `window.BumpInto.<Ad>`'a `_ds_bundle.js` üzerinden erişiyor — bundle eski
+  (66 bileşenlik) kalırsa 13 yeni kart sessizce boş/undefined render eder. Bu yüzden
+  BU TURDA HİÇBİR ŞEY YÜKLENMEDİ (sıfır `write_files`/`delete_files` çağrısı yapıldı) —
+  yarım/tutarsız bir proje durumuna sokmaktansa hiç dokunmamak tercih edildi.
+  **Bir sonraki turun ilk işi**: bu blokeri çözmeden §5'e girme. Olası çözümler —
+  (a) kullanıcı `ds-bundle/` klasörünü claude.ai/design arayüzünden elle sürükleyip
+  bıraksın (tarayıcıdan disk→sunucu, model çıktısından geçmiyor); (b) `DesignSync`
+  aracına gerçek `local_path` desteği eklenmesini bekle; (c) `_ds_bundle.js`'i
+  küçültecek bir bölme stratejisi (per-component bundle?) — bu `package-build.mjs`'in
+  emit sözleşmesini değiştirir, kullanıcı onayı olmadan denenmedi.
 
 **`[RENDER]` sahte alarmı (3. turda görüldü, ürün/preview kusuru DEĞİL)**
 İlk `package-validate.mjs` koşusunda `Progress`, `RangeBar`, `PastSessionList`
