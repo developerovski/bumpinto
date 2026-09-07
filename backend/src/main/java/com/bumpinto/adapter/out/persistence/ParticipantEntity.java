@@ -28,4 +28,6 @@ class ParticipantEntity {
     /** DB kolonu `not null default 'CAR'`; Java tarafinda ayni varsayilani tutar (bkz.
      * PersistenceSliceTest gibi entity'yi dogrudan olusturan testler). */
     String travelMode = "CAR";
+    /** Hesap silinince koltuk KALIR, kimlik gider (V14). Damga = ne zaman anonimlesti. */
+    Instant anonymizedAt;
 }

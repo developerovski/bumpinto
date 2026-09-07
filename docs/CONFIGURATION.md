@@ -14,6 +14,11 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | Değişken | Nedir | Nereden alınır | Sır mı? |
 |---|---|---|---|
 | `GOOGLE_CLIENT_ID` | OAuth **Web** client id | Google Cloud → Credentials → OAuth client ID → Web application | Hayır (herkese açık), ama yanlışı girişi kırar |
+| `APPLE_SERVICES_ID` | Sign in with Apple **Services ID** — web akışının `aud`'u, Apple token uçlarında `client_id` | Apple Developer → Identifiers → Services IDs | Hayır |
+| `APPLE_BUNDLE_ID` | Native iOS akışının `aud`'u — Apple orada Services ID değil **bundle id** basar | Apple Developer → Identifiers → App IDs | Hayır |
+| `APPLE_TEAM_ID` | Client secret JWT'sinin `iss`'i | Apple Developer → Membership | Hayır |
+| `APPLE_KEY_ID` | `AuthKey_*.p8` anahtarının kimliği (JWT `kid`) | Apple Developer → Keys | Hayır |
+| `APPLE_PRIVATE_KEY` | `AuthKey_*.p8` dosyasının PEM içeriği; ES256 client secret bununla imzalanır. **Boşsa Apple girişi kapalıdır** (`POST /api/auth/apple` → 503), uygulama yine açılır | Apple Developer → Keys → indirilen `.p8` | **Evet** |
 | `TOKEN_SECRET` | Kendi JWT'lerimizin HMAC anahtarı | **Siz üretirsiniz** — `openssl rand -base64 48` | **Evet** |
 | `FOURSQUARE_API_KEY` | Places Service Key — **zorunlu**, Premium katman | FSQ Developer Console → proje → Settings → Service API Keys | **Evet** |
 | `FSQ_PREMIUM_MONTHLY_BUDGET` | Foursquare Premium aylık çağrı bütçesi (varsayılan `5000`); dolunca `open` katmanına düşülür, uygulama çökmez | Bütçe planınıza göre siz belirlersiniz | Hayır |
@@ -31,7 +36,7 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `VOICE_MAX_DURATION` | Ses odasının azami süresi (ISO süre, varsayılan `PT2H`); `endsAt = min(şimdi + bu süre, oturumun bitişi)` | — | Hayır |
 | `CLOUDFLARE_TURN_KEY_ID` | Cloudflare Realtime TURN anahtar kimliği | Cloudflare Dashboard → Realtime → TURN keys | Hayır |
 | `CLOUDFLARE_TURN_API_TOKEN` | Cloudflare Realtime TURN API token'ı; boşsa/erişilemezse yalnız STUN ile devam edilir (`relay=false`) | Cloudflare Dashboard → Realtime → TURN keys | **Evet** |
-| `RETENTION_ENABLED` | **İki** saklama işini birden açar/kapatır (varsayılan `true`): saatlik `VenueContentRetention` (sağlayıcı metadata'sını indirger) ve günlük `SessionPurgeJob` (spec §6 GDPR — süresi dolalı 30 günü geçen oturumları kalıcı siler). Prod'da kapatmak GDPR yükümlülüğünü askıya alır | — | Hayır |
+| `RETENTION_ENABLED` | **İki** saklama işini birden açar/kapatır (varsayılan `true`): saatlik `VenueContentRetention` (sağlayıcı metadata'sını indirger) ve günlük `RetentionJob` (spec §6 GDPR — süresi dolalı 30 günü geçen oturumları **ve** silinmeli 30 günü geçen hesapları kalıcı siler). Prod'da kapatmak GDPR yükümlülüğünü askıya alır | — | Hayır |
 | `SESSION_PURGE_CRON` | Oturum purge'ünün Spring cron ifadesi (6 alan: `saniye dakika saat gün ay haftagünü`, saat dilimi **UTC**); varsayılan `0 30 3 * * *` = her gece 03:30 UTC | — | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —

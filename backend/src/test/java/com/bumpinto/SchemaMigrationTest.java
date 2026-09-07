@@ -103,6 +103,65 @@ class SchemaMigrationTest {
                 .contains("sessions").contains("expires_at");
     }
 
+    /** V13: apple_sub birincil eslestirici; tekil auth_provider kolonu CSV'ye tasindi. */
+    @Test
+    void v13AddsAppleIdentityAndMultiValuedProviders() {
+        assertThat(columnsOf("users")).contains("apple_sub", "apple_refresh_token", "auth_providers")
+                .doesNotContain("auth_provider");
+        assertThat(jdbc.queryForObject("select indexdef from pg_indexes "
+                + "where indexname = 'uq_users_apple_sub'", String.class))
+                .contains("UNIQUE").contains("apple_sub").contains("IS NOT NULL");
+    }
+
+    /** V14: erisim aninda kapanir (deleted_at); fiziksel silme T12'nin isi (purge_after). */
+    @Test
+    void v14AddsSoftDeleteStampsAndParticipantAnonymization() {
+        assertThat(columnsOf("users")).contains("deleted_at", "purge_after");
+        assertThat(columnsOf("participants")).contains("anonymized_at");
+        assertThat(jdbc.queryForList("select indexname from pg_indexes where tablename = 'users'",
+                String.class)).contains("idx_users_purge_after");
+    }
+
+    @Test
+    void v15AddsReportsAndBlocks() {
+        assertThat(columnsOf("reports")).contains("id", "reporter_user_id", "session_id",
+                "target_participant_id", "reason", "note", "created_at");
+        assertThat(columnsOf("blocks")).contains("id", "blocker_user_id", "blocked_user_id",
+                "blocked_participant_id", "session_id", "created_at");
+    }
+
+    /**
+     * K-B33: users satiri 30 gun sonra FIZIKSEL silinir (Task 12). users'a bakan her FK bunu
+     * kaldirabilmeli, yoksa supurme ihlalle patlar. Rapor izi KALIR (set null), engel GIDER.
+     */
+    @Test
+    void v15UserReferencesSurviveAPhysicalAccountPurge() {
+        assertThat(deleteRuleOf("reports", "reporter_user_id")).isEqualTo("SET NULL");
+        assertThat(deleteRuleOf("blocks", "blocker_user_id")).isEqualTo("CASCADE");
+        assertThat(deleteRuleOf("blocks", "blocked_user_id")).isEqualTo("CASCADE");
+    }
+
+    /** V16: varsayilan HEPSI false (KVKK m.5/1 acik riza). */
+    @Test
+    void v16AddsConsentColumnsDefaultingToFalse() {
+        assertThat(columnsOf("users")).contains("consent_location", "consent_microphone",
+                "consent_analytics", "consents_updated_at", "consents_version");
+        assertThat(jdbc.queryForObject("select column_default from information_schema.columns "
+                + "where table_name = 'users' and column_name = 'consent_analytics'",
+                String.class)).contains("false");
+    }
+
+    /** Kolonun users'a bakan FK'sinin ON DELETE kurali. */
+    private String deleteRuleOf(String table, String column) {
+        return jdbc.queryForObject("""
+                select rc.delete_rule
+                  from information_schema.referential_constraints rc
+                  join information_schema.key_column_usage k
+                    on k.constraint_name = rc.constraint_name
+                 where k.table_name = ? and k.column_name = ?
+                """, String.class, table, column);
+    }
+
     private List<String> columnsOf(String table) {
         return jdbc.queryForList(
                 "select column_name from information_schema.columns where table_name = ?",

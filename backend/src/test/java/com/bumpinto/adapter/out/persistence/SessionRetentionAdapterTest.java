@@ -1,6 +1,6 @@
 package com.bumpinto.adapter.out.persistence;
 
-import com.bumpinto.adapter.in.job.SessionPurgeJob;
+import com.bumpinto.adapter.in.job.RetentionJob;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
@@ -42,7 +42,7 @@ class SessionRetentionAdapterTest {
     @Autowired SessionStoreAdapter sessions;
     @Autowired DeckStoreAdapter deck;
     @Autowired UserStoreAdapter users;
-    @Autowired SessionRetentionAdapter retention;
+    @Autowired RetentionAdapter retention;
     @Autowired TransactionTemplate transactions;
     @Autowired ApplicationContext context;
     @Autowired JdbcTemplate jdbc;
@@ -144,8 +144,8 @@ class SessionRetentionAdapterTest {
      */
     @Test
     void disablingRetentionRemovesTheScheduleButNotTheUseCase() {
-        assertThat(context.getBeanNamesForType(SessionPurgeJob.class)).isEmpty();
-        assertThat(context.getBeanNamesForType(SessionRetentionAdapter.class)).hasSize(1);
+        assertThat(context.getBeanNamesForType(RetentionJob.class)).isEmpty();
+        assertThat(context.getBeanNamesForType(RetentionAdapter.class)).hasSize(1);
     }
 
     private Session session(String slug, Instant expiresAt) {

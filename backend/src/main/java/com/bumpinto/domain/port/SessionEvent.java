@@ -89,4 +89,9 @@ public record SessionEvent(String type, Map<String, Object> payload) {
     public static SessionEvent voiceRosterChanged() {
         return new SessionEvent("voice_roster_changed", Map.of());
     }
+
+    /** Biri birini engelledi/kaldirdi: roster ve ses uyeligi bayat kaldi, tazele. */
+    public static SessionEvent blocked() {
+        return new SessionEvent("blocked", Map.of());
+    }
 }

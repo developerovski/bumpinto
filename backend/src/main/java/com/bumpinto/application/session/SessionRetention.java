@@ -1,6 +1,6 @@
 package com.bumpinto.application.session;
 
-import com.bumpinto.domain.port.SessionRetentionPort;
+import com.bumpinto.domain.port.RetentionPort;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -23,10 +23,10 @@ public class SessionRetention {
     /** Bozuk bir adapter surekli dolu parti dondurse bile kosu sinirli is yapar. */
     static final int MAX_BATCHES = 1000;
 
-    private final SessionRetentionPort port;
+    private final RetentionPort port;
     private final Clock clock;
 
-    public SessionRetention(SessionRetentionPort port, Clock clock) {
+    public SessionRetention(RetentionPort port, Clock clock) {
         this.port = port;
         this.clock = clock;
     }

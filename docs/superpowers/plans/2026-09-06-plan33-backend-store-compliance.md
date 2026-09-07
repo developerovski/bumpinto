@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** App Store / Play başvurusunun reddine yol açan beş boşluğu kapatmak: Sign in with Apple (R-B1), hesap silme (R-B2), kurulumsuz web silme kimliği (R-B3), bildir/engelle (R-B4), açık rıza (R-B5). Migration V13–V16, 12 görev.
+**Goal:** App Store / Play başvurusunun reddine yol açan beş boşluğu kapatmak: Sign in with Apple (R-B1), hesap silme (R-B2), kurulumsuz web silme kimliği (R-B3), bildir/engelle (R-B4), açık rıza (R-B5). Migration V13–V16, **13 görev** (T12 = hesap süpürmesi, 2026-09-07'de eklendi — K-B33).
 
 **Architecture:** Hexagonal devam. Yeni saf domain: `domain/user` (`AuthProvider`, `Consents`), `domain/safety` (`Report`, `ReportReason`, `Block`). Yeni portlar (`ReportStorePort`, `BlockStorePort`, `AppleTokensPort`); `UserStorePort` + `SessionStorePort` genişler. Apple id token doğrulaması `infra/security/AppleIdVerifier` (Google'ın eşi: JWKS + `NimbusJwtDecoder` + audience listesi + nonce). Apple sunucusuna giden tek dış çağrı `adapter/out/apple/AppleTokenClient` (kod→refresh takası, revoke; ikisi de **fail-open**). Uygulama: `AccountIdentity`, `UserConsents`, `AccountDeletion`, `application/safety/{Reports, Blocks, VoiceAdmission}`. Web: `AuthController`/`MeController` genişler, `ReportController` + `BlockController` açılır, ses odası engel filtresi `VoiceRoomListener` + `VoiceSignalController`'a bağlanır.
 
@@ -14,7 +14,17 @@
 
 **UI Kaynağı:** Claude Design projesi `719fcd5f-bb62-4356-9c53-7d4f0a8fbe36`; dosyalar `Mobil Onboarding, İzinler ve Yasal.dc.html` ve `Web Ekranlar v3.dc.html`. Beslediği artboard'lar: **O2** (Giriş — Google + Apple eşit), **O8** (Hesap ve veriler), **O12** (Açık rıza), **O15/O16/O17** (Hesabı sil · onay · silindi), **O18/O19** (Bildir–Engelle · Bildirildi), **W13/W13b** (`/account`, rıza), **W18** (`/account/delete`, kurulum olmadan çalışır), **W20** (Bildir/Engelle paneli). Backend ekran çizmez; liste alanların hangi ekrana hizmet ettiğini sabitler. Ekran işleri W-14 ve M-5'tedir.
 
-**Ön koşul:** **B-3 (plan6) `done` ve V12'yi almış olmalı** — R-B2'nin 30 günlük fiziksel temizliği o plandaki CronJob'a düşer; bu plan yalnız `deleted_at`/`purge_after` damgasını yazar.
+**Ön koşul:** **B-3 (plan6) `done` ve V12'yi almış olmalı.**
+
+> **2026-09-07 düzeltmesi (K-B33) — bu blok gövdeden ÖNCE okunur, çelişkide kazanır.**
+> Planın ilk hâli R-B2'nin 30 günlük fiziksel temizliğini "B-3'ün CronJob'ına" havale ediyordu.
+> **İkisi de yanlış:** (a) B-3'te CronJob yok, tetikleyici uygulama içi `SessionPurgeJob`
+> (`@Scheduled`, K-B30); (b) B-3'ün **kapsam kararı 2** `users`'a DOKUNMAMAYI şart koşuyor —
+> yazdığı purge yalnız `sessions` siler. Yani `purge_after` damgası sahipsizdi: atılır, hiç
+> süpürülmezdi ve "30 günde kalıcı silinir" sözü kâğıtta kalırdı.
+> Sonuç: **süpürme bu planın işi (yeni Task 12)**, B-3'ün altyapısı (parti döngüsü,
+> `for update skip locked`, zamanlayıcı, `RETENTION_ENABLED` kill switch) yeniden kullanılır.
+> V15 de bu yüzden değişti: `users` satırı fiziksel silinebilir olmalı (aşağıda Step 5).
 
 ```bash
 cd /Users/mehmetserefoglu/projects/bumpinto && \
@@ -51,7 +61,8 @@ Expected: bir `V12__…sql` satırı + `ON KOSUL OK`. Çıktı boşsa **DUR**, �
 | `infra/security/TokenService`, `SecurityConfig`, `MeController` (+`AccountApiTest`) | T9 | `DELETE /api/me` |
 | `application/safety/{Reports,Blocks}`, `ReportController`, `BlockController` (+Test) | T10 | Bildir/engelle |
 | `application/safety/VoiceAdmission`, `SessionViewAssembler`, `VoiceRoomListener`, `VoiceSignalController` | T11 | `blocked` + ses filtresi |
-| `ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `INDEX.md`, `openapi.json`, `api-types.ts` | T12 | Belge + sözleşme |
+| `ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `INDEX.md`, `openapi.json`, `api-types.ts` | T13 | Belge + sözleşme |
+| `domain/port/RetentionPort`, `application/user/AccountRetention`, `adapter/out/persistence/AccountRetention*`, `adapter/in/job/RetentionJob` | **T12** | 30 gün dolan hesabın fiziksel silinmesi (K-B33) |
 
 ---
 
@@ -61,7 +72,7 @@ Expected: bir `V12__…sql` satırı + `ON KOSUL OK`. Çıktı boşsa **DUR**, �
 - Create: `backend/src/main/resources/db/migration/{V13__apple_auth,V14__account_deletion,V15__reports_blocks,V16__user_consents}.sql`
 - Test: `backend/src/test/java/com/bumpinto/SchemaMigrationTest.java`
 
-- [ ] **Step 1: Başarısız testleri yaz** — `SchemaMigrationTest`'e, `columnsOf` yardımcısının üstüne:
+- [x] **Step 1: Başarısız testleri yaz** — `SchemaMigrationTest`'e, `columnsOf` yardımcısının üstüne:
 
 ```java
     /** V13: apple_sub birincil eslestirici; tekil auth_provider kolonu CSV'ye tasindi. */
@@ -88,6 +99,26 @@ Expected: bir `V12__…sql` satırı + `ON KOSUL OK`. Çıktı boşsa **DUR**, �
         assertThat(columnsOf("blocks")).contains("id", "blocker_user_id", "blocked_user_id",
                 "blocked_participant_id", "session_id", "created_at");
     }
+    /**
+     * K-B33: users satiri 30 gun sonra FIZIKSEL silinir (Task 12). users'a bakan her FK bunu
+     * kaldirabilmeli, yoksa supurme ihlalle patlar. Rapor izi KALIR (set null), engel GIDER.
+     */
+    @Test
+    void v15UserReferencesSurviveAPhysicalAccountPurge() {
+        assertThat(deleteRuleOf("reports", "reporter_user_id")).isEqualTo("SET NULL");
+        assertThat(deleteRuleOf("blocks", "blocker_user_id")).isEqualTo("CASCADE");
+        assertThat(deleteRuleOf("blocks", "blocked_user_id")).isEqualTo("CASCADE");
+    }
+    /** Kolonun users'a bakan FK'sinin ON DELETE kurali. */
+    private String deleteRuleOf(String table, String column) {
+        return jdbc.queryForObject("""
+                select rc.delete_rule
+                  from information_schema.referential_constraints rc
+                  join information_schema.key_column_usage k
+                    on k.constraint_name = rc.constraint_name
+                 where k.table_name = ? and k.column_name = ?
+                """, String.class, table, column);
+    }
     /** V16: varsayilan HEPSI false (KVKK m.5/1 acik riza). */
     @Test
     void v16AddsConsentColumnsDefaultingToFalse() {
@@ -99,9 +130,9 @@ Expected: bir `V12__…sql` satırı + `ON KOSUL OK`. Çıktı boşsa **DUR**, �
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST SchemaMigrationTest` · Expected: dört test FAILED (kolonlar/tablolar yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST SchemaMigrationTest` · Expected: dört test FAILED (kolonlar/tablolar yok).
 
-- [ ] **Step 3: `V13__apple_auth.sql`**
+- [x] **Step 3: `V13__apple_auth.sql`**
 
 ```sql
 -- Sign in with Apple (App Store 4.8). Eslestirme SIRASI: once apple_sub, sonra e-posta. Apple
@@ -118,11 +149,12 @@ alter table users drop column auth_provider;
 create unique index uq_users_apple_sub on users (apple_sub) where apple_sub is not null;
 ```
 
-- [ ] **Step 4: `V14__account_deletion.sql`**
+- [x] **Step 4: `V14__account_deletion.sql`**
 
 ```sql
 -- Apple 5.1.1(v) + Play hesap silme. Semantik (§2): erisim ANINDA kapanir (deleted_at),
--- fiziksel satir 30 gunde gider (purge_after) — o temizlik B-3'un (plan6) CronJob'idir.
+-- fiziksel satir 30 gunde gider (purge_after). O supurme BU planin Task 12'si: B-3'un
+-- SessionPurgeJob'ina ikinci bir sweep olarak takilir (K-B33).
 alter table users add column deleted_at  timestamptz;
 alter table users add column purge_after timestamptz;
 create index idx_users_purge_after on users (purge_after) where purge_after is not null;
@@ -132,13 +164,17 @@ create index idx_users_purge_after on users (purge_after) where purge_after is n
 alter table participants add column anonymized_at timestamptz;
 ```
 
-- [ ] **Step 5: `V15__reports_blocks.sql`**
+- [x] **Step 5: `V15__reports_blocks.sql`**
 
 ```sql
 -- Apple 1.2 (canli sesli sohbet + gorunen ad = UGC): bildir + engelle ZORUNLU.
+-- reporter_user_id NULLABLE + on delete set null: raporu YAZAN hesap 30 gun sonra fiziksel
+-- silinince moderasyon kaydi KALIR, kisisel bag kopar (Apple 1.2 denetim izi vs GDPR silme).
+-- Cascade olsaydi bir hesabi silmek onun actigi tum raporlari yok ederdi: bildirilen kisi
+-- hakkindaki kayit, bildireni susturarak temizlenebilirdi.
 create table reports (
     id                    uuid primary key,
-    reporter_user_id      uuid        not null references users (id),
+    reporter_user_id      uuid        references users (id) on delete set null,
     session_id            uuid        not null references sessions (id) on delete cascade,
     target_participant_id uuid        not null references participants (id) on delete cascade,
     reason                text        not null,
@@ -149,10 +185,12 @@ create index idx_reports_target on reports (target_participant_id);
 -- Engel IKI turlu: hesap duzeyinde (blocked_user_id) kalicidir; anonim katilimci icin
 -- (blocked_participant_id + session_id) YALNIZ o oturum boyunca yasar — anonim koltugun kalici
 -- kimligi yoktur, kalici engel yanlis kisiyi susturur.
+-- Engel kayitlari raporun tersi: ikisi de CASCADE. Engel listesi yalniz sahibine hizmet eder,
+-- sahibi gidince anlamsizdir; engellenen hesap gidince de dangling kisisel referans kalirdi.
 create table blocks (
     id                     uuid primary key,
-    blocker_user_id        uuid        not null references users (id),
-    blocked_user_id        uuid        references users (id),
+    blocker_user_id        uuid        not null references users (id) on delete cascade,
+    blocked_user_id        uuid        references users (id) on delete cascade,
     blocked_participant_id uuid        references participants (id) on delete cascade,
     session_id             uuid        references sessions (id) on delete cascade,
     created_at             timestamptz not null default now(),
@@ -168,7 +206,7 @@ create unique index uq_blocks_participant on blocks (blocker_user_id, blocked_pa
 create index idx_blocks_blocked_user on blocks (blocked_user_id) where blocked_user_id is not null;
 ```
 
-- [ ] **Step 6: `V16__user_consents.sql`**
+- [x] **Step 6: `V16__user_consents.sql`**
 
 ```sql
 -- KVKK m.5/1 acik riza + Play Data safety. Ayri tablo DEGIL users kolonlari: kayit hesap basina
@@ -181,9 +219,9 @@ alter table users add column consents_updated_at timestamptz;
 alter table users add column consents_version    int         not null default 1;
 ```
 
-- [ ] **Step 7: Testi çalıştır** — Run: `MVN_TEST SchemaMigrationTest` · Expected: tümü PASSED.
+- [x] **Step 7: Testi çalıştır** — Run: `MVN_TEST SchemaMigrationTest` · Expected: tümü PASSED.
 
-- [ ] **Step 8: Değişen dosyalar** — dört migration + `SchemaMigrationTest.java`. Mesaj: `feat(db): apple auth, account deletion, reports/blocks, consents (V13-V16)`.
+- [x] **Step 8: Değişen dosyalar** — dört migration + `SchemaMigrationTest.java`. Mesaj: `feat(db): apple auth, account deletion, reports/blocks, consents (V13-V16)`.
 
 ---
 
@@ -194,7 +232,7 @@ alter table users add column consents_version    int         not null default 1;
 - Modify: `domain/user/UserProfile.java`, `domain/port/{UserStorePort,SessionStorePort,SessionEvent}.java`, `infra/config/AppProps.java`, `backend/src/main/resources/application.yml`, `support/TestProps.java`
 - Test: `domain/safety/BlockTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`T0 = Instant.parse("2026-09-06T10:00:00Z")`, `ME = UUID.randomUUID()` sınıf sabitleri)
+- [x] **Step 1: Başarısız testi yaz** (`T0 = Instant.parse("2026-09-06T10:00:00Z")`, `ME = UUID.randomUUID()` sınıf sabitleri)
 
 ```java
     @Test
@@ -218,9 +256,9 @@ alter table users add column consents_version    int         not null default 1;
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST BlockTest` · Expected: COMPILATION ERROR (`Block` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST BlockTest` · Expected: COMPILATION ERROR (`Block` yok).
 
-- [ ] **Step 3: Domain sınıflarını yaz**
+- [x] **Step 3: Domain sınıflarını yaz**
 
 ```java
 // domain/user/AuthProvider.java — hesabin saglayicisi; bir hesapta birden fazlasi olabilir (§2)
@@ -291,7 +329,7 @@ public record Block(UUID id, UUID blockerUserId, UUID blockedUserId, UUID blocke
 }
 ```
 
-- [ ] **Step 4: `UserProfile`'ı genişlet** — kanonik kurucu iki bileşen kazanır; mevcut **iki kurucu delege ederek KALIR** (çağrı yerleri `FakeStores.InMemoryUserStore`, `UserStoreAdapter.toProfile`):
+- [x] **Step 4: `UserProfile`'ı genişlet** — kanonik kurucu iki bileşen kazanır; mevcut **iki kurucu delege ederek KALIR** (çağrı yerleri `FakeStores.InMemoryUserStore`, `UserStoreAdapter.toProfile`):
 
 ```java
 public record UserProfile(UUID id, String email, String name, GeoPoint defaultLocation,
@@ -323,7 +361,7 @@ public record UserProfile(UUID id, String email, String name, GeoPoint defaultLo
 }
 ```
 
-- [ ] **Step 5: Portları ve olayı yaz** (ilk ikisi mevcut arayüzlere EK)
+- [x] **Step 5: Portları ve olayı yaz** (ilk ikisi mevcut arayüzlere EK)
 
 ```java
 // domain/port/UserStorePort.java
@@ -388,7 +426,7 @@ public interface AppleTokensPort {
     }
 ```
 
-- [ ] **Step 6: `AppProps.Apple` + yml + TestProps** — kanonik listeye `security`'den sonra `Apple apple` eklenir:
+- [x] **Step 6: `AppProps.Apple` + yml + TestProps** — kanonik listeye `security`'den sonra `Apple apple` eklenir:
 
 ```java
     /**
@@ -450,9 +488,9 @@ public interface AppleTokensPort {
 
 `withGeocode`/`withVoice`/`withRouting` ve iki `of(...)` gövdesindeki `new AppProps(...)` çağrılarına ikinci konuma `base.apple()` (ya da `apple()`) eklenir.
 
-- [ ] **Step 7: Testleri çalıştır** — Run: `MVN_TEST BlockTest` sonra `MVN_TEST HexagonalArchitectureTest` · Expected: ikisi de PASSED (yeni domain paketleri yalnız `java..`'ya bağımlı).
+- [x] **Step 7: Testleri çalıştır** — Run: `MVN_TEST BlockTest` sonra `MVN_TEST HexagonalArchitectureTest` · Expected: ikisi de PASSED (yeni domain paketleri yalnız `java..`'ya bağımlı).
 
-- [ ] **Step 8: Değişen dosyalar** — 8 yeni domain/port dosyası, `UserProfile`, `UserStorePort`, `SessionStorePort`, `SessionEvent`, `AppProps`, `application.yml`, `TestProps`, `BlockTest`. Mesaj: `feat(domain): auth providers, consents, reports/blocks ports, apple config`.
+- [x] **Step 8: Değişen dosyalar** — 8 yeni domain/port dosyası, `UserProfile`, `UserStorePort`, `SessionStorePort`, `SessionEvent`, `AppProps`, `application.yml`, `TestProps`, `BlockTest`. Mesaj: `feat(domain): auth providers, consents, reports/blocks ports, apple config`.
 
 ---
 
@@ -463,7 +501,7 @@ public interface AppleTokensPort {
 - Create: `adapter/out/persistence/{ReportEntity,ReportRepository,ReportStoreAdapter,BlockEntity,BlockRepository,BlockStoreAdapter}.java`
 - Test: `adapter/out/persistence/StoreAdapterTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** — `StoreAdapterTest`'e (`@Import` listesine `ReportStoreAdapter`, `BlockStoreAdapter`; `@Autowired BlockStorePort blocks`; `T0` sabiti):
+- [x] **Step 1: Başarısız testi yaz** — `StoreAdapterTest`'e (`@Import` listesine `ReportStoreAdapter`, `BlockStoreAdapter`; `@Autowired BlockStorePort blocks`; `T0` sabiti):
 
 ```java
     @Test
@@ -500,9 +538,9 @@ public interface AppleTokensPort {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST StoreAdapterTest` · Expected: COMPILATION ERROR (`upsertByAppleSub`/`BlockStorePort` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST StoreAdapterTest` · Expected: COMPILATION ERROR (`upsertByAppleSub`/`BlockStorePort` yok).
 
-- [ ] **Step 3: `UserEntity` + `UserRepository`** — `authProvider` alanı silinir, yerine:
+- [x] **Step 3: `UserEntity` + `UserRepository`** — `authProvider` alanı silinir, yerine:
 
 ```java
     String appleSub;
@@ -519,7 +557,7 @@ public interface AppleTokensPort {
 
 `of(...)` fabrikası `String provider` yerine `AuthProvider provider` alır ve `u.authProviders = provider.name()` yazar. `UserRepository`'ye: `Optional<UserEntity> findByAppleSub(String appleSub);`
 
-- [ ] **Step 4: `UserStoreAdapter`**
+- [x] **Step 4: `UserStoreAdapter`**
 
 ```java
     @Override public UUID upsertByAppleSub(String appleSub, String email, String name) {
@@ -595,7 +633,7 @@ public interface AppleTokensPort {
 
 `toProfile` iki argüman daha taşır: `parseProviders(u.authProviders)` ve `new Consents(u.consentLocation, u.consentMicrophone, u.consentAnalytics, u.consentsUpdatedAt, u.consentsVersion)`. `saveProfile` bunların tersini yazar (`u.consentLocation = p.consents().location()` … `u.consentsVersion = p.consents().version()`). `upsertByEmail`'deki `UserEntity.of(..., "google")` → `AuthProvider.GOOGLE`; bulunan hesapta `withProvider(u.authProviders, AuthProvider.GOOGLE)` yazılır.
 
-- [ ] **Step 5: Rapor/engel ve oturum adaptörleri** — `ReportEntity`/`BlockEntity` `UserEntity` desenidir (paket-özel `@Entity`, alanlar V15 kolonlarıyla birebir: `ReportEntity` → `id, reporterUserId, sessionId, targetParticipantId, reason, note, createdAt`; `BlockEntity` → `id, blockerUserId, blockedUserId, blockedParticipantId, sessionId, createdAt`).
+- [x] **Step 5: Rapor/engel ve oturum adaptörleri** — `ReportEntity`/`BlockEntity` `UserEntity` desenidir (paket-özel `@Entity`, alanlar V15 kolonlarıyla birebir: `ReportEntity` → `id, reporterUserId, sessionId, targetParticipantId, reason, note, createdAt`; `BlockEntity` → `id, blockerUserId, blockedUserId, blockedParticipantId, sessionId, createdAt`).
 
 ```java
 public interface ReportRepository extends JpaRepository<ReportEntity, UUID> {
@@ -611,11 +649,11 @@ public interface BlockRepository extends JpaRepository<BlockEntity, UUID> {
 
 `SessionStoreAdapter` dört yeni metot: `sessionIdsOfHost` (`sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId, Pageable.unpaged())` → id listesi), `deleteSession` (`sessions.deleteById`), `participantsOfUser` (`participants.findByUserId`), `anonymizeParticipant` (satırı okur; `displayName`, `userId=null`, `lat=lng=null`, `locationLabel=null`, `anonymizedAt` yazar). `ParticipantRepository`'ye: `List<ParticipantEntity> findByUserId(UUID userId);`
 
-- [ ] **Step 6: `FakeStores`'u genişlet** — `InMemoryUserStore`'a `public final Map<UUID,String> appleSubs, refreshTokens` ve `public final Map<UUID,Instant> deletedAt, purgeAfter` alanları + dört yeni metodun tam gövdesi (`profileOf` silinmiş kimlik için `Optional.empty()`; `softDelete` e-postayı `deleted+<id>@invalid` yapar; `upsertByAppleSub` aynı sırayı uygular ve `authProviders`'a APPLE ekler). `InMemorySessionStore`'a dört yeni metodun tam gövdesi. İki yeni sınıf: `InMemoryReportStore` (`public final List<Report> saved`) ve `InMemoryBlockStore` (`public final Map<UUID, Block> blocks`), `BlockStorePort`'un altı metodunu bellek içi uygular.
+- [x] **Step 6: `FakeStores`'u genişlet** — `InMemoryUserStore`'a `public final Map<UUID,String> appleSubs, refreshTokens` ve `public final Map<UUID,Instant> deletedAt, purgeAfter` alanları + dört yeni metodun tam gövdesi (`profileOf` silinmiş kimlik için `Optional.empty()`; `softDelete` e-postayı `deleted+<id>@invalid` yapar; `upsertByAppleSub` aynı sırayı uygular ve `authProviders`'a APPLE ekler). `InMemorySessionStore`'a dört yeni metodun tam gövdesi. İki yeni sınıf: `InMemoryReportStore` (`public final List<Report> saved`) ve `InMemoryBlockStore` (`public final Map<UUID, Block> blocks`), `BlockStorePort`'un altı metodunu bellek içi uygular.
 
-- [ ] **Step 7: Testi çalıştır** — Run: `MVN_TEST StoreAdapterTest` · Expected: PASSED.
+- [x] **Step 7: Testi çalıştır** — Run: `MVN_TEST StoreAdapterTest` · Expected: PASSED.
 
-- [ ] **Step 8: Değişen dosyalar** — 6 yeni persistence dosyası, `UserEntity`, `UserRepository`, `UserStoreAdapter`, `SessionStoreAdapter`, `ParticipantRepository`, `FakeStores`, `StoreAdapterTest`. Mesaj: `feat(persistence): apple identity, soft delete, reports and blocks stores`.
+- [x] **Step 8: Değişen dosyalar** — 6 yeni persistence dosyası, `UserEntity`, `UserRepository`, `UserStoreAdapter`, `SessionStoreAdapter`, `ParticipantRepository`, `FakeStores`, `StoreAdapterTest`. Mesaj: `feat(persistence): apple identity, soft delete, reports and blocks stores`.
 
 ---
 
@@ -623,7 +661,7 @@ public interface BlockRepository extends JpaRepository<BlockEntity, UUID> {
 
 **Files:** Create `infra/security/AppleIdVerifier.java` · Test `infra/security/AppleIdVerifierTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`GoogleIdVerifierTest` deseni: ağa çıkmadan gerçek doğrulayıcı zinciri)
+- [x] **Step 1: Başarısız testi yaz** (`GoogleIdVerifierTest` deseni: ağa çıkmadan gerçek doğrulayıcı zinciri)
 
 ```java
     static final AppProps.Apple APPLE = TestProps.apple();
@@ -662,9 +700,9 @@ public interface BlockRepository extends JpaRepository<BlockEntity, UUID> {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AppleIdVerifierTest` · Expected: COMPILATION ERROR (`AppleIdVerifier` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AppleIdVerifierTest` · Expected: COMPILATION ERROR (`AppleIdVerifier` yok).
 
-- [ ] **Step 3: Doğrulayıcıyı yaz**
+- [x] **Step 3: Doğrulayıcıyı yaz**
 
 ```java
 /**
@@ -749,9 +787,9 @@ public class AppleIdVerifier {
 }
 ```
 
-- [ ] **Step 4: Testi çalıştır** — Run: `MVN_TEST AppleIdVerifierTest` · Expected: PASSED.
+- [x] **Step 4: Testi çalıştır** — Run: `MVN_TEST AppleIdVerifierTest` · Expected: PASSED.
 
-- [ ] **Step 5: Değişen dosyalar** — `AppleIdVerifier.java`, `AppleIdVerifierTest.java`. Mesaj: `feat(auth): apple identity token verifier`.
+- [x] **Step 5: Değişen dosyalar** — `AppleIdVerifier.java`, `AppleIdVerifierTest.java`. Mesaj: `feat(auth): apple identity token verifier`.
 
 ---
 
@@ -759,7 +797,7 @@ public class AppleIdVerifier {
 
 **Files:** Create `adapter/out/apple/AppleTokenClient.java` · Test `adapter/out/apple/{AppleTokenClientTest,AppleTestKeys}.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`CloudflareTurnCredentialsTest` deseni: Unirest `MockClient`; `@AfterEach` `MockClient.clear()`)
+- [x] **Step 1: Başarısız testi yaz** (`CloudflareTurnCredentialsTest` deseni: Unirest `MockClient`; `@AfterEach` `MockClient.clear()`)
 
 ```java
     static final AppProps.Apple CONFIGURED = new AppProps.Apple("app.bumpinto.web",
@@ -792,9 +830,9 @@ public class AppleIdVerifier {
 
 `AppleTestKeys.java`: tek `static final String EC_P256_PKCS8_PEM` sabiti; değeri bir kez üretilip teste gömülür (test-only, hiçbir yerde kayıtlı değil): `openssl ecparam -name prime256v1 -genkey -noout -out /tmp/k.pem && openssl pkcs8 -topk8 -nocrypt -in /tmp/k.pem`
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AppleTokenClientTest` · Expected: COMPILATION ERROR (`AppleTokenClient` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AppleTokenClientTest` · Expected: COMPILATION ERROR (`AppleTokenClient` yok).
 
-- [ ] **Step 3: İstemciyi yaz**
+- [x] **Step 3: İstemciyi yaz**
 
 ```java
 /**
@@ -879,9 +917,9 @@ class AppleTokenClient implements AppleTokensPort {
 }
 ```
 
-- [ ] **Step 4: Testleri çalıştır** — Run: `MVN_TEST AppleTokenClientTest` sonra `MVN_TEST HexagonalArchitectureTest` · Expected: ikisi de PASSED (`adapter.out.apple` yalnız domain + `infra.config` + kütüphanelere bağlı).
+- [x] **Step 4: Testleri çalıştır** — Run: `MVN_TEST AppleTokenClientTest` sonra `MVN_TEST HexagonalArchitectureTest` · Expected: ikisi de PASSED (`adapter.out.apple` yalnız domain + `infra.config` + kütüphanelere bağlı).
 
-- [ ] **Step 5: Değişen dosyalar** — `AppleTokenClient.java`, `AppleTokenClientTest.java`, `AppleTestKeys.java`. Mesaj: `feat(auth): apple token exchange and revoke client`.
+- [x] **Step 5: Değişen dosyalar** — `AppleTokenClient.java`, `AppleTokenClientTest.java`, `AppleTestKeys.java`. Mesaj: `feat(auth): apple token exchange and revoke client`.
 
 ---
 
@@ -892,7 +930,7 @@ class AppleTokenClient implements AppleTokensPort {
 - Modify: `adapter/in/web/{AuthController,ApiExceptionHandler}.java`, `infra/security/{SecurityConfig,RateLimitFilter}.java`
 - Test: `application/user/AccountIdentityTest.java`, `adapter/in/web/AuthControllerTest.java` (ek)
 
-- [ ] **Step 1: Başarısız testi yaz** — `AccountIdentityTest` (`FakeAppleTokens` T8 tarafından da kullanılır):
+- [x] **Step 1: Başarısız testi yaz** — `AccountIdentityTest` (`FakeAppleTokens` T8 tarafından da kullanılır):
 
 ```java
     static class FakeAppleTokens implements AppleTokensPort {
@@ -949,9 +987,9 @@ class AppleTokenClient implements AppleTokensPort {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AccountIdentityTest` · Expected: COMPILATION ERROR (`AccountIdentity` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AccountIdentityTest` · Expected: COMPILATION ERROR (`AccountIdentity` yok).
 
-- [ ] **Step 3: Uygulama servisini yaz**
+- [x] **Step 3: Uygulama servisini yaz**
 
 ```java
 /**
@@ -978,7 +1016,7 @@ public class AccountIdentity {
 }
 ```
 
-- [ ] **Step 4: Ucu ve kapıları yaz**
+- [x] **Step 4: Ucu ve kapıları yaz**
 
 ```java
 // application/error/UnavailableException.java — ozellik YAPILANDIRILMAMIS: istemci hatasi degil
@@ -1031,11 +1069,11 @@ public class UnavailableException extends RuntimeException {
                 new Policy("auth-apple", "POST", Pattern.compile("^/api/auth/apple$"), 5),
 ```
 
-- [ ] **Step 5: Bruno** — `auth/apple-login.yml` (`seq: 3`, `google-login.yml` biçimi): `POST {{baseUrl}}/api/auth/apple`, gövde `{"identityToken":"{{appleIdentityToken}}","nonce":"n-0S6_WzA2Mj"}`, testler `200` + `res.body.userId` string. Docs: eşleştirme sırası (apple_sub → e-posta), 503 = anahtar yok, `X-Client: web` çerez davranışı, hız sınırı 5/dk.
+- [x] **Step 5: Bruno** — `auth/apple-login.yml` (`seq: 3`, `google-login.yml` biçimi): `POST {{baseUrl}}/api/auth/apple`, gövde `{"identityToken":"{{appleIdentityToken}}","nonce":"n-0S6_WzA2Mj"}`, testler `200` + `res.body.userId` string. Docs: eşleştirme sırası (apple_sub → e-posta), 503 = anahtar yok, `X-Client: web` çerez davranışı, hız sınırı 5/dk.
 
-- [ ] **Step 6: Testleri çalıştır** — Run: `MVN_TEST AccountIdentityTest` sonra `MVN_TEST AuthControllerTest` · Expected: ikisi de PASSED.
+- [x] **Step 6: Testleri çalıştır** — Run: `MVN_TEST AccountIdentityTest` sonra `MVN_TEST AuthControllerTest` · Expected: ikisi de PASSED.
 
-- [ ] **Step 7: Değişen dosyalar** — `AccountIdentity.java`, `UnavailableException.java`, `AuthController.java`, `ApiExceptionHandler.java`, `SecurityConfig.java`, `RateLimitFilter.java`, `auth/apple-login.yml`, iki test. Mesaj: `feat(auth): POST /api/auth/apple with account merge`.
+- [x] **Step 7: Değişen dosyalar** — `AccountIdentity.java`, `UnavailableException.java`, `AuthController.java`, `ApiExceptionHandler.java`, `SecurityConfig.java`, `RateLimitFilter.java`, `auth/apple-login.yml`, iki test. Mesaj: `feat(auth): POST /api/auth/apple with account merge`.
 
 ---
 
@@ -1045,7 +1083,7 @@ public class UnavailableException extends RuntimeException {
 - Create: `application/user/UserConsents.java`, `backend/.infra/bumpinto-collection/me/update-consents.yml`
 - Modify: `adapter/in/web/{ApiDtos,MeController}.java` · Test: `application/user/UserConsentsTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`NOW = Instant.parse("2026-09-06T12:00:00Z")`, `service = new UserConsents(users, Clock.fixed(NOW, ZoneOffset.UTC))`)
+- [x] **Step 1: Başarısız testi yaz** (`NOW = Instant.parse("2026-09-06T12:00:00Z")`, `service = new UserConsents(users, Clock.fixed(NOW, ZoneOffset.UTC))`)
 
 ```java
     @Test
@@ -1069,9 +1107,9 @@ public class UnavailableException extends RuntimeException {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST UserConsentsTest` · Expected: COMPILATION ERROR (`UserConsents` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST UserConsentsTest` · Expected: COMPILATION ERROR (`UserConsents` yok).
 
-- [ ] **Step 3: Servisi yaz**
+- [x] **Step 3: Servisi yaz**
 
 ```java
 /**
@@ -1097,7 +1135,7 @@ public class UserConsents {
 }
 ```
 
-- [ ] **Step 4: DTO'ları ve ucu yaz**
+- [x] **Step 4: DTO'ları ve ucu yaz**
 
 ```java
 // ApiDtos — §2: consents{location, microphone, analytics, updatedAt, version}
@@ -1128,11 +1166,11 @@ public class UserConsents {
 
 `toResponse(...)`'a son iki argüman eklenir: `profile.authProviders().stream().sorted().toList()` ve `toDto(profile.consents())`.
 
-- [ ] **Step 5: Bruno** — `me/update-consents.yml` (`seq: 3`): `PUT {{baseUrl}}/api/me/consents`, gövde `{"location":true,"microphone":false,"analytics":false}`, testler `200` + `res.body.updatedAt` string. Docs: varsayılan hepsi false; `analytics=false` iken sunucu hiçbir analitik olayı iletmez; `version` rıza metni sürümüdür, artınca istemci ekranı yeniden sorar.
+- [x] **Step 5: Bruno** — `me/update-consents.yml` (`seq: 3`): `PUT {{baseUrl}}/api/me/consents`, gövde `{"location":true,"microphone":false,"analytics":false}`, testler `200` + `res.body.updatedAt` string. Docs: varsayılan hepsi false; `analytics=false` iken sunucu hiçbir analitik olayı iletmez; `version` rıza metni sürümüdür, artınca istemci ekranı yeniden sorar.
 
-- [ ] **Step 6: Testi çalıştır** — Run: `MVN_TEST UserConsentsTest` · Expected: PASSED.
+- [x] **Step 6: Testi çalıştır** — Run: `MVN_TEST UserConsentsTest` · Expected: PASSED.
 
-- [ ] **Step 7: Değişen dosyalar** — `UserConsents.java`, `ApiDtos.java`, `MeController.java`, `me/update-consents.yml`, `UserConsentsTest.java`. Mesaj: `feat(me): explicit consent preferences (KVKK m.5/1)`.
+- [x] **Step 7: Değişen dosyalar** — `UserConsents.java`, `ApiDtos.java`, `MeController.java`, `me/update-consents.yml`, `UserConsentsTest.java`. Mesaj: `feat(me): explicit consent preferences (KVKK m.5/1)`.
 
 ---
 
@@ -1140,7 +1178,7 @@ public class UserConsents {
 
 **Files:** Create `application/user/AccountDeletion.java` · Test `application/user/AccountDeletionTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`NOW`; `apple = new AccountIdentityTest.FakeAppleTokens()`; `deletion = new AccountDeletion(users, sessions, apple, Clock.fixed(NOW, ZoneOffset.UTC))`)
+- [x] **Step 1: Başarısız testi yaz** (`NOW`; `apple = new AccountIdentityTest.FakeAppleTokens()`; `deletion = new AccountDeletion(users, sessions, apple, Clock.fixed(NOW, ZoneOffset.UTC))`)
 
 ```java
     UUID hostedSession(UUID hostId, String slug) {
@@ -1179,14 +1217,14 @@ public class UserConsents {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AccountDeletionTest` · Expected: COMPILATION ERROR (`AccountDeletion` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AccountDeletionTest` · Expected: COMPILATION ERROR (`AccountDeletion` yok).
 
-- [ ] **Step 3: Servisi yaz**
+- [x] **Step 3: Servisi yaz**
 
 ```java
 /**
  * Hesap silme (Apple 5.1.1(v), Play hesap silme). Semantik §2: erisim ANINDA kapanir, fiziksel
- * satirlar 30 gunde gider (B-3/plan6 CronJob'i).
+ * satirlar 30 gunde gider — o supurme Task 12'deki AccountRetention'dir (K-B33).
  *
  * <p>Uc farkli muamele: (1) HOST oldugu oturumlar SILINIR — sahipsiz kalamazlar; (2) baskasinin
  * oturumundaki koltuklar SILINMEZ, anonimlesir — silinseydi o oturumun orta noktasi, deste
@@ -1235,9 +1273,9 @@ public class AccountDeletion {
 }
 ```
 
-- [ ] **Step 4: Testi çalıştır** — Run: `MVN_TEST AccountDeletionTest` · Expected: PASSED.
+- [x] **Step 4: Testi çalıştır** — Run: `MVN_TEST AccountDeletionTest` · Expected: PASSED.
 
-- [ ] **Step 5: Değişen dosyalar** — `AccountDeletion.java`, `AccountDeletionTest.java`. Mesaj: `feat(me): account deletion core with anonymized guest seats`.
+- [x] **Step 5: Değişen dosyalar** — `AccountDeletion.java`, `AccountDeletionTest.java`. Mesaj: `feat(me): account deletion core with anonymized guest seats`.
 
 ---
 
@@ -1248,7 +1286,7 @@ public class AccountDeletion {
 - Create: `backend/.infra/bumpinto-collection/me/{delete-token,delete-me}.yml`
 - Test: `infra/security/TokenServiceTest.java` (ek), `AccountApiTest.java` (ek)
 
-- [ ] **Step 1: Başarısız testleri yaz** — `TokenServiceTest`'e:
+- [x] **Step 1: Başarısız testleri yaz** — `TokenServiceTest`'e:
 
 ```java
     /**
@@ -1302,9 +1340,9 @@ public class AccountDeletion {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST TokenServiceTest` · Expected: COMPILATION ERROR (`issueDeleteToken` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST TokenServiceTest` · Expected: COMPILATION ERROR (`issueDeleteToken` yok).
 
-- [ ] **Step 3: Jetonu ve kapıyı yaz** — `TokenService`:
+- [x] **Step 3: Jetonu ve kapıyı yaz** — `TokenService`:
 
 ```java
     /** Silme onayi jetonu: kisa omurlu, hesap jetonu YERINE gecmez. */
@@ -1349,7 +1387,7 @@ public class AccountDeletion {
                 new Policy("delete-account", "DELETE", Pattern.compile("^/api/me$"), 3),
 ```
 
-- [ ] **Step 4: DTO'ları ve ucu yaz**
+- [x] **Step 4: DTO'ları ve ucu yaz**
 
 ```java
 // ApiDtos
@@ -1394,11 +1432,11 @@ public class AccountDeletion {
     }
 ```
 
-- [ ] **Step 5: Bruno** — `me/delete-token.yml` (`seq: 4`, `POST /api/me/delete-token`, test `200` + `deleteConfirmToken` string) ve `me/delete-me.yml` (`seq: 5`, `DELETE /api/me`, gövde `{"deleteConfirmToken":"{{deleteConfirmToken}}"}`, test `204`). Docs: erişim anında kapanır, fiziksel silme 30 gün (B-3), host oturumları silinir, katılımlar anonimleşir, Apple bağlıysa revoke (hata silmeyi engellemez), onay jetonu 10 dk, hız sınırı 3/dk.
+- [x] **Step 5: Bruno** — `me/delete-token.yml` (`seq: 4`, `POST /api/me/delete-token`, test `200` + `deleteConfirmToken` string) ve `me/delete-me.yml` (`seq: 5`, `DELETE /api/me`, gövde `{"deleteConfirmToken":"{{deleteConfirmToken}}"}`, test `204`). Docs: erişim anında kapanır, fiziksel silme 30 gün (B-3), host oturumları silinir, katılımlar anonimleşir, Apple bağlıysa revoke (hata silmeyi engellemez), onay jetonu 10 dk, hız sınırı 3/dk.
 
-- [ ] **Step 6: Testleri çalıştır** — Run: `MVN_TEST TokenServiceTest`, `MVN_TEST AccountApiTest`, `MVN_TEST WebSecuritySliceTest` · Expected: hepsi PASSED. `WebSecuritySliceTest` kırmızıya dönerse sebebi `typ` beyaz listesidir: testteki hesap jetonu `issueAccessToken` ile üretilmeli, elle claim eklenmiş bir jeton varsa düzelt.
+- [x] **Step 6: Testleri çalıştır** — Run: `MVN_TEST TokenServiceTest`, `MVN_TEST AccountApiTest`, `MVN_TEST WebSecuritySliceTest` · Expected: hepsi PASSED. `WebSecuritySliceTest` kırmızıya dönerse sebebi `typ` beyaz listesidir: testteki hesap jetonu `issueAccessToken` ile üretilmeli, elle claim eklenmiş bir jeton varsa düzelt.
 
-- [ ] **Step 7: Değişen dosyalar** — `TokenService.java`, `SecurityConfig.java`, `RateLimitFilter.java`, `MeController.java`, `ApiDtos.java`, iki Bruno dosyası, iki test. Mesaj: `feat(me): DELETE /api/me with single-use delete confirmation token`.
+- [x] **Step 7: Değişen dosyalar** — `TokenService.java`, `SecurityConfig.java`, `RateLimitFilter.java`, `MeController.java`, `ApiDtos.java`, iki Bruno dosyası, iki test. Mesaj: `feat(me): DELETE /api/me with single-use delete confirmation token`.
 
 ---
 
@@ -1408,7 +1446,7 @@ public class AccountDeletion {
 - Create: `application/safety/{Reports,Blocks}.java`, `adapter/in/web/{ReportController,BlockController}.java`, `backend/.infra/bumpinto-collection/safety/{folder,report,list-blocks,add-block,remove-block}.yml`
 - Modify: `adapter/in/web/ApiDtos.java`, `infra/security/RateLimitFilter.java` · Test: `application/safety/BlocksTest.java`
 
-- [ ] **Step 1: Başarısız testi yaz** (`me = UUID.randomUUID()`; `session = sessions.saveSession(new Session(UUID.randomUUID(), "slug-1", me, "Kahve", List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING, NOW.plus(Duration.ofHours(24)), null, List.of(), null, null, null, null, null))`; `blocks = new Blocks(store, sessions, events, Clock.fixed(NOW, ZoneOffset.UTC))`)
+- [x] **Step 1: Başarısız testi yaz** (`me = UUID.randomUUID()`; `session = sessions.saveSession(new Session(UUID.randomUUID(), "slug-1", me, "Kahve", List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING, NOW.plus(Duration.ofHours(24)), null, List.of(), null, null, null, null, null))`; `blocks = new Blocks(store, sessions, events, Clock.fixed(NOW, ZoneOffset.UTC))`)
 
 ```java
     Participant seat(UUID owner) {
@@ -1450,9 +1488,9 @@ public class AccountDeletion {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST BlocksTest` · Expected: COMPILATION ERROR (`Blocks` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST BlocksTest` · Expected: COMPILATION ERROR (`Blocks` yok).
 
-- [ ] **Step 3: `Blocks` servisini yaz**
+- [x] **Step 3: `Blocks` servisini yaz**
 
 ```java
 /**
@@ -1540,7 +1578,7 @@ public class Blocks {
 }
 ```
 
-- [ ] **Step 4: `Reports` servisini yaz**
+- [x] **Step 4: `Reports` servisini yaz**
 
 ```java
 /** Bildirim kaydi (Apple 1.2). Kayit denetim izidir; moderasyon kuyrugu sonraki iz. */
@@ -1570,7 +1608,7 @@ public class Reports {
 }
 ```
 
-- [ ] **Step 5: DTO'ları, controller'ları ve hız sınırını yaz**
+- [x] **Step 5: DTO'ları, controller'ları ve hız sınırını yaz**
 
 ```java
 // ApiDtos
@@ -1639,11 +1677,11 @@ class BlockController {
 
 `RateLimitFilter.defaultPolicies()` — `api` satırının üstüne: `new Policy("report", "POST", Pattern.compile("^/api/reports$"), 5),`
 
-- [ ] **Step 6: Bruno** — yeni klasör `safety/` (`folder.yml`: `name: Güvenlik (bildir · engelle)`, `type: folder`, `seq: 8`, klasör düzeyinde bearer `{{accessToken}}`) ve dört istek: `report.yml` (200 + `id`), `list-blocks.yml` (200, dizi), `add-block.yml` (200 + `id`), `remove-block.yml` (204). Docs: `note` ≤ 500, rapor hız sınırı 5/dk; engel roster'da tek yönlü, ses odasında çift yönlü; anonim engel yalnız o oturum.
+- [x] **Step 6: Bruno** — yeni klasör `safety/` (`folder.yml`: `name: Güvenlik (bildir · engelle)`, `type: folder`, `seq: 8`, klasör düzeyinde bearer `{{accessToken}}`) ve dört istek: `report.yml` (200 + `id`), `list-blocks.yml` (200, dizi), `add-block.yml` (200 + `id`), `remove-block.yml` (204). Docs: `note` ≤ 500, rapor hız sınırı 5/dk; engel roster'da tek yönlü, ses odasında çift yönlü; anonim engel yalnız o oturum.
 
-- [ ] **Step 7: Testi çalıştır** — Run: `MVN_TEST BlocksTest` · Expected: PASSED.
+- [x] **Step 7: Testi çalıştır** — Run: `MVN_TEST BlocksTest` · Expected: PASSED.
 
-- [ ] **Step 8: Değişen dosyalar** — `Reports.java`, `Blocks.java`, `ReportController.java`, `BlockController.java`, `ApiDtos.java`, `RateLimitFilter.java`, 5 Bruno dosyası, `BlocksTest.java`. Mesaj: `feat(safety): report and block endpoints`.
+- [x] **Step 8: Değişen dosyalar** — `Reports.java`, `Blocks.java`, `ReportController.java`, `BlockController.java`, `ApiDtos.java`, `RateLimitFilter.java`, 5 Bruno dosyası, `BlocksTest.java`. Mesaj: `feat(safety): report and block endpoints`.
 
 ---
 
@@ -1654,7 +1692,7 @@ class BlockController {
 - Modify: `adapter/in/web/{ApiDtos,SessionViewAssembler,VoiceRoomListener,VoiceSignalController}.java`
 - Test: `adapter/in/web/{SessionViewAssemblerTest,VoiceOverWebSocketTest}.java` (ek)
 
-- [ ] **Step 1: Başarısız testleri yaz** — `SessionViewAssemblerTest`'e (mock `Blocks blocks` kurucuya eklenir):
+- [x] **Step 1: Başarısız testleri yaz** — `SessionViewAssemblerTest`'e (mock `Blocks blocks` kurucuya eklenir):
 
 ```java
     /** Engel TEK YON: engelleyen "blocked" gorur, engellenen hicbir isaret gormez. */
@@ -1689,9 +1727,9 @@ class BlockController {
     }
 ```
 
-- [ ] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST SessionViewAssemblerTest` · Expected: COMPILATION ERROR (`ParticipantDto.blocked` yok).
+- [x] **Step 2: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST SessionViewAssemblerTest` · Expected: COMPILATION ERROR (`ParticipantDto.blocked` yok).
 
-- [ ] **Step 3: Kabul kapısını ve alanı yaz**
+- [x] **Step 3: Kabul kapısını ve alanı yaz**
 
 ```java
 /**
@@ -1740,19 +1778,101 @@ public class VoiceAdmission {
         }
 ```
 
-- [ ] **Step 4: Testleri çalıştır** — Run: `MVN_TEST SessionViewAssemblerTest` sonra `MVN_TEST VoiceOverWebSocketTest` · Expected: ikisi de PASSED.
+- [x] **Step 4: Testleri çalıştır** — Run: `MVN_TEST SessionViewAssemblerTest` sonra `MVN_TEST VoiceOverWebSocketTest` · Expected: ikisi de PASSED.
 
-- [ ] **Step 5: Tüm paketi çalıştır** — Run: `JAVA_HOME=$(/usr/libexec/java_home -v 21) JENV_VERSION=21 TESTCONTAINERS_RYUK_DISABLED=true mvn -o test` · Expected: BUILD SUCCESS, kırmızı yok (B-12 sonrası taban 365+; bu plan ~20 test ekler).
+- [x] **Step 5: Tüm paketi çalıştır** — Run: `JAVA_HOME=$(/usr/libexec/java_home -v 21) JENV_VERSION=21 TESTCONTAINERS_RYUK_DISABLED=true mvn -o test` · Expected: BUILD SUCCESS, kırmızı yok (B-12 sonrası taban 365+; bu plan ~20 test ekler).
 
-- [ ] **Step 6: Değişen dosyalar** — `VoiceAdmission.java`, `ApiDtos.java`, `SessionViewAssembler.java`, `VoiceRoomListener.java`, `VoiceSignalController.java`, iki test. Mesaj: `feat(safety): blocked flag in roster, blocked pairs kept out of voice rooms`.
+- [x] **Step 6: Değişen dosyalar** — `VoiceAdmission.java`, `ApiDtos.java`, `SessionViewAssembler.java`, `VoiceRoomListener.java`, `VoiceSignalController.java`, iki test. Mesaj: `feat(safety): blocked flag in roster, blocked pairs kept out of voice rooms`.
 
 ---
 
-### Task 12: Belgeler ve API sözleşmesi
+### Task 12: `AccountRetention` — 30 gün dolan hesapların fiziksel silinmesi (K-B33)
+
+R-B2'nin ikinci yarısı. T8 damgayı atıyor (`purge_after = +30g`); silen taraf burası.
+**B-3'ün altyapısı yeniden kullanılır, kopyalanmaz:** parti döngüsü deseni, `for update skip
+locked` çok-pod korumasi, `retentionScheduler` havuzu ve `RETENTION_ENABLED` kill switch hazır.
+
+**Files:** Modify `domain/port/SessionRetentionPort.java`(→ **rename** `RetentionPort.java`) ·
+Create `application/user/AccountRetention.java` + Test · Create
+`adapter/out/persistence/AccountRetentionAdapter.java`, `AccountRetentionRepository.java` +
+Test · Modify `adapter/in/job/SessionPurgeJob.java`(→ **rename** `RetentionJob.java`) + Test
+
+- [x] **Step 1: Portu ayır ve adlandır** — B-3'ün `SessionRetentionPort`'u artık iki işi
+  kapsıyor; ad yanıltıcı. `RetentionPort` olarak yeniden adlandır ve ikinci metodu ekle:
+
+```java
+    /** purgeAfter'i gecmis, silinmis hesaplari FIZIKSEL siler. Sinir KATI (<), B-3 ile ayni. */
+    int deleteAccountsPurgeableBefore(Instant now, int batchSize);
+```
+
+  `SessionRetention`/`SessionRetentionAdapter`/`SessionRetentionTest`/
+  `SessionRetentionAdapterTest` içindeki tip adları da güncellenir (davranış değişmez;
+  regresyon B-3'ün mevcut testleridir).
+
+- [x] **Step 2: Başarısız testi yaz** — `application/user/AccountRetentionTest.java`.
+  B-3'ün `SessionRetentionTest`'indeki `ScriptedPort` desenini izler:
+  - cutoff = `clock.instant()` (damga zaten +30g taşıyor; ikinci kez 30 gün EKLENMEZ — bu
+    testin asıl yakaladığı hata)
+  - dolu parti → döngü sürer, eksik parti → durur, boş DB → tek çağrı
+  - `MAX_BATCHES` guard'ı
+
+- [x] **Step 3: Testi çalıştır, kırmızı gör** — Run: `MVN_TEST AccountRetentionTest` ·
+  Expected: COMPILATION ERROR.
+
+- [x] **Step 4: Use-case'i yaz** — `application/user/AccountRetention.java`, `SessionRetention`
+  ile aynı iskelet (`BATCH_SIZE`/`MAX_BATCHES` oradan paylaşılır ya da tekrarlanır; **`RETENTION`
+  süresi YOK** — gecikme damgada).
+
+- [x] **Step 5: Adaptör + entegrasyon testi** — `AccountRetentionRepository`:
+
+```java
+    @Modifying
+    @Query(value = """
+            delete from users
+             where id in (
+                   select id from users
+                    where purge_after is not null and purge_after < :now
+                    order by purge_after
+                    limit :batchSize
+                    for update skip locked
+             )
+            """, nativeQuery = true)
+    int deletePurgeableBatch(@Param("now") Instant now, @Param("batchSize") int batchSize);
+```
+
+  Test (`postgis/postgis:16-3.4`, `PostgresContainer.shared()`) **V15 kararını de kanıtlar**:
+  silinen hesabın yazdığı rapor satırı DURUYOR ve `reporter_user_id` null oldu; yazdığı ve
+  hedefi olduğu engel satırları GİTTİ; `purge_after` null olan (silinmemiş) hesaplara ve tam
+  sınırdaki hesaba dokunulmadı. Bu test olmadan V15'in FK kararı yalnız iddiadır.
+
+- [x] **Step 6: İşi bağla** — `SessionPurgeJob` → `RetentionJob` (adı artık iki süpürmeyi
+  kapsıyor); `run()` sırayla oturum purge'ü ve hesap purge'ünü çağırır, **iki ayrı sayı** loglar:
+
+```java
+        int sessions = sessionRetention.purgeExpired();
+        int accounts = accountRetention.purgeDeleted();
+        log.info("retention purge finished: {} sessions, {} accounts deleted", sessions, accounts);
+```
+
+  Sıra ÖNEMLİ: önce oturumlar, sonra hesaplar — host oturumu T8'de zaten silindiği için
+  bağımlılık yok, ama oturum silmesi `participants` satırlarını da alır ve hesap silmesinin
+  önüne çıkabilecek referansları azaltır. `SessionPurgeJobTest` yeni ada ve iki süpürmeye
+  göre güncellenir (cron kaydı doğrulaması aynen kalır).
+
+- [x] **Step 7: Tüm paketi çalıştır** — Run: `JAVA_HOME=$(/usr/libexec/java_home -v 21) JENV_VERSION=21 TESTCONTAINERS_RYUK_DISABLED=true mvn -o test` · Expected: BUILD SUCCESS.
+
+- [x] **Step 8: Değişen dosyalar** — `RetentionPort.java`, `AccountRetention.java`(+Test),
+  `AccountRetentionAdapter.java`, `AccountRetentionRepository.java`(+Test), `RetentionJob.java`,
+  `SessionRetention*` yeniden adlandırmaları. Mesaj:
+  `feat(me): physically purge accounts 30 days after deletion`.
+
+---
+
+### Task 13: Belgeler ve API sözleşmesi
 
 **Files:** Modify `backend/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `docs/superpowers/plans/INDEX.md` · Regenerate `frontend/shared/openapi.json`, `frontend/shared/src/api-types.ts`
 
-- [ ] **Step 1: `ARCHITECTURE.md`** — §11 olay tablosuna `voice_roster_changed` satırından sonra `| `blocked` | — |`; kurallara 6. madde:
+- [x] **Step 1: `ARCHITECTURE.md`** — §11 olay tablosuna `voice_roster_changed` satırından sonra `| `blocked` | — |`; kurallara 6. madde:
 
 ```markdown
 6. **Engel iki farklı kural üretir.** Roster'da engel TEK YÖNLÜDÜR: `ParticipantDto.blocked`
@@ -1766,7 +1886,7 @@ public class VoiceAdmission {
 
 §2/§3 paket listesine iki satır: "`domain/safety/` rapor + engel domaini", "`adapter/out/apple/` Apple token takası ve revoke". §12'deki `AppProps` bileşen listesine `apple` (Services ID / bundle id / Team ID / Key ID / p8 — `private-key` sır). Hesap silme semantiği notu: erişim anında (`deleted_at`), fiziksel satır 30 günde (`purge_after`, B-3 CronJob'ı).
 
-- [ ] **Step 2: `docs/CONFIGURATION.md` §1 tablosuna beş satır** (`GOOGLE_CLIENT_ID` satırının altına):
+- [x] **Step 2: `docs/CONFIGURATION.md` §1 tablosuna beş satır** (`GOOGLE_CLIENT_ID` satırının altına):
 
 ```markdown
 | `APPLE_SERVICES_ID` | Sign in with Apple **Services ID** — web akışının `aud`'u, Apple token uçlarında `client_id` | Apple Developer → Identifiers → Services IDs | Hayır |
@@ -1776,7 +1896,7 @@ public class VoiceAdmission {
 | `APPLE_PRIVATE_KEY` | `AuthKey_*.p8` dosyasının PEM içeriği; ES256 client secret bununla imzalanır. **Boşsa Apple girişi kapalıdır** (`POST /api/auth/apple` → 503), uygulama yine açılır | Apple Developer → Keys → indirilen `.p8` | **Evet** |
 ```
 
-- [ ] **Step 3: `INDEX.md`** — B tablosuna B-13 satırından sonra:
+- [x] **Step 3: `INDEX.md`** — B tablosuna B-13 satırından sonra:
 
 ```markdown
 | B-14 | **Mağaza uyumluluk çekirdeği** — Sign in with Apple (`POST /api/auth/apple`, JWKS + çoklu audience + nonce, `apple_sub` birincil / e-posta ikincil birleştirme, `authProviders[]`, refresh token + revoke), hesap silme (`DELETE /api/me` + tek kullanımlık `deleteConfirmToken`, host oturumları silinir, katılımlar anonimleşir, erişim anında kapanır / fiziksel 30 gün), bildir/engelle (`POST /api/reports`, `GET/POST/DELETE /api/me/blocks`, `ParticipantDto.blocked`, engelli çift aynı ses odasına alınmaz), açık rıza (`MeResponse.consents`, `PUT /api/me/consents`) | `2026-09-06-plan33-backend-store-compliance.md` | Plan 33 | ready | **B-3 ✓ (V12)** · B-12 ✓ | — | Gereksinim dok. `2026-09-06-v3-requirements.md` §2/§4, R-B1–R-B5. Migration **V13–V16**. `auth_providers` CSV (V8 deseni; API yine dizi). Apple ayarsızsa uç 503, uygulama açılır (Turn deseni). `SecurityConfig` artık `typ` claim'i taşıyan HİÇBİR jetonu hesap jetonu saymaz. W-14 ve M-5 bu planın `openapi.json`'ını bekler |
@@ -1784,7 +1904,7 @@ public class VoiceAdmission {
 
 Ayrıca: satır 45'teki "Sıradakiler" notu **B-15, W-13, M-4, I-3** olur; satır 74–75'teki Flyway siciline "**V13–V16 = B-14**" eklenir; K-B27/K-B28/K-B29 satırlarının `Durum` sütunu `aday` → `B-14'e alındı` olur.
 
-- [ ] **Step 4: `openapi.json` ve `api-types.ts`'i yeniden üret** — `:8060`'ta kullanıcının kendi JVM'i çalışıyor olabilir, **hiçbir süreci öldürme**; başka portta kaldır:
+- [x] **Step 4: `openapi.json` ve `api-types.ts`'i yeniden üret** — `:8060`'ta kullanıcının kendi JVM'i çalışıyor olabilir, **hiçbir süreci öldürme**; başka portta kaldır:
 
 ```bash
 cd /Users/mehmetserefoglu/projects/bumpinto && docker compose up -d postgres
@@ -1799,7 +1919,7 @@ kill $(cat /tmp/bumpinto-8061.pid)
 
 Doğrulama: `grep -c "AppleLoginRequest\|ConsentsDto\|BlockDto\|ReportRequest\|authProviders" frontend/shared/src/api-types.ts` ≥ 5. `mvn spring-boot:run` `-o` ile açılmazsa (plugin yerelde yok) `-o`'suz tek sefer koş.
 
-- [ ] **Step 5: Web'in hâlâ derlendiğini doğrula**
+- [x] **Step 5: Web'in hâlâ derlendiğini doğrula**
 
 ```bash
 cd /Users/mehmetserefoglu/projects/bumpinto && source ./init-nvm.sh && pnpm --filter @bumpinto/web exec tsc -b
@@ -1807,7 +1927,7 @@ cd /Users/mehmetserefoglu/projects/bumpinto && source ./init-nvm.sh && pnpm --fi
 
 Expected: hata yok — `ParticipantDto.blocked` ve `MeResponse` ekleri mevcut kodu bozmaz (yeni alanlar okunmuyor). Hata çıkarsa yalnız raporla; düzeltmesi W-14'ün işidir.
 
-- [ ] **Step 6: Değişen dosyaları listele** — `ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `INDEX.md`, `openapi.json`, `api-types.ts`. Mesaj: `docs(store-compliance): events table, apple config keys, regenerated API types`.
+- [x] **Step 6: Değişen dosyaları listele** — `ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `INDEX.md`, `openapi.json`, `api-types.ts`. Mesaj: `docs(store-compliance): events table, apple config keys, regenerated API types`.
 
 ---
 
@@ -1819,4 +1939,4 @@ Expected: hata yok — `ParticipantDto.blocked` ve `MeResponse` ekleri mevcut ko
 
 **Tip tutarlılığı:** `UserStorePort.upsertByAppleSub(String,String,String)` T2 = T3 (adapter + FakeStores) = T6 · `softDelete(UUID,Instant,Instant)` T2 = T3 = T8 · `appleRefreshToken(UUID)→Optional<String>` T2 = T3 = T8 · `AppleTokensPort.exchangeRefreshToken(String)→Optional<String>` / `revoke(String)` T2 = T5 = T6 `FakeAppleTokens` = T8 · `AppleIdVerifier.AppleUser(String,String,boolean)` T4 = T6 · `AppleIdVerifier.validator(List<String>)` T4 iç tutarlı · `AppProps.Apple(servicesId,bundleId,teamId,keyId,privateKey)` T2 = T4 = T5 = `TestProps` · `Consents(boolean,boolean,boolean,Instant,int)` T2 = T3 = T7 ≡ `ApiDtos.ConsentsDto` · `UserProfile.withConsents(Consents)` T2 = T7 · `Block.ofUser/ofParticipant` T2 = T3 = T10 = T11 · `BlockStorePort` altı metodu T2 = T3 = T10 · `Blocks.add(UUID,UUID,UUID,String)` T10 = `BlockController` T10 · `Blocks.hiddenParticipantIds(UUID,UUID,List<Participant>)` T10 = `SessionViewAssembler` T11 · `Blocks.blockedPairIds(UUID,UUID,List<Participant>)` T10 = `VoiceAdmission.blockedWith` T11 · `SessionStorePort` dört yeni metodu T2 = T3 = T8 · `TokenService.issueDeleteToken/isDeleteTokenFor` T9 iç tutarlı · `SessionEvent.blocked()` T2 = T10 = T11. `MeResponse` 10 bileşen (T7) ile `MeController.toResponse` argüman sırası aynı.
 
-**Ön koşul kapısı:** B-3 yürütülmeden bu plan başlamaz (V12 çakışması + `purge_after` sahipsiz kalır); doğrulama komutu başlıkta.
+**Ön koşul kapısı:** B-3 yürütülmeden bu plan başlamaz (V12 çakışması); doğrulama komutu başlıkta. `purge_after`'ın süpürülmesi B-3'e DEĞİL bu planın **T13**'üne düşer — B-3 kapsam kararı 2 gereği `users`'a dokunmaz (K-B33).

@@ -10,7 +10,7 @@ import java.time.Instant;
  * <p>Ayri bir port: saklama SessionStorePort'un ilgi alani degil. Sicak porta metot eklemek
  * tum implementasyonlari ve test fake'lerini purge tasimaya zorlardi.
  */
-public interface SessionRetentionPort {
+public interface RetentionPort {
 
     /**
      * expiresAt'i cutoff'tan ONCE olan oturumlardan en fazla batchSize kadarini siler.
@@ -19,4 +19,12 @@ public interface SessionRetentionPort {
      * @return gercekten silinen oturum sayisi; batchSize'dan kucukse elde is kalmamis demektir
      */
     int deleteSessionsExpiredBefore(Instant cutoff, int batchSize);
+
+    /**
+     * purgeAfter'i gecmis, silinmis hesaplari FIZIKSEL siler. Damga zaten +30 gun tasir:
+     * burada IKINCI kez gecikme EKLENMEZ. Sinir KATI (<), oturum supurmesiyle ayni.
+     *
+     * @return gercekten silinen hesap sayisi
+     */
+    int deleteAccountsPurgeableBefore(Instant now, int batchSize);
 }

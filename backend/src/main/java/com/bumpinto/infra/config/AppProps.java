@@ -8,9 +8,10 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 @ConfigurationProperties(prefix = "bumpinto")
-public record AppProps(Security security, Cors cors, Cookies cookies, RateLimit rateLimit,
+public record AppProps(Security security, Apple apple, Cors cors, Cookies cookies, RateLimit rateLimit,
                        Geocode geocode, Voice voice, Turn turn,
                        Venues venues, MapProps map, Routing routing, Retention retention) {
 
@@ -36,6 +37,38 @@ public record AppProps(Security security, Cors cors, Cookies cookies, RateLimit 
         public String toString() {
             return "Security[googleClientId=" + googleClientId + ", tokenSecret=" + MASK
                     + ", tokenTtl=" + tokenTtl + "]";
+        }
+    }
+
+    /**
+     * Sign in with Apple. Bos birakilabilir: uygulama ayaga kalkar, /api/auth/apple 503 doner
+     * (Turn ile ayni fail-open dusuncesi) — Apple girisi yerelde anahtar ister, Google girisi
+     * istemez; acilis kapisi tum yerel gelistirmeyi kirardi. Prod'da ZORUNLU (App Store 4.8).
+     *
+     * @param servicesId web akisinin audience'i (Services ID), token uclarinda client_id
+     * @param bundleId   native iOS akisinin audience'i — Apple orada bundle id basar
+     * @param privateKey AuthKey_*.p8 icerigi (PEM); ES256 client secret bununla imzalanir
+     */
+    public record Apple(String servicesId, String bundleId, String teamId, String keyId,
+                        String privateKey) {
+
+        public boolean configured() {
+            return set(servicesId) && set(teamId) && set(keyId) && set(privateKey);
+        }
+
+        /** Kabul edilen audience'lar; ikisi de tanimliysa ikisi de gecerlidir. */
+        public List<String> audiences() {
+            return Stream.of(servicesId, bundleId).filter(Apple::set).toList();
+        }
+
+        private static boolean set(String value) {
+            return value != null && !value.isBlank() && !value.startsWith("${");
+        }
+
+        @Override
+        public String toString() {
+            return "Apple[servicesId=" + servicesId + ", bundleId=" + bundleId + ", teamId="
+                    + teamId + ", keyId=" + keyId + ", privateKey=" + MASK + "]";
         }
     }
 

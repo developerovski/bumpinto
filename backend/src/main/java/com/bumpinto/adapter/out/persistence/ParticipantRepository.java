@@ -17,6 +17,9 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
 
     Optional<ParticipantEntity> findBySessionIdAndUserId(UUID sessionId, UUID userId);
 
+    /** Hesabin TUM koltuklari (hesap silmede anonimlestirilecek satirlar). */
+    List<ParticipantEntity> findByUserId(UUID userId);
+
     @Query("select count(distinct p.displayName) from ParticipantEntity p, SessionEntity s "
             + "where s.id = p.sessionId and s.hostId = :hostId "
             + "and p.isHost = false and p.isManual = false")

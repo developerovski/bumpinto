@@ -1,18 +1,20 @@
 package com.bumpinto.adapter.out.persistence;
 
-import com.bumpinto.domain.port.SessionRetentionPort;
+import com.bumpinto.domain.port.RetentionPort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
 @Component
-public class SessionRetentionAdapter implements SessionRetentionPort {
+public class RetentionAdapter implements RetentionPort {
 
     private final SessionRetentionRepository sessions;
+    private final AccountRetentionRepository accounts;
 
-    SessionRetentionAdapter(SessionRetentionRepository sessions) {
+    RetentionAdapter(SessionRetentionRepository sessions, AccountRetentionRepository accounts) {
         this.sessions = sessions;
+        this.accounts = accounts;
     }
 
     /**
@@ -23,5 +25,11 @@ public class SessionRetentionAdapter implements SessionRetentionPort {
     @Transactional
     public int deleteSessionsExpiredBefore(Instant cutoff, int batchSize) {
         return sessions.deleteExpiredBatch(cutoff, batchSize);
+    }
+
+    @Override
+    @Transactional
+    public int deleteAccountsPurgeableBefore(Instant now, int batchSize) {
+        return accounts.deletePurgeableBatch(now, batchSize);
     }
 }

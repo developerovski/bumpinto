@@ -26,13 +26,13 @@ import static org.assertj.core.api.Assertions.assertThat;
         "bumpinto.venues.sources.foursquare.key=test-only-fsq-key",
         "bumpinto.retention.enabled=true"
 })
-class SessionPurgeJobTest {
+class RetentionJobTest {
 
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = PostgresContainer.shared();
 
     @Autowired ScheduledTaskHolder scheduledTasks;
-    @Autowired SessionPurgeJob job;
+    @Autowired RetentionJob job;
 
     @Test
     void thePurgeIsRegisteredAsADailyCronTaskOnTheRetentionScheduler() {
@@ -47,7 +47,8 @@ class SessionPurgeJobTest {
         assertThat(crons).containsExactly("0 30 3 * * *");
     }
 
-    /** Zamanlayici havuzu cozulemezse context zaten ayaga kalkmaz; kosu da gercekten calisir. */
+    /** Zamanlayici havuzu cozulemezse context zaten ayaga kalkmaz; kosu da gercekten calisir
+     *  — iki supurme birden (oturum + hesap). */
     @Test
     void theJobRunsWithoutBlowingUp() {
         assertThat(scheduledTasks.getScheduledTasks()).map(ScheduledTask::getTask)
@@ -57,6 +58,6 @@ class SessionPurgeJobTest {
     }
 
     private boolean isPurgeTask(Task task) {
-        return task.toString().contains("SessionPurgeJob");
+        return task.toString().contains("RetentionJob");
     }
 }

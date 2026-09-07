@@ -1,5 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.port.UserStorePort;
+import com.bumpinto.domain.port.SessionStorePort;
+import com.bumpinto.domain.port.BlockStorePort;
 import com.bumpinto.domain.port.GeocodePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.VenueProviderPort;
@@ -38,6 +42,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -74,6 +79,9 @@ class VoiceOverWebSocketTest {
     @Autowired RateLimitFilter rateLimit;
     @LocalServerPort int port;
 
+    @Autowired BlockStorePort blockStore;
+    @Autowired UserStorePort userStore;
+    @Autowired SessionStorePort sessionStore;
     @MockitoBean VenueProviderPort provider;
     @MockitoBean GoogleIdVerifier google;
     @MockitoBean ReverseGeocodePort geocoder;
@@ -311,6 +319,37 @@ class VoiceOverWebSocketTest {
     }
 
     // ---- yardimcilar ----
+
+    /**
+     * §2: engelli cift AYNI ODAYA ALINMAZ. Bu fixture'da misafir ANONIM katilir (user_id null),
+     * bu yuzden engel oturum kapsamli koltuk engelidir — hesap engeli degil. Kapi ayni kapidir:
+     * VoiceRoomListener abonelik aninda VoiceAdmission'a sorar.
+     */
+    @Test
+    void blockedPeerIsNotSeatedInTheSameRoom() throws Exception {
+        Room room = openRoom("gid-voice-blocked");
+        UUID hostUserId = userStore.upsertByEmail("gid-voice-blocked@bumpinto.test", "Mehmet");
+        UUID sessionId = sessionStore.sessionBySlug(room.slug()).orElseThrow().id();
+        blockStore.save(Block.ofParticipant(UUID.randomUUID(), hostUserId, room.guestId(),
+                sessionId, Instant.now()));
+
+        StompSession host = connect(room.slug(), room.hostToken());
+        Inbox hostTopic = listen(host, "/topic/session/" + room.slug());
+        listen(host, inbox(room.slug(), room.hostId()));
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() ->
+                        assertThat(inVoice(room.slug(), room.hostToken(), room.hostId())).isTrue());
+
+        StompSession guest = connect(room.slug(), room.guestToken());
+        listen(guest, inbox(room.slug(), room.guestId()));
+
+        // Zil kesin sinyal: reddedildiginde listener "blocked" yayinlar (sessizce dusurmek
+        // istemciyi "baglaniyor"da birakirdi). Once onu bekle, SONRA koltugu dogrula.
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(100))
+                .until(() -> hostTopic.frames().stream().anyMatch(f -> f.contains("blocked")));
+        assertThat(inVoice(room.slug(), room.hostToken(), room.guestId())).isFalse();
+        assertThat(inVoice(room.slug(), room.hostToken(), room.hostId())).isTrue();
+    }
 
     private Room openRoom(String googleId) throws Exception {
         when(google.verify(googleId))

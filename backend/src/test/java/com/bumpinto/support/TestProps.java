@@ -18,6 +18,19 @@ public final class TestProps {
         return new AppProps.Security("cid", "0123456789abcdef0123456789abcdef", Duration.ofHours(12));
     }
 
+    public static AppProps.Apple apple() {
+        return new AppProps.Apple("app.bumpinto.web", "app.bumpinto.ios", "TEAM123456",
+                "KEY1234567", "");
+    }
+
+    /** Apple alanini degistirir (yapilandirilmis/degil varyasyonlari), gerisi defaults(). */
+    public static AppProps withApple(AppProps.Apple apple) {
+        AppProps base = defaults();
+        return new AppProps(base.security(), apple, base.cors(), base.cookies(), base.rateLimit(),
+                base.geocode(), base.voice(), base.turn(), base.venues(), base.map(),
+                base.routing(), base.retention());
+    }
+
     public static AppProps.Venues venues() {
         Map<String, AppProps.VenueSourceProps> sources = new LinkedHashMap<>();
         sources.put("foursquare", new AppProps.VenueSourceProps(true, "fsq-key", 5000));
@@ -57,7 +70,7 @@ public final class TestProps {
     /** Geocode alanini degistirir (minInterval/contact varyasyonlari icin), gerisi defaults(). */
     public static AppProps withGeocode(AppProps.Geocode geocode) {
         AppProps base = defaults();
-        return new AppProps(base.security(), base.cors(), base.cookies(), base.rateLimit(),
+        return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 geocode, base.voice(), base.turn(), base.venues(), base.map(),
                 base.routing(), base.retention());
     }
@@ -65,7 +78,7 @@ public final class TestProps {
     /** Voice alanini degistirir (maxDuration varyasyonlari icin), gerisi defaults(). */
     public static AppProps withVoice(AppProps.Voice voice) {
         AppProps base = defaults();
-        return new AppProps(base.security(), base.cors(), base.cookies(), base.rateLimit(),
+        return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 base.geocode(), voice, base.turn(), base.venues(), base.map(),
                 base.routing(), base.retention());
     }
@@ -73,7 +86,7 @@ public final class TestProps {
     /** Routing alanini degistirir (OSRM base URL varyasyonlari icin), gerisi defaults(). */
     public static AppProps withRouting(AppProps.Routing routing) {
         AppProps base = defaults();
-        return new AppProps(base.security(), base.cors(), base.cookies(), base.rateLimit(),
+        return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 base.geocode(), base.voice(), base.turn(), base.venues(), base.map(),
                 routing, base.retention());
     }
@@ -88,7 +101,7 @@ public final class TestProps {
     public static AppProps of(AppProps.Security security, AppProps.Cors cors,
                               AppProps.Cookies cookies, AppProps.RateLimit rateLimit,
                               AppProps.Turn turn, AppProps.Venues venues) {
-        return new AppProps(security, cors, cookies, rateLimit,
+        return new AppProps(security, apple(), cors, cookies, rateLimit,
                 new AppProps.Geocode("dev@bumpinto.test", Duration.ofMillis(1),
                         "https://nominatim.openstreetmap.org"),
                 new AppProps.Voice(Duration.ofHours(2)), turn,

@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.safety.Blocks;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.Fairness;
 import com.bumpinto.domain.geo.GeoPoint;
@@ -36,11 +37,14 @@ public class SessionViewAssembler {
     private final PresencePort presence;
     private final VoiceRoomsPort rooms;
     private final RoutingPort routing;
+    private final Blocks blocks;
 
-    public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms, RoutingPort routing) {
+    public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms, RoutingPort routing,
+                                Blocks blocks) {
         this.presence = presence;
         this.rooms = rooms;
         this.routing = routing;
+        this.blocks = blocks;
     }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
@@ -64,6 +68,10 @@ public class SessionViewAssembler {
                 : snap.participants().stream().filter(p -> p.id().equals(viewer.participantId()))
                         .findFirst().map(Participant::travelMode).orElse(TravelMode.CAR);
 
+        // Engel TEK YONLU: yalniz GORUNTULEYENIN engelledikleri isaretlenir.
+        Set<UUID> hidden = blocks.hiddenParticipantIds(WebPrincipals.accountIdOrNull(auth),
+                snap.session().id(), snap.participants());
+
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
                 .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
                         p.hasLocation(), p.deckDone(), p.manual(), p.locationLabel(),
@@ -72,7 +80,8 @@ public class SessionViewAssembler {
                         midpointFor == null || !p.hasLocation() ? null
                                 : TravelMinutes.between(p.location(), p.travelMode(), midpointFor),
                         present.contains(p.id()),
-                        room.map(r -> r.hasMember(p.id())).orElse(false)))
+                        room.map(r -> r.hasMember(p.id())).orElse(false),
+                        hidden.contains(p.id())))
                 .toList();
 
         // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").

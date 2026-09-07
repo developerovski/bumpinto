@@ -1,5 +1,7 @@
 package com.bumpinto.infra.security;
 
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import com.bumpinto.infra.config.AppProps;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -89,6 +91,37 @@ public class TokenService {
                 .build();
         return encoder.encode(JwtEncoderParameters
                 .from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+    }
+
+    /** Silme onayi jetonu: kisa omurlu, hesap jetonu YERINE gecmez. */
+    public static final String DELETE_TYPE = "del";
+    public static final Duration DELETE_TTL = Duration.ofMinutes(10);
+
+    /**
+     * Kurulumsuz web akisi (R-B3): anonim tarayicidan Google/Apple ile girilir, bu jeton alinir,
+     * silme onayi onunla yapilir. Tek kullanimlik olmasi icin DB kaydi gerekmez — jeton yalniz
+     * KENDI hesabini siler ve silmeden sonra hesap zaten yoktur.
+     */
+    public String issueDeleteToken(UUID userId) {
+        Instant now = clock.instant();
+        JwtClaimsSet claims = JwtClaimsSet.builder().subject(userId.toString())
+                .claim(TYPE_CLAIM, DELETE_TYPE).issuedAt(now).expiresAt(now.plus(DELETE_TTL))
+                .build();
+        return encoder.encode(JwtEncoderParameters
+                .from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+    }
+
+    public boolean isDeleteTokenFor(String token, UUID userId) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+        try {
+            Jwt jwt = decoder.decode(token);
+            return DELETE_TYPE.equals(jwt.getClaimAsString(TYPE_CLAIM))
+                    && userId.toString().equals(jwt.getSubject());
+        } catch (JwtException invalid) {
+            return false;
+        }
     }
 
     public JwtDecoder decoder() {

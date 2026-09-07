@@ -4,6 +4,8 @@ import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
+import com.bumpinto.application.user.AccountIdentity;
+import com.bumpinto.infra.security.AppleIdVerifier;
 import com.bumpinto.infra.security.GoogleIdVerifier;
 import com.bumpinto.infra.security.SecurityConfig;
 import com.bumpinto.infra.security.TokenService;
@@ -59,9 +61,22 @@ class AuthControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean GoogleIdVerifier google;
+    @MockitoBean AppleIdVerifier apple;
+    @MockitoBean AccountIdentity identity;
     @MockitoBean UserStorePort users;
     /** SecurityConfig.apiChain'in katilimci filtresi icin istedigi depo — bu testte kullanilmaz. */
     @MockitoBean SessionStorePort store;
+
+    /** Apple ayarli degilse uc VAR ama 503 doner: istemci "Apple ile devam et"i gizleyebilsin. */
+    @Test
+    void unconfiguredAppleIs503() throws Exception {
+        when(apple.configured()).thenReturn(false);
+
+        mvc.perform(post("/api/auth/apple").contentType("application/json")
+                        .content("{\"identityToken\":\"whatever\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("apple_not_configured"));
+    }
 
     /**
      * Suresi dolmus/baska audience'a basilmis id_token 500 dondurUyordu: JwtException hicbir

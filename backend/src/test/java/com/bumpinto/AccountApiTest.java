@@ -23,9 +23,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -474,5 +476,46 @@ class AccountApiTest {
                 .filteredOn(c -> ("bumpinto_pt_" + slug).equals(c.getName()))
                 .extracting(Cookie::getPath)
                 .containsExactlyInAnyOrder("/api", "/api/sessions/" + slug);
+    }
+
+    /**
+     * R-B2 + R-B3 ucdan uca: onay jetonu OLMADAN silinmez; silindikten sonra erisim ANINDA
+     * kapanir ve host oldugu oturum ortadan kalkar.
+     */
+    @Test
+    void deleteMeClosesAccessImmediatelyAndClearsCookies() throws Exception {
+        when(google.verify("gid-del"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("del@bumpinto.test", "Silinecek"));
+        MvcResult login = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-del\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Cookie at = login.getResponse().getCookie("bumpinto_at");
+
+        MvcResult created = mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Silinecek kahve\","
+                                + "\"lat\":51.69,\"lng\":5.30,\"displayName\":\"Silinecek\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String slug = json.readTree(created.getResponse().getContentAsString())
+                .get("slug").asString();
+
+        // Onay jetonu OLMADAN silme 400 (R-B3 kabul kriteri b).
+        mvc.perform(delete("/api/me").cookie(at).contentType(JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+
+        String confirm = json.readTree(mvc.perform(post("/api/me/delete-token").cookie(at))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("deleteConfirmToken").asString();
+
+        mvc.perform(delete("/api/me").cookie(at).header("X-Client", "web").contentType(JSON)
+                        .content("{\"deleteConfirmToken\":\"" + confirm + "\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("bumpinto_at", 0));
+
+        // (a) erisim aninda kapanir  (b) host oldugu oturum ortadan kalkar.
+        // Oturum kontrolu PUBLIC preview ucundan: /api/sessions/{slug} kimlik ister (401),
+        // preview ise davetiye linkinin gordugu yuzeydir — disaridan gercekten yok oldugunu
+        // kanitlayan tek uc odur.
+        mvc.perform(get("/api/me").cookie(at)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/sessions/" + slug + "/preview")).andExpect(status().isNotFound());
     }
 }

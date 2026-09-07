@@ -1,0 +1,47 @@
+info:
+  name: Report Participant
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/reports"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "sessionSlug": "{{slug}}",
+        "targetParticipantId": "{{participantId}}",
+        "reason": "HARASSMENT",
+        "note": "Sesli sohbette rahatsiz edici dil"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("rapor kimligi doner", function() {
+          expect(res.body.id).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Apple 1.2 (canli sesli sohbet + gorunen ad = UGC): bildir ZORUNLU.
+
+    `reason`: `HARASSMENT` | `SPAM` | `IMPERSONATION` | `OTHER`. `note` opsiyonel,
+    en fazla 500 karakter.
+
+    Hedef katilimci o oturumun uyesi olmali; degilse `404`.
+
+    Kayit denetim izidir — moderasyon kuyrugu sonraki iz. Raporu yazan hesap
+    silinirse kayit KALIR, `reporter_user_id` null olur (V15 `on delete set null`):
+    bildirilen kisi hakkindaki kayit, bildireni susturarak temizlenemez.
+
+    Hiz siniri: 5/dk.

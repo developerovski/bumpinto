@@ -1,0 +1,48 @@
+info:
+  name: Delete Me
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/me"
+  auth:
+    mode: bearer
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "deleteConfirmToken": "{{deleteConfirmToken}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Apple 5.1.1(v) + Play hesap silme.
+
+    **Erisim ANINDA kapanir**, fiziksel satirlar 30 gunde gider (`purge_after`;
+    supurmeyi `RetentionJob` yapar).
+
+    Uc farkli muamele:
+    - **Host oldugu oturumlar SILINIR** — sahipsiz kalamazlar; davetiye linkleri de olur.
+    - **Baskasinin oturumundaki koltuklar SILINMEZ, anonimlesir** ("Ayrildi", konum
+      dusurulur). Silinseydi o oturumun orta noktasi, deste geometrisi ve oy
+      populasyonu geriye donuk degisir, katilan herkesin ekranindaki sayilar bozulurdu.
+    - **Hesap satiri** kimligi birakir (e-posta serbest kalir ki ayni kisi yeniden
+      kayit olabilsin) ve damgalanir.
+
+    Apple bagliysa refresh token revoke edilir; Apple'a ulasilamamasi silmeyi
+    ENGELLEMEZ (fail-open).
+
+    Onay jetonu zorunlu (`400` yoksa), 10 dk gecerli. Hiz siniri: 3/dk.

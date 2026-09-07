@@ -127,6 +127,12 @@ com.bumpinto                                   (111 sınıf)
     └── config/    AppConfig · AppProps
 ```
 
+**B-14 ile gelen iki paket:** `domain/safety/` rapor + engel domenini (`Report`, `ReportReason`,
+`Block`) tutar — güvenlik oturumun değil KİŞİNİN ilgi alanıdır, `domain/session` altına girseydi
+oturum kavramına yapışırdı. `adapter/out/apple/` Apple token takasını ve revoke'unu tutar; Apple
+sunucusuna giden TEK kapı orasıdır (`AppleTokensPort`), kimlik token'ı DOĞRULAMA ise dış çağrı
+olmadığı için `infra/security/AppleIdVerifier`'da kalır (Google'ın eşi).
+
 **Gruplama ölçütü ilgi alanıdır, teknik tür değildir.** `domain/session` altında hem `Session`
 kaydı hem `SessionStatus` enum'u hem `Participant` durur; bunları "records/", "enums/" diye
 ayırmak tek bir kavramı üç pakete dağıtır ve görünürlüğü gereksizce genişletir. Aynı sebeple
@@ -581,6 +587,7 @@ istemciye tek yönlüdür — tek istisna ses sinyali (kural 5).
 | `voice_started` | `endsAt` |
 | `voice_ended` | `reason` (`HOST` \| `TIME_LIMIT` \| `EMPTY`) |
 | `voice_roster_changed` | — |
+| `blocked` | — |
 
 Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buraya da satır düşer.
 `voice_roster_changed` yalnız üye kümesi **gerçekten** değiştiğinde yayınlanır — SUBSCRIBE/
@@ -638,13 +645,37 @@ Beş kural:
    (`relay=false`) devam edilir. Karar dokümanı:
    `docs/superpowers/specs/2026-09-06-voice-chat-design.md`.
 
+6. **Engel iki farklı kural üretir.** Roster'da engel TEK YÖNLÜDÜR: `ParticipantDto.blocked`
+   yalnız engelleyene `true` gelir, engellenen hiçbir işaret görmez (engel bir mesaj değildir).
+   Ses odasında engel ÇİFT YÖNLÜDÜR: `VoiceRoomListener` SUBSCRIBE anında `VoiceAdmission`'a
+   sorar ve engelli çift aynı odaya alınmaz; `VoiceSignalController` ikinci savunma katmanı
+   olarak engelli hedefe sinyal taşımaz. `VoiceInboundGuard` bu işe karışmaz — gövdedeki hedefi
+   görmez, yalnız adres ve soket bütçesi denetler. Anonim koltuk engeli (`user_id` null) yalnız
+   o oturum boyunca yaşar.
+
 ---
 
 ## 12. Yapılandırma ve sırlar
 
-`AppProps` (`@ConfigurationProperties("bumpinto")`) — `security`, `providers`, `cors`, `cookies`,
-`rateLimit`, `quota`, `geocode`, `voice` (azami süre), `turn` (Cloudflare anahtarı; `api-token` sır).
-Sır taşıyan alanlar `toString()`'de maskelenir.
+`AppProps` (`@ConfigurationProperties("bumpinto")`) — `security`, `apple`, `cors`, `cookies`,
+`rateLimit`, `geocode`, `voice` (azami süre), `turn` (Cloudflare anahtarı; `api-token` sır),
+`venues`, `map`, `routing`, `retention`. Sır taşıyan alanlar `toString()`'de maskelenir.
+
+**`bumpinto.apple`** — Sign in with Apple (App Store 4.8). `services-id` web akışının `aud`'u ve
+token uçlarında `client_id`; `bundle-id` native iOS akışının `aud`'u (Apple orada Services ID
+değil bundle id basar — bu yüzden audience TEK değil, liste); `team-id` + `key-id` + `private-key`
+(`AuthKey_*.p8` PEM, **sır**) ES256 client secret'ını imzalar. Boş bırakılabilir: uygulama açılır,
+`POST /api/auth/apple` 503 `apple_not_configured` döner — Turn ile aynı fail-open düşüncesi,
+çünkü Apple girişi yerelde anahtar ister, Google girişi istemez ve açılış kapısı tüm yerel
+geliştirmeyi kırardı. Prod'da ZORUNLU.
+
+**Hesap silme semantiği (R-B2).** Erişim ANINDA kapanır (`users.deleted_at` → `profileOf` boş
+döner), fiziksel satır 30 günde gider (`users.purge_after`; süpürmeyi `RetentionJob` yapar).
+Host olduğu oturumlar silinir — sahipsiz kalamazlar; başkasının oturumundaki koltuklar SİLİNMEZ,
+anonimleşir, yoksa o oturumun orta noktası, deste geometrisi ve oy popülasyonu geriye dönük
+değişir. `users`'a bakan FK'lar bu fiziksel silmeyi kaldırabilecek şekilde tanımlıdır:
+`reports.reporter_user_id` `on delete set null` (moderasyon izi kalır, kişisel bağ kopar),
+`blocks.*_user_id` `on delete cascade`.
 
 **`bumpinto.geocode`** (`NominatimReverseGeocoder`, `adapter/out/geocode`) — orta noktanın kasaba
 kelimesi (spec §5.A.4). `contact` (`NOMINATIM_CONTACT`, varsayılan `dev@bumpinto.test`) Nominatim

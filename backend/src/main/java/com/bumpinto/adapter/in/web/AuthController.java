@@ -1,6 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.error.UnavailableException;
+import com.bumpinto.application.user.AccountIdentity;
 import com.bumpinto.domain.port.UserStorePort;
+import com.bumpinto.infra.security.AppleIdVerifier;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
 import com.bumpinto.infra.security.GoogleIdVerifier;
@@ -9,6 +12,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -46,16 +50,33 @@ class AuthController {
         }
     }
 
+    /** §2: {identityToken, nonce?, fullName?}; authorizationCode opsiyonel, yalniz revoke icin. */
+    record AppleLoginRequest(@NotBlank String identityToken, String nonce,
+                             @Size(max = 80) String fullName, String authorizationCode) {
+
+        @Override
+        public String toString() {
+            return "AppleLoginRequest[identityToken=" + ApiDtos.masked(identityToken)
+                    + ", nonce=" + ApiDtos.masked(nonce) + ", fullName=" + fullName
+                    + ", authorizationCode=" + ApiDtos.masked(authorizationCode) + "]";
+        }
+    }
+
     private final GoogleIdVerifier google;
+    private final AppleIdVerifier appleVerifier;
+    private final AccountIdentity identity;
     private final UserStorePort users;
     private final TokenService tokens;
     private final AuthCookies cookies;
     private final AppProps props;
     private final Clock clock;
 
-    AuthController(GoogleIdVerifier google, UserStorePort users, TokenService tokens,
+    AuthController(GoogleIdVerifier google, AppleIdVerifier appleVerifier,
+                   AccountIdentity identity, UserStorePort users, TokenService tokens,
                    AuthCookies cookies, AppProps props, Clock clock) {
         this.google = google;
+        this.appleVerifier = appleVerifier;
+        this.identity = identity;
         this.users = users;
         this.tokens = tokens;
         this.cookies = cookies;
@@ -69,7 +90,29 @@ class AuthController {
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
         GoogleIdVerifier.GoogleUser verified = google.verify(request.idToken());
         UUID userId = users.upsertByEmail(verified.email(), verified.name());
-        String accessToken = tokens.issueAccessToken(userId, verified.email());
+        return respond(http, userId, verified.email(), client);
+    }
+
+    /** App Store 4.8: Google girisi sunan uygulama esdeger bir alternatif sunmali. */
+    @PostMapping("/apple")
+    ResponseEntity<LoginResponse> apple(HttpServletRequest http,
+            @Valid @RequestBody AppleLoginRequest request,
+            @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
+        if (!appleVerifier.configured()) {
+            throw new UnavailableException("apple_not_configured");
+        }
+        AppleIdVerifier.AppleUser verified =
+                appleVerifier.verify(request.identityToken(), request.nonce());
+        // Apple adi YALNIZ ilk giriste gonderir; sonraki girislerde null gelir, mevcut ad korunur.
+        UUID userId = identity.upsertApple(verified.sub(), verified.email(), request.fullName(),
+                request.authorizationCode());
+        return respond(http, userId, verified.email(), client);
+    }
+
+    /** Iki giris ucunun ORTAK kuyrugu: token uretimi + web cerez davranisi birebir ayni. */
+    private ResponseEntity<LoginResponse> respond(HttpServletRequest http, UUID userId,
+                                                  String email, String client) {
+        String accessToken = tokens.issueAccessToken(userId, email);
         Instant expiresAt = clock.instant().plus(props.security().tokenTtl());
 
         if ("web".equalsIgnoreCase(client)) {

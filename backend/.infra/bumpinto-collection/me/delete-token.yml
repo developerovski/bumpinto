@@ -1,0 +1,39 @@
+info:
+  name: Delete Token
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/me/delete-token"
+  auth:
+    mode: bearer
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("deleteConfirmToken", res.body.deleteConfirmToken);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("onay jetonu doner", function() {
+          expect(res.body.deleteConfirmToken).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Hesap silme icin ONAY jetonu uretir (10 dk). Silme tek tikla olmaz: kullanici
+    yanlislikla hesabini kaybetmesin.
+
+    Jeton `typ=del` tasir ve hesap jetonu YERINE GECMEZ — `Authorization: Bearer`
+    ile diger uclara gonderilirse 401 alir (SecurityConfig `typ` beyaz listesi).
+
+    **Kurulumsuz web akisi (R-B3):** anonim tarayicidan Google/Apple ile girilir,
+    bu jeton alinir, `DELETE /api/me` onunla cagrilir — uygulama kurmak gerekmez.
+    Play/Apple hesap silme politikasi bunu ister.

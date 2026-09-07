@@ -33,6 +33,7 @@ public class SecurityConfig {
     // Kimlik gerektirmeyen TEK liste: hem yetki kuralinda hem bearer resolver'da (bayat cerez 401'letmesin) kullanilir.
     static final List<RequestMatcher> PUBLIC_ENDPOINTS = List.of(
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/google"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/apple"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/logout"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/sessions/*/participants"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"),
@@ -74,9 +75,11 @@ public class SecurityConfig {
         JwtDecoder decoder = tokens.decoder();
         return token -> {
             Jwt jwt = decoder.decode(token);
-            if (TokenService.PARTICIPANT_TYPE
-                    .equals(jwt.getClaimAsString(TokenService.TYPE_CLAIM))) {
-                throw new BadJwtException("participant token is not an account token");
+            String type = jwt.getClaimAsString(TokenService.TYPE_CLAIM);
+            if (type != null) {
+                // Hesap jetonunda typ claim'i HIC YOKTUR. Yalniz "pt"yi reddetseydik her yeni
+                // jeton turu (bugun del, yarin baskasi) sessizce hesap jetonu sayilirdi.
+                throw new BadJwtException("typed token is not an account token: " + type);
             }
             return jwt;
         };

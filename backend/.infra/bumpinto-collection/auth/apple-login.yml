@@ -1,0 +1,62 @@
+info:
+  name: Apple Login
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/auth/apple"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: mobile
+  body:
+    type: json
+    data: |-
+      {
+        "identityToken": "{{appleIdentityToken}}",
+        "nonce": "n-0S6_WzA2Mj"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.accessToken) {
+          bru.setVar("accessToken", res.body.accessToken);
+          bru.setVar("userId", res.body.userId);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("userId doner", function() {
+          expect(res.body.userId).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Public uc (App Store 4.8: Google girisi olan uygulama esdeger alternatif sunmali).
+
+    **Eslestirme sirasi:** (1) `apple_sub`, (2) e-posta. Sub BIRINCILDIR cunku Apple
+    private-relay adresi (`@privaterelay.appleid.com`) her uygulamada farklidir ve
+    e-posta ile eslesme kurulamaz. E-posta tutarsa hesap Google hesabiyla BIRLESIR;
+    `authProviders` o zaman `["GOOGLE","APPLE"]` olur.
+
+    **Alanlar:** `identityToken` zorunlu. `nonce` opsiyonel — verilirse token'daki
+    claim ham degerle YA DA SHA-256 HEX'iyle eslesmeli (native istemci hex basar).
+    `fullName` yalniz ILK giriste gelir, sonraki girislerde mevcut ad korunur.
+    `authorizationCode` opsiyonel: verilirse refresh token'a takas edilir ve
+    yalnizca hesap silmede revoke icin saklanir. Takas basarisiz olursa giris
+    YINE tamamlanir (fail-open).
+
+    **503 `apple_not_configured`:** `APPLE_*` env degiskenleri yok. Uc kaldirilmaz ki
+    istemci "Apple ile devam et" dugmesini gizlemeyi bu yanittan anlayabilsin.
+
+    `X-Client: web` davranisi Google ile ayni: token govdede DONMEZ, `bumpinto_at`
+    cookie'sine yazilir.
+
+    Rate limit: 5/dk (IP bazli).

@@ -1,5 +1,8 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.domain.safety.ReportReason;
+import jakarta.validation.constraints.AssertTrue;
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.DecisionKind;
@@ -175,7 +178,9 @@ public final class ApiDtos {
                                  /** Acik soketi var ya da 45 sn icinde koptu; manual satirlarda daima false. */
                                  boolean online,
                                  /** Kendi ses konusuna abone (spec K4); SOLO'da daima false. */
-                                 boolean inVoice) {
+                                 boolean inVoice,
+                                 /** Goruntuleyen bu kisiyi engelledi mi; engellenen tarafta daima false. */
+                                 boolean blocked) {
     }
 
     /** OSRM T10'a kadar HER yol suresi tahmindir (estimated=true); gercek deger geldiginde degisir. */
@@ -284,9 +289,57 @@ public final class ApiDtos {
     public record StatsDto(long sessionsHosted, long friendsMet) {
     }
 
+    /** §2: consents{location, microphone, analytics, updatedAt, version}. */
+    public record ConsentsDto(boolean location, boolean microphone, boolean analytics,
+                              Instant updatedAt, int version) {
+    }
+
     public record MeResponse(UUID id, String email, String displayName,
                              LocationPrefDto defaultLocation, ActivityType defaultActivity,
-                             String language, TravelMode defaultTravelMode, StatsDto stats) {
+                             String language, TravelMode defaultTravelMode, StatsDto stats,
+                             List<AuthProvider> authProviders, ConsentsDto consents) {
+    }
+
+    /** Uc anahtar da ZORUNLU: eksik alan "degistirme" degil, belirsiz rizadir. */
+    public record UpdateConsentsRequest(@NotNull Boolean location, @NotNull Boolean microphone,
+                                        @NotNull Boolean analytics) {
+    }
+
+    public record DeleteAccountRequest(@NotBlank String deleteConfirmToken) {
+
+        @Override
+        public String toString() {
+            return "DeleteAccountRequest[deleteConfirmToken=" + masked(deleteConfirmToken) + "]";
+        }
+    }
+
+    public record ReportRequest(@NotBlank String sessionSlug, @NotNull UUID targetParticipantId,
+                                @NotNull ReportReason reason, @Size(max = 500) String note) {
+    }
+
+    public record ReportResponse(UUID id, Instant createdAt) {
+    }
+
+    /** Ikisinden TAM BIRI: hesap engeli (userId) ya da oturum kapsamli anonim engel. */
+    public record BlockRequest(UUID userId, UUID participantId, String sessionSlug) {
+
+        @AssertTrue(message = "exactly one of userId/participantId is required")
+        public boolean isTargetExclusive() {
+            return (userId == null) != (participantId == null)
+                    && (participantId == null || (sessionSlug != null && !sessionSlug.isBlank()));
+        }
+    }
+
+    public record BlockDto(UUID id, UUID userId, UUID participantId, Instant createdAt) {
+    }
+
+    public record DeleteTokenResponse(String deleteConfirmToken, Instant expiresAt) {
+
+        @Override
+        public String toString() {
+            return "DeleteTokenResponse[deleteConfirmToken=" + masked(deleteConfirmToken)
+                    + ", expiresAt=" + expiresAt + "]";
+        }
     }
 
     /** Tam degistirme: null = o tercihi temizle (displayName haric: null = degistirme). */

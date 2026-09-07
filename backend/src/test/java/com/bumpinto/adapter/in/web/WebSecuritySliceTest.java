@@ -94,6 +94,8 @@ class WebSecuritySliceTest {
     @MockitoBean VoiceRoomsPort rooms;
     // SessionViewAssembler artik RoutingPort da ister; bu paket OsrmRouting'i taramaz.
     @MockitoBean RoutingPort routing;
+    /** SessionViewAssembler engel bayragini bundan okur (T11); slice'ta gercek depo yok. */
+    @MockitoBean com.bumpinto.application.safety.Blocks blocks;
     // ConfigController List<VenueSource> ister; bos liste yeterli (bu sinif kaynak icerigini sinamaz).
     @MockitoBean com.bumpinto.domain.port.GeocodePort geocodeForward;
     @MockitoBean com.bumpinto.domain.port.ReverseGeocodePort geocodeReverse;

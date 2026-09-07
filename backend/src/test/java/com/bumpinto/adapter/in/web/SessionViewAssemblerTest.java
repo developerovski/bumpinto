@@ -1,5 +1,11 @@
 package com.bumpinto.adapter.in.web;
 
+import org.springframework.security.oauth2.jwt.Jwt;
+import com.bumpinto.application.safety.Blocks;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -21,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -33,7 +40,8 @@ class SessionViewAssemblerTest {
     FakeStores.FakePresence presence = new FakeStores.FakePresence();
     FakeStores.FakeVoiceRooms rooms = new FakeStores.FakeVoiceRooms();
     RoutingPort routing = (s, d, m) -> Optional.empty();
-    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms, routing);
+    Blocks blocks = mock(Blocks.class);
+    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms, routing, blocks);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -145,7 +153,7 @@ class SessionViewAssemblerTest {
             case CAR -> Optional.of(new int[][] {{900}}); // 15 dk
             default -> Optional.empty();
         };
-        SessionViewAssembler real = new SessionViewAssembler(presence, rooms, canned);
+        SessionViewAssembler real = new SessionViewAssembler(presence, rooms, canned, blocks);
 
         ApiDtos.SessionView view = real.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);
@@ -339,6 +347,34 @@ class SessionViewAssemblerTest {
                 .venues().get(0);
 
         assertThat(dto.mapsUrl()).endsWith("&travelmode=driving");
+    }
+
+    /** Hesap kimligi tasiyan auth: assembler engel sorgusunu bu id ile yapar. */
+    private static UsernamePasswordAuthenticationToken accountAuth(UUID userId) {
+        return new UsernamePasswordAuthenticationToken(
+                Jwt.withTokenValue("t").header("alg", "HS256").subject(userId.toString())
+                        .claim("email", "v@bumpinto.test").build(),
+                null, List.of());
+    }
+
+    /** Engel TEK YON: engelleyen "blocked" gorur, engellenen hicbir isaret gormez. */
+    @Test
+    void blockedFlagIsSetOnlyForTheViewerWhoBlocked() {
+        UUID viewerUser = UUID.randomUUID();
+        Session s = session(SessionType.GROUP);
+        Participant them = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
+        Participant mine = person(s.id(), new GeoPoint(51.45, 5.48), "Eindhoven", false);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(
+                s, List.of(them, mine), List.of(), Map.of(), Map.of(), Map.of());
+        when(blocks.hiddenParticipantIds(eq(viewerUser), any(), any()))
+                .thenReturn(Set.of(them.id()));
+
+        ApiDtos.SessionView view = assembler.toView(snap, accountAuth(viewerUser));
+
+        assertThat(view.participants()).filteredOn(p -> p.id().equals(them.id()))
+                .extracting(ApiDtos.ParticipantDto::blocked).containsExactly(true);
+        assertThat(view.participants()).filteredOn(p -> !p.id().equals(them.id()))
+                .extracting(ApiDtos.ParticipantDto::blocked).containsOnly(false);
     }
 
     private static UsernamePasswordAuthenticationToken authFor(Participant participant) {

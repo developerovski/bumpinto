@@ -4,6 +4,7 @@ import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionSummary;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,4 +28,16 @@ public interface SessionStorePort {
     long hostedSessionCount(UUID hostId);
     /** Host'un oturumlarina katilmis, host ve elle konum OLMAYAN farkli kisi sayisi (ad bazli). */
     long distinctGuestsOfHost(UUID hostId);
+
+    /** Hostu verilen hesap olan TUM oturum kimlikleri (limitsiz — silme icin). */
+    List<UUID> sessionIdsOfHost(UUID hostId);
+
+    /** Oturum ve ona bagli her sey (FK cascade: katilimci/mekan/kaydirma/oy). */
+    void deleteSession(UUID sessionId);
+
+    /** Hesabin BASKALARININ oturumlarindaki koltuklari. */
+    List<Participant> participantsOfUser(UUID userId);
+
+    /** Koltuk kalir, kimlik gider: ad degisir, user_id ve konum null olur, damga yazilir. */
+    void anonymizeParticipant(UUID participantId, String displayName, Instant when);
 }

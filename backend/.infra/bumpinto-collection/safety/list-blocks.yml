@@ -1,0 +1,27 @@
+info:
+  name: List Blocks
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/me/blocks"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("dizi doner", function() {
+          expect(res.body).to.be.an("array");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Hesabin engel listesi. Iki tur satir gelir:
+    - **Hesap engeli**: `userId` dolu, kalicidir.
+    - **Anonim koltuk engeli**: `participantId` dolu, YALNIZ o oturum boyunca yasar
+      (anonim koltugun kalici kimligi yoktur; kalici engel yanlis kisiyi susturur).

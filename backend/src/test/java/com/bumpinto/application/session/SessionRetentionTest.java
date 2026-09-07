@@ -1,6 +1,6 @@
 package com.bumpinto.application.session;
 
-import com.bumpinto.domain.port.SessionRetentionPort;
+import com.bumpinto.domain.port.RetentionPort;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -20,7 +20,7 @@ class SessionRetentionTest {
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 
     /** Onceden yazilmis parti boyutlarini sirayla donen sahte port; cagrilari kaydeder. */
-    static final class ScriptedPort implements SessionRetentionPort {
+    static final class ScriptedPort implements RetentionPort {
         final List<Instant> cutoffs = new ArrayList<>();
         final List<Integer> batchSizes = new ArrayList<>();
         private final Deque<Integer> results = new ArrayDeque<>();
@@ -29,6 +29,11 @@ class SessionRetentionTest {
         ScriptedPort(int whenScriptEnds, Integer... scripted) {
             this.whenScriptEnds = whenScriptEnds;
             this.results.addAll(List.of(scripted));
+        }
+
+        @Override
+        public int deleteAccountsPurgeableBefore(Instant now, int batchSize) {
+            throw new UnsupportedOperationException("bu test yalniz oturum supurmesini olcer");
         }
 
         @Override

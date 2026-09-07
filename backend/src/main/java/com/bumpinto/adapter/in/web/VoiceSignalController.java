@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.safety.VoiceAdmission;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.voice.VoiceRoom;
 import org.slf4j.Logger;
@@ -44,8 +45,11 @@ class VoiceSignalController {
 
     private final VoiceRoomsPort rooms;
     private final SimpMessagingTemplate template;
+    private final VoiceAdmission admission;
 
-    VoiceSignalController(VoiceRoomsPort rooms, SimpMessagingTemplate template) {
+    VoiceSignalController(VoiceRoomsPort rooms, SimpMessagingTemplate template,
+                          VoiceAdmission admission) {
+        this.admission = admission;
         this.rooms = rooms;
         this.template = template;
     }
@@ -71,6 +75,11 @@ class VoiceSignalController {
         }
         VoiceRoom room = rooms.roomOf(sessionId).orElse(null);
         if (room == null || !room.hasMember(from) || !room.hasMember(to)) {
+            return;
+        }
+        // Ikinci savunma katmani: kabul kapisi VoiceRoomListener'da, bu satir yaris/artik
+        // durumlarinda engelli cift arasinda sinyal tasinmasini keser.
+        if (admission.blockedWith(sessionId, from).contains(to)) {
             return;
         }
         Map<String, Object> out = new LinkedHashMap<>();

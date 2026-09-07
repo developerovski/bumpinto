@@ -1,5 +1,8 @@
 package com.bumpinto.adapter.out.persistence;
 
+import com.bumpinto.domain.port.BlockStorePort;
+import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
@@ -41,7 +44,8 @@ import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class, AppConfig.class})
+@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class,
+        ReportStoreAdapter.class, BlockStoreAdapter.class, AppConfig.class})
 class StoreAdapterTest {
 
     @ServiceConnection
@@ -51,6 +55,44 @@ class StoreAdapterTest {
     @Autowired DeckStoreAdapter deck;
     @Autowired UserStoreAdapter users;
     @Autowired UserRepository userRows;
+    @Autowired BlockStorePort blocks;
+
+    private static final Instant T0 = Instant.parse("2026-09-06T10:00:00Z");
+
+    @Test
+    void appleSubIsThePrimaryMatcherAndEmailTheSecondary() {
+        UUID google = users.upsertByEmail("ayse@bumpinto.test", "Ayse");
+        UUID merged = users.upsertByAppleSub("apple-sub-1", "ayse@bumpinto.test", "Ayse");
+        assertThat(merged).isEqualTo(google);
+        assertThat(users.profileOf(merged).orElseThrow().authProviders())
+                .containsExactlyInAnyOrder(AuthProvider.GOOGLE, AuthProvider.APPLE);
+        // Private-relay e-postasiyla ikinci giris: e-posta TUTMAZ, sub tutar -> ayni hesap.
+        assertThat(users.upsertByAppleSub("apple-sub-1", "xyz@privaterelay.appleid.com", "Ayse"))
+                .isEqualTo(google);
+    }
+
+    @Test
+    void softDeleteReleasesTheIdentityAndHidesTheProfile() {
+        UUID id = users.upsertByAppleSub("apple-sub-2", "mehmet@bumpinto.test", "Mehmet");
+        users.saveAppleRefreshToken(id, "rt-1");
+        assertThat(users.appleRefreshToken(id)).contains("rt-1");
+        users.softDelete(id, T0, T0.plus(Duration.ofDays(30)));
+        assertThat(users.profileOf(id)).isEmpty();
+        // Kimlik serbest: ayni e-posta yeni bir hesap acabilir.
+        assertThat(users.upsertByEmail("mehmet@bumpinto.test", "Mehmet")).isNotEqualTo(id);
+    }
+
+    @Test
+    void blocksAreReadableFromBothEndsAndOnlyTheOwnerCanDeleteThem() {
+        UUID me = users.upsertByEmail("me@bumpinto.test", "Ben");
+        UUID other = users.upsertByEmail("other@bumpinto.test", "O");
+        UUID blockId = blocks.save(Block.ofUser(UUID.randomUUID(), me, other, T0)).id();
+        assertThat(blocks.blockedUserIdsOf(me)).containsExactly(other);
+        assertThat(blocks.blockerUserIdsOf(other)).containsExactly(me);
+        assertThat(blocks.delete(other, blockId)).isFalse();
+        assertThat(blocks.delete(me, blockId)).isTrue();
+        assertThat(blocks.blocksOf(me)).isEmpty();
+    }
 
     @Test
     void fullRoundTripThroughPorts() {
@@ -219,7 +261,7 @@ class StoreAdapterTest {
         UserRepository racing = mock(UserRepository.class);
         when(racing.findByEmail("race@x.dev"))
                 .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(UserEntity.of(winner, "race@x.dev", "Ayşe", "google")));
+                .thenReturn(Optional.of(UserEntity.of(winner, "race@x.dev", "Ayşe", AuthProvider.GOOGLE)));
         when(racing.saveAndFlush(any()))
                 .thenThrow(new DataIntegrityViolationException("duplicate key: users_email_key"));
 

@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.error.UnavailableException;
 import com.bumpinto.application.error.ConflictException;
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
@@ -67,6 +68,13 @@ class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     ApiError badRequest(IllegalArgumentException e) {
+        return new ApiError(e.getMessage());
+    }
+
+    /** Ozellik yapilandirilmamis (ornegin Apple anahtari yok): istemci hatasi degil, 503. */
+    @ExceptionHandler(UnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    ApiError unavailable(UnavailableException e) {
         return new ApiError(e.getMessage());
     }
 }

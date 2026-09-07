@@ -41,9 +41,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     static List<Policy> defaultPolicies() {
         return List.of(
                 new Policy("auth", "POST", Pattern.compile("^/api/auth/google$"), 5),
+                new Policy("auth-apple", "POST", Pattern.compile("^/api/auth/apple$"), 5),
                 new Policy("join", "POST", Pattern.compile("^/api/sessions/[^/]+/participants$"), 10),
                 new Policy("find", "POST", Pattern.compile("^/api/sessions/[^/]+/find-venues$"), 3),
                 new Policy("create", "POST", Pattern.compile("^/api/sessions$"), 10),
+                new Policy("delete-account", "DELETE", Pattern.compile("^/api/me$"), 3),
+                new Policy("report", "POST", Pattern.compile("^/api/reports$"), 5),
                 // Handshake kendi kovasinda: yoksa /api altina tasinmasi onu sessizce 240'tan
                 // (fallback) 120'ye (api) dusururdu. 240 BILINCLI: TRUST_FORWARDED_FOR
                 // varsayilan false oldugu icin ingress arkasinda TUM istemciler tek kovayi

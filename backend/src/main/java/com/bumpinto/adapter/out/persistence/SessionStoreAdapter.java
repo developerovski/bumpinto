@@ -12,8 +12,10 @@ import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +120,37 @@ public class SessionStoreAdapter implements SessionStorePort {
 
     @Override public long distinctGuestsOfHost(UUID hostId) {
         return participants.countDistinctGuestsOfHost(hostId);
+    }
+
+    @Override public List<UUID> sessionIdsOfHost(UUID hostId) {
+        return sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId, Pageable.unpaged()).stream()
+                .map(e -> e.id).toList();
+    }
+
+    /** Alt tablolar sema cascade'i ile gider (SessionCascadeDeleteTest). */
+    @Override public void deleteSession(UUID sessionId) {
+        sessions.deleteById(sessionId);
+    }
+
+    @Override public List<Participant> participantsOfUser(UUID userId) {
+        return participants.findByUserId(userId).stream()
+                .map(SessionStoreAdapter::toParticipant).toList();
+    }
+
+    /**
+     * Koltuk KALIR, kimlik gider: satir silinseydi o oturumun orta noktasi, deste geometrisi ve
+     * oy populasyonu geriye donuk degisir, katilan herkesin ekranindaki sayilar bozulurdu.
+     */
+    @Override public void anonymizeParticipant(UUID participantId, String displayName, Instant when) {
+        participants.findById(participantId).ifPresent(p -> {
+            p.displayName = displayName;
+            p.userId = null;
+            p.lat = null;
+            p.lng = null;
+            p.locationLabel = null;
+            p.anonymizedAt = when;
+            participants.save(p);
+        });
     }
 
     private static SessionSummary toSummary(SessionEntity e, List<ParticipantEntity> ps,

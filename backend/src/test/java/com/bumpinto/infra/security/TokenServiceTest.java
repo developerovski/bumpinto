@@ -94,4 +94,21 @@ class TokenServiceTest {
             assertThat(ctx.getBean(AppProps.class).security().tokenSecret()).hasSizeGreaterThanOrEqualTo(32);
         }
     }
+
+    /**
+     * Silme jetonu HESAP jetonu SAYILMAZ. Ayni TOKEN_SECRET imzaladigi icin kapi olmasa kisa
+     * omurlu bir silme jetonu Authorization: Bearer ile tum hesap uclarini acardi (typ=pt
+     * kapisinin ayni gerekcesi).
+     */
+    @Test
+    void deleteTokenIsNotAnAccountToken() {
+        UUID user = UUID.randomUUID();
+        String delete = tokens.issueDeleteToken(user);
+        assertThat(tokens.decoder().decode(delete).getClaimAsString(TokenService.TYPE_CLAIM))
+                .isEqualTo(TokenService.DELETE_TYPE);
+        assertThat(tokens.isDeleteTokenFor(delete, user)).isTrue();
+        assertThat(tokens.isDeleteTokenFor(delete, UUID.randomUUID())).isFalse();
+        assertThat(tokens.isDeleteTokenFor(tokens.issueAccessToken(user, "a@b.test"), user))
+                .isFalse();
+    }
 }

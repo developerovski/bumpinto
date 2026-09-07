@@ -1,17 +1,22 @@
 package com.bumpinto.support;
 
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.port.BlockStorePort;
 import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.ReportStorePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
+import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.safety.Report;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionSummary;
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.voice.Seat;
@@ -20,11 +25,13 @@ import com.bumpinto.domain.voice.VoiceRoom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -81,6 +88,31 @@ public class FakeStores {
 
         @Override public long hostedSessionCount(UUID hostId) {
             return sessions.values().stream().filter(s -> s.hostId().equals(hostId)).count();
+        }
+
+        @Override public List<UUID> sessionIdsOfHost(UUID hostId) {
+            return sessions.values().stream().filter(s -> s.hostId().equals(hostId))
+                    .map(Session::id).toList();
+        }
+
+        @Override public void deleteSession(UUID sessionId) {
+            sessions.remove(sessionId);
+            participants.values().removeIf(p -> p.sessionId().equals(sessionId));
+            createdAt.remove(sessionId);
+        }
+
+        @Override public List<Participant> participantsOfUser(UUID userId) {
+            return participants.values().stream()
+                    .filter(p -> userId.equals(p.userId())).toList();
+        }
+
+        @Override public void anonymizeParticipant(UUID participantId, String displayName,
+                                                   Instant when) {
+            Participant p = participants.get(participantId);
+            if (p != null) {
+                participants.put(participantId, new Participant(p.id(), p.sessionId(), displayName,
+                        null, p.host(), p.deckDoneAt(), p.manual(), null, p.travelMode(), null));
+            }
         }
 
         @Override public long distinctGuestsOfHost(UUID hostId) {
@@ -202,10 +234,13 @@ public class FakeStores {
 
     public static class InMemoryUserStore implements UserStorePort {
         public final Map<UUID, UserProfile> users = new HashMap<>();
+        public final Map<UUID, String> appleSubs = new HashMap<>();
+        public final Map<UUID, String> refreshTokens = new HashMap<>();
+        public final Map<UUID, Instant> deletedAt = new HashMap<>();
+        public final Map<UUID, Instant> purgeAfter = new HashMap<>();
 
         @Override public UUID upsertByEmail(String email, String name) {
-            return users.values().stream().filter(u -> u.email().equals(email)).findFirst()
-                    .map(UserProfile::id)
+            return byEmail(email).map(UserProfile::id)
                     .orElseGet(() -> {
                         UUID id = UUID.randomUUID();
                         users.put(id, new UserProfile(id, email, name, null, null, null, null));
@@ -213,13 +248,123 @@ public class FakeStores {
                     });
         }
 
+        /** Adapter ile ayni sira: (1) apple_sub, (2) e-posta, (3) yeni hesap. */
+        @Override public UUID upsertByAppleSub(String appleSub, String email, String name) {
+            Optional<UUID> bySub = appleSubs.entrySet().stream()
+                    .filter(e -> e.getValue().equals(appleSub)).map(Map.Entry::getKey).findFirst();
+            if (bySub.isPresent()) {
+                return link(bySub.get(), appleSub);
+            }
+            Optional<UserProfile> byEmail = email == null ? Optional.empty() : byEmail(email);
+            if (byEmail.isPresent()) {
+                return link(byEmail.get().id(), appleSub);
+            }
+            UUID id = UUID.randomUUID();
+            users.put(id, new UserProfile(id, email, name, null, null, null, null, null,
+                    Set.of(AuthProvider.APPLE), null));
+            appleSubs.put(id, appleSub);
+            return id;
+        }
+
+        private UUID link(UUID id, String appleSub) {
+            appleSubs.put(id, appleSub);
+            UserProfile p = users.get(id);
+            Set<AuthProvider> providers = EnumSet.copyOf(p.authProviders());
+            providers.add(AuthProvider.APPLE);
+            users.put(id, new UserProfile(p.id(), p.email(), p.name(), p.defaultLocation(),
+                    p.defaultLocationLabel(), p.defaultActivity(), p.language(),
+                    p.defaultTravelMode(), providers, p.consents()));
+            return id;
+        }
+
+        private Optional<UserProfile> byEmail(String email) {
+            return users.values().stream()
+                    .filter(u -> deletedAt.get(u.id()) == null)
+                    .filter(u -> email.equals(u.email())).findFirst();
+        }
+
+        @Override public void saveAppleRefreshToken(UUID userId, String refreshToken) {
+            refreshTokens.put(userId, refreshToken);
+        }
+
+        @Override public Optional<String> appleRefreshToken(UUID userId) {
+            return Optional.ofNullable(refreshTokens.get(userId));
+        }
+
+        @Override public void softDelete(UUID userId, Instant when, Instant purgeAt) {
+            deletedAt.put(userId, when);
+            purgeAfter.put(userId, purgeAt);
+            appleSubs.remove(userId);
+            refreshTokens.remove(userId);
+            UserProfile p = users.get(userId);
+            if (p != null) {
+                // Kimlik serbest birakilir: ayni e-posta yeniden kayit olabilmeli.
+                users.put(userId, new UserProfile(userId, "deleted+" + userId + "@invalid",
+                        "Silindi", null, null, null, null, null, p.authProviders(), p.consents()));
+            }
+        }
+
         @Override public Optional<UserProfile> profileOf(UUID userId) {
-            return Optional.ofNullable(users.get(userId));
+            return deletedAt.containsKey(userId) ? Optional.empty()
+                    : Optional.ofNullable(users.get(userId));
         }
 
         @Override public UserProfile saveProfile(UserProfile profile) {
             users.put(profile.id(), profile);
             return profile;
+        }
+    }
+
+    public static class InMemoryReportStore implements ReportStorePort {
+        public final List<Report> saved = new ArrayList<>();
+
+        @Override public Report save(Report report) {
+            saved.add(report);
+            return report;
+        }
+    }
+
+    public static class InMemoryBlockStore implements BlockStorePort {
+        public final Map<UUID, Block> blocks = new LinkedHashMap<>();
+
+        @Override public Block save(Block block) {
+            blocks.put(block.id(), block);
+            return block;
+        }
+
+        @Override public List<Block> blocksOf(UUID blockerUserId) {
+            return blocks.values().stream()
+                    .filter(b -> b.blockerUserId().equals(blockerUserId)).toList();
+        }
+
+        @Override public boolean delete(UUID blockerUserId, UUID blockId) {
+            Block found = blocks.get(blockId);
+            if (found == null || !found.blockerUserId().equals(blockerUserId)) {
+                return false;
+            }
+            blocks.remove(blockId);
+            return true;
+        }
+
+        @Override public Set<UUID> blockedUserIdsOf(UUID blockerUserId) {
+            return blocks.values().stream()
+                    .filter(b -> b.blockerUserId().equals(blockerUserId))
+                    .map(Block::blockedUserId).filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+        }
+
+        @Override public Set<UUID> blockerUserIdsOf(UUID blockedUserId) {
+            return blocks.values().stream()
+                    .filter(b -> blockedUserId.equals(b.blockedUserId()))
+                    .map(Block::blockerUserId).collect(Collectors.toSet());
+        }
+
+        @Override public Set<UUID> blockedParticipantIdsOf(UUID blockerUserId, UUID sessionId) {
+            return blocks.values().stream()
+                    .filter(b -> b.blockerUserId().equals(blockerUserId))
+                    .filter(b -> sessionId.equals(b.sessionId()))
+                    .map(Block::blockedParticipantId).filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
         }
     }
 
