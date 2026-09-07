@@ -257,14 +257,21 @@ dönerse görev **durur**, INDEX'e K-M görevi yazılır, kullanıcıya sorulur.
 ```ts
 import type { ExpoConfig } from "expo/config";
 
+import { version } from "./package.json";   // surum TEK kaynaktan (I-3/plan44)
+
 const config: ExpoConfig = {
-  name: "BumpInto", slug: "bumpinto", scheme: "bumpinto", version: "0.1.0",
-  orientation: "portrait", userInterfaceStyle: "light", newArchEnabled: true,
+  name: "BumpInto", slug: "bumpinto", scheme: "bumpinto", version,
+  orientation: "portrait", userInterfaceStyle: "light",
+  // `newArchEnabled` YAZILMAZ: SDK 55+ New Architecture'i zorunlu kilar, ayar anlamsiz.
+  icon: "./assets/images/icon.png",
   ios: { bundleIdentifier: "app.bumpinto.mobile", supportsTablet: false,
     associatedDomains: ["applinks:bumpinto.app"],
     config: { googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_KEY } },
-  android: { package: "app.bumpinto.mobile", edgeToEdgeEnabled: true,
+  android: { package: "app.bumpinto.mobile",
+    // `edgeToEdgeEnabled` YAZILMAZ -- SDK 57'de kaldirildi (Android 16 zorunlu kilar);
+    // verilirse `expo prebuild` EDGE_TO_EDGE_PLUGIN uyarisi basar.
     predictiveBackGestureEnabled: true,
+    adaptiveIcon: { /* sablonun android-icon-* varliklari korunur */ },
     config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_KEY } },
     intentFilters: [{ action: "VIEW", autoVerify: true, category: ["BROWSABLE", "DEFAULT"],
       data: [{ scheme: "https", host: "bumpinto.app", pathPrefix: "/j" }] }] },
@@ -285,7 +292,7 @@ burada eklenirse iki planda iki farklı metin oluşur. `app.json` silinir.
 - [ ] **Step 3: `eas.json` + `.env.example`** — dev build zorunlu (Expo Go yok):
 
 ```json
-{ "cli": { "version": ">= 12.0.0" }, "build": {
+{ "cli": { "version": ">= 23.0.0", "appVersionSource": "remote" }, "build": {
   "development": { "developmentClient": true, "distribution": "internal",
     "env": { "EXPO_PUBLIC_API_URL": "http://localhost:8060" } },
   "preprod": { "distribution": "internal",
@@ -301,6 +308,22 @@ sonra `rtk grep -c "bumpinto.app" frontend/mobile/android/app/src/main/AndroidMa
 Expected: ≥1 (derin link intent filter'ı üretildi).
 
 - [ ] **Step 5: Dosya listesi** — `frontend/mobile/{app.config.ts,eas.json,.env.example}`, silinen `app.json`. Mesaj: `feat(mobile): derin link + edge-to-edge config, eas profilleri`.
+
+**T2 SAHA NOTLARI (2026-09-07, uygulanırken ölçüldü — snippet'ten ÖNCE geçerli).**
+
+| # | Bulgu | Sonuç |
+|---|---|---|
+| 1 | `edgeToEdgeEnabled` SDK 57'de **kaldırıldı**; `expo prebuild` `EDGE_TO_EDGE_PLUGIN` uyarısı basar | Ayar yazılmaz. Edge-to-edge artık varsayılan; güvenli alanı ekranlar `react-native-safe-area-context` ile bırakır |
+| 2 | `newArchEnabled` anlamsız (SDK 55+ zorunlu) | Yazılmaz |
+| 3 | Şablonun `app.json`'ı `ios.icon: "./assets/expo.icon"` (Expo markalı ikon) taşır; T1'de o dizin silindi | `app.config.ts`'e taşınmaz; `icon` + `android.adaptiveIcon` korunur, gerçek marka ikonu ileride |
+| 4 | `expo install` `app.json`'a **kendiliğinden** eklenti ekler (`expo-secure-store`, `expo-localization`, `expo-font`, `expo-build-properties`) | `app.config.ts`'e taşınırken bu dördü **kaybedilmemeli**; şablonun `expo-splash-screen` + `expo-router` girdileri ve `experiments.{typedRoutes,reactCompiler}` de korunur |
+| 5 | `expo prebuild` `package.json` scriptlerini yeniden yazar: `expo start --android` → **`expo run:android`** (ios aynı) | Beklenen davranış (CNG + yerel dizin); geri alınmaz |
+| 6 | EAS CLI ≥ **23**, `appVersionSource: "remote"` (I-3/plan44 ile aynı) | `eas.json` `cli` bloğuna yazıldı |
+| 7 | `.env` sızıntısı: **kök `.gitignore` zaten kapsıyor** (`.env`, `.env.*`, `*.env`, `!.env.example`) | `frontend/mobile/.gitignore`'a tekrar kural **eklenmez** |
+
+**Doğrulanan kapılar:** sözleşme denetimi 8/8 ≥1 (`radiusKm` dahil) · `npx expo config --type public` parse ediyor ·
+`expo prebuild --platform android` **uyarısız** · `AndroidManifest.xml`'de `bumpinto.app` autoVerify intent
+filter'ı üretildi · mobil typecheck temiz + 2/2 test · `expo install --check` temiz · web 520/520 (regresyon yok).
 
 ---
 
