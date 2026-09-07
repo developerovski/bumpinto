@@ -4,8 +4,8 @@ import { useSessionStore } from "../store/sessionStore";
 import RunoffScreen from "./RunoffScreen";
 
 const venues = [
-  { id: "v1", name: "Sofra Cuisine", lat: 51.7, lng: 5.3, rating: 5, travelMinutes: {} },
-  { id: "v2", name: "Abed food", lat: 51.7, lng: 5.31, rating: 4.9, travelMinutes: {} },
+  { id: "v1", name: "Sofra Cuisine", lat: 51.7, lng: 5.3, rating: 5, travel: [] },
+  { id: "v2", name: "Abed food", lat: 51.7, lng: 5.31, rating: 4.9, travel: [] },
 ];
 const mehmet = { id: "h", displayName: "Mehmet", host: true, hasLocation: true, manual: false };
 const yildiz = { id: "y", displayName: "Yildiz", host: false, hasLocation: true, manual: false };
@@ -26,8 +26,14 @@ function view(
 
 // v1: toplam 55 dk, fark 5 dk — v2'ye göre 10 dk daha az (>=5 dk kuralı) → v1 "karar verici" hücre.
 const fairVenues = [
-  { id: "v1", name: "Café Berlage", lat: 51.7, lng: 5.3, rating: 4.6, travelMinutes: { h: 30, y: 25 } },
-  { id: "v2", name: "Koffie Top Hundred", lat: 51.7, lng: 5.31, rating: 4.4, travelMinutes: { h: 40, y: 25 } },
+  {
+    id: "v1", name: "Café Berlage", lat: 51.7, lng: 5.3, rating: 4.6,
+    travel: [{ participantId: "h", minutes: 30 }, { participantId: "y", minutes: 25 }],
+  },
+  {
+    id: "v2", name: "Koffie Top Hundred", lat: 51.7, lng: 5.31, rating: 4.4,
+    travel: [{ participantId: "h", minutes: 40 }, { participantId: "y", minutes: 25 }],
+  },
 ];
 
 describe("RunoffScreen", () => {
@@ -109,7 +115,7 @@ describe("RunoffScreen", () => {
   it("başlık ≥3 finalistte çoklu dal kullanır", () => {
     const threeVenues = [
       ...venues,
-      { id: "v3", name: "Third Place", lat: 51.7, lng: 5.32, rating: 4.2, travelMinutes: {} },
+      { id: "v3", name: "Third Place", lat: 51.7, lng: 5.32, rating: 4.2, travel: [] },
     ];
     const v = view({ participantId: "h", host: true }, ["y"], {
       venues: threeVenues, runoffVenueIds: ["v1", "v2", "v3"],

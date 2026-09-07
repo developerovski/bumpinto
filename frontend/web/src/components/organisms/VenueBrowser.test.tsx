@@ -15,8 +15,14 @@ const CONFIG: AppConfig = {
 };
 
 const venues = [
-  { id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0, travelMinutes: { h: 30, a: 28 } },
-  { id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1, travelMinutes: { h: 45, a: 40 } },
+  {
+    id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0,
+    travel: [{ participantId: "h", minutes: 30 }, { participantId: "a", minutes: 28 }],
+  },
+  {
+    id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1,
+    travel: [{ participantId: "h", minutes: 45 }, { participantId: "a", minutes: 40 }],
+  },
 ];
 const people = [
   { id: "h", displayName: "Mehmet", host: true, hasLocation: true, deckDone: false, manual: false, approxLocation: { lat: 51.7, lng: 5.3 } },
@@ -193,8 +199,31 @@ describe("VenueBrowser", () => {
       { ...venues[1], locality: "Helmond" },
     ];
     render(<VenueBrowser {...base} venues={withLocality} mode="host" midpointLabel="Eindhoven" />);
-    expect(screen.queryByText("Eindhoven")).not.toBeInTheDocument();
-    expect(screen.getByText("Helmond")).toBeInTheDocument();
+    // VenueMeta artık ★/fiyat/saat/semt'i TEK span'de birleştiriyor (R-W8) — tam eşleşme
+    // ("Eindhoven") artık hiçbir düğümü bulamaz (satır "★ 4,0 · €€ · Eindhoven" yazar), bastırma
+    // bozulsa bile bu iddia sessizce yeşil kalırdı; regex ile alt dize aranır.
+    expect(screen.queryByText(/Eindhoven/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Helmond/)).toBeInTheDocument();
+  });
+
+  it("satırda bugünün saati basılır", () => {
+    const withHours = [{ ...venues[0], hoursToday: "08:00 – 18:00" }, venues[1]];
+    render(<VenueBrowser {...base} venues={withHours} mode="host" />);
+    expect(screen.getByText(/Bugün 08:00 – 18:00/)).toBeInTheDocument();
+  });
+
+  it("tagline alanı yoksa o satır hiç çizilmez", () => {
+    render(<VenueBrowser {...base} mode="host" />);
+    expect(screen.queryByText(/Sakin, oturmalı/)).not.toBeInTheDocument();
+  });
+
+  // tagline (B-15/R-B7) openapi'de HENÜZ yok — cast şart. Yukarıdaki "yoksa yok" testi tek
+  // başına hiçbir şey kanıtlamıyordu (fixture'da zaten olmayan bir dizeydi); bu test alan
+  // GELİNCE gerçekten basıldığını gösterir.
+  it("tagline alanı VARSA basılır", () => {
+    const withTagline = [{ ...venues[0], tagline: "Sakin, oturmalı" } as never, venues[1]];
+    render(<VenueBrowser {...base} venues={withTagline} mode="host" />);
+    expect(screen.getByText("Sakin, oturmalı")).toBeInTheDocument();
   });
 
   it("konumu henüz gelmemiş TEK katılımcı: adlı pozitif not (§5.C)", () => {

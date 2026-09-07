@@ -38,8 +38,8 @@ describe("RunoffTie", () => {
   // yerde test edilir (code-review bulgusu, "re-point" edilen test).
   it("voteTally doluyken sayım listesi görünür (host ve guest'te aynı)", () => {
     const finalists = [
-      { id: "v1", name: "Sofra", travelMinutes: {} },
-      { id: "v2", name: "Abed", travelMinutes: {} },
+      { id: "v1", name: "Sofra", travel: [] },
+      { id: "v2", name: "Abed", travel: [] },
     ];
     render(
       <RunoffTie

@@ -206,8 +206,9 @@ doğrulanacağını düşünsün.
   doğal bitişte sahne TAMAMEN boşalır. Çözüm: `ref` callback'inde (ilk boyamadan önce)
   `animationPlayState:"paused"` + negatif `animationDelay`. **Tek bir gecikme değeri tüm
   parçacık türlerine uymaz** — `confetti`/`pop` `-0.3s`, `poof` `-0.12s` istedi.
-- **`travelMinutes` anahtarları ile `TRAVEL.labels` anahtarları AYNI olmalı**, yoksa rozet
-  sessizce "Yol" fallback'ine düşer.
+- **`travel[]`in her bacağındaki `participantId` ile `TRAVEL.labels` anahtarları AYNI olmalı**
+  (K-B26: eski dakika-haritası alanı W-13'te düştü, `VenueDto.travel[]` tek kaynak oldu),
+  yoksa satır etiketi/nokta harfi sessizce `t("travel.friend")` ("Arkadaşın") fallback'ine düşer.
 - **Fixture nit**: `BEBEK` ("Bebek Kahve") ve `BALAT` ("Balat Kahvesi") aynı monogramı
   ("bk") üretiyor — iki mekânı yan yana basan kartlarda (`LikedList`) ikisi tıpatıp aynı
   görünüyor. Render kusuru değil, veri seçimi. Düzeltmek isteyen `_fixtures.ts`'te BALAT'ı

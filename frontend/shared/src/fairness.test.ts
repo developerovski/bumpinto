@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { byFairness, byRating, fairnessOf, roundTravel } from "./fairness";
 
 const v = (id: string, tm: Record<string, number>, rating?: number, deckOrder = 0) =>
-  ({ id, name: id, rating, deckOrder, travelMinutes: tm });
+  ({
+    id,
+    name: id,
+    rating,
+    deckOrder,
+    travel: Object.entries(tm).map(([participantId, minutes]) => ({ participantId, minutes })),
+  });
 
 describe("fairness", () => {
   it("5 dk bandına yuvarlar, tabanı 5 dk'da tutar", () => {
@@ -50,11 +56,11 @@ describe("fairness", () => {
     expect(f.spread).toBe(10);
   });
 
-  it("travelMinutes boşsa null", () => {
+  it("travel[] boşsa null", () => {
     expect(fairnessOf(v("d", {}))).toBeNull();
   });
 
-  it("travelMinutes boş ama sunucu fairness alanı varsa — entries boş, max/spread/longestId sunucudan, total=max (WhyHere fold)", () => {
+  it("travel[] boş ama sunucu fairness alanı varsa — entries boş, max/spread/longestId sunucudan, total=max (WhyHere fold)", () => {
     const f = fairnessOf({
       ...v("f", {}),
       fairness: { maxMinutes: 35, spreadMinutes: 8, longestParticipantId: "p9" },
@@ -69,7 +75,7 @@ describe("fairness", () => {
     expect(f.total).toBe(35);
   });
 
-  it("travelMinutes boş + sunucu spreadMinutes yoksa spread 0, min=max", () => {
+  it("travel[] boş + sunucu spreadMinutes yoksa spread 0, min=max", () => {
     const f = fairnessOf({ ...v("g", {}), fairness: { maxMinutes: 20 } })!;
     expect(f.spread).toBe(0);
     expect(f.min).toBe(20);
@@ -97,5 +103,22 @@ describe("fairness", () => {
     const d = { ...v("d", { p1: 10 }, 9), ratingScale: 10 }; // 0.90 — b ile eşit
     const e = v("e", { p1: 10 }); // puansız → sona
     expect([a, b, c, d, e].sort(byRating).map((x) => x.id)).toEqual(["c", "b", "d", "a", "e"]);
+  });
+});
+
+describe("fairnessOf — travel[] sözleşmesi", () => {
+  it("participantId'si ya da minutes'i olmayan bacak yok sayılır", () => {
+    const f = fairnessOf({ travel: [{ participantId: "a", minutes: 20 }, { minutes: 45 }] });
+    expect(f!.entries).toEqual([{ id: "a", minutes: 20 }]);
+    expect(f!.max).toBe(20);
+  });
+
+  it("hiç geçerli bacak kalmazsa sunucu fairness'ına düşer", () => {
+    const f = fairnessOf({
+      travel: [{ participantId: "a" }],
+      fairness: { maxMinutes: 35, spreadMinutes: 10, longestParticipantId: "b" },
+    });
+    expect(f!.entries).toEqual([]);
+    expect([f!.max, f!.min, f!.longestId]).toEqual([35, 25, "b"]);
   });
 });

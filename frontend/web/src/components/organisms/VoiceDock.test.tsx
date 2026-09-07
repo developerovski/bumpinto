@@ -41,6 +41,7 @@ function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getSt
   useSessionStore.setState({ slug: "x", view: view as never, error: null });
   useVoiceStore.setState({
     phase: "idle", muted: false, peers: {}, selfSpeaking: false, endedReason: null, micDenied: false, connectFailed: false,
+    limitMinutes: null,
     join: vi.fn(realActions.join),
     leave: vi.fn(realActions.leave),
     toggleMute: vi.fn(realActions.toggleMute),
@@ -194,5 +195,42 @@ describe("VoiceDock", () => {
       useVoiceStore.setState({ phase: "in" });
     });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mikrofonu kapat" }));
+  });
+
+  it("süre dolunca uzunluk biliniyorsa ipucu basılır, bilinmiyorsa satır çizilmez", () => {
+    const view = { ...base, voice: null, viewer: { participantId: "a", host: false } };
+    const { unmount } = dock(view, { endedReason: "TIME_LIMIT", limitMinutes: 30 });
+    expect(screen.getByText("Süre doldu")).toBeInTheDocument();
+    expect(screen.getByText("30 dk sesli sohbet bitti")).toBeInTheDocument();
+    unmount();
+    dock(view, { endedReason: "TIME_LIMIT", limitMinutes: null });
+    expect(screen.queryByText(/sesli sohbet bitti/)).not.toBeInTheDocument();
+  });
+
+  it("masaüstünde dock sağ altta yüzer", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
+    const region = screen.getByRole("region", { name: "Sesli sohbet" });
+    expect(region.className).toContain("lg:fixed");
+    expect(region.className).toContain("lg:right-6");
+    expect(region.className).toContain("lg:bottom-6");
+  });
+
+  it("lg'de dock için görünmez yer tutucu bırakılır (son içerik dock altında kalmasın)", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
+    const region = screen.getByRole("region", { name: "Sesli sohbet" });
+    const spacer = region.nextElementSibling as HTMLElement | null;
+    expect(spacer).not.toBeNull();
+    expect(spacer?.getAttribute("aria-hidden")).toBe("true");
+    expect(spacer?.className).toContain("hidden");
+    expect(spacer?.className).toContain("lg:block");
+  });
+
+  it("HOST bitirdiğinde limitMinutes dolu olsa bile süre ipucu basılmaz (yalnız TIME_LIMIT basar)", () => {
+    dock(
+      { ...base, voice: null, viewer: { participantId: "b", host: false } },
+      { endedReason: "HOST", limitMinutes: 30 },
+    );
+    expect(screen.getByText("Sesli sohbet bitirildi")).toBeInTheDocument();
+    expect(screen.queryByText(/sesli sohbet bitti/)).not.toBeInTheDocument();
   });
 });

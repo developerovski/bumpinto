@@ -123,7 +123,9 @@
     "gap": "{{min}} min apart",
     "self": "You",
     "friend": "Friend",
-    "longest": "longest trip"
+    "range": "{{min}}–{{max}} min",
+    "longestName": "longest trip {{name}}",
+    "bars": "Everyone's trip"
   },
   "fairness": {
     "same": "About equal for all",
@@ -424,7 +426,11 @@
     "needTwo": "The deck needs at least two people in the session — while someone is offline you can pick a place from the list and close the decision.",
     "invite": "Invite link",
     "inviteText": "{{name}} — we're meeting in the middle, come along:",
-    "noneFor": "No {{activity}} spots nearby."
+    "noneFor": "No {{activity}} spots nearby.",
+    "searching": "looking for places…",
+    "searchingTitle": "Looking for places nearby",
+    "searchingCopy": "Sorted by everyone's trip.",
+    "searchingHand": "usually takes 5 seconds"
   },
   "attribution": {
     "google": "Google Maps",
@@ -466,10 +472,15 @@
     "errSolo": "Voice chat is for group meetups only.",
     "errExpiring": "This meetup is about to expire; voice chat can't start.",
     "errClosed": "This meetup is closed.",
+    "endedTimeLimitHint": "{{min}} minutes of voice chat are up",
     "ended": {
       "HOST": "Voice chat was ended",
       "TIME_LIMIT": "Time is up",
       "EMPTY": "Everyone left, voice chat closed"
     }
+  },
+  "offline": {
+    "title": "No connection",
+    "hint": "Showing the last version you saw · {{time}}"
   }
 }

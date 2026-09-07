@@ -6,8 +6,7 @@ import { byFairness } from "@bumpinto/shared";
 import { formatRating } from "../../lib/format";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Overline } from "../atoms";
-import FairnessBadge from "./FairnessBadge";
-import TravelChips from "./TravelChips";
+import RangeBar from "./RangeBar";
 import VenueThumb from "./VenueThumb";
 
 export default function LikedList(props: {
@@ -40,8 +39,7 @@ export default function LikedList(props: {
               {v.rating != null && (
                 <span className="text-[0.75rem] text-ink2">★ {formatRating(v.rating, v.ratingScale)}</span>
               )}
-              <FairnessBadge venue={v} travel={travel} />
-              <TravelChips venue={v} travel={travel} size="sm" />
+              <RangeBar venue={v} travel={travel} />
             </div>
             <span
               className="flex h-[1.625rem] w-[1.625rem] flex-none items-center justify-center rounded-full bg-[image:var(--grad)] text-white"

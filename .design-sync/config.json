@@ -105,6 +105,22 @@
     },
     "MobileCta": {
       "cardMode": "column"
+    },
+    "RangeBar": {
+      "cardMode": "column"
+    },
+    "TravelBars": {
+      "cardMode": "column"
+    },
+    "OfflineBanner": {
+      "cardMode": "column",
+      "viewport": "1280x700"
+    },
+    "VenuesLoading": {
+      "cardMode": "column"
+    },
+    "VenueRowSkeleton": {
+      "cardMode": "column"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"

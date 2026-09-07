@@ -14,7 +14,7 @@ export default function WhyHere(props: {
   labels: Record<string, string>;
 }) {
   const { t } = useTranslation();
-  // `fairnessOf` (frontend/shared) artık sunucu-yalnız yolu da kapsar (§4.1–4.2 — travelMinutes
+  // `fairnessOf` (frontend/shared) artık sunucu-yalnız yolu da kapsar (§4.1–4.2 — travel[]
   // boşken bile `venue.fairness` alanı varsa Fairness üretir; kod-review düzeltmesi: WhyHere'in
   // yerel `fairnessForAxis`i aynı düşümü ikinci kez yapıyordu, tek kaynağa katlandı).
   const f = fairnessOf(props.venue);

@@ -123,7 +123,9 @@
     "gap": "{{min}} min verschil",
     "self": "Jij",
     "friend": "Vriend",
-    "longest": "langste rit"
+    "range": "{{min}}–{{max}} min",
+    "longestName": "langste rit {{name}}",
+    "bars": "Ieders rit"
   },
   "fairness": {
     "same": "Voor iedereen ~gelijk",
@@ -424,7 +426,11 @@
     "needTwo": "Voor een deck moeten er minstens twee mensen in de sessie zijn — als iemand offline is, kies dan een plek uit de lijst en sluit de beslissing af.",
     "invite": "Uitnodigingslink",
     "inviteText": "{{name}} — we spreken in het midden af, doe je mee:",
-    "noneFor": "Geen plekken voor {{activity}} in de buurt."
+    "noneFor": "Geen plekken voor {{activity}} in de buurt.",
+    "searching": "plekken zoeken…",
+    "searchingTitle": "Plekken in de buurt zoeken",
+    "searchingCopy": "Gesorteerd op ieders rit.",
+    "searchingHand": "duurt meestal 5 seconden"
   },
   "attribution": {
     "google": "Google Maps",
@@ -466,10 +472,15 @@
     "errSolo": "Spraakchat is alleen voor groepsafspraken.",
     "errExpiring": "Deze afspraak loopt bijna af; spraakchat kan niet starten.",
     "errClosed": "Deze afspraak is gesloten.",
+    "endedTimeLimitHint": "{{min}} minuten spraakchat zijn voorbij",
     "ended": {
       "HOST": "Spraakchat is beëindigd",
       "TIME_LIMIT": "De tijd is om",
       "EMPTY": "Iedereen is weg, spraakchat gesloten"
     }
+  },
+  "offline": {
+    "title": "Geen verbinding",
+    "hint": "Je ziet de laatst geladen versie · {{time}}"
   }
 }

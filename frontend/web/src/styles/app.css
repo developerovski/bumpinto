@@ -23,6 +23,11 @@
   --color-violet-wash: #f1ebff;
   --color-amber: #a96a0b;
   --color-amber-wash: #fff1d6;
+  /* Artboard `.g-am` / `.g-fl` ezmeleri (v3): rozet METNİ koyulaşır, zemin ve marka rengi
+     DEĞİŞMEZ. Ölçüldü — #a96a0b/#fff1d6 = 3.96:1 (AA altı), #7e4f06 = 6.25:1;
+     #de2456/#ffe9ef = 4.04:1, #c41c4b = 5.02:1. */
+  --color-amber-ink: #7e4f06;
+  --color-flame-ink: #c41c4b;
   --color-sand: #f4eee6;
   --color-line: #f1e8de;
   --color-line2: #e4d9cd;

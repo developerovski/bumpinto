@@ -15,12 +15,12 @@ export default function Attribution(props: { providers: string[]; center?: boole
   // Döşeme atfı: MapLibre'de haritanın kendi atıf denetimi basar, burada tekrar basmıyoruz.
   if (lines.length === 0) return null;
 
-  const cls = `flex flex-col gap-0.5 text-[0.6875rem] text-ink3 ${props.center ? "text-center" : ""}`;
+  const cls = `flex flex-col gap-0.5 text-[0.6875rem] text-ink2 ${props.center ? "text-center" : ""}`;
   return (
     <p className={cls}>
       {lines.map((l) =>
         l.url ? (
-          <a key={l.key} href={l.url} target="_blank" rel="noreferrer" className="text-ink3 underline">
+          <a key={l.key} href={l.url} target="_blank" rel="noreferrer" className="text-ink2 underline">
             {l.text}
           </a>
         ) : (

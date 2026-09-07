@@ -1,0 +1,50 @@
+/* Artboard `.tb` (W6 deste kartı, W8 karar sağ kartı) — kişi başı yol çubuğu. Dar liste
+   satırında DEĞİL (orada `RangeBar`): burada yatay yer var, herkes ayrı satır. */
+import { useTranslation } from "react-i18next";
+import { fairnessOf, type FairnessVenue } from "@bumpinto/shared";
+import { fairnessLine } from "../../lib/travelText";
+import type { TravelInfo } from "../../lib/useTravelLabels";
+import { Overline } from "../atoms";
+import { FairnessNote } from "./RangeBar";
+
+const ROW = "grid grid-cols-[3.5rem_1fr_3rem] items-center gap-2 text-[0.78125rem] text-ink2";
+
+export default function TravelBars(props: {
+  venue: FairnessVenue;
+  travel: TravelInfo;
+  /** Kart içinde üstlük (ör. "Herkesin yolu"); deste kartında verilmez. */
+  title?: string;
+}) {
+  const { t } = useTranslation();
+  const f = fairnessOf(props.venue);
+  if (!f || f.entries.length === 0) return null;
+  // Kendi satırın en üstte; kalanlar `fairnessOf` sırasında (en uzun yol önce) — kararlı.
+  const rows = [...f.entries].sort(
+    (a, b) => Number(b.id === props.travel.selfId) - Number(a.id === props.travel.selfId),
+  );
+  const line = fairnessLine(f, props.travel, t);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {props.title && <Overline>{props.title}</Overline>}
+      <ul className="m-0 flex list-none flex-col gap-[0.3125rem] p-0">
+        {rows.map((e) => (
+          <li key={e.id} className={ROW}>
+            <b className="truncate font-bold text-ink">{props.travel.labels[e.id] ?? t("travel.friend")}</b>
+            <span className="relative h-2 overflow-hidden rounded-full bg-line2">
+              <i
+                data-testid={`travel-fill-${e.id}`}
+                className={`absolute inset-y-0 left-0 rounded-full ${e.id === f.longestId ? "bg-flame" : "bg-grass"}`}
+                style={{ width: `${Math.max(8, Math.round((e.minutes / (f.max || e.minutes)) * 88))}%` }}
+              />
+            </span>
+            <span className="text-right font-bold text-ink tabular-nums">
+              {t("travel.min", { min: e.minutes })}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <FairnessNote line={line} />
+    </div>
+  );
+}

@@ -13,12 +13,12 @@ export default function SessionSteps(props: { current: (typeof STEPS)[number] })
         <li key={s} aria-current={i === at ? "step" : undefined} className="flex items-center gap-2">
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-full border-[1.5px] font-head text-[0.6875rem] font-extrabold ${
-              i <= at ? "border-flame-deep bg-flame-wash text-flame-deep" : "border-line2 text-ink3"
+              i <= at ? "border-flame-deep bg-flame-wash text-flame-deep" : "border-line2 text-ink2"
             }`}
           >
             {i + 1}
           </span>
-          <span className={`text-[0.75rem] font-semibold ${i <= at ? "text-ink" : "text-ink3"}`}>
+          <span className={`text-[0.75rem] font-semibold ${i <= at ? "text-ink" : "text-ink2"}`}>
             {t(`steps.${s}`)}
           </span>
           {i < STEPS.length - 1 && <span aria-hidden className="h-px w-4 bg-line2" />}

@@ -3,7 +3,8 @@ import { RunoffList } from "@bumpinto/web";
 import { BEBEK, KARAKOY, TRAVEL } from "./_fixtures";
 
 /* İkisini de herkes beğendi → finale kalan iki mekân. `deckOrder` tek/çift olduğu için
-   kartlar artboard'daki gibi ters yönde eğik durur (-2° / +2°). */
+   kartlar artboard'daki gibi ters yönde eğik durur (-2° / +2°). Fixtures artık `travel[]`
+   taşıdığı için finalist kartları kendi yol çubuğunu (`RangeBar`/`TravelBars`) basar. */
 const FINALISTS = [KARAKOY, BEBEK];
 
 /** 07 Runoff sayfa sütunu — Page(default) ölçüleri: 480px kolon, 15px dikey ritim. */

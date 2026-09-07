@@ -16,7 +16,7 @@ function DeckColumn({ children }: { children: ReactNode }) {
 const SOME_LIKED = { [MODA.id]: true, [KARAKOY.id]: true };
 
 /** W3 · iki mekan beğenilmiş: minimax sıraya göre (en adil önce) küçük görsel + puan +
-    adalet rozeti + yol çipleri, sağda gradyanlı onay tiki. */
+    yol çubuğu, sağda gradyanlı onay tiki. */
 export function SomeLiked() {
   return (
     <DeckColumn>
@@ -36,11 +36,10 @@ export function Empty() {
 }
 
 /** ÜRÜN GERÇEĞİ (VenueDeck.tsx `WithoutTravelBadges` ile aynı kök neden): yol süreleri
-    henüz hesaplanmadan gelen mekanlarda `travelMinutes` hiç yok — adalet rozeti ve yol
-    çipleri `fairnessOf`/`TravelChips` içinde sessizce düşer, satır yalnız ad + puan/fiyatla
-    kısa kalır. */
+    henüz hesaplanmadan gelen mekanlarda `travel[]` hiç yok — yol çubuğu `fairnessOf`/
+    `RangeBar` içinde sessizce düşer, satır yalnız ad + puan/fiyatla kısa kalır. */
 export function WithoutTravelBadges() {
-  const noTravel = DECK.map(({ travelMinutes, ...rest }) => rest);
+  const noTravel = DECK.map(({ travel, ...rest }) => rest);
   return (
     <DeckColumn>
       <LikedList

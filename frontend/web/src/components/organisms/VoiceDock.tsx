@@ -1,6 +1,8 @@
-/* Alt ses çubuğu (spec §7 dock durumları). Sticky, spacer YOK: SessionPage onu [data-app-shell]'in
-   direkt flex çocuğu olarak (page ile birlikte) basar, `order-last` atıf altbilgisinin ardına koyar
-   ve akıştaki gerçek yüksekliğini kaplar — altbilgi hep erişilebilir kalır. */
+/* Alt ses çubuğu (spec §7 dock durumları). 390'da sticky, spacer YOK: SessionPage onu
+   [data-app-shell]'in direkt flex çocuğu olarak (page ile birlikte) basar, `order-last` atıf
+   altbilgisinin ardına koyar ve akıştaki gerçek yüksekliğini kaplar — altbilgi hep erişilebilir
+   kalır. lg+'de (1280 dock) durum farklı: kart `fixed` olup akıştan çıkar, bu yüzden `Bar` kendi
+   görünmez ikizini (spacer) basar ki sayfanın son içeriği dock'un altında kalıcı kapanmasın. */
 import { Microphone, MicrophoneSlash, PhoneDisconnect } from "@phosphor-icons/react";
 import type { SessionView } from "@bumpinto/shared";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -41,15 +43,29 @@ function useNow(active: boolean) {
 
 function Bar(props: { label: string; children: ReactNode }) {
   return (
-    <div
-      role="region"
-      aria-label={props.label}
-      className="order-last sticky bottom-0 z-40 border-t border-line bg-card shadow-sh1 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-    >
-      <div className="mx-auto flex max-w-[30rem] flex-wrap items-center gap-3 px-4 pt-3 lg:max-w-[80rem] xl:max-w-[96rem]">
-        {props.children}
+    <>
+      <div
+        role="region"
+        aria-label={props.label}
+        className={
+          "order-last sticky bottom-0 z-40 border-t border-line bg-card shadow-sh1 " +
+          "pb-[max(0.75rem,env(safe-area-inset-bottom))] " +
+          // lg+: akıştan çıkar, sağ altta yüzer kart olur (artboard 1280 dock).
+          "lg:fixed lg:right-6 lg:bottom-6 lg:z-50 lg:max-w-[32rem] " +
+          "lg:rounded-card lg:border lg:pb-3 lg:shadow-sh2"
+        }
+      >
+        <div className="mx-auto flex max-w-[30rem] flex-wrap items-center gap-3 px-4 pt-3 lg:max-w-none">
+          {props.children}
+        </div>
       </div>
-    </div>
+      {/* lg+'de kart `fixed` olup akıştan çıkıyor; yer açılmazsa sayfanın son içeriği (liste sonu,
+          eylem düğmesi) dock'un altında KALICI kapanır — ortaya çıkarmanın yolu olmaz. Bu görünmez
+          ikiz `order-last` ile dock'un gerçek konumuna (atıf altbilgisinin ardına) taşınır ve akışta
+          onun yerine boşluk bırakır. Yükseklik dock'un en olası iki satırlık içeriğine (metin +
+          düğme satırı + dolgu) göre cömert sabit değer — K-W20: 1280 artboard'ında dock ölçüsü yok. */}
+      <div aria-hidden="true" className="order-last hidden lg:block lg:h-28" />
+    </>
   );
 }
 
@@ -62,6 +78,7 @@ export default function VoiceDock(props: { view: SessionView }) {
     useShallow((s) => ({
       phase: s.phase, muted: s.muted, peers: s.peers, selfSpeaking: s.selfSpeaking,
       endedReason: s.endedReason, micDenied: s.micDenied, connectFailed: s.connectFailed,
+      limitMinutes: s.limitMinutes,
       start: s.start, end: s.end, join: s.join, leave: s.leave, toggleMute: s.toggleMute,
     })),
   );
@@ -99,8 +116,15 @@ export default function VoiceDock(props: { view: SessionView }) {
     return (
       <Bar label={t("voice.region")}>
         {voice.endedReason && (
-          <span aria-live="polite" className="text-[0.875rem] text-ink2">
-            {t(`voice.ended.${voice.endedReason}`)}
+          // Sebep ve süre ipucu AYNI ANDA mount olur — tek aria-live bölgesi, ekran okuyucunun
+          // ikisini de duyurması için. `contents`: sarmalayıcı görsel flex akışına karışmaz.
+          <span aria-live="polite" className="contents">
+            <span className="text-[0.875rem] text-ink2">{t(`voice.ended.${voice.endedReason}`)}</span>
+            {voice.endedReason === "TIME_LIMIT" && voice.limitMinutes != null && (
+              <span className="text-[0.8125rem] text-ink2">
+                {t("voice.endedTimeLimitHint", { min: voice.limitMinutes })}
+              </span>
+            )}
           </span>
         )}
         {host && (

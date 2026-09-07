@@ -5,11 +5,10 @@ import { roundedMidpointMeters } from "../../lib/geo";
 import type { DecisionKind } from "../../lib/serverEnums";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { venueLink, websiteLink } from "../../lib/venueLink";
-import { Heading, Highlight, LinkButton, Note, Sticker } from "../atoms";
+import { Heading, Highlight, LinkButton, Note, Overline, Sticker } from "../atoms";
 import Attribution from "./Attribution";
 import VenueCard from "./VenueCard";
 
-const OVERLINE = "m-0 text-[0.6875rem] font-bold tracking-[0.11em] text-flame-deep uppercase";
 // Artboard W4: .pol style="transform:rotate(-1.4deg);box-shadow:var(--sh2)".
 const WINNER = "transform-[rotate(-1.4deg)] shadow-sh2";
 
@@ -82,7 +81,7 @@ export default function WinnerCard(props: {
   return (
     <>
       <div className="flex flex-col items-center gap-1.5">
-        <p className={OVERLINE}>{eyebrow}</p>
+        <Overline tone="flame">{eyebrow}</Overline>
         <Heading center>
           {head && `${head} `}
           <Highlight>{last}!</Highlight>
@@ -97,6 +96,8 @@ export default function WinnerCard(props: {
         <span className="absolute -top-[0.875rem] right-2.5 z-3 flex">
           <Sticker>{stickerText}</Sticker>
         </span>
+        {/* W8 Karar 1280: `.tb` yalnız sağdaki "Herkesin yolu" kartında basılır (ResultScreen) —
+            sol kazanan kartı kişi başı yolu `.rc-ppl` satırlarıyla taşır, burada TEKRAR EDİLMEZ. */}
         <VenueCard
           venue={props.venue}
           photoHeight={150}
@@ -105,6 +106,7 @@ export default function WinnerCard(props: {
           travel={props.travel}
           className={WINNER}
           attribution={false}
+          travelBars={false}
         />
       </div>
       {href && (
@@ -127,7 +129,7 @@ export default function WinnerCard(props: {
           href={site}
           target="_blank"
           rel="noreferrer"
-          className="self-center text-[0.75rem] text-ink3 underline underline-offset-2 hover:text-ink"
+          className="self-center text-[0.75rem] text-ink2 underline underline-offset-2 hover:text-ink"
         >
           {t("venue.website")}
         </a>

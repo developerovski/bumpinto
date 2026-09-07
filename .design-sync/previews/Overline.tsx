@@ -2,8 +2,9 @@ import { Overline } from "@bumpinto/web";
 
 const COL = { width: "27.75rem", background: "var(--color-paper)", padding: "1rem" } as const;
 
-/** Varsayılan ton (`ink3`) — `ParticipantList`/`WhoIsHere` kullanımı, katılımcı listesinin
-    üst başlığı ("Kimler var"). En sık görülen dal. */
+/** Varsayılan ton — R-W16 erişilebilirlik düzeltmesiyle `ink3`'ten `ink2`'ye koyulaştı
+    (kontrast). `ParticipantList`/`WhoIsHere` kullanımı, katılımcı listesinin üst başlığı
+    ("Kimler var"). En sık görülen dal. */
 export function Default() {
   return (
     <div style={COL}>

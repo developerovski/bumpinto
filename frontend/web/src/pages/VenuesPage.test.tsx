@@ -5,7 +5,7 @@ import VenuesPage from "./VenuesPage";
 
 const venue = {
   id: "v1", name: "Koffie Keuten", lat: 51.5, lng: 5.5, rating: 4.5, deckOrder: 0,
-  travelMinutes: { h: 40, a: 45 },
+  travel: [{ participantId: "h", minutes: 40 }, { participantId: "a", minutes: 45 }],
 };
 const base = {
   slug: "snu7zra8", name: "Cuma kahvesi", activityTypes: ["COFFEE"], status: "BROWSING",

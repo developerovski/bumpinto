@@ -11,6 +11,7 @@ import SessionHeader from "../components/molecules/SessionHeader";
 import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
 import ParticipantList from "../components/organisms/ParticipantList";
+import VenuesLoading from "../components/organisms/VenuesLoading";
 import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { mapProps, useSessionStore } from "../store/sessionStore";
@@ -38,6 +39,10 @@ export default function LobbyPage({ view }: { view: SessionView }) {
   const activities = sessionActivities(view);
   const { participants: mapParticipants, midpoint, radiusKm, pinLabels } = mapProps(view, t("map.you"));
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
+
+  // İstek uçarken tüm ekran iskelete döner (artboard W3e): "Mekanları bul" tek yönlü bir kapı,
+  // arkasında lobi tazelenmiyor.
+  if (busy) return <VenuesLoading name={view.name} />;
 
   return (
     <Page fit>
@@ -95,7 +100,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
                 kabul ederken düğme kapalı kalır ve oturum COLLECTING'de asılı kalır. */}
             <Button
               onClick={() => void run(findVenues, "lobby.errFind")}
-              disabled={(!view.anchored && located < 2) || busy}
+              disabled={!view.anchored && located < 2}
             >
               {t("newSession.findVenues")}
             </Button>

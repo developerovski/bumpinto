@@ -12,7 +12,11 @@ describe("WhyHere", () => {
       <WhyHere
         view={view}
         venue={{
-          travelMinutes: { p1: 25, p2: 30, p3: 35 },
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+            { participantId: "p3", minutes: 35 },
+          ],
           category: "espresso bar",
           activityType: "COFFEE",
           address: "Kleine Berg 16, Eindhoven merkez",
@@ -33,11 +37,11 @@ describe("WhyHere", () => {
   });
 
   it("category yoksa Uyum ekseni hiç çizilmez (yer tutucu yazılmaz)", () => {
-    render(<WhyHere view={view} venue={{ travelMinutes: { p1: 25 } }} labels={labels} />);
+    render(<WhyHere view={view} venue={{ travel: [{ participantId: "p1", minutes: 25 }] }} labels={labels} />);
     expect(screen.queryByText("Uyum")).not.toBeInTheDocument();
   });
 
-  it("travelMinutes boşken sunucu fairness alanına düşer (frontend/shared değişmez)", () => {
+  it("travel[] boşken sunucu fairness alanına düşer (frontend/shared değişmez)", () => {
     render(
       <WhyHere
         view={view}
@@ -61,11 +65,31 @@ describe("WhyHere", () => {
 
   it("fark ≥10 dk iken HandNote çıkar, altında çıkmaz", () => {
     const { rerender } = render(
-      <WhyHere view={view} venue={{ travelMinutes: { p1: 25, p3: 35 } }} labels={labels} />,
+      <WhyHere
+        view={view}
+        venue={{
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p3", minutes: 35 },
+          ],
+        }}
+        labels={labels}
+      />,
     );
     expect(screen.getByText("Kerem en uzaktan geliyor — ~10 dk önce çıkarsa herkes aynı anda varır")).toBeInTheDocument();
 
-    rerender(<WhyHere view={view} venue={{ travelMinutes: { p1: 25, p3: 30 } }} labels={labels} />);
+    rerender(
+      <WhyHere
+        view={view}
+        venue={{
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p3", minutes: 30 },
+          ],
+        }}
+        labels={labels}
+      />,
+    );
     expect(screen.queryByText(/önce çıkarsa herkes aynı anda varır/)).not.toBeInTheDocument();
   });
 
@@ -73,7 +97,12 @@ describe("WhyHere", () => {
     render(
       <WhyHere
         view={view}
-        venue={{ travelMinutes: { unknown1: 25, unknown2: 35 } }}
+        venue={{
+          travel: [
+            { participantId: "unknown1", minutes: 25 },
+            { participantId: "unknown2", minutes: 35 },
+          ],
+        }}
         labels={labels}
       />,
     );
@@ -91,7 +120,11 @@ describe("WhyHere", () => {
       <WhyHere
         view={view}
         venue={{
-          travelMinutes: { p1: 25, p2: 30, p3: 35 },
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+            { participantId: "p3", minutes: 35 },
+          ],
           category: "espresso bar",
           address: "Kleine Berg 16, Eindhoven merkez",
           lat: 51.4416,

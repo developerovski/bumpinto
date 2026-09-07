@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { isDeciding } from "../../lib/runoffTrailer";
 
 function venue(id: string, minutesA: number, minutesB: number, rating?: number) {
-  return { id, rating, travelMinutes: { a: minutesA, b: minutesB } };
+  return {
+    id,
+    rating,
+    travel: [
+      { participantId: "a", minutes: minutesA },
+      { participantId: "b", minutes: minutesB },
+    ],
+  };
 }
 
 describe("isDeciding — sınır davranışları", () => {
@@ -37,12 +44,12 @@ describe("isDeciding — sınır davranışları", () => {
 
   it("diğer finalistlerde hem yol hem puan verisi eksikse false döner (uydurma kazanan yok)", () => {
     const v1 = venue("v1", 30, 25, 4.5);
-    const v2 = { id: "v2", travelMinutes: {} }; // fairnessOf(v2) = null, rating yok
+    const v2 = { id: "v2", travel: [] }; // fairnessOf(v2) = null, rating yok
     expect(isDeciding(v1, [v1, v2])).toBe(false);
   });
 
   it("kendi verisi eksikse (fairnessOf null) false döner", () => {
-    const v1 = { id: "v1", travelMinutes: {} };
+    const v1 = { id: "v1", travel: [] };
     const v2 = venue("v2", 30, 25);
     expect(isDeciding(v1, [v1, v2])).toBe(false);
   });

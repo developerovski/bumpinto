@@ -1,17 +1,17 @@
 /* Artboard `Mekanlar bireysel 390` / `1280` — seçili satırın altındaki onay kartı.
    1280'de de AYNI kart kullanılır: satırdaki eski "Bunu seç" butonunun yerini alır.
    `compact` (haritadaki pop kart içi) yalnız Overline + butonlar basar — mekan adı ve
-   seyahat çipleri zaten `VenueMeta` üzerinden pop kartta gösteriliyor (kod-review bulgusu:
-   iki kez basılıyordu). */
+   yol çubuğu (`RangeBar`) zaten `VenueMeta` üzerinden pop kartta gösteriliyor (kod-review
+   bulgusu: iki kez basılıyordu). */
 import { useTranslation } from "react-i18next";
 import type { VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Button, Overline } from "../atoms";
-import TravelChips from "./TravelChips";
+import RangeBar from "./RangeBar";
 
 export default function SelectionCard(props: {
   venue: Venue;
-  /** `useTravelLabels` çıktısı — labels/selfId TEK nesne (bkz. TravelChips/FairnessBadge). */
+  /** `useTravelLabels` çıktısı — labels/selfId TEK nesne (bkz. RangeBar/TravelBars). */
   travel: TravelInfo;
   compact?: boolean;
   onConfirm: () => void;
@@ -28,7 +28,7 @@ export default function SelectionCard(props: {
       {!props.compact && (
         <>
           <span className="text-[0.9375rem] font-bold">{props.venue.name}</span>
-          <TravelChips venue={props.venue} travel={props.travel} size="sm" />
+          <RangeBar venue={props.venue} travel={props.travel} />
         </>
       )}
       <div className="flex items-center gap-2">

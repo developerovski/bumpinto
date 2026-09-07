@@ -117,7 +117,9 @@
     "gap": "fark {{min}} dk",
     "self": "Sen",
     "friend": "Arkadaşın",
-    "longest": "en uzun yol"
+    "range": "{{min}}–{{max}} dk",
+    "longestName": "en uzun yol {{name}}",
+    "bars": "Herkesin yolu"
   },
   "fairness": {
     "same": "Herkese ~aynı",
@@ -416,7 +418,11 @@
     "needTwo": "Deste için oturumda en az iki kişi olmalı — biri çevrimdışıyken listeden bir yer seçip kararı kapatabilirsin.",
     "invite": "Davet linki",
     "inviteText": "{{name}} — ortada buluşuyoruz, sen de gel:",
-    "noneFor": "{{activity}} için yakında yer bulunamadı."
+    "noneFor": "{{activity}} için yakında yer bulunamadı.",
+    "searching": "mekanlar aranıyor…",
+    "searchingTitle": "Çevredeki mekanlar aranıyor",
+    "searchingCopy": "Herkesin yoluna göre sıralanıyor.",
+    "searchingHand": "genelde 5 saniye sürer"
   },
   "attribution": {
     "google": "Google Maps",
@@ -457,10 +463,15 @@
     "errSolo": "Sesli sohbet yalnız grup buluşmalarında.",
     "errExpiring": "Buluşma bitmek üzere, sesli sohbet başlatılamaz.",
     "errClosed": "Bu buluşma kapandı.",
+    "endedTimeLimitHint": "{{min}} dk sesli sohbet bitti",
     "ended": {
       "HOST": "Sesli sohbet bitirildi",
       "TIME_LIMIT": "Süre doldu",
       "EMPTY": "Herkes ayrıldı, sesli sohbet kapandı"
     }
+  },
+  "offline": {
+    "title": "Bağlantı yok",
+    "hint": "Son görülen hali gösteriliyor · {{time}}"
   }
 }

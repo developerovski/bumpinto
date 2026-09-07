@@ -24,7 +24,10 @@ const MODA = {
   rating: 4.6,
   priceLevel: 2,
   deckOrder: 0,
-  travelMinutes: { [SELF]: 28, [ELIF]: 34 },
+  travel: [
+    { participantId: SELF, minutes: 28 },
+    { participantId: ELIF, minutes: 34 },
+  ],
 };
 
 const KARAKOY = {
@@ -33,7 +36,10 @@ const KARAKOY = {
   rating: 4.8,
   priceLevel: 3,
   deckOrder: 1,
-  travelMinutes: { [SELF]: 19, [ELIF]: 22 },
+  travel: [
+    { participantId: SELF, minutes: 19 },
+    { participantId: ELIF, minutes: 22 },
+  ],
 };
 
 const BEBEK = {
@@ -42,7 +48,10 @@ const BEBEK = {
   rating: 4.4,
   priceLevel: 2,
   deckOrder: 2,
-  travelMinutes: { [SELF]: 41, [ELIF]: 26 },
+  travel: [
+    { participantId: SELF, minutes: 41 },
+    { participantId: ELIF, minutes: 26 },
+  ],
 };
 
 const BALAT = {
@@ -51,7 +60,10 @@ const BALAT = {
   rating: 4.5,
   priceLevel: 1,
   deckOrder: 3,
-  travelMinutes: { [SELF]: 33, [ELIF]: 24 },
+  travel: [
+    { participantId: SELF, minutes: 33 },
+    { participantId: ELIF, minutes: 24 },
+  ],
 };
 
 /** W3 liste modu · beğenilmemiş satır — kutu boş, kart 120px fotoğraf yüksekliğinde. */

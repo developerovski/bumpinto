@@ -73,7 +73,16 @@ describe("VenueCard", () => {
   it("row varyantı meta satırında adalet rozetini gösterir (Liste modu 390)", () => {
     render(
       <VenueCard
-        venue={{ id: "v1", name: "Café Berlage", rating: 4.6, travelMinutes: { p1: 30, p2: 25, p3: 35 } }}
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          rating: 4.6,
+          travel: [
+            { participantId: "p1", minutes: 30 },
+            { participantId: "p2", minutes: 25 },
+            { participantId: "p3", minutes: 35 },
+          ],
+        }}
         variant="row"
         travel={{ labels: { p1: "Sen", p2: "Ayşe", p3: "Kerem" }, selfId: "p1" }}
       />,
@@ -81,14 +90,22 @@ describe("VenueCard", () => {
     expect(screen.getByText("Herkese ~aynı")).toBeInTheDocument();
   });
 
-  // Kod kalitesi incelemesi: rozet null iken sarmalayıcı div boş kalıp flex-col gap'ini
-  // yiyordu (SOLO / travelMinutes yok). Artık FairnessBadge doğrudan render edilir.
-  it("adalet rozeti yokken boş sarmalayıcı bırakmaz (SOLO / travelMinutes yok)", () => {
-    const { container } = render(<VenueCard venue={{ id: "v1", name: "Café Berlage" }} />);
-    expect(container.querySelector(".flex.flex-wrap.items-center.gap-2")).toBeNull();
+  // Kod incelemesi: bu test container.querySelector(".flex.flex-wrap.items-center.gap-2") arıyordu
+  // ama varsayılan (polaroid) dalını render ediyordu — o seçici YALNIZ "row" dalında var, test
+  // T6'dan ÖNCE de boşa geçiyordu. row dalına çevrilip RangeBar'ın gerçekten bastığı doğrulanır.
+  it("row varyantı meta satırında RangeBar'ı gerçekten basar", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage", travel: [{ participantId: "p1", minutes: 20 }] }}
+        variant="row"
+        travel={{ labels: { p1: "Sen" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getByTestId("range-dot-p1")).toBeInTheDocument();
+    expect(screen.getByText("~20 dk")).toBeInTheDocument();
   });
 
-  // Kart anatomisi §4.9: foto/monogram → ad → FitLine → ★ · fiyat · semt → rozet → çipler → atıf.
+  // Kart anatomisi §4.9: foto/monogram → ad → FitLine → ★ · fiyat · semt → saat → tagline → TravelBars → atıf.
   it("activity + categories verilince uyum satırını başlıktan hemen sonra gösterir", () => {
     render(
       <VenueCard

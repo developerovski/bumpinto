@@ -5,7 +5,7 @@ import { Page } from "../components/atoms";
 import BackupPlan from "../components/molecules/BackupPlan";
 import Confetti from "../components/molecules/Confetti";
 import ShareButton from "../components/molecules/ShareButton";
-import TravelList from "../components/molecules/TravelList";
+import TravelBars from "../components/molecules/TravelBars";
 import TwoZone from "../components/molecules/TwoZone";
 import ViralCard from "../components/molecules/ViralCard";
 import WhyHere from "../components/molecules/WhyHere";
@@ -41,11 +41,10 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   const v = view;
   const winner = (v.venues ?? []).find((venue) => venue.id === v.decidedVenueId);
   const participants = v.participants ?? [];
-  const selfId = v.viewer?.participantId;
   const isHost = !!v.viewer?.host;
   // Tint KAZANANIN kendi alanından: karışık destede oturumun ilk alanı yanlış renk verirdi.
   const tint = GROUP_TINT[groupOf(winner?.activityType ?? sessionActivities(v)[0] ?? "")];
-  // travelMinutes katılımcı UUID'siyle anahtarlı (artboard W3 rozet metni).
+  // travel[] katılımcı UUID'siyle anahtarlı (artboard W3 rozet metni).
   const travel = useTravelLabels(view);
 
   // `useMemo` render sırasında sessionStorage'a yazıyordu — React 18 StrictMode dev'de render
@@ -112,7 +111,9 @@ export default function ResultScreen({ view }: { view: SessionView }) {
         right={
           <>
             <WhyHere view={v} venue={winner} labels={travel.labels} />
-            <TravelList venue={winner} participants={participants} selfId={selfId} />
+            <div className="rounded-card border border-line bg-card p-[1rem_1.125rem] shadow-sh1">
+              <TravelBars venue={winner} travel={travel} title={t("travel.bars")} />
+            </div>
             <BackupPlan view={v} winnerId={winner.id ?? ""} tint={tint} />
             <ViralCard host={isHost} />
           </>

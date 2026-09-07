@@ -27,4 +27,5 @@ export {
   type Fairness,
   type FairnessVenue,
   type TravelEntry,
+  type TravelLeg,
 } from "./fairness";

@@ -37,7 +37,10 @@ export function Winner() {
           priceLevel: 2,
           mapsUrl: "https://maps.google.com/?q=Moda+Sahil",
           deckOrder: 0,
-          travelMinutes: { [SELF]: 28, [ELIF]: 34 },
+          travel: [
+            { participantId: SELF, minutes: 28 },
+            { participantId: ELIF, minutes: 34 },
+          ],
         }}
         travel={{ labels: { [SELF]: "Sana", [ELIF]: "Elif" }, selfId: SELF }}
       />
@@ -45,8 +48,9 @@ export function Winner() {
   );
 }
 
-/** Üç kişilik buluşma — yol süresi rozetleri satıra sığmayıp alt satıra sarıyor;
-    farklı `deckOrder` kartın ambient gradyanını da değiştirir. */
+/** Üç kişilik buluşma — kazanan kartı kendi yol çubuğunu basmaz (`travelBars={false}`;
+    karar ekranında sağdaki "Herkesin yolu" kartı TEK kaynak); farklı `deckOrder` yalnızca
+    ambient gradyanı değiştirir. */
 export function ThreeFriends() {
   return (
     <ResultCol>
@@ -60,7 +64,11 @@ export function ThreeFriends() {
           priceLevel: 3,
           mapsUrl: "https://maps.google.com/?q=Karak%C3%B6y+Lokantas%C4%B1",
           deckOrder: 1,
-          travelMinutes: { [SELF]: 19, [ELIF]: 22, [DENIZ]: 37 },
+          travel: [
+            { participantId: SELF, minutes: 19 },
+            { participantId: ELIF, minutes: 22 },
+            { participantId: DENIZ, minutes: 37 },
+          ],
         }}
         travel={{ labels: { [SELF]: "Sana", [ELIF]: "Elif", [DENIZ]: "Deniz" }, selfId: SELF }}
       />

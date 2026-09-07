@@ -27,7 +27,11 @@ function buildView(overrides: Partial<View> = {}): View {
         name: "Café Berlage",
         lat: 51.4416,
         lng: 5.4697,
-        travelMinutes: { me: 30, a: 25, k: 35 },
+        travel: [
+          { participantId: "me", minutes: 30 },
+          { participantId: "a", minutes: 25 },
+          { participantId: "k", minutes: 35 },
+        ],
         address: "Kleine Berg 16, Eindhoven merkez",
         category: "espresso bar",
         mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=51.4416,5.4697",
@@ -70,13 +74,21 @@ describe("ResultScreen — Karar v2", () => {
     );
   });
 
-  it("TravelList herkesi gösterir (davetli dahil), ~dk, km yok", () => {
+  it("karar ekranı herkesin yolunu TEK çubuk kartında basar (davetli dahil), ~dk, km yok", () => {
+    // Davetli/host olmayan izleyici de herkesi görür — eski TravelList davranışı.
     renderResult(buildView(), { participantId: "guest", host: false });
-    const list = within(screen.getByTestId("travel-list"));
-    expect(list.getByText("~35 dk")).toBeInTheDocument();
-    expect(list.getByText("~30 dk")).toBeInTheDocument();
-    expect(list.getByText("~25 dk")).toBeInTheDocument();
-    expect(list.queryByText(/km/)).not.toBeInTheDocument();
+    expect(screen.getByText("Herkesin yolu")).toBeInTheDocument();
+    // WinnerCard artık kendi TravelBars'ını basmıyor (travelBars=false) — sağdaki "Herkesin yolu"
+    // kartı TEK yüzey: çift basım olursa getByTestId (tekil) patlar.
+    expect(screen.getByTestId("travel-fill-me")).toBeInTheDocument();
+    expect(screen.getByTestId("travel-fill-a")).toBeInTheDocument();
+    // "k" (Kerem) fixture'ın en uzun bacağı — TravelBars'ın bg-flame dalını tetikleyen tek id.
+    expect(screen.getByTestId("travel-fill-k")).toBeInTheDocument();
+    expect(screen.getByText("~35 dk")).toBeInTheDocument();
+    expect(screen.getByText("~30 dk")).toBeInTheDocument();
+    expect(screen.getByText("~25 dk")).toBeInTheDocument();
+    expect(screen.queryByText(/km/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("travel-list")).not.toBeInTheDocument();
   });
 
   it("paylaşım metni viewer'dan bağımsız", () => {
@@ -173,7 +185,11 @@ describe("ResultScreen — Karar v2", () => {
             name: "Café Berlage",
             lat: 51.4416,
             lng: 5.4697,
-            travelMinutes: { me: 30, a: 28, k: 32 },
+            travel: [
+              { participantId: "me", minutes: 30 },
+              { participantId: "a", minutes: 28 },
+              { participantId: "k", minutes: 32 },
+            ],
           },
         ],
       }),

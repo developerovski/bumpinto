@@ -7,11 +7,12 @@ import type { VenueDto } from "@bumpinto/shared";
 import { formatRating, providerMark } from "../../lib/format";
 import { monogram } from "../../lib/monogram";
 import type { TravelInfo } from "../../lib/useTravelLabels";
+import { taglineOf } from "../../lib/venueText";
 import Attribution from "./Attribution";
-import FairnessBadge from "./FairnessBadge";
 import ActivityBadge from "./ActivityBadge";
 import FitLine from "./FitLine";
-import TravelChips from "./TravelChips";
+import RangeBar from "./RangeBar";
+import TravelBars from "./TravelBars";
 
 /** Mekan kartı — iki artboard sunumu, tek bileşen:
     · "polaroid" (varsayılan) → Web W3/W4 `.pol`; deste, liste ve sonuç ekranları.
@@ -40,7 +41,7 @@ export default function VenueCard(props: {
   variant?: "polaroid" | "row";
   /** 07 Runoff: seçili finalist — flame kenarlık + tikli daire. */
   selected?: boolean;
-  /** `useTravelLabels` çıktısı (labels + selfId TEK nesne) — TravelChips/FairnessBadge'e aynen geçer. */
+  /** `useTravelLabels` çıktısı (labels + selfId TEK nesne) — RangeBar/TravelBars'a aynen geçer. */
   travel?: TravelInfo;
   /** Gradyan başlangıç ofseti (ör. aktivite grubuna göre GROUP_TINT) — deckOrder ile toplanır. */
   tint?: 0 | 1 | 2 | 3;
@@ -53,6 +54,10 @@ export default function VenueCard(props: {
   /** Kart altında sağlayıcı atfı — varsayılan `true`. Liste modu (`VenueCheckRow`) `false` geçer:
       12 satır × 2 satır atıf yerine listenin altında TEK birleşik atıf (reviewer bulgusu). */
   attribution?: boolean;
+  /** Kart gövdesinde `.tb` yol çubukları — varsayılan `true` (deste/liste DEĞİŞMEZ). `WinnerCard`
+      `false` geçer: W8 karar artboard'ında `.tb` yalnız sağdaki "Herkesin yolu" kartında TEK kez
+      basılır, sol kazanan kartı kişi başı yolu `.rc-ppl` avatar satırlarıyla taşır. */
+  travelBars?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -76,6 +81,7 @@ export default function VenueCard(props: {
   const mark = providerMark(v.provider);
   // Semt YALNIZ orta nokta şehrinden farklıysa gösterilir — aynıysa tekrar (§4.9).
   const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
+  const tagline = taglineOf(v);
 
   // Artboard 07 Runoff: iki finalist ters yönde eğik duruyor (-2° / +2°).
   if (props.variant === "row") {
@@ -136,9 +142,8 @@ export default function VenueCard(props: {
                   {hasPrice && "€".repeat(v.priceLevel!)}
                 </span>
               )}
-              <FairnessBadge venue={v} travel={travel} />
             </div>
-            <TravelChips venue={v} travel={travel} size="sm" />
+            <RangeBar venue={v} travel={travel} />
           </div>
           <span className={props.selected ? PICK_ON : PICK} aria-hidden>
             {props.selected && (
@@ -225,6 +230,7 @@ export default function VenueCard(props: {
                   {t("venue.hoursToday", { hours: v.hoursToday })}
                 </span>
               )}
+              {tagline && <span className="text-[0.75rem] text-ink2">{tagline}</span>}
             </div>
             {isPick && (
               <span className={props.selected ? PICK_ON : PICK} aria-hidden>
@@ -234,10 +240,7 @@ export default function VenueCard(props: {
               </span>
             )}
           </div>
-          {/* Badge (`../atoms/Badge`) zaten inline-flex — sarmalayıcı div rozet null iken
-              boş kalıp `flex-col gap-*`'in boşluğunu yerdi (SOLO / travelMinutes yok). */}
-          <FairnessBadge venue={v} travel={travel} />
-          <TravelChips venue={v} travel={travel} />
+          {(props.travelBars ?? true) && <TravelBars venue={v} travel={travel} />}
           {(props.attribution ?? true) && <Attribution providers={v.provider ? [v.provider] : []} />}
         </div>
       )}

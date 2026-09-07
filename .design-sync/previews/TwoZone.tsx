@@ -36,7 +36,9 @@ const COL = { width: "27.75rem", background: "var(--color-paper)", padding: "1re
 
 /** DeckScreen — deste bittiğinde, gönderildikten SONRAKİ an: sol bölge `FinishedCard`
     (host + hâlâ kaydıran "Elif" + "Bekleyenleri dürt" + "olmadan devam et"), sağ bölge
-    `LikedList` (2 beğenilen mekan, adalet sırasına göre). Varsayılan `TwoZone` — özel prop yok. */
+    `LikedList` (2 beğenilen mekan, adalet sırasına göre). Varsayılan `TwoZone` — özel prop yok.
+    ŞEKİL DEĞİŞTİ: `DECK`/`TRAVEL` artık `travel[]` taşıyor, `LikedList` satırları eski
+    çip+rozet yerine `RangeBar` basıyor. */
 export function DeckFinished() {
   const participants = [
     { ...MEHMET, deckDone: true },

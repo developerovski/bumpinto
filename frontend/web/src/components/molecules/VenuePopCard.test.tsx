@@ -38,4 +38,17 @@ describe("VenuePopCard", () => {
     render(<VenuePopCard venue={{ id: "v2", name: "X" } as never} tint={0} travel={{ labels: {} }} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+
+  // Kod incelemesi: VenueMeta artık hoursToday'i kendi satırında basıyor (R-W8); VenuePopCard'ın
+  // kendi ayrı satırı aynı metni İKİNCİ kez basıyordu ("Bugün 08:00–18:00" iki kez görünüyordu).
+  it("bugünün saati TEK kez basılır", () => {
+    render(
+      <VenuePopCard
+        venue={{ id: "v1", name: "Café Berlage", hoursToday: "08:00 – 18:00" } as never}
+        tint={0}
+        travel={{ labels: {} }}
+      />,
+    );
+    expect(screen.getAllByText(/Bugün 08:00/)).toHaveLength(1);
+  });
 });

@@ -37,7 +37,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
   );
   // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
   const listProviders = useMemo(() => providerIds(venues), [venues]);
-  // travelMinutes katılımcı UUID'siyle anahtarlı; artboard "Sen 28 dk · Mehmet 34 dk" diyor.
+  // travel[] katılımcı UUID'siyle anahtarlı; artboard "Sen 28 dk · Mehmet 34 dk" diyor.
   const travel = useTravelLabels(props.view);
 
   const index = useDeckStore((s) => s.index);

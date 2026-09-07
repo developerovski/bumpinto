@@ -11,7 +11,7 @@ import VenueThumb from "./VenueThumb";
 /** Haritadaki seçili mekan kartı (artboard `.popcard`). UI review 2026-09-03: 52px küçük resim
     kartın yarısını kaplayan boşlukla birlikte okunmuyordu — fotoğraf artık tam genişlik afiş,
     metin altında tek sütun akıyor ve dokunmatikte kartı kapatmak için bir düğme var. */
-const SITE_LINK = "self-start text-[0.75rem] text-ink3 underline underline-offset-2 hover:text-ink";
+const SITE_LINK = "self-start text-[0.75rem] text-ink2 underline underline-offset-2 hover:text-ink";
 
 export default function VenuePopCard(props: {
   venue: VenueDto;
@@ -47,9 +47,8 @@ export default function VenuePopCard(props: {
         {v.category && <Overline>{v.category}</Overline>}
         <h3 className="font-head text-[1.0625rem] font-bold leading-tight">{v.name}</h3>
         <VenueMeta venue={v} travel={props.travel} midpointLabel={props.midpointLabel} />
-        {v.hoursToday && (
-          <span className="text-[0.75rem] text-ink3">{t("venue.hoursToday", { hours: v.hoursToday })}</span>
-        )}
+        {/* Bugünün saati artık VenueMeta'nın kendi satırında basılıyor (R-W8) — burada TEKRAR basmak
+            "Bugün 08:00–18:00" ifadesini iki kez yazdırıyordu. */}
         {/* Bağlantı `action` yuvasına GİRMEZ: orası onay durumunda SelectionCard ile dolu ve
             dış çıkış "Kilitle" ile birincillik yarışına girmemeli — ghost, kendi satırında. */}
         {link && (

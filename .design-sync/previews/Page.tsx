@@ -24,7 +24,10 @@ const WINNER_VENUE = {
   priceLevel: 2,
   deckOrder: 0,
   mapsUrl: "https://www.google.com/maps/search/?api=1&query=Karak%C3%B6y+Lokantas%C4%B1",
-  travelMinutes: { "p-self": 14, "p-elif": 11 },
+  travel: [
+    { participantId: "p-self", minutes: 14 },
+    { participantId: "p-elif", minutes: 11 },
+  ],
 };
 
 const TRAVEL = { labels: { "p-self": "Sana", "p-elif": "Elif" }, selfId: "p-self" };
@@ -62,7 +65,10 @@ export function DeckScreen() {
           rating: 4.4,
           priceLevel: 2,
           deckOrder: 1,
-          travelMinutes: { "p-self": 18, "p-elif": 9 },
+          travel: [
+            { participantId: "p-self", minutes: 18 },
+            { participantId: "p-elif", minutes: 9 },
+          ],
         }}
         travel={TRAVEL}
       />

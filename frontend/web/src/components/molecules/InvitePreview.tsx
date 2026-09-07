@@ -21,7 +21,7 @@ export default function InvitePreview(props: { hostName: string; sessionName: st
           <Badge>{t("join.joinedCount", { count: 1 })}</Badge>
         </div>
         <Note>{t("join.subtitle")}</Note>
-        <span className="font-mono text-[0.8125rem] text-ink3">{t("newSession.previewLink")}</span>
+        <span className="font-mono text-[0.8125rem] text-ink2">{t("newSession.previewLink")}</span>
       </div>
       <HandNote>{t("newSession.previewHand")}</HandNote>
     </div>

@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { useSessionStore } from "../store/sessionStore";
 import LobbyPage from "./LobbyPage";
 
@@ -7,6 +7,8 @@ const base = { slug: "x7k2m", name: "Cuma kahvesi", activityTypes: ["COFFEE"], s
 const host = { id: "h", displayName: "Mehmet", host: true, hasLocation: true, manual: false, locationLabel: "Den Bosch", approxLocation: { lat: 51.7, lng: 5.3 } };
 const kerem = { id: "k", displayName: "Kerem", host: false, hasLocation: false, manual: false };
 const ayse = { id: "a", displayName: "Ayşe", host: false, hasLocation: true, manual: false, locationLabel: "Someren", approxLocation: { lat: 51.39, lng: 5.71 } };
+// CTA açık görünüm (2 konum) — iskelet testi düğmenin tıklanabilir olmasını gerektiriyor.
+const ready = { ...base, participants: [host, ayse] };
 
 describe("LobbyPage", () => {
   it("1 konum: CTA kapalı, davet linki ve geç kalan notu", () => {
@@ -83,5 +85,15 @@ describe("LobbyPage", () => {
     useSessionStore.setState({ slug: "x7k2m", view: view as never });
     render(<LobbyPage view={view as never} />);
     expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
+  });
+
+  it("'Mekanları bul' basılınca istek sürerken iskelet gösterilir", async () => {
+    let resolve!: () => void;
+    const findVenues = vi.fn(() => new Promise<void>((r) => { resolve = r; }));
+    useSessionStore.setState({ findVenues } as never);
+    render(<LobbyPage view={ready as never} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mekanları bul" }));
+    expect(await screen.findByText("mekanlar aranıyor…")).toBeInTheDocument();
+    await act(async () => { resolve(); });
   });
 });

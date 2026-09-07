@@ -1,13 +1,18 @@
 /* Karar dokümanı §4.1–4.2, §4.5 — adalet metriğinin TEK kaynağı.
-   Chips, rozet ve sıralama aynı nesneyi okur; başka yerde dakika aritmetiği yapılmaz. */
+   Yol çubukları ve sıralama aynı nesneyi okur; başka yerde dakika aritmetiği yapılmaz. */
+/** `VenueDto.travel[]` bacağı (B-13/plan30). `estimated` UI'da kullanılmaz (spec §9). */
+export type TravelLeg = { participantId?: string; minutes?: number; estimated?: boolean };
+
 /** Modülün ihtiyaç duyduğu mekan şekli — YAPISAL tür. Paylaşımlı paket web'in B-7 köprüsüne
     bağlanamaz; `VenueDto` ve web'in `Venue`'sü bu şekli zaten karşılar (M-3 de karşılayacak). */
 export type FairnessVenue = {
   id?: string;
   rating?: number;
+  /** `AppConfigSource.ratingScale` null olabilir — daraltma çağıranı kırar (W-12). */
   ratingScale?: number | null;
   deckOrder?: number;
-  travelMinutes?: Record<string, number>;
+  /** K-B26: `travelMinutes` yerine TEK kaynak. */
+  travel?: TravelLeg[];
   fairness?: { maxMinutes?: number; spreadMinutes?: number; longestParticipantId?: string };
 };
 
@@ -54,9 +59,12 @@ export function median(values: number[]): number {
 }
 
 export function fairnessOf(venue: FairnessVenue): Fairness | null {
-  const raw = Object.entries(venue.travelMinutes ?? {});
+  const raw = (venue.travel ?? [])
+    .filter((leg): leg is { participantId: string; minutes: number } =>
+      typeof leg.participantId === "string" && typeof leg.minutes === "number")
+    .map((leg) => [leg.participantId, leg.minutes] as const);
   if (raw.length === 0) {
-    // `travelMinutes` henüz yok (B-7:T1 öncesi, ya da bu alan viewer'a özel bir kesitte
+    // `travel[]` henüz yok (B-7:T1 öncesi, ya da bu alan viewer'a özel bir kesitte
     // eksik) ama sunucunun toplu `fairness` alanı geldiyse (B-7:T1) YİNE DE bir Fairness
     // üretilir — kişi bazlı `entries` yok, min/max/spread doğrudan sunucudan türer, `total`
     // bilinmiyorsa `max`'a düşer (eskiden WhyHere'in yerel `fairnessForAxis`i yapardı —

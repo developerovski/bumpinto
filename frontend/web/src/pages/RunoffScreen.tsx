@@ -32,7 +32,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
     () => (v.venues ?? []).filter((venue) => v.runoffVenueIds?.includes(venue.id!)),
     [v.venues, v.runoffVenueIds],
   );
-  // travelMinutes katılımcı UUID'siyle anahtarlı; artboard "Sen 34′ · Ayşe 28′" diyor.
+  // travel[] katılımcı UUID'siyle anahtarlı; artboard "Sen 34′ · Ayşe 28′" diyor.
   const travel = useTravelLabels(props.view);
 
   const voted = v.runoffVotedParticipantIds ?? [];

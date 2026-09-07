@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { useTravelLabels } from "./useTravelLabels";
 
 /* Sunucudaki `SessionView.anchored`i `TravelInfo`ya bağlayan TEK tel burada sınanır.
-   Kapının kendisi (FairnessBadge) ayrıca test ediliyor; ama bu tel düşerse kapı hiç
+   Kapının kendisi (RangeBar/TravelBars) ayrıca test ediliyor; ama bu tel düşerse kapı hiç
    tetiklenmez ve alan opsiyonel olduğu için tsc de rozet testleri de sessiz kalırdı. */
 describe("useTravelLabels çapa bayrağı", () => {
   it("çapalı görünümde anchored taşınır", () => {

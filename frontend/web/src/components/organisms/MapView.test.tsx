@@ -125,8 +125,8 @@ const participants = [
   { id: "h", displayName: "Mehmet", host: true, hasLocation: true, deckDone: false, manual: false, approxLocation: { lat: 51.7, lng: 5.3 } },
 ];
 const venues = [
-  { id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0, travelMinutes: { h: 30 } },
-  { id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1, travelMinutes: { h: 45 } },
+  { id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0 },
+  { id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1 },
 ];
 const midpoint = { lat: 51.5, lng: 5.5 };
 

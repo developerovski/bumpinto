@@ -3,10 +3,13 @@ import { KARAKOY, TRAVEL } from "./_fixtures";
 
 /* Kaynak: VenueDeck.tsx — `.a-deck` yuvası (27.5rem, sabit) + ön kartın kendi eğimi (D1).
    ÜRÜN GERÇEĞİ (VenueDeck'in kendi `FullStack` karesinde de görülüyor — grade.json'daki not):
-   ön karttaki içerik (foto + rozet + yol çipleri + atıf) her zaman arkadaki d2/d3 hayalet
-   katmanlarından UZUN çıkıyor; hayaletler asla peek etmiyor. Bu yüzden burada arka katmanları
-   TEKRAR kurmuyoruz — zaten görünmeyecek bir şeyi göstermek "varyant değişiyor" ölçütünü
-   sağlamaz. Bunun yerine SwipeCard'ın KENDİ prop ekseni (`enter`) gösteriliyor. */
+   ön karttaki içerik (foto + `TravelBars` yol çubuğu + uyum satırı + atıf) her zaman arkadaki
+   d2/d3 hayalet katmanlarından UZUN çıkıyor; hayaletler asla peek etmiyor. Bu yüzden burada
+   arka katmanları TEKRAR kurmuyoruz — zaten görünmeyecek bir şeyi göstermek "varyant değişiyor"
+   ölçütünü sağlamaz. Bunun yerine SwipeCard'ın KENDİ prop ekseni (`enter`) gösteriliyor.
+   DÜZELTME: `KARAKOY`/`TRAVEL` artık `_fixtures.ts`'ten geliyor (`travel[]`); ön karttaki
+   `VenueCard` gövdesi eskiden çip satırı + adalet rozeti yerine artık `TravelBars`
+   (`.tb` kişi başı çubuk) basıyor — kart şekli değişti, kaydırma/giriş davranışı AYNI. */
 const DECK_WRAP = "relative h-[27.5rem] flex-none [&>*]:!absolute [&>*]:inset-x-0 [&>*]:mx-auto";
 const D1 = "transform-[rotate(-1.6deg)] shadow-sh2";
 

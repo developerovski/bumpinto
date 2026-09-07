@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import SelectionCard from "./SelectionCard";
 
-const venue = { id: "v1", name: "Adil Kahve", travelMinutes: { h: 30 } };
+const venue = { id: "v1", name: "Adil Kahve", travel: [{ participantId: "h", minutes: 30 }] };
 const travel = { labels: { h: "Sen" }, selfId: "h" };
 
 describe("SelectionCard", () => {
