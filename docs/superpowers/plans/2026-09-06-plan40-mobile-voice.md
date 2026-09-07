@@ -13,6 +13,8 @@
 i18next 26 (tr/en/nl, `frontend/shared/src/i18n`), jest-expo 57 + @testing-library/react-native 14,
 Maestro; shared tarafı vitest (web koşucusu üstünden). Sürüm politikası: M-4 (plan38) Tech Stack bloğu.
 
+**Test kuralı (RNTL 14, 2026-09-07 sahada doğrulandı — BAĞLAYICI):** `@testing-library/react-native` 14'te `render` **Promise döndürür**. Bu plandaki her test parçacığında **`await render(...)`** kullanılır; senkron biçim hem `tsc` hem `jest` hatası verir. `@testing-library/react-native/extend-expect` içe aktarımı **yoktur** (matcher'lar dahili). Ayrıntı: M-4 (plan38) "T1 saha notları".
+
 **RİSK KAPISI (2026-09-07, BAĞLAYICI — T2'nin İLK adımı).** Bu planın iki yerel bağımlılığı da
 Expo'nun yönetmediği, üçüncü taraf ve **New Architecture altında doğrulanmamış** paketlerdir:
 

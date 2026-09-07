@@ -42,7 +42,7 @@ const S = {
 const monogram = (name: string) => name.replace(/[^\p{L}]/gu, "").slice(0, 2).toLowerCase();
 
 export default function ShareCard(props: {
-  nodeRef: RefObject<HTMLDivElement>;
+  nodeRef: RefObject<HTMLDivElement | null>;
   venue: VenueDto;
   participants: ParticipantDto[];
   photo: string | null;

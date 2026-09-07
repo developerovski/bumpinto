@@ -28,6 +28,8 @@ Sürüm politikası: M-4 (plan38) Tech Stack bloğu — Expo modülleri `expo in
 **Not (2026-09-07):** SDK 57 ile Expo'nun kendi `expo-maps` modülü de var; bu plan
 `react-native-maps` 1.27'de **kalır** (harita zaten tembel ve kenarda — churn'e değmez).
 
+**Test kuralı (RNTL 14, 2026-09-07 sahada doğrulandı — BAĞLAYICI):** `@testing-library/react-native` 14'te `render` **Promise döndürür**. Bu plandaki her test parçacığında **`await render(...)`** kullanılır; senkron biçim hem `tsc` hem `jest` hatası verir. `@testing-library/react-native/extend-expect` içe aktarımı **yoktur** (matcher'lar dahili). Ayrıntı: M-4 (plan38) "T1 saha notları".
+
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-7 satırı). Karşılananlar: **R-M14** çapalı oturum + 3 etkinlik ·
 **R-M2** izin ön-ekranı + red kurtarma · **R-M8** yol çubuğu · **R-M9'un statik kısmı** (presence

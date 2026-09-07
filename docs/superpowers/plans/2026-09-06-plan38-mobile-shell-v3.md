@@ -32,7 +32,7 @@ react-native-safe-area-context 5 (edge-to-edge), `@react-native-google-signin/go
 expo-secure-store, expo-location (foreground), expo-haptics, expo-clipboard, expo-localization,
 expo-font + `@expo-google-fonts/{bricolage-grotesque,figtree,caveat}`, `phosphor-react-native` 3 +
 react-native-svg 15, `react-native-maps` 1.27 (kurulur; tembel kullanımı M-7),
-`@react-native-community/netinfo` 12, **react-native-gesture-handler 3** + **react-native-reanimated 4**
+`@react-native-community/netinfo` 12, react-native-gesture-handler **2.32** + **react-native-reanimated 4**
 (+ zorunlu eş paket `react-native-worklets`), zustand 5, i18next 26 / react-i18next 17,
 axios (shared), jest-expo 57 + @testing-library/react-native 14.
 
@@ -44,22 +44,58 @@ depoda **iki** anlamı var, karıştırma:
    npm `latest` **DEĞİL**. Bunlara `pnpm add <paket>@latest` yazmak prebuild'i/derlemeyi kırar
    (SDK dışı reanimated/maps ikilisi klasik kırılma). Plan gövdesinde bu paketlere **sürüm yazılmaz**;
    daima `npx expo install` çağrılır.
-2. **Saf JS / Expo dışı paketler** — zustand, i18next, react-i18next, axios, `@stomp/stompjs`,
-   `phosphor-react-native`, `@react-native-google-signin/google-signin`, `react-native-webrtc`,
+2. **Saf JS / Expo dışı paketler** — `phosphor-react-native`,
+   `@react-native-google-signin/google-signin`, `react-native-webrtc`,
    `react-native-incall-manager`, `react-native-qrcode-svg`, `@testing-library/react-native`,
    `eas-cli`: latest = npm `latest` (`@latest` ile kur).
+3. **Web ile PAYLAŞILAN saf JS paketleri — `catalog:` (2026-09-07, BAĞLAYICI).** `zustand`,
+   `i18next`, `react-i18next`, `axios`, `@stomp/stompjs`, `typescript` sürümleri
+   `pnpm-workspace.yaml` `catalog:` bloğunda **tek yerde** durur; `package.json`'a sürüm değil
+   **`"catalog:"`** yazılır. M-6 mobile `@stomp/stompjs` eklerken de `catalog:` yazar — elle sürüm
+   **YASAK**, yoksa web ile sapar. Yeni ortak paket gerekirse önce catalog'a eklenir.
+   `expo install --check` `catalog:`'u sindiriyor (sahada doğrulandı).
+
+**`catalog:` ↔ `overrides` ayrımı (karıştırma).** `catalog:` yalnız **`catalog:` yazan** paketleri
+etkiler — transitive bağımlılıkları bağlamaz. `react`/`react-dom` bu yüzden catalog'a **değil**
+`overrides`'a konur: `@testing-library/react` bizim paketimiz değildir, `catalog:` yazmaz ve yalnız
+`overrides` onu aynı React kopyasına zorlar (332 testlik kırılmanın sebebi tam olarak buydu).
+Expo'nun yönettiği yerel modüller **ikisine de** konmaz — `expo install` serbest kalmalı.
+`typescript` catalog'da **`~6.0.3`** (Expo SDK 57 pini); npm latest 7.0.2'dir, yeni motor olduğu için
+**bilinçli alınmadı** — web/shared/mobil tek derleyicide (TS 6) birleşti, web build + 520 test yeşil.
 
 **Kapı:** her görev kapanışında `npx expo install --check` **temiz** dönmeli (sürüm sapması yok).
 
 **New Architecture sonuçları (RN 0.82+ ile mimari kapatılamaz — bare RN'de de kapatılamaz):**
 
-- `react-native-reanimated` **4** ayrı `react-native-worklets` paketi ister ve `babel.config.js`
-  eklentisi artık `"react-native-reanimated/plugin"` değil **`"react-native-worklets/plugin"`**tir.
-- `react-native-gesture-handler` **3** majör atlama (2.x → 3.x); `GestureHandlerRootView` ve Gesture
-  API'si durur, eski `<PanGestureHandler>` bileşen sarmalayıcıları kullanılmaz — M-8 deste kaydırması
-  Gesture API'siyle yazılır.
+- `react-native-reanimated` **4** ayrı `react-native-worklets` paketi ister. **`babel.config.js`
+  YAZILMAZ**: `babel-preset-expo` paket kuruluysa `react-native-worklets/plugin`'i kendisi ekler
+  (`babel-preset-expo/build/configs/expo.js` — sahada doğrulandı 2026-09-07); şablon da bir
+  `babel.config.js` üretmez. Elle eklenen dosya yalnız çift eklenti riski yaratır.
 - Eski (legacy) yerel modüller interop katmanından geçer; M-6'nın `react-native-incall-manager`'ı
   bu katmana bağımlıdır → M-6 T2'de doğrulama kapısı var.
+
+**T1 SAHA NOTLARI (2026-09-07, uygulanırken ölçüldü — plan gövdesinden ÖNCE geçerli).**
+Bu notlar tahmin değil, gerçek kurulumun çıktısıdır; çelişkide **bunlar kazanır.**
+
+| # | Bulgu | Sonuç |
+|---|---|---|
+| 1 | `create-expo-app` varsayılan şablonu ekranları **`src/app/`** altına koyar, ayrıca kendi `AGENTS.md`/`CLAUDE.md`/`.claude/`/`LICENSE`/`scripts/` ve demo bileşenlerini getirir | Demo tamamen **silindi**; `src/app` → **kök `app/`**'a taşındı (planların tamamı `app/...` yolunu kullanıyor). Şablonun `@expo/ui`, `expo-glass-effect`, `expo-symbols`, `expo-device` bağımlılıkları da düşürüldü |
+| 2 | `react-native-gesture-handler` SDK 57'de **~2.32.0** (3.x değil) | Deste kaydırması yine Gesture API'siyle yazılır (2.x zaten destekler); "3.x majör atlaması" iddiası **yanlıştı**, kaldırıldı |
+| 3 | `@testing-library/react-native` **14**'te `render` **Promise döndürür** | **Her testte `await render(...)` ZORUNLU.** Senkron `const { getByText } = render(...)` hem tsc hem jest hatası verir. M-4/M-7/M-8/M-9'daki tüm test parçacıkları bu kurala tabidir |
+| 4 | RNTL 14'te `@testing-library/react-native/extend-expect` **yok** (matcher'lar dahili) | `jest.setup.ts` o satırı **içermez** |
+| 5 | `pnpm add -D jest@latest` jest **30**'u kurar; `jest-expo` 57 **~29.7** bekler | `npx expo install jest @types/jest` kullanılır. Sürüm politikası maddesi 1'in canlı örneği; `expo install --check` kapıyı yakaladı |
+| 6 | `expo/tsconfig.base` jest globallerini tanımıyor | `tsconfig.json` → `compilerOptions.types: ["jest"]` |
+| 7 | `create-expo-app` mevcut git deposunun içinde **interaktif** "git init atlansın mı" sorusu sorar | Otomasyonda cevap beslenmeli; sorunun takılması dizinin oluşmadığı anlamına **gelmez** |
+| 8 | `@parcel/watcher` (Metro izleyici) ve `unrs-resolver` (expo lint) yerel derleme ister | `pnpm-workspace.yaml` → `allowBuilds` altına ikisi de `true` eklendi |
+
+**React 19 — çözüldü (2026-09-07).** Mobil kurulunca hoisting root'u 18 → 19'a çevirdi, web'in 18'i
+yuvalandı ve `@testing-library/react` kendi ayrı React kopyasını aldı → **"Invalid hook call", 332/520
+web testi kırmızı**. Yama sürümü farkı (mobil 19.2.3 pinli, web `^19.2.8`) tek başına yuvalanmayı
+sürdürdü. Kalıcı çözüm `pnpm-workspace.yaml`'a **`overrides: react/react-dom = 19.2.3`** (Expo SDK 57'nin
+pini) + web `package.json`'da aynı sürüm. Web kaynağında tek satır değişti:
+`ShareCard.tsx` `nodeRef: RefObject<HTMLDivElement>` → `RefObject<HTMLDivElement | null>`
+(React 19'da `useRef<T>(null)` artık `RefObject<T | null>`). Sonuç: **web 520/520 test + build yeşil.**
+Bu override **silinmez** — silinirse iki React kopyası ve aynı çökme geri gelir.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-4 satırı). Karşılananlar: **R-M16'nın config kısmı** (edge-to-edge,
@@ -156,14 +192,13 @@ rtk pnpm add @bumpinto/shared@workspace:* zustand@latest i18next@latest react-i1
   phosphor-react-native@latest @react-native-google-signin/google-signin@latest \
   @expo-google-fonts/bricolage-grotesque@latest @expo-google-fonts/figtree@latest \
   @expo-google-fonts/caveat@latest
-rtk pnpm add -D jest @types/jest @testing-library/react-native@latest
-rtk pnpm exec npx expo install jest-expo
+rtk pnpm add -D "@testing-library/react-native@latest"
+rtk pnpm exec npx expo install jest-expo jest @types/jest   # jest'i @latest ile KURMA (saha notu #5)
 rtk pnpm exec npx expo install --check     # BOŞ çıktı beklenir; sapma varsa önerdiği sürümü al
 ```
 
-`babel.config.js` (create-expo-app'in ürettiği dosya) `plugins` dizisine
-**`"react-native-worklets/plugin"`** eklenir — Reanimated 4 kendi eklentisini artık dışa aktarmaz;
-eski `"react-native-reanimated/plugin"` satırı varsa **silinir**.
+**`babel.config.js` oluşturulmaz** (T1 saha notu #1/#2): şablon üretmez ve `babel-preset-expo`
+`react-native-worklets/plugin`'i paket kuruluysa kendisi ekler.
 
 `package.json`: `"name": "@bumpinto/mobile"`, `"private": true`; scriptler `start: "expo start
 --dev-client"`, `prebuild: "expo prebuild --clean"`, `test: "jest"`, `typecheck: "tsc --noEmit"`;

@@ -21,15 +21,19 @@ kalır. Deste geometrisi (`swipeThreshold`, `dragRotation`, `dragProgress`, `rel
 mantığı (`backupOf`, `isDeciding`, `venueLink`, `votersOf`) `@bumpinto/shared`'dan gelir; ikinci eşik
 ya da ikinci hesap tanımı yasak. Canlı veri: M-7'nin `useSessionLive` polling'i (STOMP köprüsü M-6).
 
-**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, dev build, New Arch), expo-router 57, **gesture-handler 3 + reanimated 4** (+ `react-native-worklets`; kaydırma),
+**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, dev build, New Arch), expo-router 57, **gesture-handler 2.32 + reanimated 4** (+ `react-native-worklets`; kaydırma),
 expo-haptics, `@react-native-community/netinfo`, react-native-safe-area-context,
 `phosphor-react-native` + react-native-svg, zustand 5, i18next/react-i18next, `@bumpinto/shared`,
 jest-expo 57 + @testing-library/react-native 14 + **Maestro**.
 
-**Kaydırma API'si (2026-09-07, BAĞLAYICI):** gesture-handler **3.x** ve reanimated **4.x** kullanılır.
-Deste kaydırması yeni **Gesture API**'siyle (`Gesture.Pan()` + `GestureDetector`) yazılır; eski
-`<PanGestureHandler>` / `useAnimatedGestureHandler` deseni **kullanılmaz** (New Arch'ta kaldırıldı).
-Worklet'ler `react-native-worklets` üstünden çalışır; babel eklentisi M-4 T1'de kurulur.
+**Kaydırma API'si (2026-09-07, BAĞLAYICI — sahada doğrulandı):** SDK 57 gesture-handler'ı **~2.32.0**
+(3.x değil), reanimated **4.x**. Deste kaydırması **Gesture API**'siyle (`Gesture.Pan()` +
+`GestureDetector`) yazılır; eski `<PanGestureHandler>` / `useAnimatedGestureHandler` deseni
+**kullanılmaz**. Worklet'ler `react-native-worklets` üstünden çalışır; `babel-preset-expo` eklentiyi
+otomatik ekler, `babel.config.js` yazılmaz.
+
+**Test kuralı (RNTL 14):** `render` Promise döndürür — bu plandaki tüm test parçacıklarında
+**`await render(...)`** kullanılır (M-4 T1 saha notu #3).
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-8 satırı). Karşılananlar: **R-M13** çevrimdışı + iskelet.

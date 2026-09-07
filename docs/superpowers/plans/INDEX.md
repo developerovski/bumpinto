@@ -43,9 +43,31 @@ Bumpun getirdikleri: New Arch zorunlu · reanimated **4** + zorunlu `react-nativ
 (babel eklentisi `react-native-worklets/plugin`) · gesture-handler **3** (Gesture API, eski
 `PanGestureHandler` yok) · `expo-widgets` first-party (M-9 T7 revizyon notu) · `expo-maps` mevcut ama
 `react-native-maps` 1.27'de kalındı · plan44'ün target API 36 / 16 KB kapısı SDK 57'de zaten karşılanıyor
-(kapı **regresyon bekçisi** olarak durur). **İki React majörü M-4'ü bloklamaz** (`frontend/shared`
-React'siz saf TS; pnpm 19'u mobile altına yuvalar) — plan38 T1'de doğrulama kapısı var. `frontend/web`'in
-React 19'a çekilmesi **ayrı iş, web izi** (kullanıcı talimatı 2026-09-07).
+(kapı **regresyon bekçisi** olarak durur).
+
+**React 19 — YAPILDI (2026-09-07).** İlk değerlendirmem yanlıştı: iki React majörü M-4'ü *blokladı*.
+Mobil kurulunca hoisting root'u 18 → 19'a çevirdi, `@testing-library/react` ayrı bir React kopyası aldı
+ve **332/520 web testi "Invalid hook call" ile düştü**. Çözüm: `pnpm-workspace.yaml`'a
+`overrides: react/react-dom = 19.2.3` (Expo SDK 57 pini) + `frontend/web` aynı sürüme çekildi + tek satır
+kaynak düzeltmesi (`ShareCard.tsx` `RefObject<HTMLDivElement | null>`). **Web 520/520 test + build yeşil.**
+Override **silinmez**. Ayrıca `allowBuilds`'e `@parcel/watcher` ve `unrs-resolver` eklendi.
+
+**Bağımlılık sürüm yönetimi (2026-09-07, BAĞLAYICI).** Üç mekanizma, üç ayrı iş:
+`overrides` = `react`/`react-dom` 19.2.3 (transitive dahil zorlar; `@testing-library/react` gibi dış
+paketleri de aynı kopyaya çeker — **silinmez**) · `catalog:` = web+mobil+shared'in paylaştığı saf-JS
+paketleri (`zustand`, `i18next`, `react-i18next`, `axios`, `@stomp/stompjs`, `typescript`), sürüm
+`pnpm-workspace.yaml`'da tek yerde, `package.json`'a `"catalog:"` yazılır · **hiçbiri** = Expo'nun
+yönettiği yerel modüller, `expo install` sahibi. React'i `@bumpinto/shared`'dan re-export etmek
+**çözüm değildir** (JSX dönüşümü `react/jsx-runtime`'ı sabit gömer, yönlendirilemez); shared ileride
+React'e ihtiyaç duyarsa `peerDependency` olarak tanımlanır. TypeScript web/shared/mobil **6.0.3**'te
+birleşti (npm latest 7.0.2 bilinçli alınmadı — Expo SDK 57 pini). Doğrulandı: web 520/520 + build,
+mobil typecheck + 2/2, `expo install --check` temiz, `i18n:check` 0 fark.
+
+**M-4 T1 saha düzeltmeleri (2026-09-07):** SDK 57 gesture-handler'ı **~2.32** (3.x DEĞİL) ·
+`babel.config.js` yazılmaz (`babel-preset-expo` worklets eklentisini kendi ekler) · **RNTL 14'te `render`
+Promise döndürür → tüm testlerde `await render(...)`**, `extend-expect` yok · jest `expo install` ile
+pinlenir (~29.7), `@latest` ile değil · `tsconfig` `types: ["jest"]` · şablon ekranları `src/app`'ten kök
+`app/`'a taşındı. Tam liste: plan38 "T1 saha notları".
 **Açık risk:** M-6'nın `react-native-webrtc` 124.0.8 + `@config-plugins/react-native-webrtc` 15.0.2
 (peer `expo >=56`, SDK 57 sürümü yok) + `react-native-incall-manager` 4.2.2 üçlüsü New Arch'ta
 doğrulanmadı → plan40'ta **T2 risk kapısı**. M-4'ü bloklamaz.

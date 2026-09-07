@@ -13,18 +13,18 @@
     "@bumpinto/shared": "workspace:*",
     "@googlemaps/js-api-loader": "^2.1.1",
     "@phosphor-icons/react": "^2.1.10",
-    "@stomp/stompjs": "^7.0.0",
+    "@stomp/stompjs": "catalog:",
     "@tailwindcss/vite": "^4.3.3",
     "html-to-image": "^1.11.13",
-    "i18next": "^26.4.0",
+    "i18next": "catalog:",
     "i18next-browser-languagedetector": "^8.2.1",
     "maplibre-gl": "^5.6.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-i18next": "^17.0.12",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-i18next": "catalog:",
     "react-router-dom": "^7.1.0",
     "tailwindcss": "^4.3.3",
-    "zustand": "^5.0.2"
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.0",
@@ -34,7 +34,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^4.3.0",
     "jsdom": "^25.0.0",
-    "typescript": "^5.6.0",
+    "typescript": "catalog:",
     "vite": "^6.0.0",
     "vitest": "^2.1.0"
   }

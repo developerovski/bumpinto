@@ -8,6 +8,28 @@ uygulamasının içindeki bileşen kitaplığı. Aşağıdakiler bu gerçeğin s
 - 2026-09-01 · 1. tur: 32 bileşen, 32 preview.
 - 2026-09-06 · 2. tur: DS **67 bileşene** çıktı. 13 eski preview API sürüklenmesinden
   bayatlamıştı (aşağıdaki "sourceKey kör noktası"), onarıldı; 29 yeni preview yazıldı.
+- 2026-09-07 · 3. tur: DS **79 bileşene** çıktı (12 yeni: AppleSignIn, FaqItem,
+  LegalBlocks, SettingRow, SettingsCard, SourceRow, Toggle, VoiceDock + 4'ü zaten
+  floor card'dan authored'a geçmiş olabilir). Build/validate/capture/grade turu
+  tamamlandı, tüm grade'ler `good`. **Upload YAPILAMADI**: bu oturumda `DesignSync`
+  aracı "needs design-system authorization" hatası verdi (headless/non-interactive
+  ortam, `/design-login` çalıştırılamıyor). Kullanıcı interaktif bir oturumda
+  `/design-login` çalıştırıp yetkilendirdikten sonra tekrar dene — build tarafı
+  hazır ve temiz, yalnız §5 upload adımı kaldı.
+
+**`[RENDER]` sahte alarmı (3. turda görüldü, ürün/preview kusuru DEĞİL)**
+İlk `package-validate.mjs` koşusunda `Progress`, `RangeBar`, `PastSessionList`
+`rootEmpty: true` ile `bad` işaretlendi. Ekran görüntüleri (`_screenshots/`) her
+üçünün de İÇERİKLE dolu render edildiğini gösterdi — sahte alarm. Kök sebep:
+`package-validate.mjs`'nin `rootEmpty` hesaplaması yalnız `roots[0]`'ı kontrol
+ediyor (satır ~641) ve bu değer `page.evaluate()` içinde, `page.screenshot()`'tan
+ÖNCE okunuyor; `page.goto(..., {waitUntil:'networkidle'})` ağ isteklerinin
+bitmesini bekliyor ama React'in senkron mount'unun (990 KB'lık `_ds_bundle.js`
+parse+exec) bitmesini GARANTİ ETMİYOR — nadir bir yarış durumu. **Değişiklik
+yapmadan `package-validate.mjs`'i yeniden çalıştırmak** sorunu giderdi (79/79
+temiz). Bir dahaki turda aynı `bad`/`[RENDER]` sahte alarmı görürsen: önce
+`_screenshots/<group>__<Name>.png`'ye bak — doluysa değişiklik yapmadan validate'i
+tekrar çalıştır, gerçek bir düzeltme arama.
 
 ---
 

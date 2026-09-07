@@ -8,6 +8,8 @@
 
 **Tech Stack:** M-4 ile aynı — **Expo SDK 57** (RN 0.86 / React 19.2, CNG prebuild, Expo Go yok, New Architecture zorunlu), expo-router 57 (tek stack), zustand 5, `@bumpinto/shared`, `phosphor-react-native` 3, `react-native-safe-area-context` 5. Ek olarak: `expo-apple-authentication`, `expo-crypto`, `expo-location`, `expo-audio`, `expo-web-browser`, `expo-build-properties`, `@expo/config-plugins`. **Sürüm politikası M-4 (plan38) Tech Stack bloğundaki iki maddelik kuraldır — Expo modülleri `expo install`, saf JS `@latest`.** Test: jest-expo + `@testing-library/react-native` + `expo-router/testing-library`; cihaz doğrulaması Maestro.
 
+**Test kuralı (RNTL 14, 2026-09-07 sahada doğrulandı — BAĞLAYICI):** `@testing-library/react-native` 14'te `render` **Promise döndürür**. Bu plandaki her test parçacığında **`await render(...)`** kullanılır; senkron biçim hem `tsc` hem `jest` hatası verir. `@testing-library/react-native/extend-expect` içe aktarımı **yoktur** (matcher'lar dahili). Ayrıntı: M-4 (plan38) "T1 saha notları".
+
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları **değiştirilmez**), §3 (Mobil), §4 (paket M-5) · `docs/superpowers/specs/2026-09-06-mobile-store-compliance.md` §1 (L1–L16), §2 (meta veri), §3 (izinlerin akıştaki yeri). Gereksinimler: **R-M1, R-M2, R-M3, R-M4, R-M5, R-M6, R-M7, R-M15, R-M16**.
 
 **INDEX kimliği:** `M-5` · Dosya: `2026-09-06-plan39-mobile-store-compliance.md` · Bağımlılık: **B-14**, **W-14**, **M-4**.

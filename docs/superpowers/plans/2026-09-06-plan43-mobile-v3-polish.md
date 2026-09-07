@@ -29,6 +29,8 @@ zustand 5, react-i18next 17, `expo-image` (mekan/kart fotoğrafı), `react-nativ
 (Live Activity — T7 notuna bak), jest-expo 57 + @testing-library/react-native 14.
 Sürüm politikası: M-4 (plan38) Tech Stack bloğu.
 
+**Test kuralı (RNTL 14, 2026-09-07 sahada doğrulandı — BAĞLAYICI):** `@testing-library/react-native` 14'te `render` **Promise döndürür**. Bu plandaki her test parçacığında **`await render(...)`** kullanılır; senkron biçim hem `tsc` hem `jest` hatası verir. `@testing-library/react-native/extend-expect` içe aktarımı **yoktur** (matcher'lar dahili). Ayrıntı: M-4 (plan38) "T1 saha notları".
+
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç
 adları **değiştirilmez**), §3 Mobil, §4 (M-7/B-16 satırındaki mobil kalemleri bu plan kapatır).
 Karşılanan gereksinimler: **R-M9** (canlı lobi/bekleme — dürt ve presence damgaları),
