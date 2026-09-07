@@ -556,7 +556,6 @@
   "support": {
     "cardTitle": "Something not working?",
     "cardHint": "We usually reply within one business day.",
-    "email": "Send an email",
     "faqTitle": "Frequently asked",
     "q1": "Why is my location shown as approximate?",
     "a1": "Your location is shared rounded to ~1 km: enough to compute a fair midpoint, not enough to give away your address.",
@@ -566,8 +565,7 @@
     "a3": "No. Audio flows directly between devices (P2P) and is never recorded.",
     "q4": "How do I delete my data?",
     "a4": "Account and data → Delete account. You can also do it at bumpinto.app/account/delete without installing the app.",
-    "merchant": "Trader information",
-    "mName": "Name",
+    "contact": "Contact",
     "mEmail": "Email",
     "deleteLink": "To request account deletion: bumpinto.app/account/delete"
   }

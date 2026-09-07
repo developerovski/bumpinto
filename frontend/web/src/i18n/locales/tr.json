@@ -547,7 +547,6 @@
   "support": {
     "cardTitle": "Bir şey mi takıldı?",
     "cardHint": "Genelde 1 iş günü içinde dönüyoruz.",
-    "email": "E-posta gönder",
     "faqTitle": "Sık sorulanlar",
     "q1": "Konumum neden yaklaşık gösteriliyor?",
     "a1": "Konumun ~1 km yuvarlanarak paylaşılır: orta noktayı adil hesaplamaya yeter, adresini ele vermez.",
@@ -557,8 +556,7 @@
     "a3": "Hayır. Ses cihazlar arasında doğrudan (P2P) akar ve hiçbir yere kaydedilmez.",
     "q4": "Verilerimi nasıl silerim?",
     "a4": "Hesap ve veriler → Hesabı sil. Uygulama kurulu olmasa da bumpinto.app/account/delete adresinden yapabilirsin.",
-    "merchant": "Tacir bilgileri",
-    "mName": "Ad",
+    "contact": "İletişim",
     "mEmail": "E-posta",
     "deleteLink": "Hesap silme isteği için: bumpinto.app/account/delete"
   }

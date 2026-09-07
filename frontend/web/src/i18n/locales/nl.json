@@ -556,7 +556,6 @@
   "support": {
     "cardTitle": "Werkt er iets niet?",
     "cardHint": "Meestal reageren we binnen één werkdag.",
-    "email": "Stuur een e-mail",
     "faqTitle": "Veelgestelde vragen",
     "q1": "Waarom wordt mijn locatie bij benadering getoond?",
     "a1": "Je locatie wordt afgerond op ~1 km gedeeld: genoeg om een eerlijk middelpunt te berekenen, niet genoeg om je adres prijs te geven.",
@@ -566,8 +565,7 @@
     "a3": "Nee. Audio gaat rechtstreeks tussen apparaten (P2P) en wordt nooit opgenomen.",
     "q4": "Hoe verwijder ik mijn gegevens?",
     "a4": "Account en gegevens → Account verwijderen. Het kan ook via bumpinto.app/account/delete, zonder de app te installeren.",
-    "merchant": "Handelaarsgegevens",
-    "mName": "Naam",
+    "contact": "Contact",
     "mEmail": "E-mail",
     "deleteLink": "Voor een verwijderverzoek: bumpinto.app/account/delete"
   }

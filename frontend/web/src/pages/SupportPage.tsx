@@ -1,12 +1,11 @@
 /* Artboard W19 · Destek — RequireAuth YOK (Play destek e-postası + Apple Support URL herkese
    açık olmalı).
-   İletişim bloğu ad + e-posta ile SINIRLI (kullanıcı kararı, 2026-09-07): telefon/adres
-   yayımlanmaz. Planın dayandığı DSA m.30 pazaryerleri içindir, bize uygulanmaz — atıf kalktı.
-   AB'de dağıtımda tacir adı/adresi/telefonu zaten App Store ve Play listeleme sayfasında
-   görünür; burada tekrarlanmasının bir kazancı yok. */
-import { EnvelopeSimple } from "@phosphor-icons/react";
+   İletişim YALNIZ e-posta (kullanıcı kararı, 2026-09-07): ad, telefon ve adres yayımlanmaz —
+   destek ve iş birliği için e-posta yeterli. Planın dayandığı DSA m.30 pazaryerleri içindir,
+   bize uygulanmaz; atıf kalktı. AB'de dağıtımda tacir adı/adresi zaten App Store ve Play
+   listeleme sayfasında görünür, burada tekrarlanmasının kazancı yok. */
 import { useTranslation } from "react-i18next";
-import { LinkButton, Note, Overline, Page } from "../components/atoms";
+import { Note, Overline, Page } from "../components/atoms";
 import FaqItem from "../components/molecules/FaqItem";
 import LegalBlocks from "../components/molecules/LegalBlocks";
 import PageHeader from "../components/molecules/PageHeader";
@@ -21,18 +20,13 @@ export default function SupportPage() {
       <PageHeader title={t("legal.support")} />
       <ReaderZone>
         <Note card>{t("support.cardTitle")} — {t("support.cardHint")}</Note>
-        <LinkButton href="mailto:hello@bumpinto.app" size="fit">
-          <EnvelopeSimple size={18} aria-hidden />
-          {t("support.email")}
-        </LinkButton>
         <Overline>{t("support.faqTitle")}</Overline>
         {FAQ.map((n) => <FaqItem key={n} question={t(`support.q${n}`)} answer={t(`support.a${n}`)} />)}
-        <Overline>{t("support.merchant")}</Overline>
+        <Overline>{t("support.contact")}</Overline>
         <LegalBlocks blocks={[
-          { table: [
-            [t("support.mName"), "BumpInto (Mehmet Şerefoğlu)"],
-            [t("support.mEmail"), "hello@bumpinto.app"],
-          ] },
+          /* Tek e-posta, tek yer: ayrı bir "E-posta gönder" butonu aynı adresi ikinci kez
+             gösteriyordu. Tablo hücresi tıklanamadığı için satır `link` bloğu olarak basılır. */
+          { link: [`${t("support.mEmail")}: `, "hello@bumpinto.app", "mailto:hello@bumpinto.app"] },
           { link: ["", t("support.deleteLink"), "/account/delete"] },
         ]} />
       </ReaderZone>
