@@ -17,21 +17,23 @@ adlı **tek dinleyici seam**'inden geçer: bugün onu kimse beslemez (STOMP köp
 görseli **ekran dışı** `ShareCardImage` düğümünün `react-native-view-shot` ile 360×640 dp'den
 1080×1920 px'e ölçeklenmesiyle üretilir; foto yüklenemezse gradyan + monogram, çizim çökerse metin
 paylaşımı. ICS **shared**'a konur (`frontend/shared/src/ics.ts`), web'deki kopya shim'e çevrilir
-(M-4:T3b deseni) — takvim metni tek yerde kalır. Live Activity bu planda **arayüz + config plugin
-iskeleti**dir; gerçek ActivityKit widget target'ı ve push güncellemesi B-16'dadır.
+(M-4:T3b deseni) — takvim metni tek yerde kalır. Live Activity bu planda **arayüz iskeleti**dir;
+gerçek widget target'ı ve push güncellemesi B-16'dadır — ama **SDK 57 ile `expo-widgets` geldiği için
+bu artık uzak bir iş değil**, T7 notuna bak.
 
-**Tech Stack:** Expo SDK 54 (CNG prebuild), expo-router 6, zustand 5, react-i18next,
-`expo-image` (mekan/kart fotoğrafı), `react-native-view-shot` (kart PNG'si), `expo-sharing` +
-RN `Share` (paylaşım), `expo-file-system` (SDK 54 `File`/`Paths` API'si, .ics dosyası),
-`react-native-qrcode-svg` + `react-native-svg` (QR), `expo-camera` (QR tarama),
-`@react-native-community/datetimepicker` (buluşma saati), `expo-haptics`, jest-expo +
-@testing-library/react-native.
+**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, CNG prebuild, New Arch), expo-router 57,
+zustand 5, react-i18next 17, `expo-image` (mekan/kart fotoğrafı), `react-native-view-shot`
+(kart PNG'si), `expo-sharing` + RN `Share` (paylaşım), `expo-file-system` (`File`/`Paths` API'si,
+.ics dosyası), `react-native-qrcode-svg` + `react-native-svg` 15 (QR), `expo-camera` (QR tarama),
+`@react-native-community/datetimepicker` (buluşma saati), `expo-haptics`, **`expo-widgets`**
+(Live Activity — T7 notuna bak), jest-expo 57 + @testing-library/react-native 14.
+Sürüm politikası: M-4 (plan38) Tech Stack bloğu.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç
 adları **değiştirilmez**), §3 Mobil, §4 (M-7/B-16 satırındaki mobil kalemleri bu plan kapatır).
 Karşılanan gereksinimler: **R-M9** (canlı lobi/bekleme — dürt ve presence damgaları),
 **R-M11** (sonuç kartı + paylaşım + takvim), **R-M12** (mekan kartı 2.0), **R-M17** (oturum kodu + QR).
-Live Activity (P26) **taslak**: yalnız köprü. Kapsam dışı: push jetonu/`device_tokens` (B-16),
+Live Activity (P26) **taslak**: yalnız köprü (T7 revizyon notu). Kapsam dışı: push jetonu/`device_tokens` (B-16),
 bildir/engelle (M-5), sesli sohbet dock'u (M-6).
 
 **UI Kaynağı:** Claude Design projesi `719fcd5f-bb62-4356-9c53-7d4f0a8fbe36`, dosya
@@ -89,8 +91,9 @@ Eşiklerden biri tutmuyorsa plan **blocked** — alan, uç ya da dosya **uydurul
 - i18n: metin sabiti yasak; taban `tr`, yeni anahtar **üç dile birden** (`rtk pnpm i18n:check` yeşil).
 - **Rozet çorbası yasak:** adalet yalnız `RangeBar`/`TravelBars` ile gösterilir (karar dok. §4).
 - Metin ≥12px, dokunma hedefi ≥44px, her ekranda tek birincil düğme.
-- Live Activity kapsamı **kilitli**: widget extension target'ı, push jetonu ve ActivityKit çağrısı
-  bu planda YOK. `liveActivity.ts` no-op döner; sahte "canlı" arayüz çizilmez.
+- Live Activity kapsamı **kilitli**: widget target'ı, push jetonu ve ActivityKit çağrısı bu planda
+  YOK. `liveActivity.ts` no-op döner; sahte "canlı" arayüz çizilmez. (Kilit *kapsam* kilidi olarak
+  kalır — teknik imkânsızlık değil; SDK 57'de `expo-widgets` var, bkz. T7.)
 
 **Dosya haritası:**
 
@@ -1173,7 +1176,7 @@ export async function shareIcs(event: CalendarEvent, slug: string,
 }
 ```
 
-SDK 54'te `expo-file-system` yeni API'yi (`File`/`Paths`) dışa aktarır. `rtk grep -c "Paths"
+SDK 57'de `expo-file-system` yeni API'yi (`File`/`Paths`) dışa aktarır. `rtk grep -c "Paths"
 frontend/mobile/node_modules/expo-file-system/build/index.d.ts` 0 dönerse import
 `expo-file-system/legacy`'ye alınır ve `writeAsStringAsync` kullanılır — o durum INDEX notuna yazılır.
 
@@ -1425,6 +1428,21 @@ ve M-5 birleştirmesi INDEX notuna yazılır.
 ---
 
 ### Task 7: Live Activity — köprü iskeleti (taslak, kapsamı kilitli)
+
+> **REVİZYON NOTU (2026-09-07) — aşağıdaki adımlara başlamadan oku.**
+> Bu görev SDK 54 varsayımıyla yazıldı: o gün Expo'nun widget/extension desteği yoktu, bu yüzden
+> `plugins/withLiveActivity.js` **elde yazılmış** bir config plugin olarak tasarlandı ve yalnız
+> `NSSupportsLiveActivities` anahtarını basıyordu. **SDK 57'de `expo-widgets` (~57.0.x) first-party
+> geldi** — iOS Widget Extension target'ı ve ActivityKit artık CNG içinde desteklenen bir yol.
+>
+> Sonuç: **`plugins/withLiveActivity.js` YAZILMAZ.** Step 3 iptaldir; yerine `app.config.ts`
+> `plugins` dizisine `expo-widgets` eklenir ve `npx expo install expo-widgets` çağrılır.
+> `src/lib/liveActivity.ts` no-op arayüzü ve testleri (Step 1/2/4) **aynen durur** — M-9'un teslimi
+> hâlâ yalnız köprüdür, P26 çizilmez.
+>
+> Adım gövdeleri M-9 sırası geldiğinde `expo-widgets`in o günkü API'sine göre yeniden yazılır;
+> M-9 mobil sıranın **sonuncusu** (M-4 → M-7 → M-8 → M-5 → M-6 → M-9), bu yüzden şimdi yeniden
+> yazmak erken — bugünkü doğru bilgi bu nottur.
 
 **Files:**
 Create: `frontend/mobile/plugins/withLiveActivity.js`,

@@ -12,7 +12,7 @@ eşlemesi 9 artboard'lık `Mobil Ekranlar v2`'ye ve "Apple girişi yok" varsayı
 (`2026-09-06-plan41-mobile-create-join.md`), deste/runoff/karar akışı **M-8**
 (`2026-09-06-plan42-mobile-decision-flow.md`). Yürütme sırası: **M-4 → M-7 → M-8**.
 
-**Goal:** `frontend/mobile` içinde ayakta duran Expo SDK 54 CNG uygulaması: derin link + edge-to-edge
+**Goal:** `frontend/mobile` içinde ayakta duran Expo SDK 57 CNG uygulaması: derin link + edge-to-edge
 config'i üretilmiş, v3 tema/ikon/atom katmanı kurulu, web'in saf mantığı ve dil dosyaları
 `frontend/shared`'a taşınmış (web bozulmadan), Google girişiyle açılan, Oturumlar listesini ve Profil
 ekranını gösteren kabuk — O2/P1/P2/P22 artboard'larına sadık, adalet/mekan/deste ekranları M-7 ve M-8.
@@ -26,13 +26,40 @@ istemcisi, `createHttp(..., { client: "mobile" })`. Saf mantık (adalet, deste g
 yedek plan, runoff kuyruğu, ulaşım sözlüğü, i18n JSON'ları) web'den `frontend/shared`'a taşınır; web
 dosyaları shim olarak re-export eder — web bozulmaz.
 
-**Tech Stack:** Expo SDK 54 (CNG prebuild, **Expo Go yok — dev build zorunlu**), expo-router 6,
-react-native-safe-area-context (edge-to-edge), `@react-native-google-signin/google-signin`,
+**Tech Stack:** **Expo SDK 57** (`expo` 57.0.x → React Native **0.86**, React **19.2**; CNG prebuild,
+**Expo Go yok — dev build zorunlu**, **New Architecture zorunlu ve kapatılamaz**), expo-router 57,
+react-native-safe-area-context 5 (edge-to-edge), `@react-native-google-signin/google-signin` 16,
 expo-secure-store, expo-location (foreground), expo-haptics, expo-clipboard, expo-localization,
-expo-font + `@expo-google-fonts/{bricolage-grotesque,figtree,caveat}`, `phosphor-react-native` +
-react-native-svg, `react-native-maps` (kurulur; tembel kullanımı M-7),
-`@react-native-community/netinfo`, gesture-handler + reanimated, zustand 5, i18next/react-i18next,
-axios (shared), jest-expo + @testing-library/react-native.
+expo-font + `@expo-google-fonts/{bricolage-grotesque,figtree,caveat}`, `phosphor-react-native` 3 +
+react-native-svg 15, `react-native-maps` 1.27 (kurulur; tembel kullanımı M-7),
+`@react-native-community/netinfo` 12, **react-native-gesture-handler 3** + **react-native-reanimated 4**
+(+ zorunlu eş paket `react-native-worklets`), zustand 5, i18next 26 / react-i18next 17,
+axios (shared), jest-expo 57 + @testing-library/react-native 14.
+
+**Sürüm politikası (BAĞLAYICI — kullanıcı talimatı 2026-09-07):** *her paket latest.* "latest"in bu
+depoda **iki** anlamı var, karıştırma:
+
+1. **Expo'nun yönettiği yerel modüller** — `expo-*`, `react-native-{maps,svg,screens,safe-area-context,gesture-handler,reanimated,worklets,view-shot}`,
+   `@react-native-community/*`, `jest-expo`: latest = **`expo install`in SDK 57 için çözdüğü sürüm**,
+   npm `latest` **DEĞİL**. Bunlara `pnpm add <paket>@latest` yazmak prebuild'i/derlemeyi kırar
+   (SDK dışı reanimated/maps ikilisi klasik kırılma). Plan gövdesinde bu paketlere **sürüm yazılmaz**;
+   daima `npx expo install` çağrılır.
+2. **Saf JS / Expo dışı paketler** — zustand, i18next, react-i18next, axios, `@stomp/stompjs`,
+   `phosphor-react-native`, `@react-native-google-signin/google-signin`, `react-native-webrtc`,
+   `react-native-incall-manager`, `react-native-qrcode-svg`, `@testing-library/react-native`,
+   `eas-cli`: latest = npm `latest` (`@latest` ile kur).
+
+**Kapı:** her görev kapanışında `npx expo install --check` **temiz** dönmeli (sürüm sapması yok).
+
+**New Architecture sonuçları (RN 0.82+ ile mimari kapatılamaz — bare RN'de de kapatılamaz):**
+
+- `react-native-reanimated` **4** ayrı `react-native-worklets` paketi ister ve `babel.config.js`
+  eklentisi artık `"react-native-reanimated/plugin"` değil **`"react-native-worklets/plugin"`**tir.
+- `react-native-gesture-handler` **3** majör atlama (2.x → 3.x); `GestureHandlerRootView` ve Gesture
+  API'si durur, eski `<PanGestureHandler>` bileşen sarmalayıcıları kullanılmaz — M-8 deste kaydırması
+  Gesture API'siyle yazılır.
+- Eski (legacy) yerel modüller interop katmanından geçer; M-6'nın `react-native-incall-manager`'ı
+  bu katmana bağımlıdır → M-6 T2'de doğrulama kapısı var.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-4 satırı). Karşılananlar: **R-M16'nın config kısmı** (edge-to-edge,
@@ -55,6 +82,32 @@ Yerel kopya + ölçüler: `.../scratchpad/design/m3/{A,B}/*.html`, `m3/native.cs
 | P21 kart görseli · P25 dock · P26 Live Activity | **bu planda YOK** (M-9 (plan43) / M-6 / sonraki iz) |
 
 **Ön koşul:** B-6 ✓ (mevcut API). Google OAuth istemci kimlikleri ve Maps SDK anahtarları kullanıcıda.
+
+**İki React majörü — DOĞRULAMA KAPISI, ön koşul DEĞİL (2026-09-07).** Depo
+`pnpm-workspace.yaml`'da `nodeLinker: hoisted`; `frontend/web` **React 18.3.1**'de (root'ta hoisted,
+web nested kopya tutmuyor), Expo SDK 57 ise **React 19.2.3** ister. Bu **M-4'ü bloklamaz**, çünkü:
+
+- `frontend/shared` 6 saf `.ts` dosyasıdır ve **React'i hiç import etmez** — paylaşılan kod React
+  çözümlemesi taşımıyor (doğrulandı 2026-09-07).
+- Root 18'i tuttuğu için pnpm 19'u `frontend/mobile/node_modules/react` altına **yuvalar**; Metro
+  proje kökünden yukarı çözdüğü için önce yuvalanmış 19'u bulur.
+
+T1 Step 1'den hemen sonra **kapı** (üçü de geçmeli, aksi halde M-4 `blocked` ve kullanıcıya bildirilir):
+
+```bash
+rtk node -pe 'require("./frontend/mobile/node_modules/react/package.json").version'        # 19.x
+rtk node -pe 'require("./frontend/mobile/node_modules/@types/react/package.json").version' # 19.x
+rtk pnpm test:web    # web regresyonu: 412 test hâlâ yeşil (mobil kurulumu web'i bozmamalı)
+```
+
+`metro.config.js` monorepo için `watchFolders` (repo kökü) + `resolver.nodeModulesPaths`
+(`frontend/mobile/node_modules`, sonra kök) ile yazılır — bu zaten React sürümünden bağımsız
+olarak gerekli. **Ayrıca `resolver.disableHierarchicalLookup` KULLANILMAZ**; kök `node_modules`
+`@bumpinto/shared` için gerekli.
+
+**Web tarafı ayrı iş:** `frontend/web`'in React 19'a çekilmesi bu planın kapsamında **değildir**
+(kullanıcı talimatı 2026-09-07: web ayrı ajanın işi). Yukarıdaki kapı kırmızıya dönerse çözüm
+web'i 19'a almaktır — o zaman M-4 durur ve iş web izine devredilir.
 Doğrula (repo kökünden, üçü de ≥1):
 `rtk grep -c "AnchorDto" frontend/shared/src/api-types.ts` ·
 `rtk grep -c "originPresent" frontend/shared/src/api-types.ts` ·
@@ -84,7 +137,7 @@ Doğrula (repo kökünden, üçü de ≥1):
 
 ---
 
-### Task 1: Expo SDK 54 CNG iskeleti + workspace
+### Task 1: Expo SDK 57 CNG iskeleti + workspace
 
 **Files:** Create `frontend/mobile/` (create-expo-app), `frontend/mobile/{tsconfig.json,jest.setup.ts}`;
 Modify `frontend/mobile/package.json`
@@ -96,13 +149,21 @@ cd frontend && rtk pnpm create expo-app@latest mobile --template default --no-in
 rtk pnpm install && cd frontend/mobile
 rtk pnpm exec npx expo install expo-router expo-secure-store expo-location expo-haptics \
   expo-clipboard expo-localization expo-font expo-linking expo-dev-client expo-constants \
-  react-native-safe-area-context react-native-screens react-native-svg react-native-maps \
-  react-native-gesture-handler react-native-reanimated @react-native-community/netinfo
-rtk pnpm add @bumpinto/shared@workspace:* zustand i18next react-i18next phosphor-react-native \
-  @react-native-google-signin/google-signin @expo-google-fonts/bricolage-grotesque \
-  @expo-google-fonts/figtree @expo-google-fonts/caveat
-rtk pnpm add -D jest jest-expo @testing-library/react-native @types/jest
+  expo-build-properties react-native-safe-area-context react-native-screens react-native-svg \
+  react-native-maps react-native-gesture-handler react-native-reanimated react-native-worklets \
+  @react-native-community/netinfo
+rtk pnpm add @bumpinto/shared@workspace:* zustand@latest i18next@latest react-i18next@latest \
+  phosphor-react-native@latest @react-native-google-signin/google-signin@latest \
+  @expo-google-fonts/bricolage-grotesque@latest @expo-google-fonts/figtree@latest \
+  @expo-google-fonts/caveat@latest
+rtk pnpm add -D jest @types/jest @testing-library/react-native@latest
+rtk pnpm exec npx expo install jest-expo
+rtk pnpm exec npx expo install --check     # BOŞ çıktı beklenir; sapma varsa önerdiği sürümü al
 ```
+
+`babel.config.js` (create-expo-app'in ürettiği dosya) `plugins` dizisine
+**`"react-native-worklets/plugin"`** eklenir — Reanimated 4 kendi eklentisini artık dışa aktarmaz;
+eski `"react-native-reanimated/plugin"` satırı varsa **silinir**.
 
 `package.json`: `"name": "@bumpinto/mobile"`, `"private": true`; scriptler `start: "expo start
 --dev-client"`, `prebuild: "expo prebuild --clean"`, `test: "jest"`, `typecheck: "tsc --noEmit"`;
@@ -886,7 +947,7 @@ alanından okunur. `1` ya da fazlası dönerse alan eklenmiş demektir; INDEX'te
 - [ ] **Step 4: INDEX kaydı** — `docs/superpowers/plans/INDEX.md` **M — Mobil** tablosunda:
 
 - M-1 / M-2 / M-3 **Durum** → `superseded`; **Not**: `M-4 (plan38) supersede etti (2026-09-06); gövde yalnız kod parçası kaynağı.`
-- Yeni satır: `| M-4 | **Mobil temel** — Expo SDK 54 CNG iskeleti, derin link + edge-to-edge config, EAS profilleri, v3 tema/ikon/atomları, shared'a taşınan saf mantık + dil dosyaları (web shim'leri), Google girişi + SecureStore, Oturumlar listesi ve Profil | `2026-09-06-plan38-mobile-shell-v3.md` | — | done | B-6 ✓ | — | 9 görev; R-M16(config). Kurma/katılım M-7, karar akışı M-8; dock M-6; mağaza/yasal M-5 |`
+- Yeni satır: `| M-4 | **Mobil temel** — Expo SDK 57 CNG iskeleti, derin link + edge-to-edge config, EAS profilleri, v3 tema/ikon/atomları, shared'a taşınan saf mantık + dil dosyaları (web shim'leri), Google girişi + SecureStore, Oturumlar listesi ve Profil | `2026-09-06-plan38-mobile-shell-v3.md` | — | done | B-6 ✓ | — | 9 görev; R-M16(config). Kurma/katılım M-7, karar akışı M-8; dock M-6; mağaza/yasal M-5 |`
 - Yeni satır: `| M-7 | **Kurma ve katılım** — yeni buluşma (3 etkinlik + çapa + harita seçici), konum izni ön-ekranı ve red kurtarma, bireysel kurulum, katıl + derin link, durum yönlendirici, lobi/bekle, mekanlar + yol çubuğu | `2026-09-06-plan41-mobile-create-join.md` | — | ready | M-4 | — | 6 görev; R-M14, R-M2, R-M8, R-M9(statik) |`
 - Yeni satır: `| M-8 | **Karar akışı** — deste (kaydırma/damga/haptik), deste bitti/liste/gönderildi, runoff/berabere/karar, çevrimdışı şeridi + hata ekranı, Maestro e2e | `2026-09-06-plan42-mobile-decision-flow.md` | — | ready | M-7 | — | 5 görev; R-M13 |`
 - K-görevleri: `| K-M5 | `SessionView`'da çapa etiketi/koordinatı yok (M-4:T2 denetimi); çapalı oturumda yer adı `midpointLabel`'dan okunur | done | M-4 | Ayrı alan gerekirse B-15'e K-B görevi |`

@@ -20,10 +20,13 @@ sadık, adalet gösterimi `frontend/shared/src/fairness.ts` üzerinden web ile t
 Canlı veri: `useSessionLive` ile 3 sn polling (STOMP köprüsü M-6). Ters geocode ve adres arama
 **backend üzerinden** (`/api/geocode`, `/api/geocode/reverse` — M-4 T7'de shared api'ye eklendi).
 
-**Tech Stack:** Expo SDK 54 (dev build), expo-router 6, expo-location (foreground), expo-clipboard,
+**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, dev build, New Arch), expo-router 57, expo-location (foreground), expo-clipboard,
 `react-native-maps` (yalnız tam ekran alt sayfada, `React.lazy`), react-native-safe-area-context,
 `phosphor-react-native` + react-native-svg, zustand 5, i18next/react-i18next, `@bumpinto/shared`
-(axios istemcisi + saf mantık), jest-expo + @testing-library/react-native.
+(axios istemcisi + saf mantık), jest-expo 57 + @testing-library/react-native 14.
+Sürüm politikası: M-4 (plan38) Tech Stack bloğu — Expo modülleri `expo install`, saf JS `@latest`.
+**Not (2026-09-07):** SDK 57 ile Expo'nun kendi `expo-maps` modülü de var; bu plan
+`react-native-maps` 1.27'de **kalır** (harita zaten tembel ve kenarda — churn'e değmez).
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-7 satırı). Karşılananlar: **R-M14** çapalı oturum + 3 etkinlik ·

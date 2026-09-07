@@ -1,4 +1,4 @@
-import { GoogleSignIn, Note } from "@bumpinto/web";
+import { AppleSignIn, GoogleSignIn, Note } from "@bumpinto/web";
 
 /* `VITE_GOOGLE_CLIENT_ID` preview ortamında tanımlı değil: esbuild `import.meta.env`i
    yalnız `{MODE,DEV,PROD,SSR,BASE_URL}` ile dolduruyor (bkz. .ds-sync/lib/common.mjs
@@ -19,8 +19,10 @@ export function Yapilandirilmamis() {
 }
 
 /** Landing sayfasındaki gerçek kompozisyon (`SignInBlock`, `molecules/SignInBlock.tsx`) —
-    buton + altında "Koşulları" bağlantılı satır, gerçek 21.25rem genişlik sınırıyla.
-    `SignInBlock` barrel'dan export edilmediği için aynı JSX burada birebir kuruldu. */
+    Google + Apple butonu + altında "Koşulları" bağlantılı satır, gerçek 21.25rem genişlik
+    sınırıyla. `SignInBlock` barrel'dan export edilmediği için aynı JSX burada birebir kuruldu.
+    GÜNCELLEME: `AppleSignIn` barrel'a eklendiğinde (bkz. AppleSignIn.tsx) buraya katıldı —
+    ikisi ürün olarak HER ZAMAN birlikte render olur, ayrı bir kopyası AppleSignIn.tsx'te YOK. */
 export function LandingKompozisyonu() {
   return (
     <div style={WRAP}>
@@ -34,6 +36,7 @@ export function LandingKompozisyonu() {
         }}
       >
         <GoogleSignIn />
+        <AppleSignIn />
         <Note center>
           Devam edersen <a href="/terms">Koşulları</a> kabul etmiş olursun.
         </Note>

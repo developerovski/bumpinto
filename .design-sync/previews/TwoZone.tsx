@@ -132,7 +132,8 @@ export function WaitingRoomMobileFirst() {
         left={
           <>
             <JoinedCard self={{ ...MEHMET, deckDone: false }} />
-            <ParticipantList participants={ROSTER} />
+            {/* MEHMET kuran (host: true) — viewer'ın kendisi, isHost de true. */}
+            <ParticipantList slug="kadikoy-cuma-bulusmasi" isHost participants={ROSTER} />
           </>
         }
         right={

@@ -21,10 +21,15 @@ kalır. Deste geometrisi (`swipeThreshold`, `dragRotation`, `dragProgress`, `rel
 mantığı (`backupOf`, `isDeciding`, `venueLink`, `votersOf`) `@bumpinto/shared`'dan gelir; ikinci eşik
 ya da ikinci hesap tanımı yasak. Canlı veri: M-7'nin `useSessionLive` polling'i (STOMP köprüsü M-6).
 
-**Tech Stack:** Expo SDK 54 (dev build), expo-router 6, gesture-handler + reanimated (kaydırma),
+**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, dev build, New Arch), expo-router 57, **gesture-handler 3 + reanimated 4** (+ `react-native-worklets`; kaydırma),
 expo-haptics, `@react-native-community/netinfo`, react-native-safe-area-context,
 `phosphor-react-native` + react-native-svg, zustand 5, i18next/react-i18next, `@bumpinto/shared`,
-jest-expo + @testing-library/react-native + **Maestro**.
+jest-expo 57 + @testing-library/react-native 14 + **Maestro**.
+
+**Kaydırma API'si (2026-09-07, BAĞLAYICI):** gesture-handler **3.x** ve reanimated **4.x** kullanılır.
+Deste kaydırması yeni **Gesture API**'siyle (`Gesture.Pan()` + `GestureDetector`) yazılır; eski
+`<PanGestureHandler>` / `useAnimatedGestureHandler` deseni **kullanılmaz** (New Arch'ta kaldırıldı).
+Worklet'ler `react-native-worklets` üstünden çalışır; babel eklentisi M-4 T1'de kurulur.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-v3-requirements.md` §2 (sözleşme kararları — alan/uç adları
 **değiştirilmez**), §3 Mobil, §4 (M-8 satırı). Karşılananlar: **R-M13** çevrimdışı + iskelet.

@@ -17,7 +17,8 @@ build'in APK'sını tüketir, yeni build başlatmaz), `mobile-submit.yml` (korum
 ortamı; onay kullanıcıda). Kimlik bilgileri **EAS'ta** durur (`eas credentials`); GitHub'ın bildiği tek
 sır `EXPO_TOKEN`'dır. `EXPO_PUBLIC_*` değerleri sır değildir (istemciye gömülür) → GitHub **variables**.
 
-**Tech Stack:** EAS CLI ≥ 12, Expo SDK 54 (CNG), pnpm 11 + Node 22, GitHub Actions
+**Tech Stack:** EAS CLI ≥ 23 (`eas-cli@latest`), **Expo SDK 57** (CNG, RN 0.86 / React 19.2,
+New Arch), pnpm 11 + Node 22, GitHub Actions
 (`actions/setup-node@v4`, `pnpm/action-setup@v4`, `actions/setup-java@v4`,
 `reactivecircus/android-emulator-runner@v2`), Maestro CLI, `expo-build-properties`.
 Test: jest-expo (saf Node yardımcıları + `app.config` iddiaları), `js-yaml` CLI ile workflow şema kapısı.
@@ -1189,6 +1190,11 @@ Mesaj: `chore(store): maestro ile ekran goruntusu uretimi + olcu dogrulamasi`.
 ---
 
 ### Task 8: 16 KB page size ve target API 36 kapısı
+
+> **Not (2026-09-07):** SDK 57'de `compileSdk`/`targetSdk` zaten **36** ve 16 KB sayfa hizalaması
+> kutudan gelir. Bu görev artık bir *düzeltme* değil, **regresyon bekçisi**dir: `expo-build-properties`
+> pini ve `check-android-sdk.mjs` iddiası aynen yazılır ki ileride bir SDK/eklenti geri düşürdüğünde
+> CI patlasın. Adımlar değişmez.
 
 **Files:**
 - Create: `frontend/mobile/scripts/{sdkAssert.mjs,check-android-sdk.mjs}`, `frontend/mobile/scripts/__tests__/sdkAssert.test.ts`

@@ -6,7 +6,27 @@
 
 **Architecture:** `voiceMesh`in saf denetleyicisi (K5 küçük-id teklif kuralı, roster farkı, yeniden kurma + 15 sn bekçi, sinyal şeması) `frontend/shared/src/voice/` altına taşınır ve **yapısal** bir WebRTC yüzeyine (`MeshPeerConnection`, `MeshStream`, `AudioSink`, `LevelSampler`) bağlanır — ne DOM ne `react-native-webrtc` tipine. Web adaptörü `RTCPeerConnection` + gizli `<audio>` + `AnalyserNode`; RN adaptörü `react-native-webrtc` + no-op sink (uzak track'i kütüphane çalar) + `pc.getStats().audioLevel` örnekleyici. Konuşma eşiği/tutma (K12) tek yerde: `shared/voice/levels.ts`. STOMP `liveChannel` RN'e portlanır (`webSocketFactory` + `X-Participant-Token` başlığı, yeniden bağlanınca yeniden abonelik). `voiceStore` katılım sırasını yürütür: ön-ekran → mikrofon izni → özel konuya abonelik → kimlik → mesh. `VoiceDock` CTA'nın üstünde yüzen hap; oturum durum yönlendiricisinde bir kez mount edilir.
 
-**Tech Stack:** Expo SDK 54+ (CNG prebuild, dev build — Expo Go yok), expo-router, `react-native-webrtc` + config plugin, `react-native-incall-manager`, `@stomp/stompjs` 7 + RN `WebSocket`, zustand 5, `phosphor-react-native`, i18next (tr/en/nl, `frontend/shared/src/i18n`), jest-expo + @testing-library/react-native, Maestro; shared tarafı vitest (web koşucusu üstünden).
+**Tech Stack:** **Expo SDK 57** (RN 0.86 / React 19.2, CNG prebuild, dev build — Expo Go yok,
+**New Architecture zorunlu**), expo-router 57, `react-native-webrtc` **124.0.8** +
+`@config-plugins/react-native-webrtc` **15.0.2**, `react-native-incall-manager` **4.2.2**,
+`@stomp/stompjs` 7.3 + RN `WebSocket`, zustand 5, `phosphor-react-native` 3,
+i18next 26 (tr/en/nl, `frontend/shared/src/i18n`), jest-expo 57 + @testing-library/react-native 14,
+Maestro; shared tarafı vitest (web koşucusu üstünden). Sürüm politikası: M-4 (plan38) Tech Stack bloğu.
+
+**RİSK KAPISI (2026-09-07, BAĞLAYICI — T2'nin İLK adımı).** Bu planın iki yerel bağımlılığı da
+Expo'nun yönetmediği, üçüncü taraf ve **New Architecture altında doğrulanmamış** paketlerdir:
+
+| Paket | Durum | Kapı |
+|---|---|---|
+| `react-native-webrtc` 124.0.8 (2026-07-21) | aktif bakımda, RN 0.82+ döneminde yayınlandı | prebuild + dev build derlenmeli |
+| `@config-plugins/react-native-webrtc` 15.0.2 | peer `expo >=56` — **SDK 57 için ayrı sürüm YOK**, bir SDK geriden geliyor | `expo prebuild` uyarısız geçmeli |
+| `react-native-incall-manager` 4.2.2 | eski tarz modül; New Arch'ta **interop katmanından** geçer | cihazda hoparlör/kulaklık yönlendirmesi çalışmalı |
+
+T2 Step 1 bu üçünü **gerçek bir dev build ile** doğrular. Kapı kapalıysa (derleme veya ses
+yönlendirme kırıksa) M-6 `blocked` olur ve kullanıcıya iki seçenek sunulur:
+(a) `@livekit/react-native-webrtc` fork'una geçiş, (b) ses yönlendirmesini `expo-audio`in
+`setAudioModeAsync`'ine indirip `incall-manager`'ı düşürme (proximity/wake-lock kaybı kabul edilir).
+**Kendi başına seçim yapılmaz.** Bu kapı M-4'ü bloklamaz — M-4 bu paketlerden hiçbirini kurmaz.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-voice-chat-design.md` (§4 akış, §5 ömür, §7 web referansı, §9 hatalar, K1–K12; K10 "yalnız web" bu planla kapanır) · gereksinim dokümanı `2026-09-06-v3-requirements.md` §2 (sözleşme adları), §3 (R-M10), §4 (M-6 paketi) · ham analiz `…/req/mobile.md` R-M10, R-M9 dock kısmı, risk 2 ("mesh saf mantığını shared'a çıkar, ses I/O'yu platform adaptörüne al").
 
