@@ -93,6 +93,7 @@ com.bumpinto                                   (111 sınıf)
 │   │              TurnCredentialsPort · VoiceRoomsPort (B-12, ses odası)
 │   ├── session/   Session · SessionStatus · SessionType · Participant · ActivityType
 │   │              SessionSummary (liste satırı: sayımlar + karar mekanı)
+│   ├── og/        davet kartının kamu alanları
 │   ├── user/      UserProfile (hesap + tercihler)
 │   ├── venue/     Venue · VenueCandidate
 │   └── voice/     VoiceRoom · Seat · IceConfig · EndReason (B-12, ses odası)
@@ -119,7 +120,8 @@ com.bumpinto                                   (111 sınıf)
 │       ├── events/        1 — StompSessionEvents
 │       ├── turn/          1 — CloudflareTurnCredentials (Cloudflare TURN kimliği)
 │       ├── presence/      2 — InMemoryPresence · InMemoryVoiceRooms
-│       └── geocode/       1 — NominatimReverseGeocoder
+│       ├── geocode/       1 — NominatimReverseGeocoder
+│       └── image/         1 — OG kartı PNG render'ı (saf `java.awt`; domain yalnız `OgImagePort`'u görür)
 │
 └── infra/                                      9 sınıf — iş kuralı YOK
     ├── security/  SecurityConfig · TokenService · GoogleIdVerifier · AuthCookies
@@ -342,6 +344,23 @@ yere birden eklemek ayrışma riskini ikiye çıkarırdı.
 **Garanti edilmeyen:** çapalı oturumda seçilen noktanın çevresinde mekan bulunacağı.
 Bulunamazsa `NoVenuesFoundException` döner — telafi amaçlı ikinci bir Places çağrısı
 yapılmaz (B-9 bütçe kısıtı).
+
+### v3 alan ekleri (B-15, 2026-09-07)
+
+- **`Session.joinCode`** — 5 haneli (`Ids.joinCode()`), `sessions_join_code_key` ile ömür boyu
+  tekil (V18). `slug`'ın yerini almaz: davet linki hâlâ `slug` taşır, `joinCode` yalnız elle
+  yazılabilecek kısa bir alternatif giriş yoludur (`GET /api/sessions/by-code/{code}`, kamu
+  ucu, kendi rate-limit kovası `bycode` 10/dk). `SessionStoreAdapter.freshJoinCode()` çakışırsa
+  yeniden üretir; V18 backfill'i yalnız süresi dolmamış oturumları kapsar.
+- **`Venue.tagline` / `taglineSource`** — FSQ `tips` alanından ya da OSM türevinden gelen
+  ≤80 karakterlik "neyle bilinir" satırı; `taglineSource` (`FSQ`|`OSM`) UI atfını (Powered by
+  Foursquare / OSM) doğru yüzeye yazdırır. `Venue.withDeckOrder` bu iki alanı deste yeniden
+  sıralamasında **korur** — reorder yolu taglini sıfırlamaz.
+- **`participants.last_seen_at` / `link_opened_at`** — KALICI damgalar (V18), süreç içi
+  `InMemoryPresence` ile karıştırılmamalı: presence "şu an çevrimiçi mi" sorusuna cevap verir
+  ve restart'ta boşalır; bu iki alan "en son ne zaman görüldü" / "linki ne zaman açtı"
+  sorularına cevap verir ve kalıcıdır. `PresenceStampsPort` yazar, `ParticipantDto.lastSeenAt`
+  / `linkOpenedAt` okur.
 
 ---
 
@@ -587,13 +606,14 @@ istemciye tek yönlüdür — tek istisna ses sinyali (kural 5).
 | `voice_started` | `endsAt` |
 | `voice_ended` | `reason` (`HOST` \| `TIME_LIMIT` \| `EMPTY`) |
 | `voice_roster_changed` | — |
+| `nudged` | `fromParticipantId`, `toParticipantId` |
 | `blocked` | — |
 
 Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buraya da satır düşer.
 `voice_roster_changed` yalnız üye kümesi **gerçekten** değiştiğinde yayınlanır — SUBSCRIBE/
 UNSUBSCRIBE gürültüsünün tamamı zil çalmaz.
 
-Beş kural:
+Yedi kural (başlık "Beş kural" kalmıştı, sayı takip edilmedi — B-15'te düzeltildi):
 
 1. **Commit'ten sonra yayınlanır.** Aktif transaction varsa olay `afterCommit`'e kaydedilir;
    rollback'te hiç gitmez. İstemci var olmayan bir durumu görmez. Use-case'ler saf kalır —
@@ -653,13 +673,20 @@ Beş kural:
    görmez, yalnız adres ve soket bütçesi denetler. Anonim koltuk engeli (`user_id` null) yalnız
    o oturum boyunca yaşar.
 
+7. **`nudged` gövdesi doludur.** Diğer "tazele zili" olaylarının aksine istemci "seni Mehmet
+   dürttü" yazabilmek için iki kimliği de bilmek zorundadır. Yine de kimlikli bir KONU açılmaz:
+   olay oturumun ortak konusuna gider ve alıcı `toParticipantId`'yi kendisiyle karşılaştırır.
+   Kota süreç içidir (`InMemoryNudgeCooldown`, gönderen-hedef çifti başına 60 sn).
+
 ---
 
 ## 12. Yapılandırma ve sırlar
 
 `AppProps` (`@ConfigurationProperties("bumpinto")`) — `security`, `apple`, `cors`, `cookies`,
 `rateLimit`, `geocode`, `voice` (azami süre), `turn` (Cloudflare anahtarı; `api-token` sır),
-`venues`, `map`, `routing`, `retention`. Sır taşıyan alanlar `toString()`'de maskelenir.
+`venues`, `map`, `routing`, `retention`, `og` (OG kartı önbellek TTL'i + `/j/{slug}` ve
+`/og/{slug}.png` mutlak URL'lerini kuran iki taban adres). Sır taşıyan alanlar `toString()`'de
+maskelenir.
 
 **`bumpinto.apple`** — Sign in with Apple (App Store 4.8). `services-id` web akışının `aud`'u ve
 token uçlarında `client_id`; `bundle-id` native iOS akışının `aud`'u (Apple orada Services ID
@@ -762,6 +789,8 @@ testin bir şey tuttuğunu kanıtlamaz.
 | Spec §6'nın 30 günlük kalıcı silme gereksinimi | GDPR | **Plan 6** yazıldı, yürütülmedi |
 | Google taksonomisinde olmayan türler (at binme, sörf, tırmanış, dalış) | Bu aktiviteler hiç sunulamıyor | **Plan 7** yazıldı, `deferred` |
 | `GET /api/sessions` son 20 oturumla sınırlı, sayfalama yok (`UserProfileQueries.LIST_LIMIT`) | 20+ oturumu olan host eskilerini göremez | cursor + `hasMore` — B-7 adayı |
+| `tips` alanı doğrulanmadı — `VenueDto.tagline` FSQ Premium yanıtındaki `tips` alanına dayanır | Alan gelmezse sözleşme null-tolere davranır ve satır hiç çizilmez (sessiz, hata değil) | `FoursquarePremiumContractTest` gerçek anahtarla ölçer — kullanıcı |
+| OG render (`GET /og/{slug}.png`) `java.awt` ile çizer, konteyner imajı `fontconfig` ister | `fontconfig` yoksa uç 500 verir | Backend imajına `fontconfig` + TrueType aile eklemek (bkz. `docs/CONFIGURATION.md` §1) |
 
 ---
 

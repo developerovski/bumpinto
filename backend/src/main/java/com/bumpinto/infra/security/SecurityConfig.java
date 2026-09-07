@@ -37,7 +37,15 @@ public class SecurityConfig {
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/logout"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/sessions/*/participants"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/config"));
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/by-code/*"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/config"),
+            // Onizleme karti: linki eline gecen HERKESE (ve onizleme botlarina) acilir; kimlik
+            // isteseydi WhatsApp/Slack/X gorseli hic cekemezdi. Govdesinde kamu alanlari var.
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/og/*"),
+            // Ayni kartin metin hali; /og/* AYRI bir yoldur ve bunu KAPSAMAZ. Davet sayfasinin
+            // etiketlerini yazan web izi (W-15) henuz kimseyi tanimaz — kimlik isteseydi
+            // paylasilan link'in basligi ve gorseli hic olusmazdi.
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/og"));
 
     @Bean
     SecurityFilterChain apiChain(HttpSecurity http, TokenService tokens,

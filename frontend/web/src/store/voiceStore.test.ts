@@ -28,6 +28,7 @@ vi.mock("../lib/voiceMesh", () => {
     static throwOnce = false;
     roster: string[] = [];
     muted = false;
+    mutedPeers: string[] = [];
     signals: unknown[] = [];
     closed = false;
     constructor(public deps: { myId: string; iceServers: unknown; send: (s: unknown) => void }) {
@@ -39,6 +40,7 @@ vi.mock("../lib/voiceMesh", () => {
     }
     setRoster(ids: string[]) { this.roster = ids; }
     setMuted(muted: boolean) { this.muted = muted; }
+    setMutedPeers(ids: string[]) { this.mutedPeers = ids; }
     async handleSignal(signal: unknown) { this.signals.push(signal); }
     close() { this.closed = true; }
   }
@@ -359,6 +361,19 @@ describe("voiceStore", () => {
   it("rosterOf: inVoice olan katılımcı id'leri", () => {
     expect(rosterOf(view as never)).toEqual(["h"]);
     expect(rosterOf(null)).toEqual([]);
+  });
+
+  it("togglePeerMute yereldir ve iki yönlü çalışır", () => {
+    useVoiceStore.setState({ mutedPeers: {} });
+    useVoiceStore.getState().togglePeerMute("a");
+    expect(useVoiceStore.getState().mutedPeers.a).toBe(true);
+    useVoiceStore.getState().togglePeerMute("a");
+    expect(useVoiceStore.getState().mutedPeers.a).toBeUndefined();
+  });
+
+  it("rosterOf engelli katılımcıyı ses odasına almaz", () => {
+    const view = { participants: [{ id: "a", inVoice: true }, { id: "b", inVoice: true, blocked: true }] };
+    expect(rosterOf(view as never)).toEqual(["a"]);
   });
 });
 

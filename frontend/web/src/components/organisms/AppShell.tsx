@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link, Outlet } from "react-router-dom";
 import { useOnline, useRetryOnline } from "../../lib/useOnline";
 import OfflineBanner from "../molecules/OfflineBanner";
+import ToastHost from "../molecules/ToastHost";
 import TopBar from "../molecules/TopBar";
 
 /** react-router layout route: her sayfa üst çubuğun altında render olur. */
@@ -16,6 +17,7 @@ export default function AppShell() {
     // (UI review 2026-09-03: altta bir ekran boyu boşluk ve gereksiz kaydırma).
     <div data-app-shell className="flex min-h-[100dvh] flex-col">
       <TopBar />
+      <ToastHost />
       {/* Canlı bölge HER ZAMAN mount'ta (kod incelemesi #2): OfflineBanner içerik değişmeden
           ÖNCE erişilebilirlik ağacında olmalı, yoksa ekran okuyucu ilk anonsu kaçırır. Tek
           yer, tek kural: /sessions, oturum ekranları ve profil aynı şeridi görür. */}

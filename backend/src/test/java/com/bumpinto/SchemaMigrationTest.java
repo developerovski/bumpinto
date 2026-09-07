@@ -8,12 +8,15 @@ import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -149,6 +152,61 @@ class SchemaMigrationTest {
         assertThat(jdbc.queryForObject("select column_default from information_schema.columns "
                 + "where table_name = 'users' and column_name = 'consent_analytics'",
                 String.class)).contains("false");
+    }
+
+    /**
+     * V18: presence damgalari KALICI kolonlar (surec ici presence onlarin uzerine yazamaz) ve
+     * davet kodu TEKIL. Kodsuz (null) oturum serbesttir — Postgres unique indexte NULL'lari
+     * ayirt eder, yoksa suresi dolmus tum oturumlar tek bir "kodsuz" satira sikisirdi.
+     */
+    @Test
+    void v18AddsPresenceStampsAndAShapeCheckedUniqueJoinCode() {
+        assertThat(columnsOf("participants")).contains("last_seen_at", "link_opened_at");
+        assertThat(columnsOf("sessions")).contains("join_code");
+        assertThat(jdbc.queryForObject(
+                "select indexdef from pg_indexes where indexname = 'sessions_join_code_key'",
+                String.class)).contains("UNIQUE").contains("join_code");
+        assertThat(jdbc.queryForObject("select pg_get_constraintdef(oid) from pg_constraint "
+                + "where conname = 'sessions_join_code_shape_check'", String.class))
+                .contains("ABCDEFGHJKLMNPQRSTUVWXYZ23456789");
+
+        UUID host = insertHost("v18-unique@bumpinto.test");
+        insertSession(host, "v18null1", null);
+        insertSession(host, "v18null2", null); // iki NULL carpismaz
+        insertSession(host, "v18code1", "X7K2M");
+
+        assertThatThrownBy(() -> insertSession(host, "v18code2", "X7K2M"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** I/O/0/1 alfabede YOK: "0" mi "O" mu belirsizligi yanlis oturuma sokardi. */
+    @Test
+    void v18RejectsAJoinCodeOutsideTheUnambiguousAlphabet() {
+        UUID host = insertHost("v18-shape@bumpinto.test");
+        assertThatThrownBy(() -> insertSession(host, "v18bad1", "X7K2I"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** Kod TAM 5 hane; kisa kod uzayin bir bolumunu sessizce carpistirirdi. */
+    @Test
+    void v18RejectsAJoinCodeOfTheWrongLength() {
+        UUID host = insertHost("v18-len@bumpinto.test");
+        assertThatThrownBy(() -> insertSession(host, "v18bad2", "X7K2"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private UUID insertHost(String email) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("insert into users (id, email, name) values (?, ?, ?)", id, email, "V18");
+        return id;
+    }
+
+    private void insertSession(UUID hostId, String slug, String joinCode) {
+        jdbc.update("""
+                insert into sessions (id, slug, host_id, activity_types, status, expires_at,
+                                      join_code)
+                values (?, ?, ?, 'COFFEE', 'COLLECTING', now() + interval '1 day', ?)
+                """, UUID.randomUUID(), slug, hostId, joinCode);
     }
 
     /** Kolonun users'a bakan FK'sinin ON DELETE kurali. */

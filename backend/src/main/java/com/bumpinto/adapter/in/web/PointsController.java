@@ -38,7 +38,8 @@ class PointsController {
                 SessionViewAssembler.approx(point.location()), point.travelMode(), null,
                 // Elle eklenen nokta token tasimaz, soket asamaz → daima cevrimdisi ve ses disi.
                 // blocked=false: nokta az once EKLENDI, engellenmis olamaz.
-                false, false, false));
+                // Damgalar null: nokta hic baglanmadi ve acacagi bir link de yok.
+                false, false, false, null, null));
     }
 
     @DeleteMapping("/{participantId}")

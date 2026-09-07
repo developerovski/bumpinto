@@ -14,6 +14,7 @@ import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.user.UserProfile;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.infra.config.AppConfig;
 import com.bumpinto.support.PostgresContainer;
@@ -370,7 +371,7 @@ class StoreAdapterTest {
                 new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
                 "Espresso bar", "Kleine Berg 16, Eindhoven", "Eindhoven", 312,
                 "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE,
-                0.8, 5, "photos/g1/REF1");
+                0.8, 5, "photos/g1/REF1", "Best flat white in town", TaglineSource.FSQ);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
     }
@@ -401,6 +402,42 @@ class StoreAdapterTest {
                 Instant.now().plus(Duration.ofHours(24)), null, List.of()));
 
         assertThat(sessions.sessionBySlug(saved.slug()).orElseThrow().anchor()).isNull();
+    }
+
+    /**
+     * Kod bir DEFA uretilir ve oturumun omru boyunca DEGISMEZ. Dort kopya metodunun (withStatus,
+     * withMidpointLabel, inRunoff, decided) hepsi ayri ayri sinanir: biri {@code joinCode} yerine
+     * null tasisaydi elindeki kodla katilmaya calisan davetli oturumu KAYBEDERDI ve durum
+     * degisimine kadar her sey yesil gorunurdu.
+     */
+    @Test
+    void joinCodeSurvivesReloadAndEveryCopyMethod() {
+        UUID host = users.upsertByEmail("joincode@x.dev", "Kod");
+        Session saved = sessions.saveSession(new Session(UUID.randomUUID(), "joincd", host, "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(600), null, List.of(), null, null, null, null, null,
+                "X7K2M"));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        Venue v = venue(saved, "joincd-venue", 0);
+        deck.saveVenues(List.of(v));
+        Session read = sessions.sessionBySlug("joincd").orElseThrow();
+
+        sessions.saveSession(read.withStatus(SessionStatus.SWIPING));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.withMidpointLabel("Eindhoven"));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.inRunoff(List.of(v.id()), RunoffReason.FALLBACK));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.decided(v.id(), DecisionKind.UNANIMOUS, T0));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+    }
+
+    private String reloadJoinCode() {
+        return sessions.sessionBySlug("joincd").orElseThrow().joinCode();
     }
 
     private Session newSession(String slug) {

@@ -123,7 +123,8 @@ public class DeckFlow {
                     c.name(), c.location(), c.rating(), c.priceLevel(), c.photoUrl(),
                     i, c.category(), c.address(), c.locality(), c.ratingCount(),
                     c.hoursToday(), c.placeLink(), c.activityType(),
-                    c.popularity(), c.ratingScale(), c.photoRef()));
+                    c.popularity(), c.ratingScale(), c.photoRef(), c.tagline(),
+                    c.taglineSource()));
         }
         List<Venue> saved = deck.saveVenues(venues);
         // Etiket capasiz oturumda BIR KEZ burada cozulur: orta nokta bundan sonra degismez

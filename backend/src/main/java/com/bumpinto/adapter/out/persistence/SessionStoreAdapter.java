@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.out.persistence;
 
+import com.bumpinto.application.text.Ids;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionStorePort;
@@ -59,6 +60,7 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.midpointLabel = s.midpointLabel();
         e.anchorLat = s.anchor() == null ? null : s.anchor().lat();
         e.anchorLng = s.anchor() == null ? null : s.anchor().lng();
+        e.joinCode = s.joinCode();
         sessions.save(e);
         return s;
     }
@@ -153,6 +155,21 @@ public class SessionStoreAdapter implements SessionStorePort {
         });
     }
 
+    /** Denemeler tukenirse ISTISNA atilir: kodsuz oturum acmak "kod ozelligi yok" demektir. */
+    @Override public String freshJoinCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String candidate = Ids.joinCode();
+            if (!sessions.existsByJoinCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("could not allocate a unique join code");
+    }
+
+    @Override public Optional<Session> sessionByJoinCode(String joinCode) {
+        return sessions.findByJoinCode(joinCode).map(SessionStoreAdapter::toSession);
+    }
+
     private static SessionSummary toSummary(SessionEntity e, List<ParticipantEntity> ps,
                                             Map<UUID, VenueEntity> venueById) {
         int ready = 0;
@@ -183,7 +200,7 @@ public class SessionStoreAdapter implements SessionStorePort {
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
                 e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
-                e.midpointLabel, anchor);
+                e.midpointLabel, anchor, e.joinCode);
     }
 
     static Participant toParticipant(ParticipantEntity e) {

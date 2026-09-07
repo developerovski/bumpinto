@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.user.UserDataExport;
 import com.bumpinto.domain.safety.ReportReason;
 import jakarta.validation.constraints.AssertTrue;
 import com.bumpinto.domain.user.AuthProvider;
@@ -9,6 +10,7 @@ import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.venue.TaglineSource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
@@ -180,7 +182,11 @@ public final class ApiDtos {
                                  /** Kendi ses konusuna abone (spec K4); SOLO'da daima false. */
                                  boolean inVoice,
                                  /** Goruntuleyen bu kisiyi engelledi mi; engellenen tarafta daima false. */
-                                 boolean blocked) {
+                                 boolean blocked,
+                                 /** Son WS gelisi/kopusu; hic baglanmamissa null (R-B8). */
+                                 Instant lastSeenAt,
+                                 /** Daveti ILK actigi an; acmadiysa null. */
+                                 Instant linkOpenedAt) {
     }
 
     /** OSRM T10'a kadar HER yol suresi tahmindir (estimated=true); gercek deger geldiginde degisir. */
@@ -198,7 +204,9 @@ public final class ApiDtos {
                            Integer ratingCount, String hoursToday, String placeLink,
                            /** Hangi ilgi alanindan geldigi; atif cozulemediyse null. */
                            ActivityType activityType,
-                           Double popularity, Integer ratingScale, List<TravelDto> travel) {
+                           Double popularity, Integer ratingScale, List<TravelDto> travel,
+                           /** "Neyle bilinir" tek satiri (&lt;=80); veri yoksa null, UI gizler. */
+                           String tagline, TaglineSource taglineSource) {
     }
 
     public record SessionView(String slug, String name, List<ActivityType> activityTypes,
@@ -226,7 +234,9 @@ public final class ApiDtos {
                               /** Merkez host'un sectigi sabit nokta mi (orta nokta degil). */
                               boolean anchored,
                               /** Ses odasi: null = kapali. SOLO'da hep null (start SOLO'yu reddeder). */
-                              VoiceDto voice) {
+                              VoiceDto voice,
+                              /** 5 haneli davet kodu; YALNIZ uyeye gonderilir (R-B9). */
+                              String joinCode) {
     }
 
     public record VoiceDto(Instant endsAt) {
@@ -259,6 +269,15 @@ public final class ApiDtos {
                                  List<PreviewParticipantDto> participants,
                                  /** Host su an oturumda mi — Katil ekranindaki rozet. Katilimi ENGELLEMEZ. */
                                  boolean hostOnline) {
+    }
+
+    /**
+     * {@code /j/{slug}} sayfasinin OG/Twitter meta etiketlerini besleyen KAMU verisi. Etiketleri
+     * HTML'e basmak web izinin isidir (W-15): backend SPA'nin index.html'ini uretmez ve tek bir
+     * baslik satiri icin ikinci bir sunum katmani acmak dogru olmazdi.
+     */
+    public record OgMetaDto(String title, String description, String imageUrl, String url,
+                            boolean expired) {
     }
 
     /**
@@ -340,6 +359,11 @@ public final class ApiDtos {
             return "DeleteTokenResponse[deleteConfirmToken=" + masked(deleteConfirmToken)
                     + ", expiresAt=" + expiresAt + "]";
         }
+    }
+
+    /** GDPR tasinabilirlik dosyasinin govdesi; konumlar YUVARLANMISTIR (~1.1 km). */
+    public record ExportResponse(Instant exportedAt, UserDataExport.Profile profile,
+                                 List<UserDataExport.Participation> participations) {
     }
 
     /** Tam degistirme: null = o tercihi temizle (displayName haric: null = degistirme). */

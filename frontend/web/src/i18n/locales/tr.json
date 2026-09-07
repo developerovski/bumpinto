@@ -559,5 +559,54 @@
     "contact": "İletişim",
     "mEmail": "E-posta",
     "deleteLink": "Hesap silme isteği için: bumpinto.app/account/delete"
+  },
+  "presence": {
+    "linkOpened": "Linki açtı · konum bekleniyor…",
+    "lastSeen": "Son görülen · {{time}}",
+    "nudge": "{{name}}'i dürt",
+    "nudgeSent": "{{name}} dürtüldü",
+    "nudgeCooling": "Az önce dürttün — bir dakika bekle",
+    "nudgeError": "Dürtme gönderilemedi — tekrar dene.",
+    "nudged": "Seni dürttüler — konumunu paylaşırsan devam edebiliriz",
+    "hostOnly": "Dürtme yalnız kurana görünür."
+  },
+  "social": {
+    "options": "{{name}} · seçenekler",
+    "inSession": "{{place}} · bu buluşmada",
+    "report": "Bildir",
+    "reportHint": "Rahatsız edici ad ya da davranış",
+    "block": "Engelle",
+    "blockHint": "Sesli sohbette duymazsın, seni göremez",
+    "mute": "Sesli sohbette sustur",
+    "unmute": "Susturmayı kaldır",
+    "muteHint": "Yalnız senin için",
+    "reportTitle": "Neyi bildiriyorsun?",
+    "reasonHARASSMENT": "Taciz",
+    "reasonIMPERSONATION": "Sahtecilik / başkasını taklit",
+    "reasonSPAM": "Sahte / spam",
+    "reasonOTHER": "Başka",
+    "reportNote": "Bildirim ekibimize gider; 24 saat içinde bakılır. {{name}} bunu görmez.",
+    "send": "Gönder",
+    "reported": "Bildirildi · {{name}} engellendi",
+    "blocked": "{{name}} engellendi",
+    "error": "Gönderilemedi — tekrar dene.",
+    "blockedRow": "engellendi"
+  },
+  "share": {
+    "card": "Kartı paylaş",
+    "preparing": "Kart hazırlanıyor…",
+    "cardTitle": "{{venue}}'de buluşuyoruz",
+    "cardFooter": "herkes ~{{min}}–{{max}} dk · fark {{spread}} dk",
+    "fileName": "bumpinto-{{slug}}.png"
+  },
+  "calendar": {
+    "add": "Takvime ekle",
+    "title": "Saat kaçta?",
+    "hint": "Buluşma saatini sen seçersin — sistemde kayıtlı bir saat yok.",
+    "date": "Tarih",
+    "time": "Saat",
+    "download": "Takvim dosyası indir",
+    "google": "Google Calendar'da aç",
+    "eventTitle": "{{venue}} · {{session}}"
   }
 }

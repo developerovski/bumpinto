@@ -1,0 +1,18 @@
+info:
+  name: Invite OG Meta
+  type: http
+  seq: 13
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/sessions/{{slug}}/og"
+  auth:
+    type: none
+
+docs:
+  type: text/markdown
+  content: |-
+    `/j/{slug}` sayfasinin OG/Twitter etiketlerini besler (kimlik gerekmez).
+    `imageUrl` -> `GET /og/{slug}.png` (1200x630 PNG, `Cache-Control: public, max-age=<OG_CACHE>`).
+    Bilinmeyen/suresi dolmus slug 404 DEGIL, `expired: true` ile jenerik metadir.
+    Govdede koordinat, katilimci id'si ya da mekan YOKTUR.

@@ -13,7 +13,8 @@ import java.util.stream.Stream;
 @ConfigurationProperties(prefix = "bumpinto")
 public record AppProps(Security security, Apple apple, Cors cors, Cookies cookies, RateLimit rateLimit,
                        Geocode geocode, Voice voice, Turn turn,
-                       Venues venues, MapProps map, Routing routing, Retention retention) {
+                       Venues venues, MapProps map, Routing routing, Retention retention,
+                       Og og) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -192,5 +193,14 @@ public record AppProps(Security security, Apple apple, Cors cors, Cookies cookie
     }
 
     public record Retention(boolean enabled) {
+    }
+
+    /**
+     * OG karti. {@code cache}: hem HTTP {@code max-age} hem surec ici onbellek TTL'i; varsayilan
+     * gereksinim dokumanindaki degerdir (24 s) ve daha uzunu TEK env ile acilir.
+     * {@code appBaseUrl}: davet linkinin ({@code /j/{slug}}) yasadigi kaynak.
+     * {@code publicBaseUrl}: bu API'nin dis adresi — PNG mutlak URL'i oradan kurulur.
+     */
+    public record Og(Duration cache, String appBaseUrl, String publicBaseUrl) {
     }
 }

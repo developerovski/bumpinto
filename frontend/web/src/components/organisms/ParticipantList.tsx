@@ -1,15 +1,35 @@
 /* Kaynak: ui.css .field / .row / .a-ov / .muted / .tab / .a-card / .a-dv */
-import { Fragment } from "react";
+import { HandWaving } from "@phosphor-icons/react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
-import { Overline, Progress } from "../atoms";
+import { Button, Overline, Progress } from "../atoms";
 import ParticipantRow from "../molecules/ParticipantRow";
+import PersonSheet from "./PersonSheet";
 import { useSessionStore } from "../../store/sessionStore";
+import { useSocialStore } from "../../store/socialStore";
 
-/** Artboard W2 · "Kimler var" üst başlığı + sayaç + ilerleme çubuğu + satır kartı. */
-export default function ParticipantList({ participants }: { participants: ParticipantDto[] }) {
+/** Artboard W2 · "Kimler var" üst başlığı + sayaç + ilerleme çubuğu + satır kartı.
+    Host'a dürt şeridi: çevrimdışı YA DA konumu gelmemiş kişileri tek tıkla dürtmesini sağlar
+    (R-W6 kapısı) — sunucu 60 sn soğuma uygular, `socialStore` istemci kopyasıyla önden keser. */
+export default function ParticipantList({
+  participants,
+  slug,
+  isHost,
+}: {
+  participants: ParticipantDto[];
+  slug: string;
+  isHost: boolean;
+}) {
   const { t } = useTranslation();
   const viewerId = useSessionStore((s) => s.view?.viewer?.participantId);
+  const nudge = useSocialStore((s) => s.nudge);
+  const canNudge = useSocialStore((s) => s.canNudge);
+  const [sheetFor, setSheetFor] = useState<ParticipantDto | null>(null);
+  // R-W6 kapısı: yalnız çevrimdışı YA DA konumu gelmemiş kişi dürtülür.
+  const waiting = participants.filter(
+    (p) => !!p.id && p.id !== viewerId && !p.manual && !p.blocked && (p.online === false || !p.hasLocation),
+  );
   const ready = participants.filter((p) => p.hasLocation).length;
   return (
     <>
@@ -30,11 +50,29 @@ export default function ParticipantList({ participants }: { participants: Partic
           return (
             <Fragment key={p.id ?? i}>
               {i > 0 && <div className="mx-4 h-px bg-line" />}
-              <ParticipantRow participant={p} index={i} isSelf={isSelf} />
+              <ParticipantRow participant={p} index={i} isSelf={isSelf} onOptions={setSheetFor} />
             </Fragment>
           );
         })}
+        {isHost && waiting.length > 0 && (
+          <>
+            <div className="mx-4 h-px bg-line" />
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                {waiting.map((p) => (
+                  <Button key={p.id} type="button" kind="ghost" size="sm" disabled={!canNudge(p.id!)}
+                    onClick={() => void nudge(slug, p.id!, p.displayName ?? "")}>
+                    <HandWaving size={16} aria-hidden />
+                    {t("presence.nudge", { name: p.displayName ?? "" })}
+                  </Button>
+                ))}
+              </div>
+              <span className="text-[0.8125rem] text-ink2">{t("presence.hostOnly")}</span>
+            </div>
+          </>
+        )}
       </div>
+      {sheetFor && <PersonSheet slug={slug} participant={sheetFor} onClose={() => setSheetFor(null)} />}
     </>
   );
 }

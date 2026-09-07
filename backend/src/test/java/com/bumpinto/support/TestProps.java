@@ -28,7 +28,12 @@ public final class TestProps {
         AppProps base = defaults();
         return new AppProps(base.security(), apple, base.cors(), base.cookies(), base.rateLimit(),
                 base.geocode(), base.voice(), base.turn(), base.venues(), base.map(),
-                base.routing(), base.retention());
+                base.routing(), base.retention(), base.og());
+    }
+
+    public static AppProps.Og og() {
+        return new AppProps.Og(Duration.ofSeconds(24), "https://bumpinto.app",
+                "https://api.bumpinto.app");
     }
 
     public static AppProps.Venues venues() {
@@ -72,7 +77,7 @@ public final class TestProps {
         AppProps base = defaults();
         return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 geocode, base.voice(), base.turn(), base.venues(), base.map(),
-                base.routing(), base.retention());
+                base.routing(), base.retention(), base.og());
     }
 
     /** Voice alanini degistirir (maxDuration varyasyonlari icin), gerisi defaults(). */
@@ -80,7 +85,7 @@ public final class TestProps {
         AppProps base = defaults();
         return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 base.geocode(), voice, base.turn(), base.venues(), base.map(),
-                base.routing(), base.retention());
+                base.routing(), base.retention(), base.og());
     }
 
     /** Routing alanini degistirir (OSRM base URL varyasyonlari icin), gerisi defaults(). */
@@ -88,7 +93,7 @@ public final class TestProps {
         AppProps base = defaults();
         return new AppProps(base.security(), base.apple(), base.cors(), base.cookies(), base.rateLimit(),
                 base.geocode(), base.voice(), base.turn(), base.venues(), base.map(),
-                routing, base.retention());
+                routing, base.retention(), base.og());
     }
 
     public static AppProps of(AppProps.Security security, AppProps.Venues venues,
@@ -109,6 +114,6 @@ public final class TestProps {
                 new AppProps.MapProps("maplibre",
                         new AppProps.MapProps.Tiles("https://tiles.example/style.json")),
                 new AppProps.Routing(new AppProps.Routing.Osrm("", "", "")),
-                new AppProps.Retention(true));
+                new AppProps.Retention(true), og());
     }
 }

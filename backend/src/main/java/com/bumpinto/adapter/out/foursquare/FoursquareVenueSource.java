@@ -11,6 +11,8 @@ import com.bumpinto.domain.venue.ProviderQuota;
 import com.bumpinto.domain.venue.RetentionRule;
 import com.bumpinto.domain.venue.SearchRequest;
 import com.bumpinto.domain.venue.SearchResult;
+import com.bumpinto.domain.venue.TaglineSource;
+import com.bumpinto.domain.venue.Taglines;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.domain.venue.VenueSource;
 import com.bumpinto.domain.venue.VenueSourceDescriptor;
@@ -46,7 +48,8 @@ public class FoursquareVenueSource implements VenueSource {
     /** Pro alanlari: Sandbox'in 500 ucretsiz cagrisi icinde kalir; foto/puan/saat GELMEZ. */
     static final String PRO_FIELDS = "fsq_place_id,name,latitude,longitude,categories,location,website";
     /** Premium alanlari: ayni cagri $18,75/1k faturalanir, ucretsiz payi yok (2026-09-06 olcumu: 429). */
-    static final String PREMIUM_FIELDS = PRO_FIELDS + ",hours,rating,price,popularity,photos,closed_bucket";
+    static final String PREMIUM_FIELDS = PRO_FIELDS
+            + ",hours,rating,price,popularity,photos,closed_bucket,tips";
     private static final String PHOTO_SIZE = "original";
 
     private static final VenueSourceDescriptor DESCRIPTOR = new VenueSourceDescriptor(
@@ -146,6 +149,7 @@ public class FoursquareVenueSource implements VenueSource {
         JSONObject hours = place.optJSONObject("hours");
         String category = firstCategory == null ? null : VenueSourceSupport.text(firstCategory, "name");
         Double price = VenueSourceSupport.number(place, "price");
+        String tagline = tagline(place);
         return new VenueCandidate(ID, place.getString("fsq_place_id"), place.getString("name"),
                 new GeoPoint(place.getDouble("latitude"), place.getDouble("longitude")),
                 VenueSourceSupport.number(place, "rating"),
@@ -159,7 +163,27 @@ public class FoursquareVenueSource implements VenueSource {
                 VenueSourceSupport.text(place, "website"),
                 attribution(place, requested),
                 VenueSourceSupport.number(place, "popularity"), 10,
-                photo == null ? null : VenueSourceSupport.text(photo, "id"));
+                photo == null ? null : VenueSourceSupport.text(photo, "id"),
+                tagline, tagline == null ? null : TaglineSource.FSQ);
+    }
+
+    /**
+     * {@code tips} Premium yanitinda GELMEYEBILIR (anahtar/plan farki): alan yoksa null doner ve
+     * kart satiri hic cizilmez. Sozlesme null-TOLERELIDIR — eksik alan hata degildir (§5 risk 4).
+     */
+    private static String tagline(JSONObject place) {
+        JSONArray tips = place.optJSONArray("tips");
+        if (tips == null) {
+            return null;
+        }
+        List<String> texts = new ArrayList<>(tips.length());
+        for (int i = 0; i < tips.length(); i++) {
+            JSONObject tip = tips.optJSONObject(i);
+            if (tip != null) {
+                texts.add(tip.optString("text", ""));
+            }
+        }
+        return Taglines.fromTips(texts);
     }
 
     private static String photoUrl(JSONObject photo) {

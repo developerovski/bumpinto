@@ -75,6 +75,12 @@ bumpinto:
       car: "${OSRM_CAR_URL:}"
       bicycle: "${OSRM_BICYCLE_URL:}"
       foot: "${OSRM_FOOT_URL:}"
+  og:
+    # Onizleme karti: hem HTTP max-age hem surec ici Caffeine TTL'i (R-B10 kabul a).
+    cache: ${OG_CACHE:PT24S}
+    # Davet linkinin yasadigi kaynak (/j/{slug}) ve bu API'nin dis adresi (PNG mutlak URL'i).
+    app-base-url: ${APP_BASE_URL:http://localhost:5173}
+    public-base-url: ${PUBLIC_API_BASE_URL:http://localhost:8060}
   retention:
     enabled: ${RETENTION_ENABLED:true}
     # Spec §6 GDPR: suresi dolali 30 gunu gecen oturumlarin kalici silinmesi (B-3).

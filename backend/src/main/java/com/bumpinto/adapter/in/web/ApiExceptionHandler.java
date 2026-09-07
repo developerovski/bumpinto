@@ -5,6 +5,7 @@ import com.bumpinto.application.error.ConflictException;
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.error.TooManyRequestsException;
 import com.bumpinto.domain.geo.GeocodeBusyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -39,6 +40,13 @@ class ApiExceptionHandler {
     @ExceptionHandler(NoVenuesFoundException.class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
     ApiError noVenues(NoVenuesFoundException e) {
+        return new ApiError(e.getMessage());
+    }
+
+    /** Kota asimi sunucu hatasi degil, "az sonra tekrar dene"dir. */
+    @ExceptionHandler(TooManyRequestsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    ApiError tooMany(TooManyRequestsException e) {
         return new ApiError(e.getMessage());
     }
 

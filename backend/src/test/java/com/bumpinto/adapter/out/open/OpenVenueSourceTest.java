@@ -4,6 +4,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.venue.RetentionRule;
 import com.bumpinto.domain.venue.SearchRequest;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,9 @@ class OpenVenueSourceTest {
         assertThat(park.rating()).isNull();
         assertThat(park.ratingScale()).isNull();
         assertThat(park.activityType()).isEqualTo(ActivityType.WALK);
+        // Tagline HAM etiketten degil gorunen etiketten turer: "Leisure=park" degil "Park".
+        assertThat(park.tagline()).isEqualTo("Park");
+        assertThat(park.taglineSource()).isEqualTo(TaglineSource.OSM);
         assertThat(source.descriptor().retention()).isEqualTo(RetentionRule.KEEP);
     }
 

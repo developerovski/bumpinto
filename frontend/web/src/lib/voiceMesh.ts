@@ -51,6 +51,8 @@ export class VoiceMesh {
   private readonly orphanIce = new Map<string, RTCIceCandidateInit[]>();
   private selfSpeaking = false;
   private closed = false;
+  /** Yerel sustur (R-W15) — uzak <audio> kapatılır, PC ve seviye ölçümü bozulmaz. */
+  private mutedPeers = new Set<string>();
 
   constructor(private readonly deps: MeshDeps) {
     const createLevels = deps.createLevels ?? ((cb) => createLevelSampler(cb));
@@ -134,6 +136,14 @@ export class VoiceMesh {
     });
   }
 
+  /** Yalnız BU tarayıcı için uzak sesi kapatır (sunucuya gitmez, karşı taraf bilmez). */
+  setMutedPeers(ids: string[]) {
+    this.mutedPeers = new Set(ids);
+    for (const [id, peer] of this.peers) {
+      if (peer.audio) peer.audio.muted = this.mutedPeers.has(id);
+    }
+  }
+
   close() {
     if (this.closed) return;
     this.closed = true;
@@ -191,6 +201,7 @@ export class VoiceMesh {
       (audio as HTMLMediaElement & { playsInline?: boolean }).playsInline = true;
       audio.hidden = true;
       audio.srcObject = stream;
+      audio.muted = this.mutedPeers.has(id);
       if (typeof document !== "undefined") document.body.appendChild(audio);
       const playing = audio.play();
       if (playing) {

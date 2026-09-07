@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
@@ -19,6 +20,7 @@ import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.voice.Seat;
 import com.bumpinto.infra.security.ParticipantPrincipal;
@@ -41,7 +43,9 @@ class SessionViewAssemblerTest {
     FakeStores.FakeVoiceRooms rooms = new FakeStores.FakeVoiceRooms();
     RoutingPort routing = (s, d, m) -> Optional.empty();
     Blocks blocks = mock(Blocks.class);
-    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms, routing, blocks);
+    PresenceStampsPort stamps = mock(PresenceStampsPort.class);
+    SessionViewAssembler assembler =
+            new SessionViewAssembler(presence, rooms, routing, blocks, stamps);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -153,7 +157,8 @@ class SessionViewAssemblerTest {
             case CAR -> Optional.of(new int[][] {{900}}); // 15 dk
             default -> Optional.empty();
         };
-        SessionViewAssembler real = new SessionViewAssembler(presence, rooms, canned, blocks);
+        SessionViewAssembler real =
+                new SessionViewAssembler(presence, rooms, canned, blocks, stamps);
 
         ApiDtos.SessionView view = real.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);
@@ -315,6 +320,22 @@ class SessionViewAssemblerTest {
      * mapsUrl artik saglayicidan degil, goruntuleyenin ulasim turundan (MapLinks) uretilir
      * (spec §10) — ayni mekan icin herkes kendi turune gore FARKLI baglanti gorur.
      */
+    /** "Neyle bilinir" satiri sunucuda turetilir; DTO onu ve KAYNAGINI (atif satiri) tasir. */
+    @Test
+    void taglineAndSourceReachTheVenueDto() {
+        Session s = session(SessionType.GROUP);
+        Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "x", "Kaffee",
+                new GeoPoint(51.4, 5.4), 8.4, 2, null, 0, "Coffee shop", null, "Eindhoven",
+                12, null, null, ActivityType.COFFEE, 0.9, 10, null,
+                "Best flat white in town", TaglineSource.FSQ);
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
+
+        assertThat(dto.tagline()).isEqualTo("Best flat white in town");
+        assertThat(dto.taglineSource()).isEqualTo(TaglineSource.FSQ);
+    }
+
     @Test
     void mapsUrlUsesTheViewersTravelModeAndCarriesNewFields() {
         Session s = session(SessionType.GROUP);
@@ -399,6 +420,44 @@ class SessionViewAssemblerTest {
                 .containsExactlyInAnyOrder(tuple(here.id(), true), tuple(gone.id(), false));
     }
 
+    /**
+     * "Son gorulen · 12:38" cevrimdisi kisi icin YAZILIR: damga presence koltugunun omrunden
+     * bagimsizdir, yoksa satirda anlatilacak hicbir sey kalmazdi.
+     */
+    @Test
+    void offlineParticipantCarriesLastSeenAndLinkOpenedStamps() {
+        Session s = session(SessionType.GROUP);
+        Participant ayse = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        Instant seen = Instant.parse("2026-09-06T12:38:00Z");
+        Instant opened = Instant.parse("2026-09-06T12:10:00Z");
+        when(stamps.stampsOf(any()))
+                .thenReturn(Map.of(ayse.id(), new PresenceStampsPort.Stamps(seen, opened)));
+
+        ApiDtos.ParticipantDto row = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(ayse), List.of(), Map.of(), Map.of(), Map.of()), null)
+                .participants().stream().filter(p -> p.id().equals(ayse.id()))
+                .findFirst().orElseThrow();
+
+        assertThat(row.online()).isFalse();
+        assertThat(row.lastSeenAt()).isEqualTo(seen);
+        assertThat(row.linkOpenedAt()).isEqualTo(opened);
+    }
+
+    /** Damgasi olmayan koltuk haritada YOK: "hic gorulmedi" null'dur, sifir zaman degil. */
+    @Test
+    void participantWithoutStampsCarriesNulls() {
+        Session s = session(SessionType.GROUP);
+        Participant ayse = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        when(stamps.stampsOf(any())).thenReturn(Map.of());
+
+        ApiDtos.ParticipantDto row = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(ayse), List.of(), Map.of(), Map.of(), Map.of()), null)
+                .participants().get(0);
+
+        assertThat(row.lastSeenAt()).isNull();
+        assertThat(row.linkOpenedAt()).isNull();
+    }
+
     @Test
     void voiceIsNullWhenClosedAndCarriesEndsAtAndMembersWhenOpen() {
         Session s = session(SessionType.GROUP);
@@ -418,6 +477,30 @@ class SessionViewAssemblerTest {
         assertThat(open.voice().endsAt()).isEqualTo(endsAt);
         assertThat(open.participants().stream().filter(ApiDtos.ParticipantDto::inVoice)
                 .map(ApiDtos.ParticipantDto::id)).containsExactly(ayse.id());
+    }
+
+    /**
+     * R-B9 gizlilik siniri: kod UYEYE gider, uye olmayana GITMEZ ve onizlemede HIC yer almaz.
+     * Uc zaten uye olmayana 403 veriyor ama alan viewer'a bagli olmasaydi, ileride acilacak
+     * herhangi bir "uyesiz gorunum" kodu sessizce disari tasirdi. Onizleme tarafi ayrica
+     * govde uzerinden sinanir: koda karsi kod aramasi yasaktir (§2).
+     */
+    @Test
+    void joinCodeGoesToMembersOnlyAndNeverIntoThePreview() throws Exception {
+        Session base = session(SessionType.GROUP);
+        Session s = new Session(base.id(), base.slug(), base.hostId(), base.name(),
+                base.activityTypes(), base.sessionType(), base.status(), base.expiresAt(),
+                null, List.of(), null, null, null, null, null, "X7K2M");
+        Participant me = person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(
+                s, List.of(me), List.of(), Map.of(), Map.of(), Map.of());
+
+        assertThat(assembler.toView(snap, authFor(me)).joinCode()).isEqualTo("X7K2M");
+        assertThat(assembler.toView(snap, null).joinCode()).isNull();
+
+        String preview = new ObjectMapper().findAndRegisterModules()
+                .writeValueAsString(assembler.toPreview(snap));
+        assertThat(preview).doesNotContain("X7K2M").doesNotContain("joinCode");
     }
 
     @Test

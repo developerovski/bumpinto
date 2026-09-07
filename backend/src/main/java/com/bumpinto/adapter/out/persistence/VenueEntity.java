@@ -32,5 +32,7 @@ class VenueEntity {
     Double popularity;
     Integer ratingScale;
     String photoRef;
+    String tagline;
+    String taglineSource;
     Instant fetchedAt;
 }

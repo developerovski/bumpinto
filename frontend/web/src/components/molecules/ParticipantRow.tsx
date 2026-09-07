@@ -1,10 +1,17 @@
 /* Kaynak: ui.css .row / .field / .label / .a-m2 / .muted + W2 satır ölçüleri */
-import { Microphone } from "@phosphor-icons/react";
+import { DotsThree, Microphone } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { MODE_ICON, MODE_LABEL_KEY } from "../../lib/travelMode";
 import { useVoiceStore } from "../../store/voiceStore";
 import { Avatar, Badge } from "../atoms";
+
+/** WinnerCard'daki kuralla aynı — geçersiz ISO'da satır hiç çizilmez. */
+function hhmm(iso: string, locale: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(d);
+}
 
 /** Artboard W2 · .srow — avatar + ad/alt satır + tek rozet.
     Rozet önceliği artboard'dan: kuran satırında "Kuran", diğerlerinde hazır/bekliyor.
@@ -18,8 +25,9 @@ export default function ParticipantRow(props: {
   participant: ParticipantDto;
   index: number;
   isSelf?: boolean;
+  onOptions?: (participant: ParticipantDto) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const p = props.participant;
   const mode = p.hasLocation ? p.travelMode : undefined;
   const icons = mode ? MODE_ICON[mode] : [];
@@ -27,6 +35,15 @@ export default function ParticipantRow(props: {
   // (yeni alan gelmeden once render edilen gorunumler kisiyi haksiz yere solutmasin).
   // Elle eklenen noktalar (SOLO) soket acamaz, onlarda gosterilmez.
   const away = p.online === false && !p.manual;
+  const online = p.online !== false && !p.manual;
+  const blocked = p.blocked === true;
+  // Alan yoksa metin UYDURULMAZ: linkOpenedAt yoksa mevcut "Konum bekleniyor…" kalır.
+  const waitingLine = p.hasLocation
+    ? p.locationLabel
+    : p.linkOpenedAt
+      ? t("presence.linkOpened")
+      : t("waiting.waitingLocation");
+  const seen = away && p.lastSeenAt ? hhmm(p.lastSeenAt, i18n.resolvedLanguage ?? i18n.language) : null;
   // K12: konuşma bilgisi ses deposundan (istemcide ölçülür); üyelik görünümden (`inVoice`).
   const speaking = useVoiceStore((s) =>
     props.isSelf ? s.selfSpeaking : !!(p.id && s.peers[p.id]?.speaking),
@@ -34,10 +51,10 @@ export default function ParticipantRow(props: {
   const inVoice = !!p.inVoice;
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away ? " opacity-55" : ""}`}
+      className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
     >
       <span
-        className={`inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}`}
+        className={`relative inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}${!p.hasLocation ? " c-pulse" : ""}`}
       >
         <Avatar
           name={p.displayName ?? "?"}
@@ -45,6 +62,13 @@ export default function ParticipantRow(props: {
           ring={p.hasLocation}
           waiting={!p.hasLocation}
         />
+        {online && (
+          <i
+            data-testid="online-dot"
+            aria-hidden
+            className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-card bg-grass"
+          />
+        )}
       </span>
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-[0.875rem] font-bold">
@@ -59,7 +83,7 @@ export default function ParticipantRow(props: {
           {speaking && <span className="sr-only">{t("voice.speaking")}</span>}
         </span>
         <span className="flex items-center gap-1.5 text-[0.8125rem] text-ink2">
-          {p.hasLocation ? p.locationLabel : t("waiting.waitingLocation")}
+          {waitingLine}
           {icons.length > 0 && (
             <>
               <span aria-hidden>·</span>
@@ -75,11 +99,27 @@ export default function ParticipantRow(props: {
           {away && (
             <>
               <span aria-hidden>·</span>
-              <span>{t("waiting.offline")}</span>
+              <span>{seen ? t("presence.lastSeen", { time: seen }) : t("waiting.offline")}</span>
+            </>
+          )}
+          {blocked && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="font-bold text-flame-deep">{t("social.blockedRow")}</span>
             </>
           )}
         </span>
       </div>
+      {props.onOptions && !props.isSelf && !blocked && (
+        <button
+          type="button"
+          aria-label={t("social.options", { name: p.displayName ?? "?" })}
+          className="flex-none rounded-full p-1.5 text-ink2 hover:text-ink"
+          onClick={() => props.onOptions?.(p)}
+        >
+          <DotsThree size={20} weight="bold" aria-hidden />
+        </button>
+      )}
       {p.host ? (
         <Badge tone="neutral">{t("waiting.host")}</Badge>
       ) : (

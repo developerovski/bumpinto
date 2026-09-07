@@ -568,5 +568,54 @@
     "contact": "Contact",
     "mEmail": "E-mail",
     "deleteLink": "Voor een verwijderverzoek: bumpinto.app/account/delete"
+  },
+  "presence": {
+    "linkOpened": "Link geopend · wacht op locatie…",
+    "lastSeen": "Laatst gezien · {{time}}",
+    "nudge": "{{name}} porren",
+    "nudgeSent": "{{name}} is gepord",
+    "nudgeCooling": "Je hebt net gepord — wacht een minuut",
+    "nudgeError": "Porren is niet gelukt — probeer opnieuw.",
+    "nudged": "Iemand porde je — deel je locatie zodat we verder kunnen",
+    "hostOnly": "Alleen de organisator ziet het porren."
+  },
+  "social": {
+    "options": "{{name}} · opties",
+    "inSession": "{{place}} · in deze afspraak",
+    "report": "Melden",
+    "reportHint": "Aanstootgevende naam of gedrag",
+    "block": "Blokkeren",
+    "blockHint": "Je hoort ze niet in de spraakchat, zij zien jou niet",
+    "mute": "Dempen in spraakchat",
+    "unmute": "Dempen opheffen",
+    "muteHint": "Alleen voor jou",
+    "reportTitle": "Wat meld je?",
+    "reasonHARASSMENT": "Intimidatie",
+    "reasonIMPERSONATION": "Doet zich voor als iemand anders",
+    "reasonSPAM": "Nep / spam",
+    "reasonOTHER": "Iets anders",
+    "reportNote": "De melding gaat naar ons team en wordt binnen 24 uur bekeken. {{name}} ziet dit niet.",
+    "send": "Versturen",
+    "reported": "Gemeld · {{name}} geblokkeerd",
+    "blocked": "{{name}} geblokkeerd",
+    "error": "Versturen is niet gelukt — probeer opnieuw.",
+    "blockedRow": "geblokkeerd"
+  },
+  "share": {
+    "card": "Kaart delen",
+    "preparing": "Kaart wordt gemaakt…",
+    "cardTitle": "We spreken af bij {{venue}}",
+    "cardFooter": "iedereen ~{{min}}–{{max}} min · {{spread}} min verschil",
+    "fileName": "bumpinto-{{slug}}.png"
+  },
+  "calendar": {
+    "add": "Aan agenda toevoegen",
+    "title": "Hoe laat?",
+    "hint": "Jij kiest de tijd — er is nog geen opgeslagen afspraaktijd.",
+    "date": "Datum",
+    "time": "Tijd",
+    "download": "Agendabestand downloaden",
+    "google": "Openen in Google Calendar",
+    "eventTitle": "{{venue}} · {{session}}"
   }
 }

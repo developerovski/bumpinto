@@ -74,7 +74,11 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
           <>
             <JoinedCard self={self} />
             <ActivityStrip activities={activities} km={km} />
-            <ParticipantList participants={view.participants ?? []} />
+            <ParticipantList
+              participants={view.participants ?? []}
+              slug={view.slug ?? ""}
+              isHost={!!view.viewer?.host}
+            />
           </>
         }
         right={

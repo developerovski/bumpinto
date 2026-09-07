@@ -76,6 +76,14 @@ class HexagonalArchitectureTest {
             .resideInAnyPackage("com.bumpinto.adapter.out.foursquare..",
                     "com.bumpinto.adapter.out.google..", "com.bumpinto.adapter.out.open..");
 
+    // Cizim ve goruntu kodlama TEK adapterde: domain "java.." icinde oldugu icin java.awt'yi
+    // domainIsPure kuralindan gecirebilir, ama bir OgCard'in font/renk bilmesi tam da portun
+    // engellemek icin var oldugu sey. Kural, ilerideki bir "kucuk" ihlali derlemede yakalar.
+    @ArchTest
+    static final ArchRule awtStaysInTheImageAdapter = noClasses()
+            .that().resideOutsideOfPackage("com.bumpinto.adapter.out.image..")
+            .should().dependOnClassesThat().resideInAnyPackage("java.awt..", "javax.imageio..");
+
     @ArchTest
     static final ArchRule applicationDoesNotSeeVenueSources = noClasses()
             .that().resideInAPackage("com.bumpinto.application..")

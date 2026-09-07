@@ -94,4 +94,15 @@ public record SessionEvent(String type, Map<String, Object> payload) {
     public static SessionEvent blocked() {
         return new SessionEvent("blocked", Map.of());
     }
+
+    /**
+     * Biri birini durttu. Govde DOLU: istemci "seni Mehmet durttu" diyebilmek icin ikisini de
+     * bilmeli — kimliksiz bir "tazele" zili bu ekrani yazamazdi. Yalniz o oturumun konusuna
+     * gider; hedefin ozel konusu YOK (ses sinyali disinda kimlikli konu acilmaz).
+     */
+    public static SessionEvent nudged(UUID fromParticipantId, UUID toParticipantId) {
+        return new SessionEvent("nudged", Map.of(
+                "fromParticipantId", fromParticipantId.toString(),
+                "toParticipantId", toParticipantId.toString()));
+    }
 }

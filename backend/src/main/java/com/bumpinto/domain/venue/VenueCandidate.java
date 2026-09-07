@@ -19,12 +19,26 @@ import com.bumpinto.domain.session.ActivityType;
  * @param popularity   FSQ 0-1 arasi popularite skoru; saglayici vermezse null
  * @param ratingScale  puanin olcegi (10 FSQ, 5 Google; donusturulmez)
  * @param photoRef     saglayicinin saklanabilir foto kimligi
+ * @param tagline      "neyle bilinir" tek satiri (&lt;=80); saglayici veremezse null
+ * @param taglineSource kaynagi; tagline null ise null
  */
 public record VenueCandidate(String provider, String externalId, String name, GeoPoint location,
                              Double rating, Integer priceLevel, String photoUrl,
                              String category, String address, String locality, Integer ratingCount,
                              String hoursToday, String placeLink, ActivityType activityType,
-                             Double popularity, Integer ratingScale, String photoRef) {
+                             Double popularity, Integer ratingScale, String photoRef,
+                             String tagline, TaglineSource taglineSource) {
+
+    /** Tagline'siz zenginlestirilmis aday (B-13 imzasi; cagri yerleri kirilmaz). */
+    public VenueCandidate(String provider, String externalId, String name, GeoPoint location,
+                          Double rating, Integer priceLevel, String photoUrl,
+                          String category, String address, String locality, Integer ratingCount,
+                          String hoursToday, String placeLink, ActivityType activityType,
+                          Double popularity, Integer ratingScale, String photoRef) {
+        this(provider, externalId, name, location, rating, priceLevel, photoUrl, category, address,
+                locality, ratingCount, hoursToday, placeLink, activityType, popularity,
+                ratingScale, photoRef, null, null);
+    }
 
     /** Eski imza: zenginlestirilmemis aday (testler ve OSM taban saglayicisi icin). */
     public VenueCandidate(String provider, String externalId, String name, GeoPoint location,

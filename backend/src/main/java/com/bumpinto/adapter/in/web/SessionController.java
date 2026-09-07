@@ -6,6 +6,7 @@ import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.infra.security.ParticipantPrincipal;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,16 +38,20 @@ class SessionController {
     private final SessionViewAssembler assembler;
     private final ParticipantTokenDelivery tokens;
     private final UserProfileQueries profiles;
+    private final PresenceStampsPort stamps;
+    private final Clock clock;
 
     SessionController(SessionCommands commands, DeckFlow deckFlow, SessionQueries queries,
                       SessionViewAssembler assembler, ParticipantTokenDelivery tokens,
-                      UserProfileQueries profiles) {
+                      UserProfileQueries profiles, PresenceStampsPort stamps, Clock clock) {
         this.commands = commands;
         this.deckFlow = deckFlow;
         this.queries = queries;
         this.assembler = assembler;
         this.tokens = tokens;
         this.profiles = profiles;
+        this.stamps = stamps;
+        this.clock = clock;
     }
 
     @GetMapping
@@ -77,6 +83,16 @@ class SessionController {
         return response.body(new ApiDtos.CreateSessionResponse(result.session().slug(),
                 result.session().id(), result.hostParticipant().id(), bodyToken,
                 result.session().expiresAt()));
+    }
+
+    /**
+     * Koddan ONIZLEME (R-B9). Kamu ucudur: kod elle yazilir ve yazan kisi henuz uye degildir.
+     * Onizleme koordinat, katilimci id'si ve mekan TASIMAZ; {@code joinCode} de donmez —
+     * koda karsi kod aramasina izin verilmez (§2).
+     */
+    @GetMapping("/by-code/{code}")
+    ApiDtos.SessionPreview byCode(@PathVariable String code) {
+        return assembler.toPreview(queries.snapshotByJoinCode(code));
     }
 
     /**
@@ -114,12 +130,31 @@ class SessionController {
             commands.claimSeat(snapshot.session().id(), seatInHand,
                     WebPrincipals.accountIdOrNull(auth));
         }
+        // Damga assemble'dan ONCE: kisi kendi "linki acti" anini ilk yanitta gorur. Okuma skaler
+        // projeksiyondan gelir (PresenceStampsAdapter.stampsOf), o yuzden REQUIRES_NEW'da yazilan
+        // deger ayni istekte ESKI haliyle okunmaz.
+        markLinkOpened(snapshot, auth);
         return response.body(assembler.toView(snapshot, auth));
     }
 
     @GetMapping("/{slug}/preview")
-    ApiDtos.SessionPreview preview(@PathVariable String slug) {
-        return assembler.toPreview(queries.snapshot(slug));
+    ApiDtos.SessionPreview preview(@PathVariable String slug, Authentication auth) {
+        SessionQueries.SessionSnapshot snapshot = queries.snapshot(slug);
+        markLinkOpened(snapshot, auth);
+        return assembler.toPreview(snapshot);
+    }
+
+    /**
+     * "Linki acti" = davet ekranini (preview) ya da oturumu ILK KEZ actigi an. Anonim ziyaretcinin
+     * koltugu yoktur ve damgalanacak satir da yoktur — sessizce atlanir. Yalniz ilk yazim tutar
+     * (SQL'de {@code link_opened_at is null}); sonraki acilislar zamani ilerletmez.
+     */
+    private void markLinkOpened(SessionQueries.SessionSnapshot snapshot, Authentication auth) {
+        UUID seat = WebPrincipals.seatOf(snapshot, auth).map(Participant::id)
+                .orElseGet(() -> WebPrincipals.participantIdOrNull(auth));
+        if (seat != null && snapshot.participants().stream().anyMatch(p -> p.id().equals(seat))) {
+            stamps.markLinkOpened(seat, clock.instant());
+        }
     }
 
     // Oturum uclarinda kimlik TEK turdur: katilimci token'i. Host da bir katilimcidir; hesap

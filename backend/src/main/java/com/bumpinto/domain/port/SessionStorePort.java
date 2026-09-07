@@ -40,4 +40,10 @@ public interface SessionStorePort {
 
     /** Koltuk kalir, kimlik gider: ad degisir, user_id ve konum null olur, damga yazilir. */
     void anonymizeParticipant(UUID participantId, String displayName, Instant when);
+
+    /** Kullanilmamis bir davet kodu; carpisma nadirdir ama sessiz kalamaz — unique index atar. */
+    String freshJoinCode();
+
+    /** Kod kanonik — buyuk harf, 5 hane — gelmelidir; normalizasyon sorgu katmaninda yapilir. */
+    Optional<Session> sessionByJoinCode(String joinCode);
 }

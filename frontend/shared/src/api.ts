@@ -80,6 +80,12 @@ export function createBumpintoApi(http: AxiosInstance) {
     voiceCredentials: (slug: string) =>
       http.post<Schemas["VoiceCredentialsResponse"]>(`/api/sessions/${slug}/voice/credentials`)
         .then((r) => r.data),
+    report: (body: Schemas["ReportRequest"]) =>
+      http.post("/api/reports", body).then(() => undefined),
+    blockParticipant: (body: Schemas["BlockRequest"]) =>
+      http.post<Schemas["BlockDto"]>("/api/me/blocks", body).then((r) => r.data),
+    nudge: (slug: string, participantId: string) =>
+      http.post(`/api/sessions/${slug}/nudge/${participantId}`).then(() => undefined),
     loginApple: (body: AppleLoginRequest) =>
       http.post<Schemas["LoginResponse"]>("/api/auth/apple", body).then((r) => r.data),
     // PUT yanıt gövdesi sözleşmede sabit değil — yazımdan sonra `me()` tazelenir (authStore).

@@ -1,0 +1,24 @@
+info:
+  name: Nudge Participant
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/nudge/{{participantId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Katilimci token'i ile cagrilir; govde YOK, yanit 204.
+    Kota: **gonderen-hedef cifti basina 60 sn** — ikinci cagri 429 `nudge_cooldown`.
+    Kendini ya da elle eklenen bir noktayi durtmek 403.
+    Oturumun konusuna `nudged{fromParticipantId, toParticipantId}` yayinlanir.

@@ -38,6 +38,9 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `CLOUDFLARE_TURN_API_TOKEN` | Cloudflare Realtime TURN API token'ı; boşsa/erişilemezse yalnız STUN ile devam edilir (`relay=false`) | Cloudflare Dashboard → Realtime → TURN keys | **Evet** |
 | `RETENTION_ENABLED` | **İki** saklama işini birden açar/kapatır (varsayılan `true`): saatlik `VenueContentRetention` (sağlayıcı metadata'sını indirger) ve günlük `RetentionJob` (spec §6 GDPR — süresi dolalı 30 günü geçen oturumları **ve** silinmeli 30 günü geçen hesapları kalıcı siler). Prod'da kapatmak GDPR yükümlülüğünü askıya alır | — | Hayır |
 | `SESSION_PURGE_CRON` | Oturum purge'ünün Spring cron ifadesi (6 alan: `saniye dakika saat gün ay haftagünü`, saat dilimi **UTC**); varsayılan `0 30 3 * * *` = her gece 03:30 UTC | — | Hayır |
+| `OG_CACHE` | OG kartı önbellek süresi (ISO süre, varsayılan `PT24S`); hem HTTP `max-age` başlığına hem süreç içi önbellek TTL'ine gider | — | Hayır |
+| `APP_BASE_URL` | Web uygulamasının kök adresi; `/j/{slug}` davet linkinin yaşadığı yer | — | Hayır |
+| `PUBLIC_API_BASE_URL` | Bu API'nin dışa dönük adresi; `/og/{slug}.png` mutlak URL'ini kurmak için kullanılır | — | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —
 kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local ≠ preprod ≠ prod.
@@ -45,6 +48,11 @@ kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local
 `NOMINATIM_CONTACT` artık iki yerde kullanılıyor: Nominatim User-Agent'ı **ve** Wikidata/Commons
 toplu sorguları (`tools/venues-open/wikidata_photos.py`). Boş bırakılırsa ithal işi açılışta
 patlar — Wikimedia politikası gerçek bir iletişim adresi ister.
+
+> **OG kartı ve yazı tipleri.** `GET /og/{slug}.png` `java.awt` ile çizer ve mantıksal
+> `SansSerif` yazı tipini kullanır. Backend imajı `fontconfig` + en az bir TrueType aile
+> içermelidir (Debian tabanlı imajda `apt-get install -y fontconfig fonts-dejavu-core`);
+> yoksa uç 500 verir. `java.awt.headless=true` Spring Boot varsayılanıdır, ezilmemelidir.
 
 ### Frontend sır taşımaz
 

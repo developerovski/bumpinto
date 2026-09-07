@@ -13,4 +13,8 @@ public interface SessionRepository extends JpaRepository<SessionEntity, UUID> {
     List<SessionEntity> findByHostIdOrderByCreatedAtDescIdDesc(UUID hostId, Pageable page);
 
     long countByHostId(UUID hostId);
+
+    Optional<SessionEntity> findByJoinCode(String joinCode);
+
+    boolean existsByJoinCode(String joinCode);
 }

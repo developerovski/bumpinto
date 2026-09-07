@@ -10,7 +10,21 @@ public record Venue(UUID id, UUID sessionId, String provider, String externalId,
                     int deckOrder,
                     String category, String address, String locality, Integer ratingCount,
                     String hoursToday, String placeLink, ActivityType activityType,
-                    Double popularity, Integer ratingScale, String photoRef) {
+                    Double popularity, Integer ratingScale, String photoRef,
+                    /** "Neyle bilinir" tek satiri (R-B7); veri yoksa null. */
+                    String tagline, TaglineSource taglineSource) {
+
+    /** Tagline'siz zenginlestirilmis mekan (B-13 imzasi; cagri yerleri kirilmaz). */
+    public Venue(UUID id, UUID sessionId, String provider, String externalId, String name,
+                 GeoPoint location, Double rating, Integer priceLevel, String photoUrl,
+                 int deckOrder, String category, String address, String locality,
+                 Integer ratingCount, String hoursToday, String placeLink,
+                 ActivityType activityType, Double popularity, Integer ratingScale,
+                 String photoRef) {
+        this(id, sessionId, provider, externalId, name, location, rating, priceLevel, photoUrl,
+                deckOrder, category, address, locality, ratingCount, hoursToday, placeLink,
+                activityType, popularity, ratingScale, photoRef, null, null);
+    }
 
     /**
      * Yalnızca TESTLER için kısa imza; üretimde çağrısı yoktur (sağlayıcı alanları her zaman
@@ -35,6 +49,7 @@ public record Venue(UUID id, UUID sessionId, String provider, String externalId,
     public Venue withDeckOrder(int newOrder) {
         return new Venue(id, sessionId, provider, externalId, name, location, rating, priceLevel,
                 photoUrl, newOrder, category, address, locality, ratingCount, hoursToday,
-                placeLink, activityType, popularity, ratingScale, photoRef);
+                placeLink, activityType, popularity, ratingScale, photoRef, tagline,
+                taglineSource);
     }
 }

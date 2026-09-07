@@ -10,6 +10,7 @@ import com.bumpinto.domain.geo.TravelLeg;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
@@ -34,17 +35,23 @@ import java.util.stream.Collectors;
 @Component
 public class SessionViewAssembler {
 
+    /** Damgasi hic olmayan koltuk icin iki null: haritada anahtar YOK demek "hic gorulmedi". */
+    private static final PresenceStampsPort.Stamps EMPTY_STAMPS =
+            new PresenceStampsPort.Stamps(null, null);
+
     private final PresencePort presence;
     private final VoiceRoomsPort rooms;
     private final RoutingPort routing;
     private final Blocks blocks;
+    private final PresenceStampsPort stamps;
 
     public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms, RoutingPort routing,
-                                Blocks blocks) {
+                                Blocks blocks, PresenceStampsPort stamps) {
         this.presence = presence;
         this.rooms = rooms;
         this.routing = routing;
         this.blocks = blocks;
+        this.stamps = stamps;
     }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
@@ -61,6 +68,9 @@ public class SessionViewAssembler {
         Double radiusKm = center == null ? null : Math.round(center.radiusKm() * 10) / 10.0;
         GeoPoint midpointFor = center == null ? null : center.point();
         Set<UUID> present = presence.presentIn(snap.session().id());
+        // "Su an burada" ile "en son ne zaman buradaydi" AYRI kaynaklardir: ilki surec icinde
+        // yasar ve grace penceresinden sonra unutulur, ikincisi kalicidir.
+        Map<UUID, PresenceStampsPort.Stamps> marks = stamps.stampsOf(snap.session().id());
         Optional<VoiceRoom> room = rooms.roomOf(snap.session().id());
         ApiDtos.ViewerDto viewer = WebPrincipals.viewerOf(snap, auth);
         // Uye degilse (link'i acan ama katilmamis biri) arac varsayilanina duser: CAR.
@@ -81,7 +91,9 @@ public class SessionViewAssembler {
                                 : TravelMinutes.between(p.location(), p.travelMode(), midpointFor),
                         present.contains(p.id()),
                         room.map(r -> r.hasMember(p.id())).orElse(false),
-                        hidden.contains(p.id())))
+                        hidden.contains(p.id()),
+                        marks.getOrDefault(p.id(), EMPTY_STAMPS).lastSeenAt(),
+                        marks.getOrDefault(p.id(), EMPTY_STAMPS).linkOpenedAt()))
                 .toList();
 
         // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
@@ -107,7 +119,7 @@ public class SessionViewAssembler {
                     travelMinutes, fairness,
                     v.provider(), v.category(), v.address(), v.locality(), v.ratingCount(),
                     v.hoursToday(), v.placeLink(), v.activityType(),
-                    v.popularity(), v.ratingScale(), travel));
+                    v.popularity(), v.ratingScale(), travel, v.tagline(), v.taglineSource()));
         }
         return new ApiDtos.SessionView(snap.session().slug(), snap.session().name(),
                 snap.session().activityTypes(), snap.session().sessionType(),
@@ -119,7 +131,10 @@ public class SessionViewAssembler {
                 snap.session().midpointLabel(), snap.session().decisionKind(),
                 snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts(),
                 emptyActivityTypes(snap), center != null && center.anchored(),
-                room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null));
+                room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null),
+                // Uc zaten uye olmayana 403 veriyor; alan yine de viewer'a bagli — savunma tek
+                // satirdir ve kodun kime gittigini kodun kendisi soyler.
+                viewer == null ? null : snap.session().joinCode());
     }
 
     /**

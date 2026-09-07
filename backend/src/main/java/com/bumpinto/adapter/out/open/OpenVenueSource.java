@@ -8,6 +8,8 @@ import com.bumpinto.domain.venue.MapEngine;
 import com.bumpinto.domain.venue.RetentionRule;
 import com.bumpinto.domain.venue.SearchRequest;
 import com.bumpinto.domain.venue.SearchResult;
+import com.bumpinto.domain.venue.TaglineSource;
+import com.bumpinto.domain.venue.Taglines;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.domain.venue.VenueSource;
 import com.bumpinto.domain.venue.VenueSourceDescriptor;
@@ -62,11 +64,15 @@ public class OpenVenueSource implements VenueSource {
     }
 
     private VenueCandidate toCandidate(OpenVenueRow row, List<ActivityType> requested) {
+        // Ham etiketten degil GORUNEN etiketten turetilir: "amenity=pub" degil "Pub · Eindhoven".
+        String label = categoryLabel(row.getCategory());
+        String tagline = Taglines.fromCategory(label, row.getLocality());
         return new VenueCandidate(ID, row.getId(), row.getName(),
                 new GeoPoint(row.getLat(), row.getLng()),
-                null, null, row.getPhotoUrl(), categoryLabel(row.getCategory()), row.getAddress(),
+                null, null, row.getPhotoUrl(), label, row.getAddress(),
                 row.getLocality(), null, row.getOpeningHours(), row.getWebsite(),
-                attribution(row, requested), null, null, null);
+                attribution(row, requested), null, null, null,
+                tagline, tagline == null ? null : TaglineSource.OSM);
     }
 
     /** Tabloda ham kaynak kategorisi durur: OSM {@code amenity=pub}, Overture {@code coffee_shop}.

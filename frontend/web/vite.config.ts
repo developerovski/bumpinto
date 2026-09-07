@@ -32,5 +32,9 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     // Adalet modülü paylaşımlı pakette (M-3 aynı kodu tüketir); testi burada koşar.
     include: ["src/**/*.test.{ts,tsx}", "../shared/src/**/*.test.ts"],
+    // Yerel saat dilimine dokunan testler (ör. MeetTimeDialog) makineden makineye farklı sonuç
+    // vermesin diye çalıştırıcı UTC'ye sabitlenir — üretim kodu (`MeetTimeDialog.tsx`) kullanıcının
+    // GERÇEK yerel saatini kullanmaya devam eder, yalnız testin kendi determinizmi sabitlenir.
+    env: { TZ: "UTC" },
   },
 });

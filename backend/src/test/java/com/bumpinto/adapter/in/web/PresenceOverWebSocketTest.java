@@ -2,6 +2,7 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.adapter.out.presence.InMemoryPresence;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -43,6 +44,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -99,6 +102,8 @@ class PresenceOverWebSocketTest {
 
     @Autowired ObjectMapper json;
     @Autowired RateLimitFilter rateLimit;
+    /** Gercek adapter (mock DEGIL): damganin Postgres'e gercekten dustugu sinaniyor. */
+    @Autowired PresenceStampsPort stamps;
     @LocalServerPort int port;
 
     @MockitoBean VenueProviderPort provider;   // @Primary ResilientVenueProvider yerine
@@ -240,6 +245,90 @@ class PresenceOverWebSocketTest {
                         .isGreaterThanOrEqualTo(2));
         assertThat(isHostOnline(slug, hostToken)).isTrue(); // izleyen hala odada
         watcher.disconnect();
+    }
+
+    /**
+     * KALICI damga ayagi: {@code presentIn} 45 sn sonra koltugu unutur, "Son gorulen · 12:38"
+     * ise dun de dogru olmali. Damga hem GELISTE hem KOPUSTA yazilir; ikinci yazim olmasaydi
+     * "son gorulen" kisinin GIRIS anini gosterirdi — iki saat oradaysa apacik yanlis. Ikisi de
+     * gercek bir soketten gecer, gercek Postgres'e duser.
+     */
+    @Test
+    void connectAndDisconnectStampLastSeenInTheDatabase() throws Exception {
+        when(google.verify("gid-stamps"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("stamps@bumpinto.test", "Mehmet"));
+        String accessToken = json.readTree(send(HttpRequest.newBuilder(uri("/api/auth/google"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"idToken\":\"gid-stamps\"}")))
+                .body()).get("accessToken").asString();
+        JsonNode created = json.readTree(send(HttpRequest.newBuilder(uri("/api/sessions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"activityTypes\":[\"COFFEE\"],"
+                        + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))).body());
+        String slug = created.get("slug").asString();
+        String hostToken = created.get("participantToken").asString();
+        UUID sessionId = UUID.fromString(created.get("sessionId").asString());
+        UUID hostId = UUID.fromString(created.get("participantId").asString());
+
+        stompSession = connect(slug, hostToken);
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(stamps.stampsOf(sessionId).get(hostId))
+                        .isNotNull()
+                        .extracting(PresenceStampsPort.Stamps::lastSeenAt).isNotNull());
+        Instant onArrival = stamps.stampsOf(sessionId).get(hostId).lastSeenAt();
+
+        stompSession.disconnect();
+
+        await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(
+                        stamps.stampsOf(sessionId).get(hostId).lastSeenAt())
+                        // ILERLEMIS olmali: yalniz gelis damgalansaydi "son gorulen" kisinin
+                        // GIRIS anini gosterirdi — iki saat oturup ciktiysa apacik yanlis.
+                        .as("kopus ani da damgalanir")
+                        .isNotNull().isAfter(onArrival));
+    }
+
+    /**
+     * BAYATLIK KAPISI: {@code linkOpenedAt} ILK gorunumde yazilir ve AYNI yanitta okunur. Yazim
+     * REQUIRES_NEW'da toplu UPDATE ile olur; OSIV acik oldugu icin istek bastan sona tek
+     * persistence context paylasir ve koltuklar oraya coktan yuklenmistir. Okuma entity sorgusu
+     * olsaydi Hibernate identity map'teki ESKI (null) ornegi dondururdu — daveti acan kisi kendi
+     * damgasini ancak IKINCI acilista gorurdu. Skaler projeksiyon (stampRowsOf) bunu onler.
+     */
+    @Test
+    void theFirstViewWritesAndReadsLinkOpenedInTheSameRequest() throws Exception {
+        when(google.verify("gid-linkopen"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("linkopen@bumpinto.test", "Mehmet"));
+        String accessToken = json.readTree(send(HttpRequest.newBuilder(uri("/api/auth/google"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"idToken\":\"gid-linkopen\"}")))
+                .body()).get("accessToken").asString();
+        JsonNode created = json.readTree(send(HttpRequest.newBuilder(uri("/api/sessions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"activityTypes\":[\"COFFEE\"],"
+                        + "\"lat\":51.6978,\"lng\":5.3037,\"displayName\":\"Mehmet\"}"))).body());
+        String slug = created.get("slug").asString();
+        String hostToken = created.get("participantToken").asString();
+        UUID hostId = UUID.fromString(created.get("participantId").asString());
+
+        // Oturum kurulurken damga YAZILMAZ; asagidaki ILK GET hem yazan hem okuyan istektir.
+        HttpResponse<String> first = send(HttpRequest.newBuilder(uri("/api/sessions/" + slug))
+                .header(ParticipantTokenFilter.HEADER, hostToken).GET());
+        assertThat(first.statusCode()).isEqualTo(200);
+
+        JsonNode host = null;
+        for (JsonNode participant : json.readTree(first.body()).get("participants")) {
+            if (hostId.toString().equals(participant.get("id").asString())) {
+                host = participant;
+            }
+        }
+        assertThat(host).isNotNull();
+        assertThat(host.get("linkOpenedAt").isNull())
+                .as("ilk gorunum kendi damgasini AYNI yanitta tasir").isFalse();
+        // Soket hic acilmadi: "burada" ile "linki acti" ayri sorulardir.
+        assertThat(host.get("lastSeenAt").isNull()).isTrue();
     }
 
     private StompSession connect(String slug, String participantToken) throws Exception {

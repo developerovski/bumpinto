@@ -1,5 +1,6 @@
 package com.bumpinto.support;
 
+import com.bumpinto.application.text.Ids;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.BlockStorePort;
 import com.bumpinto.domain.port.DeckStorePort;
@@ -113,6 +114,17 @@ public class FakeStores {
                 participants.put(participantId, new Participant(p.id(), p.sessionId(), displayName,
                         null, p.host(), p.deckDoneAt(), p.manual(), null, p.travelMode(), null));
             }
+        }
+
+        @Override public String freshJoinCode() {
+            String candidate = Ids.joinCode();
+            return sessions.values().stream().anyMatch(s -> candidate.equals(s.joinCode()))
+                    ? freshJoinCode() : candidate;
+        }
+
+        @Override public Optional<Session> sessionByJoinCode(String joinCode) {
+            return sessions.values().stream()
+                    .filter(s -> joinCode.equals(s.joinCode())).findFirst();
         }
 
         @Override public long distinctGuestsOfHost(UUID hostId) {

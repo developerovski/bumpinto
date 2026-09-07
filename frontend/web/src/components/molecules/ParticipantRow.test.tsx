@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/api", () => ({ api: { getSession: vi.fn(), preview: vi.fn() } }));
@@ -35,5 +35,40 @@ describe("ParticipantRow — ses", () => {
     useVoiceStore.setState({ peers: {}, selfSpeaking: true });
     rerender(<ParticipantRow participant={ayse({ inVoice: true }) as never} index={0} isSelf />);
     expect(screen.getByText("konuşuyor")).toBeInTheDocument();
+  });
+});
+
+describe("ParticipantRow — presence 2.0", () => {
+  it("çevrimiçide nokta; çevrimdışıda lastSeenAt varsa saat, yoksa yalnız 'çevrimdışı'", () => {
+    const { rerender } = render(<ParticipantRow participant={ayse({ online: true }) as never} index={0} />);
+    expect(screen.getByTestId("online-dot")).toBeInTheDocument();
+    rerender(<ParticipantRow index={0}
+      participant={ayse({ online: false, lastSeenAt: "2026-09-06T10:38:00Z" }) as never} />);
+    expect(screen.queryByTestId("online-dot")).not.toBeInTheDocument();
+    expect(screen.getByText(/Son görülen · /)).toBeInTheDocument();
+    rerender(<ParticipantRow participant={ayse({ online: false }) as never} index={0} />);
+    expect(screen.getByText("çevrimdışı")).toBeInTheDocument();
+    expect(screen.queryByText(/Son görülen/)).not.toBeInTheDocument();
+  });
+  it("konum yok: linkOpenedAt varsa 'Linki açtı' + nabız, yoksa eski metin", () => {
+    const w = { hasLocation: false, locationLabel: undefined };
+    const { container, rerender } = render(<ParticipantRow index={0}
+      participant={ayse({ ...w, linkOpenedAt: "2026-09-06T10:30:00Z" }) as never} />);
+    expect(screen.getByText("Linki açtı · konum bekleniyor…")).toBeInTheDocument();
+    expect(container.querySelector(".c-pulse")).not.toBeNull();
+    rerender(<ParticipantRow participant={ayse(w) as never} index={0} />);
+    expect(screen.getByText("Konum bekleniyor…")).toBeInTheDocument();
+  });
+  it("'…' yalnız onOptions varken, kendi satırı ve engelli satır dışında çıkar", () => {
+    const onOptions = vi.fn();
+    const label = { name: "Ayşe · seçenekler" };
+    const { rerender } = render(<ParticipantRow participant={ayse() as never} index={0} onOptions={onOptions} />);
+    fireEvent.click(screen.getByRole("button", label));
+    expect(onOptions).toHaveBeenCalledTimes(1);
+    rerender(<ParticipantRow participant={ayse() as never} index={0} isSelf onOptions={onOptions} />);
+    expect(screen.queryByRole("button", label)).not.toBeInTheDocument();
+    rerender(<ParticipantRow participant={ayse({ blocked: true }) as never} index={0} onOptions={onOptions} />);
+    expect(screen.queryByRole("button", label)).not.toBeInTheDocument();
+    expect(screen.getByText("engellendi")).toBeInTheDocument();
   });
 });

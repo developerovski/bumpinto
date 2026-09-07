@@ -9,6 +9,7 @@ import com.bumpinto.domain.venue.ProviderQuota;
 import com.bumpinto.domain.venue.RetentionRule;
 import com.bumpinto.domain.venue.SearchRequest;
 import com.bumpinto.domain.venue.SearchResult;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.VenueCandidate;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.TestProps;
@@ -46,6 +47,15 @@ class FoursquareVenueSourceTest {
     static FoursquareVenueSource source(UnirestInstance http) {
         return new FoursquareVenueSource(new VenueSourceSupport(http), TestProps.defaults(),
                 new CategoryMappingLoader(), CLOCK);
+    }
+
+    /** Tek govdelik Premium arama; mock kurulumu her testte tekrarlanmasin. */
+    static List<VenueCandidate> searchWith(String body) {
+        UnirestInstance http = Unirest.spawnInstance();
+        MockClient mock = MockClient.register(http);
+        mock.expect(HttpMethod.GET, SEARCH_URL).thenReturn(body);
+        return source(http).search(new SearchRequest(new GeoPoint(51.44, 5.47), 5.0,
+                List.of(ActivityType.COFFEE), 20)).candidates();
     }
 
     @Test
@@ -130,6 +140,29 @@ class FoursquareVenueSourceTest {
         SearchResult barOnly = source(http).search(new SearchRequest(new GeoPoint(51.44, 5.47), 5.0,
                 List.of(ActivityType.BAR), 20));
         assertThat(barOnly.candidates().get(0).activityType()).isNull();
+    }
+
+    /**
+     * {@code tips} ayni aramanin alanidir (ek cagri, ek kredi YOK) ve yaniti null-tolereli
+     * okunur: alani gelmeyen mekanin tagline'i null kalir, kart o satiri hic cizmez (§4.9).
+     */
+    @Test
+    void tipsFieldBecomesTaglineAndIsNullToleratedWhenAbsent() {
+        // Alan istenmiyorsa esleme olu kod olurdu: istegin kendisi de sozlesmenin parcasi.
+        assertThat(FoursquareVenueSource.PREMIUM_FIELDS).contains(",tips");
+        String body = """
+                {"results":[
+                  {"fsq_place_id":"a1","name":"Kaffee","latitude":51.4,"longitude":5.4,
+                   "tips":[{"text":"Best flat white in town. Roasted on site."}]},
+                  {"fsq_place_id":"a2","name":"Tea","latitude":51.5,"longitude":5.5}
+                ]}""";
+
+        List<VenueCandidate> out = searchWith(body);
+
+        assertThat(out.get(0).tagline()).isEqualTo("Best flat white in town");
+        assertThat(out.get(0).taglineSource()).isEqualTo(TaglineSource.FSQ);
+        assertThat(out.get(1).tagline()).isNull();
+        assertThat(out.get(1).taglineSource()).isNull();
     }
 
     @Test

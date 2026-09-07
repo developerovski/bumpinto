@@ -30,4 +30,7 @@ class ParticipantEntity {
     String travelMode = "CAR";
     /** Hesap silinince koltuk KALIR, kimlik gider (V14). Damga = ne zaman anonimlesti. */
     Instant anonymizedAt;
+    /** KALICI presence damgalari (V18); surec ici presence bunlarin uzerine yazamaz. */
+    Instant lastSeenAt;
+    Instant linkOpenedAt;
 }

@@ -518,4 +518,45 @@ class AccountApiTest {
         mvc.perform(get("/api/me").cookie(at)).andExpect(status().isNotFound());
         mvc.perform(get("/api/sessions/" + slug + "/preview")).andExpect(status().isNotFound());
     }
+
+    /**
+     * R-B6 ucdan uca. JPQL dis aktarma sorgusu GERCEK semaya karsi kosar — alan adi hatasi
+     * yalnizca burada yakalanir, birim test sahte portla gecerdi. Konum YUVARLANMIS gelir
+     * ve ikinci istek saatlik kovaya takilir.
+     */
+    @Test
+    void exportReturnsMyOwnSeatsRoundedAndIsRateLimitedHourly() throws Exception {
+        when(google.verify("gid-exp"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("exp@bumpinto.test", "Ayşe"));
+        Cookie at = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-exp\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Disa aktarma\","
+                                + "\"lat\":51.441642,\"lng\":5.469722,\"displayName\":\"Ayşe\"}"))
+                .andExpect(status().isCreated());
+
+        MvcResult exported = mvc.perform(get("/api/me/export").cookie(at))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(exported.getResponse().getHeader("Content-Disposition"))
+                .contains("attachment", "bumpinto-export-");
+        JsonNode out = json.readTree(exported.getResponse().getContentAsString());
+        assertThat(out.get("exportedAt").asString()).isNotBlank();
+        assertThat(out.get("profile").get("email").asString()).isEqualTo("exp@bumpinto.test");
+        JsonNode seat = out.get("participations").get(0);
+        assertThat(seat.get("sessionName").asString()).isEqualTo("Disa aktarma");
+        assertThat(seat.get("sessionSlug").asString()).isNotBlank();
+        assertThat(seat.get("host").asBoolean()).isTrue();
+        assertThat(seat.get("lat").asDouble()).isEqualTo(51.44); // ~1.1 km'ye YUVARLANMIS
+        assertThat(seat.get("lng").asDouble()).isEqualTo(5.47);
+        assertThat(seat.get("travelMode").asString()).isEqualTo("CAR");
+        assertThat(seat.get("likes").asLong()).isZero();
+        assertThat(seat.get("passes").asLong()).isZero();
+        assertThat(seat.get("voted").asBoolean()).isFalse();
+
+        // 1/saat: ikinci istek 429 ve Retry-After penceredendir (60 degil).
+        MvcResult blocked = mvc.perform(get("/api/me/export").cookie(at))
+                .andExpect(status().isTooManyRequests()).andReturn();
+        assertThat(blocked.getResponse().getHeader("Retry-After")).isEqualTo("3600");
+    }
 }

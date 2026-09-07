@@ -4,7 +4,7 @@ import type { SessionView } from "@bumpinto/shared";
 import { Page } from "../components/atoms";
 import BackupPlan from "../components/molecules/BackupPlan";
 import Confetti from "../components/molecules/Confetti";
-import ShareButton from "../components/molecules/ShareButton";
+import ResultActions from "../components/molecules/ResultActions";
 import TravelBars from "../components/molecules/TravelBars";
 import TwoZone from "../components/molecules/TwoZone";
 import ViralCard from "../components/molecules/ViralCard";
@@ -105,7 +105,7 @@ export default function ResultScreen({ view }: { view: SessionView }) {
               tally={tally}
               names={names}
             />
-            <ShareButton text={shareText} url={shareUrl} />
+            <ResultActions view={v} venue={winner} shareText={shareText} shareUrl={shareUrl} />
           </>
         }
         right={

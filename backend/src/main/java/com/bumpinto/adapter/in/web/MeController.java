@@ -1,12 +1,14 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.user.AccountDeletion;
+import com.bumpinto.application.user.UserDataExport;
 import com.bumpinto.infra.security.AuthCookies;
 import com.bumpinto.infra.security.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -37,16 +39,19 @@ class MeController {
     private final UserConsents consents;
     private final TokenService tokens;
     private final AccountDeletion deletion;
+    private final UserDataExport exports;
     private final AuthCookies cookies;
     private final Clock clock;
 
     MeController(UserProfileQueries queries, UserPreferences prefs, UserConsents consents,
-                 TokenService tokens, AccountDeletion deletion, AuthCookies cookies, Clock clock) {
+                 TokenService tokens, AccountDeletion deletion, UserDataExport exports,
+                 AuthCookies cookies, Clock clock) {
         this.queries = queries;
         this.prefs = prefs;
         this.consents = consents;
         this.tokens = tokens;
         this.deletion = deletion;
+        this.exports = exports;
         this.cookies = cookies;
         this.clock = clock;
     }
@@ -73,6 +78,22 @@ class MeController {
             @Valid @RequestBody ApiDtos.UpdateConsentsRequest request) {
         return toDto(consents.update(WebPrincipals.accountId(jwt), request.location(),
                 request.microphone(), request.analytics()));
+    }
+
+    /**
+     * Tek istek, indirilebilir dosya. Hiz siniri RateLimitFilter'dadir (1/saat): burada ikinci
+     * bir kova tutmak ayni kurali iki yerde yasatirdi.
+     */
+    @GetMapping("/export")
+    ResponseEntity<ApiDtos.ExportResponse> export(@AuthenticationPrincipal Jwt jwt) {
+        UserDataExport.Export data = exports.of(WebPrincipals.accountId(jwt));
+        String filename = "bumpinto-export-" + data.exportedAt().toString().substring(0, 10)
+                + ".json";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(new ApiDtos.ExportResponse(data.exportedAt(), data.profile(),
+                        data.participations()));
     }
 
     @PostMapping("/delete-token")

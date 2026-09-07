@@ -568,5 +568,54 @@
     "contact": "Contact",
     "mEmail": "Email",
     "deleteLink": "To request account deletion: bumpinto.app/account/delete"
+  },
+  "presence": {
+    "linkOpened": "Opened the link · waiting for location…",
+    "lastSeen": "Last seen · {{time}}",
+    "nudge": "Nudge {{name}}",
+    "nudgeSent": "Nudged {{name}}",
+    "nudgeCooling": "You just nudged — wait a minute",
+    "nudgeError": "Couldn't send the nudge — try again.",
+    "nudged": "Someone nudged you — share your location so we can move on",
+    "hostOnly": "Only the host sees the nudge."
+  },
+  "social": {
+    "options": "{{name}} · options",
+    "inSession": "{{place}} · in this meet-up",
+    "report": "Report",
+    "reportHint": "Offensive name or behaviour",
+    "block": "Block",
+    "blockHint": "You won't hear them in voice chat, they can't see you",
+    "mute": "Mute in voice chat",
+    "unmute": "Unmute",
+    "muteHint": "Only for you",
+    "reportTitle": "What are you reporting?",
+    "reasonHARASSMENT": "Harassment",
+    "reasonIMPERSONATION": "Impersonation",
+    "reasonSPAM": "Fake / spam",
+    "reasonOTHER": "Something else",
+    "reportNote": "The report goes to our team and is reviewed within 24 hours. {{name}} won't see it.",
+    "send": "Send",
+    "reported": "Reported · {{name}} blocked",
+    "blocked": "{{name}} blocked",
+    "error": "Couldn't send — try again.",
+    "blockedRow": "blocked"
+  },
+  "share": {
+    "card": "Share the card",
+    "preparing": "Preparing the card…",
+    "cardTitle": "We're meeting at {{venue}}",
+    "cardFooter": "everyone ~{{min}}–{{max}} min · {{spread}} min apart",
+    "fileName": "bumpinto-{{slug}}.png"
+  },
+  "calendar": {
+    "add": "Add to calendar",
+    "title": "What time?",
+    "hint": "You pick the time — there is no stored meeting time yet.",
+    "date": "Date",
+    "time": "Time",
+    "download": "Download calendar file",
+    "google": "Open in Google Calendar",
+    "eventTitle": "{{venue}} · {{session}}"
   }
 }

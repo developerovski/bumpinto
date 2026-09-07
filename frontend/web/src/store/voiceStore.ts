@@ -15,6 +15,8 @@ type VoiceState = {
   muted: boolean;
   peers: Record<string, PeerSnapshot>;
   selfSpeaking: boolean;
+  /** Yerel sustur — sunucuya gitmez, §2: 'sustur' uçsuz. */
+  mutedPeers: Record<string, true>;
   /** Son kapanışın sebebi; dock 10 sn gösterir. */
   endedReason: EndReason | null;
   micDenied: boolean;
@@ -29,6 +31,7 @@ type VoiceState = {
   join: () => Promise<void>;
   leave: () => void;
   toggleMute: () => void;
+  togglePeerMute: (participantId: string) => void;
   ended: (reason: EndReason) => void;
   resetRoster: () => void;
 };
@@ -57,9 +60,12 @@ let missingCount = 0;
 
 const stopTracks = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
 
-/** Görünümdeki ses üyeleri (kendimiz dahil; mesh kendini eler). */
+/** Görünümdeki ses üyeleri (kendimiz dahil; mesh kendini eler). Engelli çifti sunucu zaten
+    aynı odaya almaz (§2) — istemci süzmesi savunma katmanı, roster yarışında bile ses açılmaz. */
 export function rosterOf(view: SessionView | null): string[] {
-  return (view?.participants ?? []).filter((p) => p.inVoice && p.id).map((p) => p.id as string);
+  return (view?.participants ?? [])
+    .filter((p) => p.inVoice && p.id && !p.blocked)
+    .map((p) => p.id as string);
 }
 
 function teardown() {
@@ -82,6 +88,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   muted: false,
   peers: {},
   selfSpeaking: false,
+  mutedPeers: {},
   endedReason: null,
   micDenied: false,
   connectFailed: false,
@@ -180,6 +187,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         createLevels: (cb) => createLevelSampler(cb, { context: audioCtx }),
       });
       mesh.setMuted(get().muted);
+      mesh.setMutedPeers(Object.keys(get().mutedPeers));
       const roster = rosterOf(useSessionStore.getState().view);
       mesh.setRoster(roster);
       lastRoster = roster.join(",");
@@ -204,6 +212,14 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     const muted = !get().muted;
     mesh?.setMuted(muted);
     set({ muted });
+  },
+
+  togglePeerMute: (participantId) => {
+    const next = { ...get().mutedPeers };
+    if (next[participantId]) delete next[participantId];
+    else next[participantId] = true;
+    set({ mutedPeers: next });
+    mesh?.setMutedPeers(Object.keys(next));
   },
 
   /** WS yeniden bağlanınca çağrılır: bir sonraki görünüm güncellemesinde setRoster'ı DEĞİŞMEMİŞ

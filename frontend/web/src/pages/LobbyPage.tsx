@@ -64,7 +64,11 @@ export default function LobbyPage({ view }: { view: SessionView }) {
             <InviteCard slug={view.slug ?? ""} />
             <ActivityStrip activities={activities} km={km} />
             <SessionSteps current="locations" />
-            <ParticipantList participants={participants} />
+            <ParticipantList
+              participants={participants}
+              slug={view.slug ?? ""}
+              isHost={!!view.viewer?.host}
+            />
           </>
         }
         right={

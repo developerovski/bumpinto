@@ -56,6 +56,16 @@
   --animate-rise: rise 0.32s var(--ease-stack);
   --animate-promote: promote 0.32s var(--ease-stack);
   --animate-appear: appear 0.32s var(--ease-stack);
+  --animate-pulse-soft: pulse-soft 1.8s var(--ease-stack) infinite;
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(169, 106, 11, 0.35);
+    }
+    60% {
+      box-shadow: 0 0 0 0.5rem rgba(169, 106, 11, 0);
+    }
+  }
   /* Karar efekti (DecisionBurst): kap ömrü = en uzun parçacık; --tx/--ty/--rot parçacık hedefi. */
   --animate-burst-life: burst-life 0.9s linear forwards;
   --animate-confetti: confetti 0.9s cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
@@ -364,5 +374,12 @@
   .c-mark-pin--muted {
     background: var(--color-ink3);
     box-shadow: none;
+  }
+
+  /* Artboard .av-wt.pulse — konumu beklenen katılımcının halkası. `prefers-reduced-motion`
+     kuralı @layer base'te TÜM animasyonları kapatır: sınıf kalır, hareket durur. */
+  .c-pulse {
+    border-radius: 50%;
+    animation: var(--animate-pulse-soft);
   }
 }

@@ -1,12 +1,14 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.deck.DeckFlow;
+import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.session.VoiceCommands;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
@@ -57,7 +59,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {SessionController.class, ParticipantController.class, DeckController.class,
-        VoiceController.class, ConfigController.class, GeocodeController.class})
+        VoiceController.class, ConfigController.class, GeocodeController.class,
+        NudgeController.class, OgController.class})
 // ParticipantTokenFilter BILEREK import edilmez: bean olursa servlet zincirine de kaydolur ve
 // OncePerRequestFilter'in "already filtered" isareti zincir icindeki gercek ornegi atlatir.
 @Import({SecurityConfig.class, SessionViewAssembler.class, AuthCookies.class, TokenService.class,
@@ -90,8 +93,11 @@ class WebSecuritySliceTest {
     // SessionViewAssembler artik PresencePort ister; bu paket InMemoryPresence'i taramaz.
     @MockitoBean PresencePort presence;
     @MockitoBean VoiceCommands voice;
+    @MockitoBean com.bumpinto.application.session.NudgeCommands nudges;
     // SessionViewAssembler artik VoiceRoomsPort da ister; Optional donen metodlar bos doner.
     @MockitoBean VoiceRoomsPort rooms;
+    /** SessionController damgayi yazar, SessionViewAssembler okur; slice'ta gercek depo yok. */
+    @MockitoBean PresenceStampsPort stamps;
     // SessionViewAssembler artik RoutingPort da ister; bu paket OsrmRouting'i taramaz.
     @MockitoBean RoutingPort routing;
     /** SessionViewAssembler engel bayragini bundan okur (T11); slice'ta gercek depo yok. */
@@ -99,6 +105,8 @@ class WebSecuritySliceTest {
     // ConfigController List<VenueSource> ister; bos liste yeterli (bu sinif kaynak icerigini sinamaz).
     @MockitoBean com.bumpinto.domain.port.GeocodePort geocodeForward;
     @MockitoBean com.bumpinto.domain.port.ReverseGeocodePort geocodeReverse;
+    /** OgController cizimi portun arkasindan alir; slice AwtOgImageRenderer'i taramaz. */
+    @MockitoBean com.bumpinto.domain.port.OgImagePort ogImages;
 
     static final UUID SESSION_ID = UUID.randomUUID();
 
@@ -431,6 +439,44 @@ class WebSecuritySliceTest {
         mvc.perform(delete("/api/sessions/abc/voice")
                         .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
                 .andExpect(status().isNoContent());
+    }
+
+    /**
+     * Durt ucu PUBLIC DEGIL ve hesap token'i tek basina yetmez: oda ici her yazma gibi KOLTUK
+     * kimligi ister. Uc yanlislikla acik kalsaydi, oturumun linkini bilen herkes iceridekilere
+     * zil caldirabilirdi.
+     */
+    @Test
+    void nudgeNeedsAParticipantTokenAndThenReturns204() throws Exception {
+        UUID target = UUID.randomUUID();
+
+        mvc.perform(post("/api/sessions/abc/nudge/" + target))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/sessions/abc/nudge/" + target)
+                        .header("Authorization",
+                                "Bearer " + tokens.issueAccessToken(UUID.randomUUID(), "m@x.dev")))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/sessions/abc/nudge/" + target)
+                        .header(ParticipantTokenFilter.HEADER, participantTokenForAbc()))
+                .andExpect(status().isNoContent());
+        verify(nudges).nudge("abc", AYSE_ID, target);
+    }
+
+    /**
+     * Onizleme karti KIMLIKSIZ acilmali: WhatsApp/Slack/X'in botu jeton tasimaz, 401 alsaydi
+     * paylasilan her link gorselsiz kalirdi. Bilinmeyen slug bile 404 degil jenerik karttir
+     * (R-B10 kabul c) — 404'te onizleme sunuculari link'i "bozuk" gosterir.
+     */
+    @Test
+    void anonymousOgCardIs200AndPubliclyCacheable() throws Exception {
+        when(queries.snapshot("x7k2m")).thenThrow(new NotFoundException("session not found"));
+        when(ogImages.render(any())).thenReturn(new byte[]{(byte) 0x89, 'P', 'N', 'G'});
+
+        mvc.perform(get("/og/x7k2m.png"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("Cache-Control", "max-age=24, public"));
     }
 
     /**
