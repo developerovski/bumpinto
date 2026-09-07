@@ -94,6 +94,15 @@ class SchemaMigrationTest {
         assertThat(nullable).isEqualTo("NO");
     }
 
+    /** V12: purge her kosuda expires_at uzerinden tarar; index yoksa her kosu seq-scan olur. */
+    @Test
+    void v12IndexesSessionExpiryForRetentionScans() {
+        assertThat(jdbc.queryForObject(
+                "select indexdef from pg_indexes where indexname = 'idx_sessions_expires_at'",
+                String.class))
+                .contains("sessions").contains("expires_at");
+    }
+
     private List<String> columnsOf(String table) {
         return jdbc.queryForList(
                 "select column_name from information_schema.columns where table_name = ?",

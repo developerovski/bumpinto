@@ -459,9 +459,12 @@ Expected: 5 kaynak `created (dry run)`.
   - [ ] `kubectl apply` + secret oluşturma yapıldı; `/v3/api-docs` dışarıdan yanıt veriyor
   - [ ] Web'den uçtan uca gerçek akış: kur → katıl → kaydır → karar
   - [ ] EAS internal build TestFlight/APK dağıtıldı (Plan 4 Task 7)
-  - [ ] **Plan 6 (veri saklama) `done` ve retention CronJob uygulandı** — spec §6 GDPR
-    gereksinimi; bu kutu işaretlenmeden prod'a çıkılmaz. Plan 6 Task 5, bu planın
-    Task 3'teki imaj/secret adlarına dayanır: sıra **Plan 5 Task 1-3 → Plan 6 → Plan 5 Task 4**.
+  - [ ] **Plan 6 (veri saklama) `done`; backend Deployment `RETENTION_ENABLED` ile açık** — spec §6
+    GDPR gereksinimi; bu kutu işaretlenmeden prod'a çıkılmaz. **2026-09-07 (K-B30/K-B31): purge
+    K8s CronJob DEĞİL**, uygulama içi `SessionPurgeJob` (`@Scheduled`, günlük 03:30 UTC). Plan 6
+    artık bu planın imaj/secret adlarına bağlı değil — sıra kısıtı kalktı; kontrol edilecek tek
+    şey Deployment'ın `RETENTION_ENABLED=false` taşımaması ve replika sayısı >1 olsa bile purge'ün
+    `for update skip locked` ile ayrık partiler alması (tekilleştirme için ek bileşen gerekmez).
 - [ ] **Step 2: INDEX'te Plan 5'i `done` yap; tüm planlar `done` ise kullanıcıya MVP'nin
   tamamlandığını raporla + Commit (kullanıcı)** — `deploy: yayin kontrol listesi`
 

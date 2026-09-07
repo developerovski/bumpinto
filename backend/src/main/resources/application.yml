@@ -70,3 +70,7 @@ bumpinto:
       foot: "${OSRM_FOOT_URL:}"
   retention:
     enabled: ${RETENTION_ENABLED:true}
+    # Spec §6 GDPR: suresi dolali 30 gunu gecen oturumlarin kalici silinmesi (B-3).
+    # Spring cron: saniye dakika saat gun ay haftagunu -- her gece 03:30 UTC.
+    # Anahtari SessionPurgeJob'daki @Scheduled dogrudan okur (AppProps'a girmez).
+    session-purge-cron: ${SESSION_PURGE_CRON:0 30 3 * * *}

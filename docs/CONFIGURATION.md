@@ -31,7 +31,8 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | `VOICE_MAX_DURATION` | Ses odasının azami süresi (ISO süre, varsayılan `PT2H`); `endsAt = min(şimdi + bu süre, oturumun bitişi)` | — | Hayır |
 | `CLOUDFLARE_TURN_KEY_ID` | Cloudflare Realtime TURN anahtar kimliği | Cloudflare Dashboard → Realtime → TURN keys | Hayır |
 | `CLOUDFLARE_TURN_API_TOKEN` | Cloudflare Realtime TURN API token'ı; boşsa/erişilemezse yalnız STUN ile devam edilir (`relay=false`) | Cloudflare Dashboard → Realtime → TURN keys | **Evet** |
-| `RETENTION_ENABLED` | Saatlik `VenueContentRetention` işini açar/kapatır (varsayılan `true`) | — | Hayır |
+| `RETENTION_ENABLED` | **İki** saklama işini birden açar/kapatır (varsayılan `true`): saatlik `VenueContentRetention` (sağlayıcı metadata'sını indirger) ve günlük `SessionPurgeJob` (spec §6 GDPR — süresi dolalı 30 günü geçen oturumları kalıcı siler). Prod'da kapatmak GDPR yükümlülüğünü askıya alır | — | Hayır |
+| `SESSION_PURGE_CRON` | Oturum purge'ünün Spring cron ifadesi (6 alan: `saniye dakika saat gün ay haftagünü`, saat dilimi **UTC**); varsayılan `0 30 3 * * *` = her gece 03:30 UTC | — | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —
 kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local ≠ preprod ≠ prod.
