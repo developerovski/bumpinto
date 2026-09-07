@@ -1,12 +1,14 @@
 /* DS barrel — atoms/molecules/organisms tek giriş. `package.json#types` buraya bakar. */
 export * from "./atoms";
 
+export { default as AppleSignIn } from "./molecules/AppleSignIn";
 export { default as AvatarMenu } from "./molecules/AvatarMenu";
 export { default as Confetti } from "./molecules/Confetti";
 export { default as DecisionBurst } from "./molecules/DecisionBurst";
 export { default as DeckActions } from "./molecules/DeckActions";
 export { default as DeckHeader, HeaderButton } from "./molecules/DeckHeader";
 export { default as DeckProgressNote } from "./molecules/DeckProgressNote";
+export { default as FaqItem } from "./molecules/FaqItem";
 export { default as Field } from "./molecules/Field";
 export { default as FinishedCard } from "./molecules/FinishedCard";
 export { default as GoogleSignIn } from "./molecules/GoogleSignIn";
@@ -15,6 +17,7 @@ export { default as JoinFormFields } from "./molecules/JoinFormFields";
 export { default as JoinIntro } from "./molecules/JoinIntro";
 export { default as JoinedCard } from "./molecules/JoinedCard";
 export { default as LangMenu } from "./molecules/LangMenu";
+export { default as LegalBlocks } from "./molecules/LegalBlocks";
 export { default as LikedList } from "./molecules/LikedList";
 export { default as MapMark } from "./molecules/MapMark";
 export { default as MobileCta, DesktopOnly } from "./molecules/MobileCta";
@@ -32,7 +35,10 @@ export { default as RunoffIntro } from "./molecules/RunoffIntro";
 export { default as RunoffStatus } from "./molecules/RunoffStatus";
 export { default as SessionCard } from "./molecules/SessionCard";
 export { default as SessionHeader } from "./molecules/SessionHeader";
+export { default as SettingRow } from "./molecules/SettingRow";
+export { default as SettingsCard } from "./molecules/SettingsCard";
 export { default as ShareButton } from "./molecules/ShareButton";
+export { default as SourceRow } from "./molecules/SourceRow";
 export { default as StatCard } from "./molecules/StatCard";
 export { default as StepList } from "./molecules/StepList";
 export { default as SwipeCard } from "./molecules/SwipeCard";

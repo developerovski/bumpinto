@@ -121,6 +121,18 @@
     },
     "VenueRowSkeleton": {
       "cardMode": "column"
+    },
+    "Toggle": {
+      "cardMode": "column"
+    },
+    "SettingRow": {
+      "cardMode": "column"
+    },
+    "SourceRow": {
+      "cardMode": "column"
+    },
+    "FaqItem": {
+      "cardMode": "column"
     }
   },
   "readmeHeader": ".design-sync/conventions.md"

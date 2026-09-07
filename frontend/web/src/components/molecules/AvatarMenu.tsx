@@ -1,5 +1,5 @@
 /* Kaynak: DS v2 §06 — avatar menüsü (Profil, Çıkış yap) */
-import { SignOut, UserCircle } from "@phosphor-icons/react";
+import { ShieldCheck, SignOut, UserCircle } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
@@ -49,6 +49,10 @@ export default function AvatarMenu() {
           <Link role="menuitem" className={ROW} to="/profile" onClick={() => setOpen(false)}>
             <UserCircle size={16} aria-hidden />
             {t("shell.profile")}
+          </Link>
+          <Link role="menuitem" className={ROW} to="/account" onClick={() => setOpen(false)}>
+            <ShieldCheck size={16} aria-hidden />
+            {t("shell.account")}
           </Link>
           <button
             type="button"

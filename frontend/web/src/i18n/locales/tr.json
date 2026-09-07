@@ -12,7 +12,8 @@
     "profile": "Profil",
     "logout": "Çıkış yap",
     "langAria": "Dil seç",
-    "accountAria": "Hesap menüsü"
+    "accountAria": "Hesap menüsü",
+    "account": "Hesap ve veriler"
   },
   "session": {
     "notFound": "Bu oturum bulunamadı — link doğru mu?",
@@ -202,7 +203,10 @@
     "errLogin": "Giriş yapılamadı — tekrar dene.",
     "errScript": "Google girişi yüklenemedi.",
     "sticker": "3/3 beğendi!",
-    "cardCity": "Eindhoven"
+    "cardCity": "Eindhoven",
+    "apple": "Apple ile devam et",
+    "noAppleClientId": "Apple girişi bu ortamda yapılandırılmadı.",
+    "errApple": "Apple ile giriş yapılamadı — tekrar dene."
   },
   "sessions": {
     "title": "Nereye<0/>gidiyoruz?",
@@ -473,5 +477,89 @@
   "offline": {
     "title": "Bağlantı yok",
     "hint": "Son görülen hali gösteriliyor · {{time}}"
+  },
+  "legal": {
+    "privacy": "Gizlilik politikası",
+    "terms": "Kullanım şartları",
+    "dataRights": "Veri hakların",
+    "support": "Destek",
+    "updated": "Son güncelleme: {{date}} · Sürüm {{version}}"
+  },
+  "account": {
+    "title": "Hesap ve veriler",
+    "legal": "Yasal",
+    "data": "Veri",
+    "about": "Hakkında",
+    "danger": "Tehlikeli bölge",
+    "consent": "Açık rıza tercihlerin",
+    "analytics": "Kullanım verisi paylaş",
+    "analyticsHint": "Ürünü iyileştirmek için anonim kullanım verisi · varsayılan kapalı",
+    "export": "Verilerimi indir",
+    "exportHint": "JSON · tarayıcına iner",
+    "support": "Destek ve iletişim",
+    "delete": "Hesabı sil",
+    "deleteHint": "Geri alınamaz · 30 gün içinde tamamen silinir",
+    "appleLogin": "Apple ile giriş",
+    "errConsent": "Kaydedilemedi — tekrar dene.",
+    "errExport": "Veriler indirilemedi — tekrar dene.",
+    "errExportRate": "Saatte bir kez indirilebilir. Biraz sonra tekrar dene."
+  },
+  "consent": {
+    "title": "Açık rıza tercihlerin",
+    "intro": "Aşağıdaki işlemler için açık rızan gerekir. İstediğin zaman geri alabilirsin; geri alman geçmişe etki etmez.",
+    "location": "Konum verimin işlenmesi",
+    "locationHint": "Orta nokta ve mekan arama · yalnız uygulama açıkken · ~1 km yuvarlanarak paylaşılır",
+    "microphone": "Mikrofon / sesli sohbet",
+    "microphoneHint": "Yalnız sen \"Katıl\" deyince · kaydedilmez",
+    "analytics": "Kullanım verisi",
+    "analyticsHint": "Anonim ürün analitiği (Clarity/GA4) · yurt dışına aktarım",
+    "granted": "Verildi: {{date}} · sürüm {{version}}",
+    "never": "Henüz kaydedilmedi.",
+    "locationOff": "Konum rızanı kapatırsan buluşmalara adres yazarak katılırsın.",
+    "readDataRights": "Aydınlatma metnini oku",
+    "errSave": "Kaydedilemedi — tekrar dene."
+  },
+  "del": {
+    "title": "Hesabını silmek istediğine emin misin?",
+    "warn": "Bu işlem geri alınamaz. Silinen veriler 30 gün içinde yedeklerden de temizlenir.",
+    "willDelete": "Silinecekler",
+    "d1": "Google/Apple ile bağlı hesabın, adın ve e-postan",
+    "d2": "Kurduğun buluşmalar ve davet linkleri",
+    "d3": "Konum etiketlerin ve ulaşım tercihlerin",
+    "d4": "Profil istatistiklerin",
+    "willKeep": "Kalacaklar",
+    "k1": "Arkadaşlarının kurduğu buluşmalardaki katılımın (adın \"eski katılımcı\" olur)",
+    "k2": "Zorunlu yasal kayıtlar (en fazla 30 gün)",
+    "pause": "Yalnız bir mola mı istiyorsun? Çıkış yapman yeterli, verilerin durur.",
+    "verify": "Kimliğini doğrula",
+    "verifyHint": "Silme isteği yalnız hesap sahibinden alınır.",
+    "signedAs": "{{email}} olarak giriş yaptın.",
+    "confirmLabel": "Onaylamak için {{word}} yaz",
+    "confirmWord": "SİL",
+    "submit": "Hesabı kalıcı olarak sil",
+    "appleNote": "Apple ile girdiysen Apple'daki bağlantı da kaldırılır.",
+    "errDelete": "Hesap silinemedi — tekrar dene.",
+    "errAuth": "Oturumun düşmüş. Kimliğini yeniden doğrula.",
+    "doneTitle": "Hesabın silindi.",
+    "doneCopy": "Verilerin 30 gün içinde tamamen temizlenir. Bir gün ortada buluşmak istersen, kapı açık.",
+    "doneHand": "görüşürüz →"
+  },
+  "support": {
+    "cardTitle": "Bir şey mi takıldı?",
+    "cardHint": "Genelde 1 iş günü içinde dönüyoruz.",
+    "email": "E-posta gönder",
+    "faqTitle": "Sık sorulanlar",
+    "q1": "Konumum neden yaklaşık gösteriliyor?",
+    "a1": "Konumun ~1 km yuvarlanarak paylaşılır: orta noktayı adil hesaplamaya yeter, adresini ele vermez.",
+    "q2": "Arkadaşım linke tıklayınca ne görür?",
+    "a2": "Buluşmanın adını, etkinliğini ve katılanların görünen adlarını. Uygulama indirmeden, hesapsız katılır.",
+    "q3": "Sesli sohbet kaydediliyor mu?",
+    "a3": "Hayır. Ses cihazlar arasında doğrudan (P2P) akar ve hiçbir yere kaydedilmez.",
+    "q4": "Verilerimi nasıl silerim?",
+    "a4": "Hesap ve veriler → Hesabı sil. Uygulama kurulu olmasa da bumpinto.app/account/delete adresinden yapabilirsin.",
+    "merchant": "Tacir bilgileri",
+    "mName": "Ad",
+    "mEmail": "E-posta",
+    "deleteLink": "Hesap silme isteği için: bumpinto.app/account/delete"
   }
 }

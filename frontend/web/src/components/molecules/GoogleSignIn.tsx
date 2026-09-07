@@ -32,7 +32,8 @@ function loadScript(): Promise<void> {
   return loading;
 }
 
-export default function GoogleSignIn() {
+/** `onDone`: silme akışı gibi AYNI sayfada devam eden yerler gezinmeyi devralır. */
+export default function GoogleSignIn({ onDone }: { onDone?: () => void }) {
   const { t, i18n } = useTranslation();
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
@@ -49,7 +50,9 @@ export default function GoogleSignIn() {
         client_id: clientId,
         callback: (r) => {
           if (cancelled) return;
-          void login(r.credential).then(() => navigate("/sessions")).catch(() => setError(t("landing.errLogin")));
+          void login(r.credential)
+            .then(() => { if (onDone) onDone(); else navigate("/sessions"); })
+            .catch(() => setError(t("landing.errLogin")));
         },
       });
       box.current.replaceChildren();
@@ -58,7 +61,7 @@ export default function GoogleSignIn() {
       });
     }).catch(() => setError(t("landing.errScript")));
     return () => { cancelled = true; };
-  }, [clientId, login, navigate, i18n.language, t]);
+  }, [clientId, login, navigate, onDone, i18n.language, t]);
 
   if (!clientId) return <Note>{t("landing.noClientId")}</Note>;
   return (

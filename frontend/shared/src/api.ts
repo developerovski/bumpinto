@@ -9,6 +9,11 @@ export type MeResponse = Schemas["MeResponse"];
 export type SessionSummaryDto = Schemas["SessionSummaryDto"];
 export type SessionPreview = Schemas["SessionPreview"];
 
+/* Yazma gövdesi §2: üç boolean. Üretilen istek şemasının adı B-14'e bağlı olduğundan ELLE
+   yazılır — alanlar birebir aynı. Okuma `MeResponse.consents`'tan (updatedAt/version dahil). */
+export type ConsentsInput = { location: boolean; microphone: boolean; analytics: boolean };
+export type AppleLoginRequest = { identityToken: string; nonce: string; fullName?: string };
+
 /* /api/config sözleşmesi (spec §7) ELLE yazılır: üç planın (B-13 / W-12 / I-2) ortak sözleşmesi. */
 export type MapEngine = "maplibre" | "google";
 export type AppConfigSource = {
@@ -75,6 +80,16 @@ export function createBumpintoApi(http: AxiosInstance) {
     voiceCredentials: (slug: string) =>
       http.post<Schemas["VoiceCredentialsResponse"]>(`/api/sessions/${slug}/voice/credentials`)
         .then((r) => r.data),
+    loginApple: (body: AppleLoginRequest) =>
+      http.post<Schemas["LoginResponse"]>("/api/auth/apple", body).then((r) => r.data),
+    // PUT yanıt gövdesi sözleşmede sabit değil — yazımdan sonra `me()` tazelenir (authStore).
+    putConsents: (body: ConsentsInput) =>
+      http.put("/api/me/consents", body).then(() => undefined),
+    // 1/saat sınırlı, attachment JSON. Blob alınır; indirmeyi çağıran yapar.
+    // NOT (K-W27): sunucu ucu B-15'te iniyor — o zamana dek çalışma anında 404 döner.
+    exportMyData: () =>
+      http.get<Blob>("/api/me/export", { responseType: "blob" }).then((r) => r.data),
+    deleteMe: () => http.delete("/api/me").then(() => undefined),
   };
 }
 

@@ -12,7 +12,8 @@
     "profile": "Profiel",
     "logout": "Uitloggen",
     "langAria": "Taal kiezen",
-    "accountAria": "Accountmenu"
+    "accountAria": "Accountmenu",
+    "account": "Account en gegevens"
   },
   "session": {
     "notFound": "Deze sessie is niet gevonden — klopt de link?",
@@ -209,7 +210,10 @@
     "errLogin": "Inloggen mislukt — probeer opnieuw.",
     "errScript": "Google-login kon niet laden.",
     "sticker": "3/3 vonden 'm leuk!",
-    "cardCity": "Eindhoven"
+    "cardCity": "Eindhoven",
+    "apple": "Doorgaan met Apple",
+    "noAppleClientId": "Apple-inloggen is niet ingesteld in deze omgeving.",
+    "errApple": "Inloggen met Apple is mislukt — probeer opnieuw."
   },
   "sessions": {
     "title": "Waar gaan<0/>we heen?",
@@ -482,5 +486,89 @@
   "offline": {
     "title": "Geen verbinding",
     "hint": "Je ziet de laatst geladen versie · {{time}}"
+  },
+  "legal": {
+    "privacy": "Privacybeleid",
+    "terms": "Gebruiksvoorwaarden",
+    "dataRights": "Jouw gegevensrechten",
+    "support": "Ondersteuning",
+    "updated": "Laatst bijgewerkt: {{date}} · Versie {{version}}"
+  },
+  "account": {
+    "title": "Account en gegevens",
+    "legal": "Juridisch",
+    "data": "Gegevens",
+    "about": "Over",
+    "danger": "Gevarenzone",
+    "consent": "Je toestemmingen",
+    "analytics": "Gebruiksgegevens delen",
+    "analyticsHint": "Anonieme gebruiksgegevens om het product te verbeteren · standaard uit",
+    "export": "Mijn gegevens downloaden",
+    "exportHint": "JSON · wordt in je browser opgeslagen",
+    "support": "Ondersteuning en contact",
+    "delete": "Account verwijderen",
+    "deleteHint": "Kan niet ongedaan worden gemaakt · binnen 30 dagen volledig gewist",
+    "appleLogin": "Ingelogd met Apple",
+    "errConsent": "Opslaan mislukt — probeer opnieuw.",
+    "errExport": "Downloaden mislukt — probeer opnieuw.",
+    "errExportRate": "Je kunt één keer per uur downloaden. Probeer het straks opnieuw."
+  },
+  "consent": {
+    "title": "Je toestemmingen",
+    "intro": "Hiervoor is jouw uitdrukkelijke toestemming nodig. Je kunt die altijd intrekken; intrekken werkt niet met terugwerkende kracht.",
+    "location": "Verwerking van mijn locatiegegevens",
+    "locationHint": "Middelpunt en locatiezoekopdracht · alleen als de app open is · gedeeld afgerond op ~1 km",
+    "microphone": "Microfoon / spraakchat",
+    "microphoneHint": "Alleen als jij op \"Meedoen\" tikt · wordt niet opgenomen",
+    "analytics": "Gebruiksgegevens",
+    "analyticsHint": "Anonieme productanalyse (Clarity/GA4) · doorgifte naar het buitenland",
+    "granted": "Gegeven: {{date}} · versie {{version}}",
+    "never": "Nog niet opgeslagen.",
+    "locationOff": "Zonder locatietoestemming doe je mee door een adres in te typen.",
+    "readDataRights": "Lees de informatie",
+    "errSave": "Opslaan mislukt — probeer opnieuw."
+  },
+  "del": {
+    "title": "Weet je zeker dat je je account wilt verwijderen?",
+    "warn": "Dit kan niet ongedaan worden gemaakt. Verwijderde gegevens worden binnen 30 dagen ook uit back-ups gewist.",
+    "willDelete": "Wat wordt verwijderd",
+    "d1": "Je aan Google/Apple gekoppelde account, je naam en e-mail",
+    "d2": "Afspraken die jij hebt aangemaakt en hun uitnodigingslinks",
+    "d3": "Je locatielabels en vervoersvoorkeuren",
+    "d4": "Je profielstatistieken",
+    "willKeep": "Wat blijft",
+    "k1": "Je deelname aan afspraken van vrienden (je naam wordt \"voormalige deelnemer\")",
+    "k2": "Verplichte wettelijke gegevens (maximaal 30 dagen)",
+    "pause": "Wil je alleen even pauze? Uitloggen is genoeg — je gegevens blijven staan.",
+    "verify": "Verifieer je identiteit",
+    "verifyHint": "Een verwijderverzoek accepteren we alleen van de accounthouder.",
+    "signedAs": "Je bent ingelogd als {{email}}.",
+    "confirmLabel": "Typ {{word}} om te bevestigen",
+    "confirmWord": "VERWIJDER",
+    "submit": "Account definitief verwijderen",
+    "appleNote": "Als je met Apple bent ingelogd, wordt ook de Apple-koppeling ingetrokken.",
+    "errDelete": "Verwijderen mislukt — probeer opnieuw.",
+    "errAuth": "Je sessie is verlopen. Verifieer je identiteit opnieuw.",
+    "doneTitle": "Je account is verwijderd.",
+    "doneCopy": "Je gegevens zijn binnen 30 dagen volledig gewist. Wil je ooit weer in het midden afspreken, dan staat de deur open.",
+    "doneHand": "tot ziens →"
+  },
+  "support": {
+    "cardTitle": "Werkt er iets niet?",
+    "cardHint": "Meestal reageren we binnen één werkdag.",
+    "email": "Stuur een e-mail",
+    "faqTitle": "Veelgestelde vragen",
+    "q1": "Waarom wordt mijn locatie bij benadering getoond?",
+    "a1": "Je locatie wordt afgerond op ~1 km gedeeld: genoeg om een eerlijk middelpunt te berekenen, niet genoeg om je adres prijs te geven.",
+    "q2": "Wat ziet mijn vriend als die de link opent?",
+    "a2": "De naam van de afspraak, de activiteit en de weergavenamen van de deelnemers. Meedoen kan zonder app en zonder account.",
+    "q3": "Wordt spraakchat opgenomen?",
+    "a3": "Nee. Audio gaat rechtstreeks tussen apparaten (P2P) en wordt nooit opgenomen.",
+    "q4": "Hoe verwijder ik mijn gegevens?",
+    "a4": "Account en gegevens → Account verwijderen. Het kan ook via bumpinto.app/account/delete, zonder de app te installeren.",
+    "merchant": "Handelaarsgegevens",
+    "mName": "Naam",
+    "mEmail": "E-mail",
+    "deleteLink": "Voor een verwijderverzoek: bumpinto.app/account/delete"
   }
 }

@@ -4,6 +4,24 @@
 
 **Goal:** Apple 5.1.1(v)/4.8 ve Google Play Data safety'nin kullanıcıya dönük web şartlarını karşılamak: giriş gerektirmeyen yasal rotalar (`/privacy`, `/terms`, `/kvkk`, `/attributions`, `/support`), `/account` hesap ve veriler ekranı, `/account/consent` açık rıza, uygulama kurulu olmadan çalışan `/account/delete` akışı, rıza kapılı analitik ve Sign in with Apple.
 
+> **2026-09-07 KULLANICI DÜZELTMESİ — gövdeden ÖNCE okunur, çelişkide kazanır.**
+>
+> 1. **Yasal gövde ÜÇ DİLDE de tam yazılır.** Planın "TR taban + `legal._status` şeridi"
+>    yaklaşımı BIRAKILDI. İçerik `content/legal/*.ts` içinde `LegalBody = Record<"tr"|"en"|"nl",
+>    LegalBlock[]>` olarak durur; `legal._status` anahtarı yoktur. (i18n JSON'una değil içerik
+>    dosyasına yazılır: uzun düzyazı çeviri paketini şişirir ve her sayfa yüklemesine biner.)
+> 2. **KVKK Türkiye'ye özgüdür; Avrupa'da GDPR geçerlidir.** `/kvkk` rotası **`/data-rights`**
+>    oldu (`legal.kvkk` → `legal.dataRights`). **Rejim dile bağlıdır:** TR gövde KVKK m.10/m.11'i,
+>    EN/NL gövde GDPR Art. 13/14 + 15–22'yi anlatır. Dil yargı yetkisiyle birebir örtüşmediği
+>    için (Hollanda'daki Türkçe konuşan GDPR'a tabidir) her sürüm diğer rejime tek notla köprü
+>    kurar — bu köprü testle sabitlendi.
+> 3. `/privacy` GDPR Art. 13/14 gereği **hukuki dayanak** ve **yurt dışına aktarım** başlıklarını
+>    kazandı; GDPR ayrı doküman istemez, bilgilendirmeyi gizlilik metninde arar.
+> 4. Şikâyet mercii her rejimde adlandırıldı: TR → Kişisel Verileri Koruma Kurulu, EN/NL →
+>    ulusal denetim otoritesi (Hollanda'da Autoriteit Persoonsgegevens).
+>
+> **Metinler hukukçu onayı bekler** (planın kendi yayın kapısı); yazılanlar taslaktır.
+
 **Architecture:** Yasal metin **çeviri değil yerelleştirmedir**: gövde `content/legal/*.tsx` içinde TR taban **blok verisi** olarak yaşar, tek `LegalBlocks` bileşeni basar, i18n yalnız kabuk etiketlerini taşır ve TR dışı dillerde `legal._status` şeridi çıkar. `/attributions` sağlayıcı başına kod dalı içermez; satırlar `DATA_SOURCES`'tan gelir ve şekil W-12'nin `AppConfigSource`'uyla birebir aynıdır. Rıza yazımı tek yerde toplanır (`authStore.saveConsents`): `PUT /api/me/consents` → `me()` tazelemesi → analitik kapısının hizalanması; hata fırlatılır, UI eski anahtarı geri alır. `lib/analytics.ts` rıza kapısı ekler: rıza yokken sağlayıcı **betiği hiç yüklenmez**, `track()` no-op'tur. `/account/delete` ve `/account/deleted` `AppShell` dışında sade kabukta (`PlainShell`) yaşar ve kurulumsuz çalışır.
 
 **Tech Stack:** React 18, react-router-dom 7, zustand 5, react-i18next (tr/en/nl), Tailwind v4, axios (paylaşılan `createHttp`), Google Identity Services + Sign in with Apple JS, vitest + RTL + jsdom.
@@ -55,9 +73,9 @@ Biri 0 dönerse **dur**: B-14 yapılmamış ya da codegen eksik. `MeResponse.con
 **Files:**
 - Modify: `frontend/shared/src/api.ts`, `frontend/shared/src/index.ts`
 
-- [ ] **Step 1: Ön koşulu doğrula** — yukarıdaki üç `grep`. Expected: üçü de ≥1. Biri 0 ise dur, B-14 + `pnpm codegen`.
+- [x] **Step 1: Ön koşulu doğrula** — yukarıdaki üç `grep`. Expected: üçü de ≥1. Biri 0 ise dur, B-14 + `pnpm codegen`.
 
-- [ ] **Step 2: Tipleri ekle** (`api.ts`, `export type SessionPreview = …` satırından sonra)
+- [x] **Step 2: Tipleri ekle** (`api.ts`, `export type SessionPreview = …` satırından sonra)
 
 ```ts
 /* Yazma gövdesi §2: üç boolean. Üretilen istek şemasının adı B-14'e bağlı olduğundan ELLE
@@ -66,7 +84,7 @@ export type ConsentsInput = { location: boolean; microphone: boolean; analytics:
 export type AppleLoginRequest = { identityToken: string; nonce: string; fullName?: string };
 ```
 
-- [ ] **Step 3: Dört fonksiyon ekle** (`createBumpintoApi` içine, `voiceCredentials`'tan sonra)
+- [x] **Step 3: Dört fonksiyon ekle** (`createBumpintoApi` içine, `voiceCredentials`'tan sonra)
 
 ```ts
     loginApple: (body: AppleLoginRequest) =>
@@ -80,11 +98,11 @@ export type AppleLoginRequest = { identityToken: string; nonce: string; fullName
     deleteMe: () => http.delete("/api/me").then(() => undefined),
 ```
 
-- [ ] **Step 4: `index.ts` export bloğuna ekle** (alfabetik): `type AppleLoginRequest,` ve `type ConsentsInput,`
+- [x] **Step 4: `index.ts` export bloğuna ekle** (alfabetik): `type AppleLoginRequest,` ve `type ConsentsInput,`
 
-- [ ] **Step 5: Derle** — Run: `source ./init-nvm.sh && pnpm --filter @bumpinto/web exec tsc -b` → hata yok.
+- [x] **Step 5: Derle** — Run: `source ./init-nvm.sh && pnpm --filter @bumpinto/web exec tsc -b` → hata yok.
 
-- [ ] **Step 6: Dosya listesi** — `frontend/shared/src/api.ts`, `index.ts`. Mesaj: `feat(compliance): shared api client for apple login, consents, export and delete`.
+- [x] **Step 6: Dosya listesi** — `frontend/shared/src/api.ts`, `index.ts`. Mesaj: `feat(compliance): shared api client for apple login, consents, export and delete`.
 
 ---
 
@@ -93,7 +111,7 @@ export type AppleLoginRequest = { identityToken: string; nonce: string; fullName
 **Files:**
 - Modify: `frontend/web/src/lib/analytics.ts`, `lib/analytics.test.ts` (yeniden yazılır), `store/authStore.ts`, `store/authStore.test.ts`
 
-- [ ] **Step 1: `analytics.test.ts`'i yeniden yaz**
+- [x] **Step 1: `analytics.test.ts`'i yeniden yaz**
 
 ```ts
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -173,9 +191,9 @@ describe("analytics — rıza kapısı", () => {
 });
 ```
 
-- [ ] **Step 2: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/lib/analytics.test.ts` → FAIL (`analyticsConsent` yok).
+- [x] **Step 2: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/lib/analytics.test.ts` → FAIL (`analyticsConsent` yok).
 
-- [ ] **Step 3: `analytics.ts`'i yeniden yaz**
+- [x] **Step 3: `analytics.ts`'i yeniden yaz**
 
 ```ts
 /* Karar dokümanı §5.A.8 — üç olay: "Haritada gör", Maps JS yüklemesi, aşama geçişi.
@@ -291,9 +309,9 @@ export function resetAnalytics(): void {
 }
 ```
 
-- [ ] **Step 4: Çalıştır** — Run: `PNPM_TEST src/lib/analytics.test.ts` → 7 passed.
+- [x] **Step 4: Çalıştır** — Run: `PNPM_TEST src/lib/analytics.test.ts` → 7 passed.
 
-- [ ] **Step 5: `authStore.ts`'i genişlet**
+- [x] **Step 5: `authStore.ts`'i genişlet**
 
 Import bloğuna: `import type { ConsentsInput } from "@bumpinto/shared";` ve `import { loadLocalAnalyticsConsent, setAnalyticsConsent } from "../lib/analytics";`
 
@@ -351,7 +369,7 @@ export function consentsOf(me: MeResponse | null): ConsentsInput {
   },
 ```
 
-- [ ] **Step 6: `authStore.test.ts`'e üç test ekle**
+- [x] **Step 6: `authStore.test.ts`'e üç test ekle**
 
 Dosyanın `vi.mock("../lib/api", …)` sahtesine `putConsents: vi.fn()`, `deleteMe: vi.fn()`, `loginApple: vi.fn()`, `exportMyData: vi.fn()` ekle; `import { analyticsConsent, resetAnalytics } from "../lib/analytics";` ve `beforeEach`e `resetAnalytics();` koy. Sonra `describe` içine:
 
@@ -380,9 +398,9 @@ Dosyanın `vi.mock("../lib/api", …)` sahtesine `putConsents: vi.fn()`, `delete
   });
 ```
 
-- [ ] **Step 7: Çalıştır** — Run: `PNPM_TEST src/store/authStore.test.ts` → önceki + 3 yeşil. `tsc -b` temiz.
+- [x] **Step 7: Çalıştır** — Run: `PNPM_TEST src/store/authStore.test.ts` → önceki + 3 yeşil. `tsc -b` temiz.
 
-- [ ] **Step 8: Dosya listesi** — `lib/analytics.ts`, `lib/analytics.test.ts`, `store/authStore.ts`, `store/authStore.test.ts`. Mesaj: `feat(compliance): consent-gated analytics and consent/delete actions in authStore`.
+- [x] **Step 8: Dosya listesi** — `lib/analytics.ts`, `lib/analytics.test.ts`, `store/authStore.ts`, `store/authStore.test.ts`. Mesaj: `feat(compliance): consent-gated analytics and consent/delete actions in authStore`.
 
 ---
 
@@ -392,7 +410,7 @@ Dosyanın `vi.mock("../lib/api", …)` sahtesine `putConsents: vi.fn()`, `delete
 - Create: `frontend/web/src/components/molecules/LegalBlocks.tsx`, `content/legal/{privacy,terms,kvkk}.tsx`, `content/legal/index.ts`
 - Modify: `frontend/web/src/components/index.ts`, `frontend/web/src/styles/app.css`
 
-- [ ] **Step 1: `LegalBlocks.tsx`'i yaz** (Tailwind burada kalır — `content/` sınıf taşımaz)
+- [x] **Step 1: `LegalBlocks.tsx`'i yaz** (Tailwind burada kalır — `content/` sınıf taşımaz)
 
 ```tsx
 /* Artboard W14/W15/W16 okuyucu tipografisi (.lg-h / .lg-p / .lg-ul / .tbl / amber not).
@@ -449,7 +467,7 @@ export default function LegalBlocks({ blocks }: { blocks: LegalBlock[] }) {
 
 `styles/app.css` `@theme` bloğuna (yoksa) `--color-amber-w: #fdf3e0;` ekle (artboard `--amb-w`).
 
-- [ ] **Step 2: `content/legal/privacy.tsx`'i yaz** (metin O9/W14'ten AYNEN)
+- [x] **Step 2: `content/legal/privacy.tsx`'i yaz** (metin O9/W14'ten AYNEN)
 
 ```tsx
 /* Kaynak: Mobil Onboarding v3 · O9 + Web v3 · W14. TR taban (çeviri değil yerelleştirme). */
@@ -485,7 +503,7 @@ export default function PrivacyContent() {
 }
 ```
 
-- [ ] **Step 3: `content/legal/terms.tsx`'i yaz** (metin O10/W15'ten AYNEN)
+- [x] **Step 3: `content/legal/terms.tsx`'i yaz** (metin O10/W15'ten AYNEN)
 
 ```tsx
 /* Kaynak: Mobil Onboarding v3 · O10 + Web v3 · W15. TR taban. */
@@ -517,7 +535,7 @@ export default function TermsContent() {
 }
 ```
 
-- [ ] **Step 4: `content/legal/kvkk.tsx`'i yaz** (metin O11/W16'dan AYNEN)
+- [x] **Step 4: `content/legal/kvkk.tsx`'i yaz** (metin O11/W16'dan AYNEN)
 
 ```tsx
 /* Kaynak: Mobil Onboarding v3 · O11 + Web v3 · W16 (6698 s.K. m.10). TR taban.
@@ -564,7 +582,7 @@ export default function KvkkContent() {
 }
 ```
 
-- [ ] **Step 5: `content/legal/index.ts`'i yaz**
+- [x] **Step 5: `content/legal/index.ts`'i yaz**
 
 ```ts
 import type { ComponentType } from "react";
@@ -590,9 +608,9 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDocMeta> = {
 };
 ```
 
-- [ ] **Step 6: Barrel + derleme** — `components/index.ts` molecules bloğuna `export { default as LegalBlocks } from "./molecules/LegalBlocks";`. Run: `tsc -b` → temiz.
+- [x] **Step 6: Barrel + derleme** — `components/index.ts` molecules bloğuna `export { default as LegalBlocks } from "./molecules/LegalBlocks";`. Run: `tsc -b` → temiz.
 
-- [ ] **Step 7: Dosya listesi** — `components/molecules/LegalBlocks.tsx`, `content/legal/{privacy,terms,kvkk}.tsx`, `content/legal/index.ts`, `components/index.ts`, `styles/app.css`. Mesaj: `feat(legal): block model and TR base legal documents`.
+- [x] **Step 7: Dosya listesi** — `components/molecules/LegalBlocks.tsx`, `content/legal/{privacy,terms,kvkk}.tsx`, `content/legal/index.ts`, `components/index.ts`, `styles/app.css`. Mesaj: `feat(legal): block model and TR base legal documents`.
 
 ---
 
@@ -602,7 +620,7 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDocMeta> = {
 - Create: `frontend/web/src/pages/LegalPage.tsx`, Test: `pages/LegalPage.test.tsx`
 - Modify: `frontend/web/src/App.tsx`, `components/organisms/AppShell.tsx`, `i18n/locales/{tr,en,nl}.json`
 
-- [ ] **Step 1: i18n `legal` alanını ekle** — `tr.json` kök nesnesinin sonuna:
+- [x] **Step 1: i18n `legal` alanını ekle** — `tr.json` kök nesnesinin sonuna:
 
 ```json
   "legal": {
@@ -630,7 +648,7 @@ export const LEGAL_DOCS: Record<LegalSlug, LegalDocMeta> = {
 
 Run: `source ./init-nvm.sh && pnpm i18n:check` → 0 fark.
 
-- [ ] **Step 2: `LegalPage.test.tsx`'i yaz**
+- [x] **Step 2: `LegalPage.test.tsx`'i yaz**
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -677,9 +695,9 @@ describe("LegalPage", () => {
 });
 ```
 
-- [ ] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/LegalPage.test.tsx` → FAIL (`./LegalPage` yok).
+- [x] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/LegalPage.test.tsx` → FAIL (`./LegalPage` yok).
 
-- [ ] **Step 4: `LegalPage.tsx`'i yaz**
+- [x] **Step 4: `LegalPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W14/W15/W16 · yasal okuyucu — RequireAuth YOK, anonim erişilebilir (mağaza meta
@@ -713,9 +731,9 @@ export default function LegalPage({ slug }: { slug: LegalSlug }) {
 
 `OneZone` dikey aralık taşımıyorsa `components/molecules/OneZone.tsx` sınıf listesine `gap-3` ekle.
 
-- [ ] **Step 5: Çalıştır** — Run: `PNPM_TEST src/pages/LegalPage.test.tsx` → 4 passed.
+- [x] **Step 5: Çalıştır** — Run: `PNPM_TEST src/pages/LegalPage.test.tsx` → 4 passed.
 
-- [ ] **Step 6: `App.tsx`'e üç rota** (`AppShell` layout'unun İÇİNE, `/profile`'dan sonra; **`RequireAuth` YOK** — kasıtlı)
+- [x] **Step 6: `App.tsx`'e üç rota** (`AppShell` layout'unun İÇİNE, `/profile`'dan sonra; **`RequireAuth` YOK** — kasıtlı)
 
 ```tsx
         <Route path="/privacy" element={<LegalPage slug="privacy" />} />
@@ -725,7 +743,7 @@ export default function LegalPage({ slug }: { slug: LegalSlug }) {
 
 Import: `import LegalPage from "./pages/LegalPage";`
 
-- [ ] **Step 7: `AppShell` altbilgisi** — mevcut atıf `<p>`'sini şununla değiştir (import satırı `import { Link, Outlet } from "react-router-dom";` olur):
+- [x] **Step 7: `AppShell` altbilgisi** — mevcut atıf `<p>`'sini şununla değiştir (import satırı `import { Link, Outlet } from "react-router-dom";` olur):
 
 ```tsx
       <footer className="flex flex-col items-center gap-2 px-5 pb-4 text-center text-[0.6875rem] text-ink2">
@@ -740,9 +758,9 @@ Import: `import LegalPage from "./pages/LegalPage";`
       </footer>
 ```
 
-- [ ] **Step 8: Çalıştır** — Run: `PNPM_TEST src/pages` ve `PNPM_TEST src/components/molecules/TopBar.test.tsx` → yeşil. `pnpm i18n:check` → 0.
+- [x] **Step 8: Çalıştır** — Run: `PNPM_TEST src/pages` ve `PNPM_TEST src/components/molecules/TopBar.test.tsx` → yeşil. `pnpm i18n:check` → 0.
 
-- [ ] **Step 9: Dosya listesi** — `pages/LegalPage.tsx`, `pages/LegalPage.test.tsx`, `App.tsx`, `components/organisms/AppShell.tsx`, `i18n/locales/{tr,en,nl}.json`, (gerekirse) `OneZone.tsx`. Mesaj: `feat(legal): public /privacy /terms /kvkk routes and footer links`.
+- [x] **Step 9: Dosya listesi** — `pages/LegalPage.tsx`, `pages/LegalPage.test.tsx`, `App.tsx`, `components/organisms/AppShell.tsx`, `i18n/locales/{tr,en,nl}.json`, (gerekirse) `OneZone.tsx`. Mesaj: `feat(legal): public /privacy /terms /kvkk routes and footer links`.
 
 ---
 
@@ -753,7 +771,7 @@ Import: `import LegalPage from "./pages/LegalPage";`
 - Create: `frontend/web/src/components/molecules/{SettingsCard,SettingRow,SourceRow,FaqItem}.tsx`
 - Modify: `frontend/web/src/components/atoms/index.ts`, `components/index.ts`, `.design-sync/config.json`
 
-- [ ] **Step 1: `Toggle.test.tsx`'i yaz**
+- [x] **Step 1: `Toggle.test.tsx`'i yaz**
 
 ```tsx
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -778,9 +796,9 @@ describe("Toggle", () => {
 });
 ```
 
-- [ ] **Step 2: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/components/atoms/Toggle.test.tsx` → FAIL.
+- [x] **Step 2: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/components/atoms/Toggle.test.tsx` → FAIL.
 
-- [ ] **Step 3: `Toggle.tsx`'i yaz**
+- [x] **Step 3: `Toggle.tsx`'i yaz**
 
 ```tsx
 /* Artboard .tog / .tog.off — 46×28 pill anahtar. `role="switch"` zorunlu: rıza ekranı klavye
@@ -818,7 +836,7 @@ export default function Toggle(props: {
 }
 ```
 
-- [ ] **Step 4: `SettingsCard.tsx` ve `SettingRow.tsx`'i yaz**
+- [x] **Step 4: `SettingsCard.tsx` ve `SettingRow.tsx`'i yaz**
 
 ```tsx
 /* Artboard .card(padding:0) + .dv ayraçları — ayar satırlarının kabı. */
@@ -874,7 +892,7 @@ export default function SettingRow(props: {
 }
 ```
 
-- [ ] **Step 5: `SourceRow.tsx` ve `FaqItem.tsx`'i yaz**
+- [x] **Step 5: `SourceRow.tsx` ve `FaqItem.tsx`'i yaz**
 
 ```tsx
 /* Artboard W17 · atıf satırı — ikon yok; sağda lisans metni, etiket dış bağlantı olabilir. */
@@ -907,13 +925,13 @@ export default function FaqItem(props: { question: string; answer: string }) {
 }
 ```
 
-- [ ] **Step 6: Barrel'lar ve DS önizlemesi**
+- [x] **Step 6: Barrel'lar ve DS önizlemesi**
 
 `atoms/index.ts`: `export { default as Toggle } from "./Toggle";` (alfabetik). `components/index.ts` molecules bloğuna alfabetik: `FaqItem`, `SettingRow`, `SettingsCard`, `SourceRow` default export satırları. `.design-sync/config.json#overrides`'a `Toggle`, `SettingRow`, `SourceRow`, `FaqItem` girdilerini `cardMode: "column"` ile ekle.
 
-- [ ] **Step 7: Çalıştır** — Run: `PNPM_TEST src/components/atoms/Toggle.test.tsx` → 2 passed. `tsc -b` temiz.
+- [x] **Step 7: Çalıştır** — Run: `PNPM_TEST src/components/atoms/Toggle.test.tsx` → 2 passed. `tsc -b` temiz.
 
-- [ ] **Step 8: Dosya listesi** — `atoms/Toggle.tsx`, `atoms/Toggle.test.tsx`, `atoms/index.ts`, `molecules/{SettingsCard,SettingRow,SourceRow,FaqItem}.tsx`, `components/index.ts`, `.design-sync/config.json`. Mesaj: `feat(ds): Toggle, SettingsCard, SettingRow, SourceRow, FaqItem`.
+- [x] **Step 8: Dosya listesi** — `atoms/Toggle.tsx`, `atoms/Toggle.test.tsx`, `atoms/index.ts`, `molecules/{SettingsCard,SettingRow,SourceRow,FaqItem}.tsx`, `components/index.ts`, `.design-sync/config.json`. Mesaj: `feat(ds): Toggle, SettingsCard, SettingRow, SourceRow, FaqItem`.
 
 ---
 
@@ -923,7 +941,7 @@ export default function FaqItem(props: { question: string; answer: string }) {
 - Create: `frontend/web/src/content/legal/sources.ts`, `pages/AttributionsPage.tsx`, Test: `pages/AttributionsPage.test.tsx`
 - Modify: `frontend/web/src/App.tsx`, `i18n/locales/{tr,en,nl}.json`
 
-- [ ] **Step 1: `content/legal/sources.ts`'i yaz**
+- [x] **Step 1: `content/legal/sources.ts`'i yaz**
 
 ```ts
 /* Artboard W17. Sağlayıcı başına KOD DALI YOK: satırlar bu diziden gelir. Şekil W-12'nin
@@ -962,7 +980,7 @@ export const OSS_LICENSES: OssEntry[] = [
 ];
 ```
 
-- [ ] **Step 2: i18n `attrib` alanını ekle** — `tr.json`:
+- [x] **Step 2: i18n `attrib` alanını ekle** — `tr.json`:
 
 ```json
   "attrib": {
@@ -984,7 +1002,7 @@ export const OSS_LICENSES: OssEntry[] = [
 | `attrib.descFoursquare` | Venue categories and tips | Locatiecategorieën en tips |
 | `attrib.descOsm` | Address and neighbourhood names (Nominatim) · ODbL 1.0 | Adres- en buurtnamen (Nominatim) · ODbL 1.0 |
 
-- [ ] **Step 3: `AttributionsPage.test.tsx`'i yaz**
+- [x] **Step 3: `AttributionsPage.test.tsx`'i yaz**
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -1019,9 +1037,9 @@ describe("AttributionsPage", () => {
 });
 ```
 
-- [ ] **Step 4: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/AttributionsPage.test.tsx` → FAIL.
+- [x] **Step 4: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/AttributionsPage.test.tsx` → FAIL.
 
-- [ ] **Step 5: `AttributionsPage.tsx`'i yaz**
+- [x] **Step 5: `AttributionsPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W17 · Atıflar ve lisanslar — RequireAuth YOK. Satırlar `DATA_SOURCES`'tan gelir;
@@ -1057,11 +1075,11 @@ export default function AttributionsPage() {
 }
 ```
 
-- [ ] **Step 6: Rota** — `App.tsx`, `/kvkk`'dan sonra: `<Route path="/attributions" element={<AttributionsPage />} />`
+- [x] **Step 6: Rota** — `App.tsx`, `/kvkk`'dan sonra: `<Route path="/attributions" element={<AttributionsPage />} />`
 
-- [ ] **Step 7: Çalıştır** — Run: `PNPM_TEST src/pages/AttributionsPage.test.tsx` → 3 passed. `pnpm i18n:check` → 0.
+- [x] **Step 7: Çalıştır** — Run: `PNPM_TEST src/pages/AttributionsPage.test.tsx` → 3 passed. `pnpm i18n:check` → 0.
 
-- [ ] **Step 8: Dosya listesi** — `content/legal/sources.ts`, `pages/AttributionsPage.tsx`, `pages/AttributionsPage.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(legal): data-driven /attributions page`.
+- [x] **Step 8: Dosya listesi** — `content/legal/sources.ts`, `pages/AttributionsPage.tsx`, `pages/AttributionsPage.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(legal): data-driven /attributions page`.
 
 ---
 
@@ -1071,7 +1089,7 @@ export default function AttributionsPage() {
 - Create: `frontend/web/src/pages/AccountPage.tsx`, Test: `pages/AccountPage.test.tsx`
 - Modify: `frontend/web/src/App.tsx`, `components/molecules/{AvatarMenu,IdentityCard}.tsx`, `i18n/locales/{tr,en,nl}.json`
 
-- [ ] **Step 1: i18n `account` alanını ve `shell.account`'u ekle** — `tr.json`:
+- [x] **Step 1: i18n `account` alanını ve `shell.account`'u ekle** — `tr.json`:
 
 ```json
   "account": {
@@ -1120,7 +1138,7 @@ export default function AttributionsPage() {
 
 **Sapma notu (bilinçli):** artboard `exportHint` "JSON · e-postana gelir" diyor; §2 sözleşmesi `GET /api/me/export`'u **attachment** olarak tanımlıyor. Kopya davranışa uydurulur; e-posta yolu yoktur, uydurulmaz.
 
-- [ ] **Step 2: `AccountPage.test.tsx`'i yaz**
+- [x] **Step 2: `AccountPage.test.tsx`'i yaz**
 
 ```tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -1196,9 +1214,9 @@ describe("AccountPage", () => {
 });
 ```
 
-- [ ] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/AccountPage.test.tsx` → FAIL.
+- [x] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/AccountPage.test.tsx` → FAIL.
 
-- [ ] **Step 4: `AccountPage.tsx`'i yaz**
+- [x] **Step 4: `AccountPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W13 · Hesap ve veriler — sol: Yasal / Veri / Hakkında / Tehlikeli bölge,
@@ -1322,13 +1340,13 @@ export default function AccountPage() {
 }
 ```
 
-- [ ] **Step 5: `IdentityCard` sağlayıcı rozetini alanla besle** — `{me.email} · {t("profile.googleLogin")}` satırını şununla değiştir:
+- [x] **Step 5: `IdentityCard` sağlayıcı rozetini alanla besle** — `{me.email} · {t("profile.googleLogin")}` satırını şununla değiştir:
 
 ```tsx
         <Note>{me.email} · {t(me.authProviders?.includes("APPLE") ? "account.appleLogin" : "profile.googleLogin")}</Note>
 ```
 
-- [ ] **Step 6: Rota + menü** — `App.tsx` (`AppShell` içinde): `<Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />`. `AvatarMenu.tsx`'te `Profil` satırının ardına:
+- [x] **Step 6: Rota + menü** — `App.tsx` (`AppShell` içinde): `<Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />`. `AvatarMenu.tsx`'te `Profil` satırının ardına:
 
 ```tsx
           <Link role="menuitem" className={ROW} to="/account" onClick={() => setOpen(false)}>
@@ -1339,9 +1357,9 @@ export default function AccountPage() {
 
 ve import satırına `ShieldCheck` ekle.
 
-- [ ] **Step 7: Çalıştır** — Run: `PNPM_TEST src/pages/AccountPage.test.tsx` → 5 passed. `PNPM_TEST src/pages/ProfilePage.test.tsx` → yeşil. `pnpm i18n:check` → 0.
+- [x] **Step 7: Çalıştır** — Run: `PNPM_TEST src/pages/AccountPage.test.tsx` → 5 passed. `PNPM_TEST src/pages/ProfilePage.test.tsx` → yeşil. `pnpm i18n:check` → 0.
 
-- [ ] **Step 8: Dosya listesi** — `pages/AccountPage.tsx`, `pages/AccountPage.test.tsx`, `App.tsx`, `molecules/AvatarMenu.tsx`, `molecules/IdentityCard.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): /account page with legal, data, about and danger blocks`.
+- [x] **Step 8: Dosya listesi** — `pages/AccountPage.tsx`, `pages/AccountPage.test.tsx`, `App.tsx`, `molecules/AvatarMenu.tsx`, `molecules/IdentityCard.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): /account page with legal, data, about and danger blocks`.
 
 ---
 
@@ -1351,7 +1369,7 @@ ve import satırına `ShieldCheck` ekle.
 - Create: `frontend/web/src/pages/ConsentPage.tsx`, Test: `pages/ConsentPage.test.tsx`
 - Modify: `frontend/web/src/App.tsx`, `i18n/locales/{tr,en,nl}.json`
 
-- [ ] **Step 1: i18n `consent` alanını ekle** — `tr.json`:
+- [x] **Step 1: i18n `consent` alanını ekle** — `tr.json`:
 
 ```json
   "consent": {
@@ -1387,7 +1405,7 @@ ve import satırına `ShieldCheck` ekle.
 | `consent.readKvkk` | Read the disclosure | Lees de informatie |
 | `consent.errSave` | Couldn't save — try again. | Opslaan mislukt — probeer opnieuw. |
 
-- [ ] **Step 2: `ConsentPage.test.tsx`'i yaz**
+- [x] **Step 2: `ConsentPage.test.tsx`'i yaz**
 
 ```tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -1452,9 +1470,9 @@ describe("ConsentPage", () => {
 });
 ```
 
-- [ ] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/ConsentPage.test.tsx` → FAIL.
+- [x] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/ConsentPage.test.tsx` → FAIL.
 
-- [ ] **Step 4: `ConsentPage.tsx`'i yaz**
+- [x] **Step 4: `ConsentPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W13b / W16 sağ panel · KVKK m.5/1 açık rıza. Üç anahtar yerelde tutulur, "Kaydet"
@@ -1541,11 +1559,11 @@ export default function ConsentPage() {
 }
 ```
 
-- [ ] **Step 5: Rota** — `App.tsx`, `/account`'tan sonra: `<Route path="/account/consent" element={<RequireAuth><ConsentPage /></RequireAuth>} />`
+- [x] **Step 5: Rota** — `App.tsx`, `/account`'tan sonra: `<Route path="/account/consent" element={<RequireAuth><ConsentPage /></RequireAuth>} />`
 
-- [ ] **Step 6: Çalıştır** — Run: `PNPM_TEST src/pages/ConsentPage.test.tsx` → 5 passed. `pnpm i18n:check` → 0. `tsc -b` temiz.
+- [x] **Step 6: Çalıştır** — Run: `PNPM_TEST src/pages/ConsentPage.test.tsx` → 5 passed. `pnpm i18n:check` → 0. `tsc -b` temiz.
 
-- [ ] **Step 7: Dosya listesi** — `pages/ConsentPage.tsx`, `pages/ConsentPage.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): /account/consent explicit consent screen`.
+- [x] **Step 7: Dosya listesi** — `pages/ConsentPage.tsx`, `pages/ConsentPage.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): /account/consent explicit consent screen`.
 
 ---
 
@@ -1555,7 +1573,7 @@ export default function ConsentPage() {
 - Create: `frontend/web/src/components/molecules/AppleSignIn.tsx`, Test: `molecules/AppleSignIn.test.tsx`
 - Modify: `molecules/GoogleSignIn.tsx`, `molecules/SignInBlock.tsx`, `components/index.ts`, `i18n/locales/{tr,en,nl}.json`, `frontend/web/.env.{development,preprod,production}`
 
-- [ ] **Step 1: i18n ve env**
+- [x] **Step 1: i18n ve env**
 
 `landing` alanına üç anahtar — tr: `"apple": "Apple ile devam et"`, `"noAppleClientId": "Apple girişi bu ortamda yapılandırılmadı."`, `"errApple": "Apple ile giriş yapılamadı — tekrar dene."`
 
@@ -1574,7 +1592,7 @@ VITE_CLARITY_ID=
 VITE_GA4_ID=
 ```
 
-- [ ] **Step 2: `AppleSignIn.test.tsx`'i yaz**
+- [x] **Step 2: `AppleSignIn.test.tsx`'i yaz**
 
 ```tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -1642,9 +1660,9 @@ describe("AppleSignIn", () => {
 });
 ```
 
-- [ ] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/components/molecules/AppleSignIn.test.tsx` → FAIL.
+- [x] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/components/molecules/AppleSignIn.test.tsx` → FAIL.
 
-- [ ] **Step 4: `AppleSignIn.tsx`'i yaz**
+- [x] **Step 4: `AppleSignIn.tsx`'i yaz**
 
 ```tsx
 /* App Store 4.8: Google girişi olan uygulama eşdeğer bir alternatif sunmak zorunda.
@@ -1752,7 +1770,7 @@ export default function AppleSignIn({ onDone }: { onDone?: () => void }) {
 }
 ```
 
-- [ ] **Step 5: `GoogleSignIn`'e `onDone` kancası** — imzayı `export default function GoogleSignIn({ onDone }: { onDone?: () => void })` yap, geri çağrıyı değiştir ve `useEffect` bağımlılık dizisine `onDone` ekle:
+- [x] **Step 5: `GoogleSignIn`'e `onDone` kancası** — imzayı `export default function GoogleSignIn({ onDone }: { onDone?: () => void })` yap, geri çağrıyı değiştir ve `useEffect` bağımlılık dizisine `onDone` ekle:
 
 ```tsx
           void login(r.credential)
@@ -1762,11 +1780,11 @@ export default function AppleSignIn({ onDone }: { onDone?: () => void }) {
 
 (Silme sayfası girişten sonra gezinmemeli — kimlik doğrulaması aynı sayfada devam eder.)
 
-- [ ] **Step 6: `SignInBlock`'a Apple butonu** — `<GoogleSignIn />` satırından sonra `<AppleSignIn />`, import `./AppleSignIn`. Barrel: `export { default as AppleSignIn } from "./molecules/AppleSignIn";`
+- [x] **Step 6: `SignInBlock`'a Apple butonu** — `<GoogleSignIn />` satırından sonra `<AppleSignIn />`, import `./AppleSignIn`. Barrel: `export { default as AppleSignIn } from "./molecules/AppleSignIn";`
 
-- [ ] **Step 7: Çalıştır** — Run: `PNPM_TEST src/components/molecules/AppleSignIn.test.tsx` → 3 passed. `PNPM_TEST src/pages` → yeşil. `pnpm i18n:check` → 0.
+- [x] **Step 7: Çalıştır** — Run: `PNPM_TEST src/components/molecules/AppleSignIn.test.tsx` → 3 passed. `PNPM_TEST src/pages` → yeşil. `pnpm i18n:check` → 0.
 
-- [ ] **Step 8: Dosya listesi** — `molecules/AppleSignIn.tsx`, `AppleSignIn.test.tsx`, `GoogleSignIn.tsx`, `SignInBlock.tsx`, `components/index.ts`, `i18n/locales/{tr,en,nl}.json`, `.env.development`, `.env.preprod`, `.env.production`. Mesaj: `feat(auth): Sign in with Apple on landing`.
+- [x] **Step 8: Dosya listesi** — `molecules/AppleSignIn.tsx`, `AppleSignIn.test.tsx`, `GoogleSignIn.tsx`, `SignInBlock.tsx`, `components/index.ts`, `i18n/locales/{tr,en,nl}.json`, `.env.development`, `.env.preprod`, `.env.production`. Mesaj: `feat(auth): Sign in with Apple on landing`.
 
 ---
 
@@ -1776,7 +1794,7 @@ export default function AppleSignIn({ onDone }: { onDone?: () => void }) {
 - Create: `components/organisms/PlainShell.tsx`, `pages/DeleteAccountPage.tsx` (+test), `pages/AccountDeletedPage.tsx`, `pages/SupportPage.tsx` (+test)
 - Modify: `frontend/web/src/App.tsx`, `i18n/locales/{tr,en,nl}.json`
 
-- [ ] **Step 1: i18n `del` ve `support` alanlarını ekle** — `tr.json`:
+- [x] **Step 1: i18n `del` ve `support` alanlarını ekle** — `tr.json`:
 
 ```json
   "del": {
@@ -1843,7 +1861,7 @@ Kalan `del.*` ve `support.*` anahtarları aynı anlamı taşıyacak biçimde en/
 
 Run: `source ./init-nvm.sh && pnpm i18n:check` → 0 fark.
 
-- [ ] **Step 2: `DeleteAccountPage.test.tsx`'i yaz**
+- [x] **Step 2: `DeleteAccountPage.test.tsx`'i yaz**
 
 ```tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -1918,9 +1936,9 @@ describe("DeleteAccountPage", () => {
 });
 ```
 
-- [ ] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/DeleteAccountPage.test.tsx` → FAIL.
+- [x] **Step 3: Çalıştır, düştüğünü gör** — Run: `PNPM_TEST src/pages/DeleteAccountPage.test.tsx` → FAIL.
 
-- [ ] **Step 4: `PlainShell.tsx`'i yaz**
+- [x] **Step 4: `PlainShell.tsx`'i yaz**
 
 ```tsx
 /* Artboard W18 · silme akışı AppShell DIŞINDA: gezinme, avatar ve altbilgi yok — kullanıcı
@@ -1943,7 +1961,7 @@ export default function PlainShell(props: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 5: `DeleteAccountPage.tsx`'i yaz**
+- [x] **Step 5: `DeleteAccountPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W18 · Hesabı sil — Apple 5.1.1(v) + Play hesap silme politikası. Akış:
@@ -2043,7 +2061,7 @@ export default function DeleteAccountPage() {
 }
 ```
 
-- [ ] **Step 6: `AccountDeletedPage.tsx`'i yaz**
+- [x] **Step 6: `AccountDeletedPage.tsx`'i yaz**
 
 ```tsx
 /* Artboard W18 · Hesap silindi — akışın son ekranı; hiçbir uç çağrılmaz. */
@@ -2071,7 +2089,7 @@ export default function AccountDeletedPage() {
 }
 ```
 
-- [ ] **Step 7: `SupportPage.test.tsx` ve `SupportPage.tsx`'i yaz**
+- [x] **Step 7: `SupportPage.test.tsx` ve `SupportPage.tsx`'i yaz**
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -2148,16 +2166,16 @@ export default function SupportPage() {
 }
 ```
 
-- [ ] **Step 8: Rotalar** — `App.tsx`: `AppShell` layout'unun İÇİNE `<Route path="/support" element={<SupportPage />} />`; layout bloğunun DIŞINA (`Routes` içinde):
+- [x] **Step 8: Rotalar** — `App.tsx`: `AppShell` layout'unun İÇİNE `<Route path="/support" element={<SupportPage />} />`; layout bloğunun DIŞINA (`Routes` içinde):
 
 ```tsx
       <Route path="/account/delete" element={<DeleteAccountPage />} />
       <Route path="/account/deleted" element={<AccountDeletedPage />} />
 ```
 
-- [ ] **Step 9: Çalıştır** — Run: `PNPM_TEST src/pages/DeleteAccountPage.test.tsx` → 4 passed; `PNPM_TEST src/pages/SupportPage.test.tsx` → 3 passed. `tsc -b` temiz, `pnpm i18n:check` → 0.
+- [x] **Step 9: Çalıştır** — Run: `PNPM_TEST src/pages/DeleteAccountPage.test.tsx` → 4 passed; `PNPM_TEST src/pages/SupportPage.test.tsx` → 3 passed. `tsc -b` temiz, `pnpm i18n:check` → 0.
 
-- [ ] **Step 10: Dosya listesi** — `organisms/PlainShell.tsx`, `pages/{DeleteAccountPage,AccountDeletedPage,SupportPage}.tsx`, `pages/{DeleteAccountPage,SupportPage}.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): setup-free /account/delete flow, /account/deleted and /support`.
+- [x] **Step 10: Dosya listesi** — `organisms/PlainShell.tsx`, `pages/{DeleteAccountPage,AccountDeletedPage,SupportPage}.tsx`, `pages/{DeleteAccountPage,SupportPage}.test.tsx`, `App.tsx`, `i18n/locales/{tr,en,nl}.json`. Mesaj: `feat(compliance): setup-free /account/delete flow, /account/deleted and /support`.
 
 ---
 
@@ -2166,7 +2184,7 @@ export default function SupportPage() {
 **Files:**
 - Modify: `docs/superpowers/plans/INDEX.md` (W tablosuna W-14 satırı)
 
-- [ ] **Step 1: Tam doğrulama** (repo kökünden)
+- [x] **Step 1: Tam doğrulama** (repo kökünden)
 
 ```bash
 source ./init-nvm.sh
@@ -2178,15 +2196,15 @@ pnpm --filter @bumpinto/web build
 
 Expected: tsc temiz; testler önceki sayı + ~36 (analytics 7 (+2 net), authStore +3, LegalPage 4, Toggle 2, AttributionsPage 3, AccountPage 5, ConsentPage 5, AppleSignIn 3, DeleteAccountPage 4, SupportPage 3); parite 0 fark; build yeşil.
 
-- [ ] **Step 2: Rota erişimini elle doğrula** — `pnpm dev:web`, gizli pencerede (giriş YOK) sırayla: `/privacy`, `/terms`, `/kvkk`, `/attributions`, `/support`, `/account/delete` → hepsi içerik göstermeli, hiçbiri `/`'a yönlendirmemeli. `/account` ve `/account/consent` → `/`'a yönlenmeli. Ağ sekmesinde `clarity.ms` / `googletagmanager.com` isteği **olmamalı** (rıza yok).
+- [x] **Step 2: Rota erişimini elle doğrula** — `pnpm dev:web`, gizli pencerede (giriş YOK) sırayla: `/privacy`, `/terms`, `/kvkk`, `/attributions`, `/support`, `/account/delete` → hepsi içerik göstermeli, hiçbiri `/`'a yönlendirmemeli. `/account` ve `/account/consent` → `/`'a yönlenmeli. Ağ sekmesinde `clarity.ms` / `googletagmanager.com` isteği **olmamalı** (rıza yok).
 
-- [ ] **Step 3: INDEX.md W tablosuna satır ekle** (W-12'den sonra)
+- [x] **Step 3: INDEX.md W tablosuna satır ekle** (W-12'den sonra)
 
 ```markdown
 | W-14 | **Mağaza uyumluluğu web** — yasal rotalar `/privacy` `/terms` `/kvkk` `/attributions` `/support` (RequireAuth yok; içerik `content/legal/*.tsx` TR taban blok verisi + `legal._status`), `/account` (Yasal/Veri/Hakkında/Tehlikeli bölge + kimlik kartı, "Kullanım verisi paylaş", "Verilerimi indir" → `GET /api/me/export`), `/account/consent` (3 anahtar, `PUT /api/me/consents`, geri alma), kurulumsuz `/account/delete` → `DELETE /api/me` → `/account/deleted`, analitik rıza kapısı (`lib/analytics.ts`), `AppleSignIn` (`POST /api/auth/apple`) | `2026-09-06-plan36-web-store-compliance.md` | Plan 36 | ready | **B-14 (plan33)** | — | Gereksinim dok. §3 R-W10–R-W14, R-W17; uyumluluk dok. §5. Artboard W13/W13b/W14–W19. Bildir/engelle (W20) W-15'te. `/attributions` şimdilik yerel `DATA_SOURCES` (W-12 sonrası tek satırda `configStore.sources[]`) |
 ```
 
-- [ ] **Step 4: Elle uçtan uca kontrol listesi** (kullanıcıya bırakılır; ajan yapamaz — Apple geliştirici hesabı ve gerçek silme gerekir)
+- [x] **Step 4: Elle uçtan uca kontrol listesi** (kullanıcıya bırakılır; ajan yapamaz — Apple geliştirici hesabı ve gerçek silme gerekir)
 
 1. Apple Developer'da Services ID (`VITE_APPLE_CLIENT_ID`) + Return URL tanımla, `.env.development.local`'e yaz. Landing'de "Apple ile devam et" → popup → giriş → `/sessions`.
 2. Aynı e-postayla önce Google, sonra Apple ile gir → tek hesap (backend eşleştirmesi, §2).
@@ -2196,7 +2214,7 @@ Expected: tsc temiz; testler önceki sayı + ~36 (analytics 7 (+2 net), authStor
 6. **Test hesabıyla**: gizli pencerede `/account/delete` (giriş yok) → Google ile gir → "SİL" → sil → `/account/deleted`. Ardından `GET /api/me` 401; arkadaşın oturumunda katılımcı adı "eski katılımcı".
 7. Play Console Data safety formuna `https://bumpinto.app/account/delete`; App Store Connect'e `https://bumpinto.app/privacy` ve `https://bumpinto.app/support`.
 
-- [ ] **Step 5: Dosya listesi** — `INDEX.md`. Mesaj: `docs(compliance): register W-14 web store compliance plan`.
+- [x] **Step 5: Dosya listesi** — `INDEX.md`. Mesaj: `docs(compliance): register W-14 web store compliance plan`.
 
 ---
 

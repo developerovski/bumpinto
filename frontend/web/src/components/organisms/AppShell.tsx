@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { useOnline, useRetryOnline } from "../../lib/useOnline";
 import OfflineBanner from "../molecules/OfflineBanner";
 import TopBar from "../molecules/TopBar";
@@ -23,7 +23,14 @@ export default function AppShell() {
         <OfflineBanner online={online} lastOnlineAt={lastOnlineAt} onRetry={retry} retrying={checking} />
       </div>
       <Outlet />
-      <p className="px-5 pb-4 text-center text-[0.6875rem] text-ink2">{t("attribution.osm")}</p>
+      <footer className="flex flex-col items-center gap-2 px-5 pb-4 text-center text-[0.6875rem] text-ink2">
+        <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link to="/privacy" className="text-ink2">{t("legal.privacy")}</Link>
+          <Link to="/terms" className="text-ink2">{t("legal.terms")}</Link>
+          <Link to="/data-rights" className="text-ink2">{t("legal.dataRights")}</Link>
+          <Link to="/support" className="text-ink2">{t("legal.support")}</Link>
+        </nav>
+      </footer>
     </div>
   );
 }

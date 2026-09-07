@@ -58,7 +58,7 @@ export default function IdentityCard({ me, onSaveName }: { me: MeResponse; onSav
         ) : (
           <>
             <h2>{me.displayName || me.email}</h2>
-            <Note>{me.email} · {t("profile.googleLogin")}</Note>
+            <Note>{me.email} · {t(me.authProviders?.includes("APPLE") ? "account.appleLogin" : "profile.googleLogin")}</Note>
           </>
         )}
       </div>
