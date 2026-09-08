@@ -149,7 +149,8 @@ export default function WinnerCard(props: {
           kalıtımla h1/p'ye iner, atomlara `center` prop'u geçmeye gerek kalmaz. */}
       <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
         <Overline tone="flame">{eyebrow}</Overline>
-        <Heading>
+        {/* Artboard 2617: Karar 390 başlığı 30px. */}
+        <Heading size="compact">
           {head && `${head} `}
           <Highlight>{last}!</Highlight>
         </Heading>

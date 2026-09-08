@@ -19,17 +19,23 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 /** `round-sm` tek başına tamdır — eski `.a-btn--round` + `.a-btn--round-sm` bileşimi katlandı. */
 const rounds = {
-  pill: "w-full min-h-[3.25rem] px-6 text-base",
+  pill: "w-full min-h-[3.25rem] text-base",
   round: "p-0 w-[3.875rem] min-h-[3.875rem] text-[1.5rem] flex-none",
   "round-sm": "p-0 w-11 min-h-11 text-[1.125rem] flex-none",
 };
 
 /* DS .bsm — küçük beyaz pill (42px / 14px / yatay 16px). */
-const pillSm = "w-auto min-h-[2.625rem] px-4 text-[0.875rem]";
+const pillSm = "w-auto min-h-[2.625rem] text-[0.875rem]";
 /* Artboard satır içi `.bsm` ezmesi (1549/1645/1747/3269): 34px / 12px / yatay 12px. */
-const pillXs = "w-auto min-h-[2.125rem] px-3 text-[0.75rem]";
+const pillXs = "w-auto min-h-[2.125rem] text-[0.75rem]";
 /* DS .fit — içerik genişliğinde pill (Profil çıkış butonu, masaüstü). */
-const pillFit = "w-auto px-6 text-base min-h-[3.25rem]";
+const pillFit = "w-auto text-base min-h-[3.25rem]";
+
+/* Yatay dolgu ölçüden AYRI tutulur: iki `px-*` sınıfı aynı anda basılırsa hangisinin kazandığını
+   sınıf sırası değil Tailwind'in kendi çıktı sırası belirler — çağıranın `className`'iyle ezmek
+   güvenilir değil. Artboard: `.btn` 0 22px (CSS 129), `.bsm` 0 16px (CSS 137),
+   satır içi `.bsm` ezmesi 12px, `.loc` (sola yaslı konum kontrolü) 0 16px (CSS 146). */
+const padX = { md: "px-[1.375rem]", sm: "px-4", xs: "px-3", fit: "px-[1.375rem]", start: "px-4" };
 
 // forwardRef: odak yönetimi (VoiceDock) gerçek DOM düğümü ister (React 19'da `ref` düz prop olur,
 // bu saracak da kaldırılabilir).
@@ -51,7 +57,14 @@ const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       {...rest}
       // `className` EZMEZ, EKLENİR: çağıranın `flex-1`/`self-center` gibi yerleşim sınıfları
       // sarmalayıcı div'e sarılmak zorunda kalmasın (eskiden `{...rest}` içinde sessizce düşüyordu).
-      className={[buttonBase, buttonKinds[kind], sizeClass, buttonAligns[align], className]
+      className={[
+        buttonBase,
+        buttonKinds[kind],
+        sizeClass,
+        shape === "pill" ? padX[align === "start" ? "start" : size] : null,
+        buttonAligns[align],
+        className,
+      ]
         .filter(Boolean)
         .join(" ")
         .trim()}

@@ -11,6 +11,8 @@ const cols = {
 // .zone varsayılanı 16px; artboard Landing sol 18px / sağ 26px kullanır (yalnız ≥1024).
 const zoneGaps = {
   default: "",
+  // Karar 1280 sol bölgesi 14px (artboard 2534) — varsayılan 16px'ten dar.
+  sm: "lg:gap-[0.875rem]",
   md: "lg:gap-[1.125rem]",
   lg: "lg:gap-[1.625rem]",
 };

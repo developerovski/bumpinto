@@ -19,7 +19,9 @@ import VenueCard from "../molecules/VenueCard";
 const DECK = "relative flex-none";
 const LAYER = "!absolute inset-x-0 top-0 mx-auto";
 const D1 = "transform-[rotate(-1.6deg)] shadow-sh2";
-const D2 = `${LAYER} z-1 h-[25rem] shadow-sh1 animate-promote`;
+// Arka katman yükseklikleri kırılıma göre: artboard 2107-2108 (390) 400/390px, 2001-2002 (1280)
+// 430/420px — ön kartın fotoğrafı da 1280'de 30px uzuyor (FRONT_PHOTO), yığın onunla büyür.
+const D2 = `${LAYER} z-1 h-[25rem] shadow-sh1 animate-promote lg:h-[26.875rem]`;
 // Sürükleme ilerlemesiyle (`--swipe-p`, SwipeCard.onProgress) d2 d1'in yerine yaklaşır.
 const D2_STYLE: CSSProperties = {
   transform:
@@ -29,7 +31,7 @@ const D2_STYLE: CSSProperties = {
   opacity: "calc(0.75 + 0.25 * var(--swipe-p, 0))",
   transition: "transform 0.25s var(--ease-swipe), opacity 0.25s var(--ease-swipe)",
 };
-const D3 = `${LAYER} z-0 h-[24.375rem] opacity-45 transform-[rotate(-5deg)_translateY(1.25rem)_scale(0.94)] animate-appear`;
+const D3 = `${LAYER} z-0 h-[24.375rem] lg:h-[26.25rem] opacity-45 transform-[rotate(-5deg)_translateY(1.25rem)_scale(0.94)] animate-appear`;
 const FLY = `${LAYER} z-3 pointer-events-none animate-fly-out`;
 // Artboard 2111 / 2005 — ön kartın fotoğrafı 390'da 210px, 1280'de 240px. Satır-içi `style`
 // medya sorgusu tanımadığı için sınıfla verilir (`VenueCard.photoClassName`).

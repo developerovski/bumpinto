@@ -35,9 +35,10 @@ describe("VenuesLoading", () => {
     expect(screen.getByText("Çevredeki mekanlar aranıyor")).toBeInTheDocument();
     expect(screen.getAllByTestId("venue-skeleton")).toHaveLength(4);
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
-    // Nabız yalnız hareket açıkken (app.css reduced-motion kuralını okunur kılar).
+    // Artboard 559: parıltı soldan sağa SÜPÜRME (`--animate-shimmer`), opaklık nabzı değil; ve
+    // yalnız hareket açıkken (app.css reduced-motion kuralını okunur kılar).
     expect(screen.getAllByTestId("venue-skeleton")[0].querySelector("span")!.className)
-      .toContain("motion-safe:animate-pulse");
+      .toContain("motion-safe:animate-shimmer");
   });
 
   /** Artboard 4337: devre dışı `.cta` — liste gelince düğme yerinde belirir, düzen atlamaz. */

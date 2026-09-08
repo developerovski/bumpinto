@@ -35,8 +35,8 @@ type Activity = Schemas["CreateSessionRequest"]["activityTypes"][number];
 /** DS `.lb` — form bölüm başlığı (Field/LocationField ile AYNI ölçü: 14px/600, cümle düzeni).
     `.ov` (11.5px, büyük harf) YALNIZ etkinlik grup başlıkları ve "Konumlar" için ayrıldı —
     artboard 817/831/895 vs 836/900; tek formda iki başlık sistemi karışmaz. */
-function Label({ children }: { children: ReactNode }) {
-  return <span className="text-[0.875rem] font-semibold">{children}</span>;
+function Label({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={`text-[0.875rem] font-semibold${className ? ` ${className}` : ""}`}>{children}</span>;
 }
 
 /** Artboard W2 "Yeni oturum" — Grup: link kur; Bireysel: konumları elle ekle, harita önizlemesinde gör. */
@@ -192,20 +192,27 @@ export default function NewSessionPage() {
         <>
           <Field
             id="session-anchor"
+            /* Artboard 3856/3924: iç içe alt alanın `.lb`'si 13px'e iniyor — üstteki
+               "Nerede buluşulsun?" başlığıyla aynı ölçüde durmaz. */
+            labelSize="sm"
             label={t("newSession.anchorLabel")}
             placeholder={t("newSession.anchorPlaceholder")}
             value={anchorQuery}
             onChange={(e) => setAnchorQuery(e.target.value)}
             onBlur={() => void resolveAnchor()}
           />
-          {/* Artboard 3856–3860: sıra etiket → alan → "Haritadan seç" (`.btn.b-wh.bsm`) → ipucu. */}
-          <div className="self-start">
+          {/* Artboard 3856–3860: sıra etiket → alan → "Haritadan seç" (`.btn.b-wh.bsm`) → ipucu.
+              `align-self:flex-start` YALNIZ 1280'de (3858); 390'da düğme tam genişlik (3927). */}
+          <div className="lg:self-start">
             <Button type="button" kind="white" size="sm" onClick={() => setPicker("anchor")}>
               <MapPin size={18} aria-hidden />
               {t("map.pickOnMap")}
             </Button>
           </div>
-          <Note>{anchor ? t("newSession.anchorSet", { label: anchor.label ?? "" }) : t("newSession.anchorHint")}</Note>
+          {/* Artboard 3860: ipucu çapa çözüldükten SONRA da "2 km" sözünü veriyor. Onayı
+              ipucunun YERİNE basmak, yarıçapı tam gerektiği anda ekrandan siliyordu. */}
+          {anchor && <Note>{t("newSession.anchorSet", { label: anchor.label ?? "" })}</Note>}
+          <Note>{t("newSession.anchorHint")}</Note>
         </>
       ) : (
         <Note>{t("newSession.midpointHint")}</Note>
@@ -260,20 +267,25 @@ export default function NewSessionPage() {
   return (
     <Page>
       {/* Artboard 811: `.row` 6px boşluk, 13px/600, ink2 — genel `a` rengini (flame-deep)
-          taşımaz, bir gezinme bağlantısıdır. */}
+          taşımaz, bir gezinme bağlantısıdır. 390'da (962/3912) kaydırma alanı
+          doğrudan h1 ile başlıyor — bağlantı SİLİNMEZ, yalnız lg'ye saklanır (mobilde
+          tarayıcı/uygulama geri hareketi zaten var). */}
       <Link
         to="/sessions"
-        className="flex w-fit items-center gap-1.5 text-[0.8125rem] font-semibold text-ink2 no-underline"
+        className="hidden w-fit items-center gap-1.5 text-[0.8125rem] font-semibold text-ink2 no-underline lg:flex"
       >
         <ArrowLeft size={16} aria-hidden />
         {t("newSession.back")}
       </Link>
-      <Heading>{t("newSession.title")}</Heading>
+      {/* Artboard 963/3916: Yeni oturum 390 başlığı 30px. */}
+      <Heading size="compact">{t("newSession.title")}</Heading>
       <TwoZone
         left={
           <>
             <div className="flex flex-col gap-2">
-              <Label>{t("newSession.how")}</Label>
+              {/* Artboard 963/3916: 390'da h1'i DOĞRUDAN segment izliyor, etiket yok — etiket
+                  silinmez, `lg`'ye saklanır; 390'da zaten radiogroup'un `aria-label`'ı. */}
+              <Label className="hidden lg:block">{t("newSession.how")}</Label>
               <TypeSelector value={type} onChange={setType} />
             </div>
             <div className="flex flex-col gap-2">
@@ -286,7 +298,10 @@ export default function NewSessionPage() {
             </div>
             <Field
               id="session-name"
-              label={`${t("newSession.name")} ${t("newSession.nameOptional")}`}
+              label={t("newSession.name")}
+              /* Artboard 3049/3218: "· istersen" eki etiketin içinde ama 400 ağırlık + ink2 —
+                 düz birleştirilmiş dizede zorunlu alan başlığı kadar baskın duruyordu. */
+              labelSuffix={t("newSession.nameOptional")}
               placeholder={t("newSession.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -315,6 +330,14 @@ export default function NewSessionPage() {
               <TravelModeField value={travelMode} onChange={setTravelMode} />
             </div>
             {errorMessage && <ErrorText>{errorMessage}</ErrorText>}
+            {/* Artboard 951: SOLO 1280'de sağ bölge HARİTAYLA biter — el yazısı not orada yok.
+                Not silinmedi, 390'a alındı: sağ bölge zaten `lg`'ye özgü, dolayısıyla `lg:hidden`
+                onu yalnız dar ekranda, formun sonunda bırakır. */}
+            {type === "SOLO" && (
+              <div className="lg:hidden">
+                <HandNote>{t("newSession.soloHand")}</HandNote>
+              </div>
+            )}
             <DesktopOnly>
               <div className="flex flex-wrap items-center gap-3.5">
                 {ctaButton("fit")}
@@ -350,12 +373,13 @@ export default function NewSessionPage() {
                         radiusKm={null}
                         pinLabels={labels}
                         caption={mid ? t("map.midpointOnly") : undefined}
+                        /* Artboard 930: `.gmap` 330px — MapFrame'in 320px varsayılanı değil. */
+                        heightClass="h-[20.625rem]"
                         lgOnly
                       />
                     </Suspense>
                   </LazyBoundary>
                 )}
-                <HandNote>{t("newSession.soloHand")}</HandNote>
               </>
             ) : (
               <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activities={activities} />

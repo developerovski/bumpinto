@@ -10,6 +10,7 @@ import FaqItem from "../components/molecules/FaqItem";
 import LegalBlocks from "../components/molecules/LegalBlocks";
 import PageHeader from "../components/molecules/PageHeader";
 import ReaderZone from "../components/molecules/ReaderZone";
+import SettingsCard from "../components/molecules/SettingsCard";
 
 const FAQ = ["1", "2", "3", "4"] as const;
 
@@ -26,14 +27,21 @@ export default function SupportPage() {
           <Note>{t("support.cardHint")}</Note>
         </div>
         <Overline>{t("support.faqTitle")}</Overline>
-        {FAQ.map((n) => <FaqItem key={n} question={t(`support.q${n}`)} answer={t(`support.a${n}`)} />)}
+        {/* Artboard 5390/5440: dört soru AYRI kartlar değil, tek kartın ayraçlı satırlarıdır. */}
+        <SettingsCard label={t("support.faqTitle")}>
+          {FAQ.map((n) => <FaqItem key={n} question={t(`support.q${n}`)} answer={t(`support.a${n}`)} />)}
+        </SettingsCard>
         <Overline>{t("support.contact")}</Overline>
         <LegalBlocks blocks={[
           /* Tek e-posta, tek yer: ayrı bir "E-posta gönder" butonu aynı adresi ikinci kez
              gösteriyordu. Tablo hücresi tıklanamadığı için satır `link` bloğu olarak basılır. */
           { link: [`${t("support.mEmail")}: `, "hello@bumpinto.app", "mailto:hello@bumpinto.app"] },
-          { link: ["", t("support.deleteLink"), "/account/delete"] },
         ]} />
+        {/* Artboard 5412-5414: silme bağlantısı KENDİ beyaz kartında durur (`.card` + `.mi`) —
+            düz paragraf olarak iletişim metnine karışıyordu. */}
+        <div className="rounded-card border border-line bg-card p-[1rem_1.125rem] shadow-sh1">
+          <LegalBlocks blocks={[{ link: ["", t("support.deleteLink"), "/account/delete"] }]} />
+        </div>
       </ReaderZone>
     </Page>
   );

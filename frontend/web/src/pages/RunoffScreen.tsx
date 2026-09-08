@@ -7,6 +7,7 @@ import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
 import RunoffIntro from "../components/molecules/RunoffIntro";
 import RunoffStatus, { RunoffLockCard } from "../components/molecules/RunoffStatus";
 import RunoffTie from "../components/molecules/RunoffTie";
+import SessionHeader from "../components/molecules/SessionHeader";
 import ShareButton from "../components/molecules/ShareButton";
 import TwoZone from "../components/molecules/TwoZone";
 import RunoffList from "../components/organisms/RunoffList";
@@ -90,6 +91,15 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
 
   return (
     <Page>
+      {/* Artboard 4351-4353 — beraberlik 390'ının ilk satırı oturum adı. Yalnız beraberlikte:
+          Runoff 390 (2453) bu satırı taşımıyor, orada üstlük doğrudan manşetle başlıyor.
+          Tasarımın sağdaki `ph-dots-three` düğmesinin bu ekranda karşılığı yok (taşma menüsü
+          diye bir yetenek yok) — uydurulmadı, satır aksiyonsuz basılıyor. */}
+      {tie && v.name && (
+        <div className="lg:hidden">
+          <SessionHeader title={v.name} />
+        </div>
+      )}
       <TwoZone
         left={
           <>

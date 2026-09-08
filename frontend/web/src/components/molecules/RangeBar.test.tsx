@@ -6,7 +6,11 @@ const venue = (m: Record<string, number>) => ({
   id: "v1", name: "Café Berlage",
   travel: Object.entries(m).map(([participantId, minutes]) => ({ participantId, minutes })),
 });
-const travel = { labels: { s: "Sen", k: "Kerem", a: "Ayşe" }, selfId: "s" };
+const travel = {
+  labels: { s: "Sen", k: "Kerem", a: "Ayşe" },
+  names: { s: "Mehmet", k: "Kerem", a: "Ayşe" },
+  selfId: "s",
+};
 
 describe("RangeBar", () => {
   it("aralığı, adalet satırını ve baş harfli noktaları basar", () => {
@@ -14,7 +18,9 @@ describe("RangeBar", () => {
     expect(screen.getByText("25–35 dk")).toBeInTheDocument();
     expect(screen.getByText("Herkese ~aynı")).toBeInTheDocument();
     expect(screen.getByText(/fark 10 dk · en uzun yol Kerem/)).toBeInTheDocument();
-    expect(screen.getByTestId("range-dot-s")).toHaveTextContent("S");
+    // Kendi noktan da GERÇEK adının baş harfini taşır ("Sen" → "S" üçüncü bir kişi gibi okunuyordu);
+    // "sen" bilgisi flame dolgusundan ve ipucundan gelir.
+    expect(screen.getByTestId("range-dot-s")).toHaveTextContent("M");
     expect(screen.getByTestId("range-dot-s").className).toContain("bg-flame-deep");
     // Noktalar aria-hidden; dakikalar sr-only listede.
     expect(screen.getByText("Kerem ~35 dk")).toBeInTheDocument();
@@ -69,5 +75,29 @@ describe("RangeBar", () => {
     expect(screen.queryByTestId("range-span")).not.toBeInTheDocument();
     rerender(<RangeBar venue={{ id: "v1", name: "X" }} travel={travel} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  /* Aynı dakikadaki kişiler `pos()`tan AYNI yüzdeyi alıyor ve noktalar birbirini tam örtüyordu:
+     "herkes ~30 dk" satırında 2 kişilik grupta ekranda TEK nokta kalıyordu — ikinci kişi yok
+     sayılmış oluyordu. Beraberlik yelpazelenmeli, ikisi de görünmeli. */
+  it("eşit dakikadaki kişiler üst üste binmez, ayrı konumlarda basılır", () => {
+    render(<RangeBar venue={venue({ s: 30, k: 30 })} travel={travel} />);
+    const a = screen.getByTestId("range-dot-s");
+    const b = screen.getByTestId("range-dot-k");
+    expect(a.style.left).not.toBe(b.style.left);
+    // İkisi de bandın içinde kalır (kırpılma yok).
+    for (const el of [a, b]) {
+      const left = Number.parseFloat(el.style.left);
+      expect(left).toBeGreaterThanOrEqual(3);
+      expect(left).toBeLessThanOrEqual(97);
+    }
+  });
+
+  /* Baş harf tek başına "Y kim, M kim" sorusunu cevaplamıyor; nokta `aria-hidden` olduğu için
+     işaretçi kullanıcısının hiçbir yolu yoktu. Yerel ipucu adı ve dakikayı söyler. */
+  it("nokta üzerinde ad ve dakika ipucu taşır", () => {
+    render(<RangeBar venue={venue({ s: 30, k: 35 })} travel={travel} />);
+    expect(screen.getByTestId("range-dot-k")).toHaveAttribute("title", "Kerem · ~35 dk");
+    expect(screen.getByTestId("range-dot-s")).toHaveAttribute("title", "Mehmet (sen) · ~30 dk");
   });
 });

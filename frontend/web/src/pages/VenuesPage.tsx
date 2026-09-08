@@ -69,15 +69,22 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   );
 
   const action =
-    host && !solo ? (
+    !solo ? (
       // Artboard W3b: avatarlar + tek birincil aksiyon YALNIZ 1280 başlığında; 390 host
       // panosunda başlıkta hiçbir denetim yok, ikisi de alttaki `.cta` bloğunda.
+      // Avatarlar HOST'A ÖZEL DEĞİL: "oturumda kim var" kimlik bilgisidir, host denetimi değil —
+      // davetli yalnız avatarları görür (davet + karıştır düğmeleri host'ta kalır). Artboard'ın
+      // 1280 davetli panosu yok; 390 davetli panosunda da roster başlıkta duruyor (1531-1610).
       <DesktopOnly>
         <AvatarRow people={participants}>
-          {invite("white", "fit")}
-          <Button type="button" size="fit" disabled={shuffleDisabled} onClick={doShuffle}>
-            {t("venues.shuffle")}
-          </Button>
+          {host && (
+            <>
+              {invite("white", "fit")}
+              <Button type="button" size="fit" disabled={shuffleDisabled} onClick={doShuffle}>
+                {t("venues.shuffle")}
+              </Button>
+            </>
+          )}
         </AvatarRow>
       </DesktopOnly>
     ) : soloSortInHeader ? (
@@ -144,7 +151,7 @@ export default function VenuesPage({ view }: { view: SessionView }) {
       {host && !solo && (
         // Artboard W3b 390 host `.cta`: tam genişlik "Karıştır ve kaydır" + ortalı not.
         // Davet linki de buraya iner — 390 başlığında üç denetim yarışıyordu.
-        <MobileCta>
+        <MobileCta fade>
           {invite("white", "md")}
           <Button type="button" disabled={shuffleDisabled} onClick={doShuffle}>
             {t("venues.shuffle")}

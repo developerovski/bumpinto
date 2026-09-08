@@ -118,6 +118,9 @@ export default function DeleteAccountPage() {
             ) : (
               <div className={`${ZONE_CARD} border-line`}>
                 <h3>{t("del.verify")}</h3>
+                {/* Artboard 5298: "kurulum gerekmez" mesajı doğrulama kartının BAŞINDA durur —
+                    uygulamayı silmiş kullanıcı hesabını buradan kapatabileceğini bilmeli. */}
+                <Note>{t("del.verifyIntro")}</Note>
                 <GoogleSignIn onDone={() => setError(null)} />
                 <AppleSignIn onDone={() => setError(null)} />
                 <Note>{t("del.verifyHint")}</Note>

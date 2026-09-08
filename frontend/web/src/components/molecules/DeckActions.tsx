@@ -17,7 +17,8 @@ export default function DeckActions(props: {
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mt-3 flex flex-none items-center justify-center gap-5">
+    // Artboard 2029: aksiyon satırı desteye 6px yakın durur (12px'te kartla bağı kopuyordu).
+    <div className="mt-1.5 flex flex-none items-center justify-center gap-5">
       <Button
         type="button"
         kind="white"

@@ -60,13 +60,13 @@ export default function ParticipantRow(props: {
     props.isSelf ? s.selfSpeaking : !!(p.id && s.peers[p.id]?.speaking),
   );
   const inVoice = !!p.inVoice;
-  // Artboard satır dolgusu: 390'da 11px, 1280'de 13px.
+  // Artboard satır dolgusu: 390'da 11/14px (1933/1942/1951), 1280'de 13/16px.
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[0.6875rem] lg:py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
+      className={`flex items-center gap-3 px-[0.875rem] py-[0.6875rem] lg:px-4 lg:py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
     >
       <span
-        className={`relative inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}${!ready ? " c-pulse" : ""}`}
+        className={`relative inline-flex flex-none rounded-full${!ready ? " c-pulse" : ""}`}
       >
         <Avatar
           name={p.displayName ?? "?"}
@@ -78,7 +78,11 @@ export default function ParticipantRow(props: {
           <i
             data-testid="online-dot"
             aria-hidden
-            className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-card bg-grass"
+            /* Artboard 438-439: nokta `right:-1px;bottom:-1px`; konuşma halkası (`.od.spk`)
+               AVATARIN değil NOKTANIN üstünde ve %25 opak — tam opak halka satırı bağırıyordu. */
+            className={`absolute -right-px -bottom-px h-3 w-3 rounded-full border-2 border-card bg-grass${
+              speaking ? " shadow-[0_0_0_3px_rgba(11,122,68,0.25)]" : ""
+            }`}
           />
         )}
       </span>
@@ -99,8 +103,11 @@ export default function ParticipantRow(props: {
           {icons.length > 0 && (
             <>
               <span aria-hidden>·</span>
+              {/* Artboard 1115: e-bisiklette şimşek bisikletin YANINDA değil, 9px'lik bir
+                  rozet ölçüsünde durur — `MODE_ICON` dizisinde ilk glif rozettir
+                  (`WinnerCard.tsx:216` ile aynı kural). */}
               {icons.map((Icon, i) => (
-                <Icon key={i} size={14} aria-hidden />
+                <Icon key={i} size={icons.length > 1 && i === 0 ? 9 : 14} aria-hidden />
               ))}
               {mode && <span className="sr-only">{t(MODE_LABEL_KEY[mode].name)}</span>}
               {p.midpointMinutes != null && (

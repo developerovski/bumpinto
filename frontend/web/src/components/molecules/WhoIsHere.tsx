@@ -75,7 +75,11 @@ export default function WhoIsHere(props: {
         </div>
       )}
       {props.children}
-      <HandNote>{t("join.hand")}</HandNote>
+      {/* Artboard 1330: `.hand` satır içi `align-self:flex-end` — el yazısı not haritanın SAĞ
+          alt köşesine yaslanır, sola yaslı basıldığında oka ("→") bağlandığı yer kalmıyor. */}
+      <div className="self-end">
+        <HandNote>{t("join.hand")}</HandNote>
+      </div>
     </>
   );
 }

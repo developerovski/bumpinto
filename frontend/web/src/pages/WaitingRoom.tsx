@@ -88,7 +88,10 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
             <div className="max-lg:order-1">
               <JoinedCard self={self} />
             </div>
-            <div className="max-lg:order-4">
+            {/* Artboard W5 390 (1902-1963) etkinlik şeridini HİÇ çizmiyor — dar ekranda "Katıldın"
+                ile roster arasına giren vaat cümlesi bekleyişi uzatıyor. Bileşen silinmez, yalnız
+                kırılımda gizlenir (rapor F/B-P3-11). */}
+            <div className="hidden max-lg:order-4 lg:block">
               <ActivityStrip activities={activities} km={km} />
             </div>
             <div className="flex flex-col gap-4 max-lg:order-5">

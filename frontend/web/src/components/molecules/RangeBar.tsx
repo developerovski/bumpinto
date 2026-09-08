@@ -33,6 +33,27 @@ function pos(minutes: number, min: number, max: number): number {
   return Math.min(100, Math.max(0, 15 + (70 * (minutes - min)) / (max - min)));
 }
 
+/** Aynı dakikadaki kişiler AYNI yüzdeye düşer ve noktalar birbirini tamamen örter — 2 kişilik
+    bir grupta "herkes ~30 dk" satırı TEK nokta gösteriyordu, yani ikinci kişi ekranda yoktu.
+    Beraberlikler nokta genişliği kadar (18px ≈ %5,5 tipik satırda) simetrik yelpazelenir; sıra
+    `entries` sırasıdır, yani kararlıdır. Yüzde uzayında çalışmak yeterli: bant hep aynı satırda. */
+const TIE_GAP = 5.5;
+
+function fanned(entries: { id: string; minutes: number }[], min: number, max: number) {
+  const groups = new Map<number, string[]>();
+  for (const e of entries) groups.set(e.minutes, [...(groups.get(e.minutes) ?? []), e.id]);
+  const left = new Map<string, number>();
+  for (const [minutes, ids] of groups) {
+    const base = pos(minutes, min, max);
+    // Tek kişi ortada; n kişi merkez etrafında eşit aralıklı (…, -1, 0, +1, …).
+    ids.forEach((id, i) => {
+      const offset = (i - (ids.length - 1) / 2) * TIE_GAP;
+      left.set(id, Math.min(97, Math.max(3, base + offset)));
+    });
+  }
+  return left;
+}
+
 export default function RangeBar(props: { venue: FairnessVenue & { name?: string }; travel: TravelInfo }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
@@ -40,6 +61,8 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
   if (!f || f.entries.length === 0) return null;
   const many = f.entries.length > 1;
   const line = fairnessLine(f, props.travel, t);
+  const name = (id: string) => props.travel.names?.[id] ?? props.travel.labels[id] ?? t("travel.friend");
+  const left = fanned(f.entries, f.min, f.max);
   const value = f.min === f.max
     ? t("travel.min", { min: f.max })
     : t("travel.range", { min: f.min, max: f.max });
@@ -47,7 +70,9 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
   return (
     <div className="flex flex-col gap-1">
       <div className="flex min-h-[1.375rem] items-center gap-2">
-        <div className="relative h-1.5 flex-1 rounded-full bg-line2">
+        {/* Artboard 419 `.rg-t`: boş ray `--track` (#EFE7DC). `line2` (#e4d9cd) ayraç rengidir,
+            rayda gözle görülür koyu kalıyordu — dolu bandın kontrastını da düşürüyordu. */}
+        <div className="relative h-1.5 flex-1 rounded-full bg-track">
           {/* A6: herkes eşit dakikadaysa (f.min === f.max) 0 genişlikli bant çizilmez. */}
           {many && f.min !== f.max && (
             <span
@@ -76,11 +101,14 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
               <span
                 key={e.id}
                 data-testid={`range-dot-${e.id}`}
+                title={`${name(e.id)}${self ? ` ${t("waiting.you")}` : ""} · ${t("travel.min", { min: e.minutes })}`}
                 aria-hidden
                 className={`${DOT} ${tone}`}
-                style={{ left: `${pos(e.minutes, f.min, f.max)}%` }}
+                style={{ left: `${left.get(e.id) ?? pos(e.minutes, f.min, f.max)}%` }}
               >
-                {initialOf(props.travel.labels[e.id] ?? t("travel.friend"), locale)}
+                {/* Baş harf HAM addan: başlıktaki avatarlarla birebir eşleşsin. Kendi noktan
+                    flame dolgusuyla ayrılır — harf "S"/"Y" olsaydı oturumda olmayan biri sanılırdı. */}
+                {initialOf(name(e.id), locale)}
               </span>
             );
           })}

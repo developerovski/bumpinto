@@ -27,6 +27,9 @@ export default function JoinFormFields(props: {
   onAddressChange: (value: string) => void;
   onUseLocation: () => void;
   onOtherAddress: () => void;
+  /** Verilirse adres dalında "Haritadan seç" düğmesi çıkar (harita AÇILINCA mount edilir —
+      faturalanan birim `new google.maps.Map()` örneğidir, sayfa yüklemesi değil). */
+  onPickOnMap?: () => void;
   onTravelModeChange: (mode: TravelMode) => void;
   onSubmit: (e: FormEvent) => void;
 }) {
@@ -51,6 +54,7 @@ export default function JoinFormFields(props: {
         onAddressChange={props.onAddressChange}
         onUseLocation={props.onUseLocation}
         onOtherAddress={props.onOtherAddress}
+        onPickOnMap={props.onPickOnMap}
         inputId="join-address"
         busy={props.locationBusy}
       />

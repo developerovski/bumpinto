@@ -33,10 +33,14 @@ describe("VenuesPage — davet ve deste kapısı", () => {
     expect(screen.queryByRole("button", { name: /Davet linki/ })).not.toBeInTheDocument();
   });
 
-  it("davetli: davet linki de Karıştır da yok", () => {
+  it("davetli: davet linki de Karıştır da yok — ama oturumda KİMİN olduğunu görür", () => {
     show({ ...base, sessionType: "GROUP", viewer: { participantId: "a", host: false }, participants: [host, guest] });
     expect(screen.queryByRole("button", { name: /Davet linki/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Karıştır ve kaydır" })).not.toBeInTheDocument();
+    /* Avatar şeridi host denetimi DEĞİL, kimlik bilgisidir: davetli "kim var?" sorusunun
+       cevabını başka hiçbir yerde bulamıyordu (1280'de roster kartı yok). */
+    expect(screen.getAllByText(/Mehmet · /).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Ayşe · /).length).toBeGreaterThan(0);
   });
 
   it("odada iki kişi yoksa Karıştır kapalı ve sebebi yazılı", () => {

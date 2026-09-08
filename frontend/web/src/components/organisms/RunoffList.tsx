@@ -86,6 +86,7 @@ export default function RunoffList(props: {
               venue={v}
               mixedDeck={props.mixedDeck}
               variant="row"
+              compact={props.tie}
               selected={props.choice === v.id}
               voteCount={props.tie ? (props.tally?.[v.id!] ?? 0) : undefined}
               className={faded(v) ? "opacity-75" : undefined}

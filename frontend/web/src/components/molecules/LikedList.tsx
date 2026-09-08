@@ -18,11 +18,23 @@ export default function LikedList(props: {
   travel?: TravelInfo;
   /** Destedeki TÜM kategoriler — `FitLine`'ın "12 aynı kart" çeşitlilik denetimine geçer (§4.6). */
   categories?: string[];
+  /** Deste bitti/gönderildi — artboard 2266 kartın altına notun YERİNE "En uzak: X · N dk"
+      satırını koyar; deste sürerken (2074) not kalır. */
+  finished?: boolean;
 }) {
   const { t } = useTranslation();
   // Minimax sıra (§4.9) — en adil (en kısa en-uzun-yol) önce, VenueBrowser'la aynı sıralayıcı.
   const liked = props.venues.filter((v) => props.liked[v.id!]).sort(byFairness);
   const travel = props.travel ?? { labels: {} };
+  // Artboard 2266: en adil beğeninin EN UZAK yolcusu. `entries` en uzundan sıralı gelir
+  // (`fairnessOf`), ad `names`ten okunur — "Sen" etiketi değil gerçek ad basılır. Ad yoksa
+  // satır UYDURULMAZ, not olduğu gibi kalır.
+  const farthest = props.finished ? fairnessOf(liked[0] ?? ({} as VenueDto))?.entries[0] : null;
+  const farthestName = farthest ? (travel.names?.[farthest.id] ?? travel.labels[farthest.id]) : null;
+  const footer =
+    farthest && farthestName
+      ? t("deck.farthest", { name: farthestName, min: farthest.minutes })
+      : t("deck.likedNote");
 
   return (
     <div className="rounded-card border border-line bg-card py-1 shadow-sh1">
@@ -76,7 +88,7 @@ export default function LikedList(props: {
           (2074) var. Bilgi mobilde başlıktaki "· N beğeni" ile zaten veriliyor. Ayraç da notla
           birlikte düşer, yoksa mobilde kartın dibinde sahipsiz bir çizgi kalırdı. */}
       {liked.length > 0 && <div className="mx-4 hidden h-px bg-line lg:block" />}
-      <div className="hidden px-4 py-3 text-[0.75rem] text-ink2 lg:block">{t("deck.likedNote")}</div>
+      <div className="hidden px-4 py-3 text-[0.75rem] text-ink2 lg:block">{footer}</div>
     </div>
   );
 }

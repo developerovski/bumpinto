@@ -1,12 +1,16 @@
 /* Artboard W14/W15/W16 okuyucu tipografisi (.lg-h / .lg-p / .lg-ul / .tbl / amber not).
    Metin blok VERİSİ olarak gelir: içerik dosyaları sınıf dizesi taşımaz, tek renderer basar. */
+import { Info } from "@phosphor-icons/react";
 import { Fragment, type ReactNode } from "react";
 
 export type LegalBlock =
   | { h: string }
   /** `muted` — artboard `.lg-p.m2`: giriş/uyarı paragrafı ink2'ye iner. Gövde metni (`.lg-p`)
       ink'tir; ikisi ayrı sınıf olduğu için ayrımı blok verisi taşır, renderer tahmin etmez. */
-  | { p: string; muted?: boolean }
+  /** `strong` — paragrafın İÇİNDEKİ bir cümlenin birebir kopyası; artboard `<b>` ile
+      vurguladığı yer (5008). Metin tek dize kalır (çeviri parçalanmaz), renderer o cümleyi
+      bulup kalınlaştırır; bulunamazsa paragraf düz basılır. */
+  | { p: string; muted?: boolean; strong?: string }
   | { ul: string[] }
   | { table: [string, string][] }
   | { note: string }
@@ -24,22 +28,29 @@ export default function LegalBlocks({ blocks }: { blocks: LegalBlock[] }) {
   return (
     <>
       {blocks.map((b, i) => {
-        if ("h" in b) return <h2 key={i} className="mt-2 font-head text-[1.0625rem] font-bold text-ink">{b.h}</h2>;
-        if ("p" in b)
+        /* `.lg-h` (511) üst boşluğu 6px. */
+        if ("h" in b) return <h2 key={i} className="mt-1.5 font-head text-[1.0625rem] font-bold text-ink">{b.h}</h2>;
+        if ("p" in b) {
+          const cls = `text-[0.9375rem] leading-relaxed ${b.muted ? "text-ink2" : "text-ink"}`;
+          const cut = b.strong && b.p.includes(b.strong) ? b.p.split(b.strong) : null;
           return (
-            <p key={i} className={`text-[0.9375rem] leading-relaxed ${b.muted ? "text-ink2" : "text-ink"}`}>
-              {b.p}
+            <p key={i} className={cls}>
+              {cut ? <>{cut[0]}<b className="font-bold">{b.strong}</b>{cut.slice(1).join(b.strong)}</> : b.p}
             </p>
           );
+        }
         if ("note" in b)
           return (
-            <p key={i} className="rounded-2xl border border-[#f2ddb0] bg-amber-wash p-[0.75rem_0.875rem] text-[0.8125rem] leading-normal text-ink">
-              {b.note}
+            /* Artboard 5108-5110: amber kartta metinden ÖNCE 17px `ph-info` durur. */
+            <p key={i} className="flex gap-2.5 rounded-2xl border border-[#f2ddb0] bg-amber-wash p-[0.75rem_0.875rem] text-[0.8125rem] leading-normal text-ink">
+              <Info size={17} aria-hidden className="mt-px flex-none text-amber" />
+              <span>{b.note}</span>
             </p>
           );
         if ("ul" in b)
           return (
-            <ul key={i} className="flex list-disc flex-col gap-1 pl-5 text-[0.9375rem] leading-relaxed text-ink">
+            /* `.lg-ul` (514) girintisi 18px. */
+            <ul key={i} className="flex list-disc flex-col gap-1 pl-[1.125rem] text-[0.9375rem] leading-relaxed text-ink">
               {b.ul.map((item) => <li key={item}>{item}</li>)}
             </ul>
           );

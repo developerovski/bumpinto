@@ -116,7 +116,9 @@ export default function PointsEditor(props: {
         <div className="mx-4 h-px bg-line" />
         <form onSubmit={add} className="flex flex-col gap-2.5 px-3 py-2.5">
           <div className="flex items-center gap-2">
+            {/* Artboard 926 `.inp.phd`: 44px / 14px. */}
             <TextInput
+              inputSize="sm"
               aria-label={t("newSession.pointPlaceholder")}
               placeholder={t("newSession.pointPlaceholder")}
               value={draft}

@@ -11,7 +11,8 @@ import type { ReactNode } from "react";
 const variants = {
   default: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
   deck: "gap-0 px-[1.125rem] pt-4 lg:gap-4 lg:px-12 lg:pt-[2.125rem]",
-  result: "gap-3.5 px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
+  // Karar 390 (2610): `.scroll` gap 10px / üst dolgu 10px — kart ekranın tepesine yakın durur.
+  result: "gap-2.5 px-[1.125rem] pt-2.5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
   landing: "gap-[0.9375rem] px-[1.625rem] pt-5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
 };
 

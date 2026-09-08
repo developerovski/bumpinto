@@ -69,7 +69,7 @@ export default function VenuesLoading(props: { name?: string; view?: SessionView
       </div>
       <HandNote center>{t("venues.searchingHand")}</HandNote>
       {/* Artboard 4337: devre dışı `.cta` — liste gelince düğme yerinde belirir, düzen atlamaz. */}
-      <MobileCta>
+      <MobileCta fade>
         <Button type="button" disabled>
           {t("venues.shuffle")}
         </Button>

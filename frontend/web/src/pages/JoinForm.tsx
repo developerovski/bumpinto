@@ -5,11 +5,13 @@ import { Note, Page } from "../components/atoms";
 import JoinFormFields, { type JoinError } from "../components/molecules/JoinFormFields";
 import JoinIntro from "../components/molecules/JoinIntro";
 import LazyBoundary from "../components/molecules/LazyBoundary";
+import Sheet from "../components/molecules/Sheet";
 import TwoZone from "../components/molecules/TwoZone";
 import WhoIsHere from "../components/molecules/WhoIsHere";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { apiErrorCode } from "../lib/apiError";
-import { approx } from "../lib/geo";
+import { DEFAULT_MAP_CENTER, approx } from "../lib/geo";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { useAuthStore } from "../store/authStore";
 import { useSessionStore } from "../store/sessionStore";
@@ -17,6 +19,7 @@ import { useOwnLocation } from "../store/useOwnLocation";
 
 /* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
+const MapPicker = lazy(() => import("../components/organisms/MapPicker"));
 
 /** Kendi pinimizin id'si — gercek katilimci id'si henuz yok (katilim oncesi). */
 const SELF_PIN = "self";
@@ -30,6 +33,11 @@ export default function JoinForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<JoinError | null>(null);
   const [travelMode, setTravelMode] = useState<TravelMode>(me?.defaultTravelMode ?? DEFAULT_TRAVEL_MODE);
+  /* Adresini yazamayan/yazmak istemeyen davetlinin tek çıkışı: haritadan bir nokta koymak.
+     Artboard'da yok ama konum izni reddedildiğinde yerine geçecek başka yol da yok — kaldırıldığında
+     bu ekran çıkmaz sokağa dönüyordu. Harita YALNIZ açılınca mount edilir (maliyet kuralı §4.7). */
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const desktop = useMediaQuery("(min-width: 1024px)");
   // profil `me` çoğu zaman bu sayfa ilk render edildiğinde henüz yüklenmemiştir (davet linki
   // taze sayfa yüklemesiyle açılır) — geldiğinde ön-doldur, ama kullanıcı elle seçtiyse üzerine yazma.
   const travelModeTouched = useRef(false);
@@ -97,6 +105,23 @@ export default function JoinForm() {
   // özet şeridi yerine kişi başına satıra döner (4133 / 4229).
   const tooFar = error?.kind === "tooFar";
 
+  const pickerNode = pickerOpen && (
+    <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+      <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+        <MapPicker
+          center={loc.coords ?? DEFAULT_MAP_CENTER}
+          /* Yeni oturum seçicisiyle aynı ölçü: 390 alt sayfasında 300px, 1280'de 520px. */
+          heightClass="h-[18.75rem] lg:h-[32.5rem]"
+          onPick={(picked) => {
+            loc.setPicked(picked);
+            setPickerOpen(false);
+          }}
+          onCancel={() => setPickerOpen(false)}
+        />
+      </Suspense>
+    </LazyBoundary>
+  );
+
   return (
     <Page>
       <TwoZone
@@ -127,9 +152,13 @@ export default function JoinForm() {
               onAddressChange={loc.setAddress}
               onUseLocation={loc.detect}
               onOtherAddress={loc.otherAddress}
+              onPickOnMap={() => setPickerOpen(true)}
               onTravelModeChange={handleTravelModeChange}
               onSubmit={submit}
             />
+            {/* Masaüstünde seçici formun altında açılır; 390'da yer yok — `Sheet` alt sayfası
+                (Yeni oturum ekranıyla AYNI desen, kullanıcı aynı jesti iki ekranda öğrenmesin). */}
+            {desktop && pickerNode}
           </>
         }
         right={
@@ -162,6 +191,11 @@ export default function JoinForm() {
           </WhoIsHere>
         }
       />
+      {!desktop && pickerOpen && (
+        <Sheet title={t("map.pickOnMap")} onClose={() => setPickerOpen(false)}>
+          {pickerNode}
+        </Sheet>
+      )}
     </Page>
   );
 }

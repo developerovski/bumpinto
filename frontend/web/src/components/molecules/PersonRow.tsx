@@ -28,7 +28,8 @@ export default function PersonRow(props: {
   return (
     <div
       role="listitem"
-      className={`flex items-center gap-3 py-2.5${away ? " opacity-55" : ""} ${props.className ?? ""}`.trim()}
+      /* Artboard `.srow` (3564, 3576, 3589 / 3711): dikey dolgu 11px. */
+      className={`flex items-center gap-3 py-[0.6875rem]${away ? " opacity-55" : ""} ${props.className ?? ""}`.trim()}
     >
       <span className="relative inline-flex flex-none rounded-full">
         <Avatar
@@ -42,12 +43,16 @@ export default function PersonRow(props: {
           <i
             data-testid="online-dot"
             aria-hidden
-            className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-card bg-grass"
+            /* Artboard 438: `right:-1px;bottom:-1px`. */
+            className="absolute -right-px -bottom-px h-3 w-3 rounded-full border-2 border-card bg-grass"
           />
         )}
       </span>
       <span className="flex-1 text-left text-[0.875rem] font-semibold">
-        {props.isSelf ? t("travel.self") : p.displayName}
+        {/* Artboard 3448/3711: kendi satırın da ADINLA yazılır, "(sen)" yalnız ek — üç kişilik
+            roster'da "Sen" satırı kimin olduğunu ekran görüntüsünde okunaksız kılıyordu. */}
+        {p.displayName}
+        {props.isSelf && <span className="font-normal text-ink2"> {t("waiting.you")}</span>}
         {away && <span className="ml-1.5 font-normal text-ink2">· {t("waiting.offline")}</span>}
       </span>
       {props.children}

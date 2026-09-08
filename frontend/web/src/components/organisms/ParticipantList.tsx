@@ -65,7 +65,7 @@ export default function ParticipantList({
           const isSelf = !!viewerId && viewerId === p.id;
           return (
             <Fragment key={p.id ?? i}>
-              {i > 0 && <div className="mx-4 h-px bg-line" />}
+              {i > 0 && <div className="mx-[0.875rem] h-px bg-line lg:mx-4" />}
               <ParticipantRow
                 participant={p}
                 index={i}
@@ -78,7 +78,7 @@ export default function ParticipantList({
         })}
         {isHost && !hideNudge && waiting.length > 0 && (
           <>
-            <div className="mx-4 h-px bg-line" />
+            <div className="mx-[0.875rem] h-px bg-line lg:mx-4" />
             <div className="flex flex-col gap-2 px-4 py-3">
               <div className="flex flex-wrap gap-2">
                 {waiting.map((p) => (
@@ -94,7 +94,16 @@ export default function ParticipantList({
           </>
         )}
       </div>
-      {sheetFor && <PersonSheet slug={slug} participant={sheetFor} onClose={() => setSheetFor(null)} />}
+      {sheetFor && (
+        /* Alt sayfadaki avatar, satırdaki avatarla AYNI rengi taşımalı (artboard 5604) — index
+           satır sırasından gelir, sabit 0 her kişiyi flame gösteriyordu. */
+        <PersonSheet
+          slug={slug}
+          participant={sheetFor}
+          index={participants.findIndex((x) => x.id === sheetFor.id)}
+          onClose={() => setSheetFor(null)}
+        />
+      )}
     </>
   );
 }

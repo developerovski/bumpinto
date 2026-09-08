@@ -8,7 +8,11 @@ export const terms: LegalBody = {
     { h: "Hesap ve davet linkleri" },
     { p: "Davet linkini paylaştığın kişilerden sorumlusun. Bir oturum 24 saat içinde otomatik kapanır; kapanan bir linke yeniden katılamazsın." },
     { h: "Kabul edilebilir kullanım" },
-    { p: "Taciz, nefret söylemi, spam ve sahte kimlik yasaktır. Sesli sohbette ve görünen adlarda rahatsız edici içeriğe sıfır toleransımız var. Bir kişiyi bildirebilir ya da engelleyebilirsin; ihlal tespit edilirse hesabın uyarısız kapatılabilir." },
+    {
+      p: "Taciz, nefret söylemi, spam ve sahte kimlik yasaktır. Sesli sohbette ve görünen adlarda rahatsız edici içeriğe sıfır toleransımız var. Bir kişiyi bildirebilir ya da engelleyebilirsin; ihlal tespit edilirse hesabın uyarısız kapatılabilir.",
+      /* Artboard 5008: bu cümle `<b>` ile vurguludur — kuralın sert kısmı göz gezdirirken de görünmeli. */
+      strong: "Sesli sohbette ve görünen adlarda rahatsız edici içeriğe sıfır toleransımız var.",
+    },
     { h: "İçerik" },
     { p: "Oturum adı ve görünen adın sana aittir. Bize yalnızca bunları uygulama içinde göstermemiz için sınırlı bir lisans verirsin." },
     { h: "Sorumluluk sınırı" },
@@ -28,7 +32,10 @@ export const terms: LegalBody = {
     { h: "Accounts and invite links" },
     { p: "You are responsible for whom you share an invite link with. A session closes automatically within 24 hours; once it has closed, the link can no longer be joined." },
     { h: "Acceptable use" },
-    { p: "Harassment, hate speech, spam and impersonation are forbidden. We have zero tolerance for abusive content in voice chat and in display names. You can report or block someone; if we find a violation, your account may be closed without notice." },
+    {
+      p: "Harassment, hate speech, spam and impersonation are forbidden. We have zero tolerance for abusive content in voice chat and in display names. You can report or block someone; if we find a violation, your account may be closed without notice.",
+      strong: "We have zero tolerance for abusive content in voice chat and in display names.",
+    },
     { h: "Content" },
     { p: "Your session name and display name remain yours. You grant us only a limited licence to show them inside the app." },
     { h: "Limitation of liability" },
@@ -48,7 +55,10 @@ export const terms: LegalBody = {
     { h: "Account en uitnodigingslinks" },
     { p: "Je bent zelf verantwoordelijk voor met wie je een uitnodigingslink deelt. Een sessie sluit automatisch binnen 24 uur; daarna kun je niet meer via die link deelnemen." },
     { h: "Toegestaan gebruik" },
-    { p: "Intimidatie, haatzaaien, spam en identiteitsfraude zijn verboden. Voor kwetsende inhoud in spraakchat en in weergavenamen geldt nultolerantie. Je kunt iemand melden of blokkeren; bij een geconstateerde overtreding kan je account zonder waarschuwing worden gesloten." },
+    {
+      p: "Intimidatie, haatzaaien, spam en identiteitsfraude zijn verboden. Voor kwetsende inhoud in spraakchat en in weergavenamen geldt nultolerantie. Je kunt iemand melden of blokkeren; bij een geconstateerde overtreding kan je account zonder waarschuwing worden gesloten.",
+      strong: "Voor kwetsende inhoud in spraakchat en in weergavenamen geldt nultolerantie.",
+    },
     { h: "Inhoud" },
     { p: "Je sessienaam en weergavenaam blijven van jou. Je geeft ons alleen een beperkte licentie om ze binnen de app te tonen." },
     { h: "Beperking van aansprakelijkheid" },

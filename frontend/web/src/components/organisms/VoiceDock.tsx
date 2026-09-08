@@ -368,14 +368,22 @@ export default function VoiceDock(props: { view: SessionView }) {
           <span
             key={p.id ?? i}
             className={[
-              "inline-flex rounded-full",
+              // Her avatar dock zemini renginde 2px kenar taşır (CSS 452).
+              "relative inline-flex rounded-full ring-2 ring-ink",
               i > 0 ? "-ml-2" : "",
-              // Tek ring: konuşan yeşil halkayı, diğerleri dock zemini kenarını taşır.
-              speaking ? "ring-[3px] ring-grass" : "ring-2 ring-ink",
               failed ? "opacity-55" : "",
             ].join(" ").trim()}
           >
             <Avatar size="xs" name={p.displayName ?? "?"} index={(view.participants ?? []).indexOf(p)} />
+            {/* Konuşma göstergesi artboard'da avatarı saran halka DEĞİL, sağ altta duran 12px
+                yeşil varlık noktasıdır (4575 `.od.spk`, CSS 438-439): 2px beyaz kenar + hafif
+                haleli. Halka avatarı büyütüp yığının -8px binişmesini bozuyordu. */}
+            {speaking && (
+              <i
+                aria-hidden
+                className="absolute -right-px -bottom-px h-3 w-3 rounded-full border-2 border-white bg-grass shadow-[0_0_0_3px_rgba(11,122,68,0.25)]"
+              />
+            )}
             <span className="sr-only">{label}</span>
           </span>
         );

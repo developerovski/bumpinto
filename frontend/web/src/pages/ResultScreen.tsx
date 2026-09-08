@@ -99,9 +99,14 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   // (isim yoksa "{{name}} en uzaktan geliyor" boş öznesiyle basılmaz).
   const fairness = fairnessOf(winner);
   const longestName = fairness ? (travel.labels[fairness.longestId] ?? "") : "";
+  // Artboard 2642: 390 aynı notu KISA yazar ("Kerem ~10 dk önce çıkarsa…"); 1280 (2586) uzun
+  // sürümü basar. Aynı olgu, iki uzunluk — mobilde iki satırlık el yazısı bloğu kartı itiyordu.
   const handNote =
     fairness && fairness.spread >= 10 && longestName
-      ? t("result.leaveEarlyHand", { name: longestName, min: fairness.spread })
+      ? {
+          long: t("result.leaveEarlyHand", { name: longestName, min: fairness.spread }),
+          short: t("result.leaveEarlyHandShort", { name: longestName, min: fairness.spread }),
+        }
       : null;
 
   return (
@@ -115,7 +120,9 @@ export default function ResultScreen({ view }: { view: SessionView }) {
           action={<ShareButton text={shareText} url={shareUrl} size="sm" />}
         />
       </div>
+      {/* Artboard 2534: sol bölge `style="gap:14px"` — sağ bölge varsayılan 16px'te kalır. */}
       <TwoZone
+        leftGap="sm"
         left={
           <>
             <WinnerCard
@@ -143,11 +150,16 @@ export default function ResultScreen({ view }: { view: SessionView }) {
           <>
             {/* 390'da `.rc-ppl` aynı dakikaları taşıyor — çubuk kartı yalnız ≥1024'te. */}
             <div className="hidden rounded-card border border-line bg-card p-[1rem_1.125rem] shadow-sh1 lg:block">
-              <TravelBars venue={winner} travel={travel} title={t("travel.bars")} />
+              {/* Artboard 2580-2584: kartta yalnız üç çubuk satırı var. Adalet cümlesi imza
+                  kartının `.rc-ft` altbilgisinde basılıyor — burada tekrarı yok (rapor I · P3-7). */}
+              <TravelBars venue={winner} travel={travel} title={t("travel.bars")} note={false} />
             </div>
             {handNote && (
               <div className="mt-3.5 mx-1">
-                <HandNote>{handNote}</HandNote>
+                <HandNote>
+                  <span className="lg:hidden">{handNote.short}</span>
+                  <span className="hidden lg:inline">{handNote.long}</span>
+                </HandNote>
               </div>
             )}
             <ViralCard host={isHost} />

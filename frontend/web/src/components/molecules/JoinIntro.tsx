@@ -20,7 +20,9 @@ export default function JoinIntro(props: {
   const words = trimmedName ? trimmedName.split(/\s+/) : [];
   return (
     <>
-      <div className="flex flex-col gap-3">
+      {/* Artboard 1264: giriş bloğunun öğeleri `.zone`nin doğrudan çocukları — aralık 18px,
+          bölge aralığının AYNISI (12px'te başlık rozetlere yapışıyordu). */}
+      <div className="flex flex-col gap-[1.125rem]">
         <div className="flex items-center gap-2.5">
           <Avatar name={props.hostName ?? "B"} ring />
           <span>

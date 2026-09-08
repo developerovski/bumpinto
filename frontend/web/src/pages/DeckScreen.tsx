@@ -88,7 +88,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
               {error && <ErrorText>{error}</ErrorText>}
             </>
           }
-          right={<LikedList venues={venues} liked={liked} travel={travel} categories={categories} />}
+          right={<LikedList venues={venues} liked={liked} travel={travel} categories={categories} finished />}
         />
       </Page>
     );

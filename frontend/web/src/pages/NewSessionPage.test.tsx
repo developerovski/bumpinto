@@ -92,6 +92,9 @@ describe("NewSessionPage", () => {
     fireEvent.change(field, { target: { value: "Amsterdam" } });
     fireEvent.blur(field);
     expect(await screen.findByText("Amsterdam çevresinde aranacak")).toBeInTheDocument();
+    // Artboard 3860: yarıçap sözü onayla birlikte KALIR — onay ipucunun yerine geçseydi
+    // "2 km" tam gerektiği anda ekrandan silinirdi.
+    expect(screen.getByText("Mekanlar bu noktanın 2 km çevresinde aranır.")).toBeInTheDocument();
   });
 
   // create()'in gevşetilmiş konum kapısı: host konum vermeden kurabilmeli ve istek çapayı taşımalı.

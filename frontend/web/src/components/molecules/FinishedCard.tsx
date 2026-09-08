@@ -3,7 +3,9 @@
    `.f-lock` onay satırı + "Şimdi bekliyoruz · {isim} kaydırıyor" başlığı + `.f-steps` + roster.
    TEK sticker; "Deste bitti" BİREYSEL an — kutlama yok (§4.8), konfeti kaldırıldı.
    Gönderilmiş kart artboard'da SOLA YASLI (`padding:30px 30px 26px`, 390'da `16px 16px 14px`);
-   gönderilmemiş "Deste bitti" anı bu denetimin kapsamında değildi, ortalanmış hâliyle KALIR. */
+   gönderilmemiş "Deste bitti" anı bu denetimin kapsamında değildi, ortalanmış hâliyle KALIR.
+   Bileşen İKİ kart döndürür (artboard 3441 / 3563): ana kart + altında ayrı "Kim nerede" kartı —
+   iç içe kabuk değil, bölgenin kendi `gap`i ayırır. */
 import { CheckCircle, HandWaving } from "@phosphor-icons/react";
 import { Trans, useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
@@ -52,85 +54,91 @@ export default function FinishedCard(props: {
   const showForce = props.host && anyDone && waiting.length > 0;
 
   return (
-    <div
-      className={
-        props.sent
-          ? "flex flex-col gap-[0.5625rem] rounded-card border border-line bg-card p-4 pb-3.5 shadow-sh1 " +
-            "lg:gap-3.5 lg:px-[1.875rem] lg:pt-[1.875rem] lg:pb-[1.625rem]"
-          : "flex flex-col items-center gap-2.5 rounded-card border border-line bg-card px-5 pt-[1.375rem] pb-5 text-center shadow-sh1 " +
-            "lg:gap-3.5 lg:px-8 lg:pt-10 lg:pb-[2.125rem]"
-      }
-    >
-      {props.sent ? (
-        <>
-          <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-grass">
-            <CheckCircle size={16} weight="fill" aria-hidden />
-            {t("deck.sentBadge")}
-          </span>
-          {/* Artboard başlığı 390'da 24px, 1280'de 34px (`.big` inline ezmesi) — h1 atomunun
-              lg varsayılanı 46px olduğu için iki kırılımda da açıkça yazılır. */}
-          <h1 className="text-[1.5rem] lg:text-[2.125rem]">
-            {waiting.length > 0 ? (
-              /* Artboard 3437: bekleyenin adı sarı fosforlu kalemle (`.hl-m`). */
-              <Trans i18nKey="deck.sentTitleWaiting" values={{ name: waitingLabel }}
-                components={[<Highlight key="0" />]} />
-            ) : (
-              t("deck.sentTitleAllDone")
-            )}
-          </h1>
-          <p className="max-w-[36ch] text-[0.8125rem] leading-normal text-ink2 lg:text-base">
-            {t("deck.sentCopy")}
-            {/* Artboard 1280'de ikinci cümle var, 390'da yok. */}
-            <span className="hidden lg:inline"> {t("deck.sentCopyExtra")}</span>
-          </p>
-          {/* Artboard 3440 / 3560: adım şeridi kartın İÇİNDE, "Oylama" adımında. */}
-          <SessionSteps current="vote" />
-        </>
-      ) : (
-        <>
-          <Sticker>{t("deck.finishedSticker")}</Sticker>
-          <h1 className="mt-1.5 text-[1.625rem] lg:text-[2.375rem]">
-            {/* Artboard 2160: sayı değil FİİL vurgulanır ("… beğendin") — `Highlight` sarmalayıcı
-                i18n'den `<0>` ile gelir, `Trans` olmadan literal etiket basılırdı. */}
-            <Trans i18nKey="deck.likedTitle" values={{ count: props.likedCount }} components={[<Highlight key="0" />]} />
-          </h1>
-          <p className="max-w-[34ch] text-ink2">{t("deck.finishedCopy", { count: props.likedCount })}</p>
-        </>
-      )}
-      {empty && !props.sent && <Note center>{t("deck.emptyWarn")}</Note>}
-
-      {/* Gönderilmiş kartta buton satırı içerik genişliğinde ve sola yaslı (artboard'da bu
-          aksiyon üstteki "Hepsini gör" ile aynı işi yapar, tam genişlik pill değildir). */}
+    <>
       <div
         className={
           props.sent
-            ? "flex flex-wrap gap-2"
-            : "mt-1.5 flex w-full max-w-[21.25rem] flex-col gap-2.5"
+            ? "flex flex-col gap-[0.5625rem] rounded-card border border-line bg-card p-4 pb-3.5 shadow-sh1 " +
+              "lg:gap-3.5 lg:px-[1.875rem] lg:pt-[1.875rem] lg:pb-[1.625rem]"
+            : "flex flex-col items-center gap-2.5 rounded-card border border-line bg-card px-5 pt-[1.375rem] pb-5 text-center shadow-sh1 " +
+              "lg:gap-3.5 lg:px-8 lg:pt-10 lg:pb-[2.125rem]"
         }
       >
-        {/* Gönderdikten sonra buton KAYBOLUR — tekrar basılamaz (karar dokümanı §1). */}
-        {!props.sent && !empty && (
-          <Button type="button" onClick={props.onSend} disabled={props.sending}>
-            {t("deck.send")}
-          </Button>
+        {props.sent ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-grass">
+              <CheckCircle size={16} weight="fill" aria-hidden />
+              {t("deck.sentBadge")}
+            </span>
+            {/* Artboard başlığı 390'da 24px, 1280'de 34px (`.big` inline ezmesi) — h1 atomunun
+                lg varsayılanı 46px olduğu için iki kırılımda da açıkça yazılır. */}
+            <h1 className="text-[1.5rem] lg:text-[2.125rem]">
+              {waiting.length > 0 ? (
+                /* Artboard 3437: bekleyenin adı sarı fosforlu kalemle (`.hl-m`). */
+                <Trans i18nKey="deck.sentTitleWaiting" values={{ name: waitingLabel }}
+                  components={[<Highlight key="0" />]} />
+              ) : (
+                t("deck.sentTitleAllDone")
+              )}
+            </h1>
+            <p className="max-w-[36ch] text-[0.8125rem] leading-normal text-ink2 lg:text-base">
+              {t("deck.sentCopy")}
+              {/* Artboard 1280'de ikinci cümle var, 390'da yok. */}
+              <span className="hidden lg:inline"> {t("deck.sentCopyExtra")}</span>
+            </p>
+            {/* Artboard 3440 / 3560: adım şeridi kartın İÇİNDE, "Oylama" adımında. */}
+            <SessionSteps current="vote" />
+          </>
+        ) : (
+          <>
+            <Sticker>{t("deck.finishedSticker")}</Sticker>
+            <h1 className="mt-1.5 text-[1.625rem] lg:text-[2.375rem]">
+              {/* Artboard 2160: sayı değil FİİL vurgulanır ("… beğendin") — `Highlight` sarmalayıcı
+                  i18n'den `<0>` ile gelir, `Trans` olmadan literal etiket basılırdı. */}
+              <Trans i18nKey="deck.likedTitle" values={{ count: props.likedCount }} components={[<Highlight key="0" />]} />
+            </h1>
+            <p className="max-w-[34ch] text-ink2">{t("deck.finishedCopy", { count: props.likedCount })}</p>
+          </>
         )}
-        <Button
-          type="button"
-          kind={empty && !props.sent ? "flame" : "white"}
-          size={props.sent ? "fit" : "md"}
-          onClick={props.onList}
+        {empty && !props.sent && <Note center>{t("deck.emptyWarn")}</Note>}
+
+        {/* Gönderilmiş kartta buton satırı içerik genişliğinde ve sola yaslı (artboard'da bu
+            aksiyon üstteki "Hepsini gör" ile aynı işi yapar, tam genişlik pill değildir). */}
+        <div
+          className={
+            props.sent
+              ? "flex flex-wrap gap-2"
+              : "mt-1.5 flex w-full max-w-[21.25rem] flex-col gap-2.5"
+          }
         >
-          {t("deck.backToList")}
-        </Button>
-        {empty && !props.sent && (
-          <Button type="button" kind="white" onClick={props.onSend} disabled={props.sending}>
-            {t("deck.sendAnyway")}
+          {/* Gönderdikten sonra buton KAYBOLUR — tekrar basılamaz (karar dokümanı §1). */}
+          {!props.sent && !empty && (
+            <Button type="button" onClick={props.onSend} disabled={props.sending}>
+              {t("deck.send")}
+            </Button>
+          )}
+          <Button
+            type="button"
+            kind={empty && !props.sent ? "flame" : "white"}
+            size={props.sent ? "fit" : "md"}
+            onClick={props.onList}
+          >
+            {t("deck.backToList")}
           </Button>
-        )}
+          {empty && !props.sent && (
+            <Button type="button" kind="white" onClick={props.onSend} disabled={props.sending}>
+              {t("deck.sendAnyway")}
+            </Button>
+          )}
+        </div>
+
+        {props.sent && waiting.length === 0 && <HandNote center>{t("deck.allDoneHand")}</HandNote>}
       </div>
 
+      {/* Artboard 3441 (1280) / 3563 (390): "Kim nerede" ana kartın İÇİNDE değil, onun altında
+          AYRI bir `.card` — bölge kendi `gap`iyle ayırır, iç içe iki kart kabuğu değil. */}
       {props.sent && others.length > 0 && (
-        <div className="mt-2 flex w-full flex-col gap-0.5 rounded-card border border-line bg-paper py-1">
+        <div className="flex flex-col gap-0.5 rounded-card border border-line bg-card py-1 shadow-sh1">
           {/* Artboard 3442-3445: roster kartının tepesinde "Kim nerede" + "N / M bitti". */}
           <div className="flex items-center justify-between gap-2.5 px-4 pt-2 pb-1">
             <Overline>{t("deck.whoWhere")}</Overline>
@@ -150,7 +158,6 @@ export default function FinishedCard(props: {
                 index={i}
                 isSelf={p.id === props.selfId}
                 ring={p.deckDone}
-                waiting={!p.deckDone}
                 presence
                 className="px-4"
               >
@@ -199,8 +206,6 @@ export default function FinishedCard(props: {
           )}
         </div>
       )}
-
-      {props.sent && waiting.length === 0 && <HandNote center>{t("deck.allDoneHand")}</HandNote>}
-    </div>
+    </>
   );
 }

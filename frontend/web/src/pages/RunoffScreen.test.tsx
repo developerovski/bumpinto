@@ -97,6 +97,20 @@ describe("RunoffScreen", () => {
     pressed.forEach((b) => expect(b).toHaveTextContent("Abed food"));
   });
 
+  /* Artboard 4351-4353 — beraberlik 390'ında ilk satır oturum adı; seçim sürerken (2453) yok. */
+  it("oturum adı satırı YALNIZ beraberlikte basılır", () => {
+    const tied = view({ participantId: "h", host: true }, ["h", "y"], { name: "Cuma kahvesi" });
+    useSessionStore.setState({ slug: "q4754zo7", view: tied });
+    const { unmount } = render(<RunoffScreen slug="q4754zo7" view={tied} />);
+    expect(screen.getByText("Cuma kahvesi")).toBeInTheDocument();
+    unmount();
+
+    const choosing = view({ participantId: "h", host: true }, ["y"], { name: "Cuma kahvesi" });
+    useSessionStore.setState({ slug: "q4754zo7", view: choosing });
+    render(<RunoffScreen slug="q4754zo7" view={choosing} />);
+    expect(screen.queryByText("Cuma kahvesi")).not.toBeInTheDocument();
+  });
+
   it("beraberlikte host olmayan bekler, karar butonu görmez", () => {
     const v = view({ participantId: "y", host: false }, ["h", "y"]);
     useSessionStore.setState({ slug: "q4754zo7", view: v });

@@ -36,7 +36,9 @@ export default function DeckHeader(props: {
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mb-3 flex flex-none flex-col gap-3">
+    // Artboard 2098/2105 (390): başlık satırı 10px, ilerleme çubuğu 12px alt boşluk taşır;
+    // 1280'de ikisi de `.wrap` gap'i olan 16px (1989).
+    <div className="mb-3 flex flex-none flex-col gap-[0.625rem] lg:mb-4 lg:gap-4">
       <SessionHeader
         titleSize="sm"
         title={props.title}

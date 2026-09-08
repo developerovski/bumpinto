@@ -91,7 +91,11 @@ describe("ResultScreen — Karar v2", () => {
     expect(left.getByText("Koffie Top Hundred")).toBeInTheDocument();
     expect(left.getByRole("button", { name: "Takvime ekle" })).toBeInTheDocument();
     expect(right.getByText("Herkesin yolu")).toBeInTheDocument();
-    expect(right.getByText(/önce çıkarsa herkes aynı anda varır/)).toBeInTheDocument();
+    /* Artboard 2586 (uzun) ve 2642 (kısa) AYNI olguyu iki uzunlukta yazar — ikisi de DOM'da
+       durur, kırılım hangisinin görüneceğine karar verir. */
+    const hand = right.getAllByText(/önce çıkarsa herkes aynı anda varır/);
+    expect(hand).toHaveLength(2);
+    expect(hand.some((n) => n.textContent?.startsWith("Kerem en uzaktan geliyor"))).toBe(true);
   });
 
   it("390: dibe yapışan 'Yol tarifi al' + oturum adı/paylaş başlığı, yedek plan ve çubuk kartı gizli", () => {
@@ -271,8 +275,9 @@ describe("ResultScreen — Karar v2", () => {
     const second = renderResult(v);
     const secondCount = second.container.querySelectorAll("[aria-hidden]").length;
 
-    // Confetti tam 3 `aria-hidden` nokta ekler; ikinci mount'ta reveal.ts sessionStorage'dan
-    // tekrar oynamayı engeller.
-    expect(firstCount - secondCount).toBe(3);
+    // Confetti tam 5 `aria-hidden` nokta ekler (artboard 2518-2522; ikisi yalnız ≥1024'te
+    // GÖRÜNÜR ama DOM'da hep var); ikinci mount'ta reveal.ts sessionStorage'dan tekrar
+    // oynamayı engeller.
+    expect(firstCount - secondCount).toBe(5);
   });
 });

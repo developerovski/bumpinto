@@ -20,8 +20,9 @@ export default function ActivityPicker<A extends string>(props: {
   const groupRole = single ? "radiogroup" : "group";
   const itemRole = single ? "radio" : "checkbox";
   const full = props.value.length >= max;
+  // Tasarım CSS 161/562: `.grps` masaüstünde 16px/20px, `.mb` (390) altında tek sütun + 14px.
   return (
-    <div role={groupRole} aria-label={props.ariaLabel} className={`grid gap-x-5 gap-y-4 ${props.compact ? "" : "lg:grid-cols-2"}`}>
+    <div role={groupRole} aria-label={props.ariaLabel} className={`grid gap-x-5 gap-y-3.5 lg:gap-y-4 ${props.compact ? "" : "lg:grid-cols-2"}`}>
       {(Object.keys(ACTIVITY_GROUPS) as ActivityGroup[]).map((g) => (
         <div key={g} className="flex flex-col gap-2">
           <Overline>{t(`activity.group.${g}`)}</Overline>

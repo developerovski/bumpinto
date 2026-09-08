@@ -10,7 +10,8 @@ export default function SignInBlock() {
     <div className="flex w-full max-w-[21.25rem] flex-col gap-2.5 lg:mt-1.5">
       <GoogleSignIn />
       <AppleSignIn />
-      <Note center>
+      {/* Artboard (622) koşullar satırı `.mi` (12px) — `.cp` değil. */}
+      <Note center small>
         <Trans i18nKey="landing.terms" components={[<a key="0" href="/terms" />]} />
       </Note>
     </div>

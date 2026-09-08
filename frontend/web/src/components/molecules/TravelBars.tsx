@@ -18,6 +18,10 @@ export default function TravelBars(props: {
       2013) alt satır onu TEKRAR ETMEZ — yalnız olgu kalır (2023: "fark 10 dk · en uzun yol Kerem").
       Aynı hesabın (`fairnessLine`) iki sunumu; ikinci bir kural değil. */
   hideLead?: boolean;
+  /** Adalet satırının tamamı. Artboard 2580-2584'te Karar ekranının `.tb` kartı YALNIZ üç çubuk
+      satırı taşır — adalet cümlesi orada değil, imza kartının `.rc-ft` altbilgisindedir; iki
+      yüzey birden basınca aynı cümle ekranda iki kez görünüyordu (rapor I · P3-7). */
+  note?: boolean;
 }) {
   const { t } = useTranslation();
   const f = fairnessOf(props.venue);
@@ -36,7 +40,8 @@ export default function TravelBars(props: {
         {rows.map((e) => (
           <li key={e.id} className={ROW}>
             <b className="truncate font-bold text-ink">{props.travel.labels[e.id] ?? t("travel.friend")}</b>
-            <span className="relative h-2 overflow-hidden rounded-full bg-line2">
+            {/* `.tb-b` rayı `--color-track` (#efe7dc), `line2` DEĞİL (artboard CSS 432). */}
+            <span className="relative h-2 overflow-hidden rounded-full bg-track">
               <i
                 data-testid={`travel-fill-${e.id}`}
                 className={`absolute inset-y-0 left-0 rounded-full ${e.id === f.longestId ? "bg-flame" : "bg-grass"}`}
@@ -49,7 +54,7 @@ export default function TravelBars(props: {
           </li>
         ))}
       </ul>
-      <FairnessNote line={line} />
+      {props.note !== false && <FairnessNote line={line} />}
     </div>
   );
 }

@@ -91,25 +91,29 @@ describe("JoinForm — host çevrimiçiliği", () => {
   });
 });
 
-/** Artboard Katıl (1280 ve 390) konum bloğunu "Başka bir şehir ya da adres yaz" bağlantısında
-    BİTİRİR — katılım ekranında harita seçici yok. Kural aynı zamanda maliyet kuralıdır:
-    faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil. */
-describe("JoinForm — harita seçici yok", () => {
+/** Katılım ekranında harita seçici VAR: konum izni reddedilen davetlinin adres yazmaktan başka
+    çıkışı olmalı (artboard bu düğmeyi çizmiyor, ama yerine bir yol da koymuyor — kaldırıldığında
+    ekran çıkmaz sokağa dönüyor). Maliyet kuralı korunur: faturalanan birim
+    `new google.maps.Map()` ÖRNEĞİdir, o yüzden harita YALNIZ düğmeye basılınca mount edilir. */
+describe("JoinForm — haritadan konum seçme", () => {
   // MapPicker motoru config'ten okuyor (spec §7) — seed edilmezse gerçek fetch'e düşerdi.
   beforeEach(() => {
     useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
   });
   afterEach(() => resetConfig());
 
-  it("katılım ekranı hiçbir durumda harita seçici sunmaz", async () => {
-    useAuthStore.setState({ status: "anon", me: null });
-    useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
+  it("adres alanının altında 'Haritadan seç' sunar; seçici AÇILANA kadar mount edilmez", async () => {
     render(<MemoryRouter><JoinForm /></MemoryRouter>);
     // Sağdaki MapView de tembel; onun DOM'a düşmesini beklemek tembel chunk'lara fırsat verir.
     await screen.findByTestId("mapview");
 
-    expect(screen.queryByRole("button", { name: "Haritadan seç" })).not.toBeInTheDocument();
+    const pick = screen.getByRole("button", { name: "Haritadan seç" });
+    // Düğmeye basılmadan harita SEÇİCİSİ yok — faturalanan birim onun `new google.maps.Map()`ı.
     expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
+    fireEvent.click(pick);
+    expect(await screen.findByRole("button", { name: "Burayı seç" })).toBeInTheDocument();
   });
 });
 

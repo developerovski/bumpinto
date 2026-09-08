@@ -42,7 +42,8 @@ describe("FinishedCard", () => {
     // "Kerem" başlıkta da (fosforlu kalem) geçiyor — burada aranan ROSTER satırı.
     const rows = screen.getAllByRole("listitem");
     expect(rows.some((r) => r.textContent?.includes("Kerem"))).toBe(true);
-    expect(screen.getByText("Kaydırıyor")).toBeInTheDocument();
+    // Artboard 3455/3462: rozet metinleri küçük harf ("bitti" / "kaydırıyor").
+    expect(screen.getByText("kaydırıyor")).toBeInTheDocument();
   });
 
   it("gönderdikten sonra onay rozeti ve 'kaydırıyor' başlığı görünür", () => {

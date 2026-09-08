@@ -34,7 +34,10 @@ export default function Landing() {
       <div className="flex flex-1 flex-col justify-center">
         <TwoZone centerY rightLgOnly leftGap="md" rightGap="lg"
           left={<>
-            <MapMark />
+            {/* Artboard 390 (660): `.scroll` gap 0, ritim eleman marjlarından gelir ve `.mark`
+                26px altlık taşır; mobil bölge boşluğu 16px olduğu için 10px eklenir (≥1024'te
+                artboard zaten 18px bölge boşluğu kullanır, orada ek yok). */}
+            <div className="max-lg:mb-[0.625rem]"><MapMark /></div>
             <Heading size="hero"><Trans i18nKey="landing.title" components={[<Highlight key="0" />, <br key="1" />]} /></Heading>
             <Lead>{t("landing.copy")}</Lead>
             <HandNote>{t("landing.hand")}</HandNote>

@@ -1,9 +1,13 @@
-/* Artboard W3e `.sk` — mekan satırı iskeleti: 56×64 görsel kutusu + üç metin şeridi. Nabız
-   `motion-safe:` ile: `app.css` `prefers-reduced-motion`da tüm animasyonları zaten kapatıyor,
-   sınıf o kararı OKUNUR ve test edilebilir kılar. Yarıçap BURADA yok — her kullanım kendisininkini
-   verir (kod incelemesi #7): aynı elemana iki `rounded-*` binerse kazananı sınıf sırası değil
-   Tailwind'in çıktı sırası belirler. */
-const BLOCK = "block bg-sand motion-safe:animate-pulse";
+/* Artboard W3e `.sk` — mekan satırı iskeleti: 56×64 görsel kutusu + üç metin şeridi.
+   Artboard 559: parıltı bir opaklık nabzı DEĞİL, soldan sağa süpüren üç duraklı gradyan
+   (`background-size:200%`) — `--animate-shimmer` app.css'te. `motion-safe:` ile: `app.css`
+   `prefers-reduced-motion`da tüm animasyonları zaten kapatıyor, sınıf o kararı OKUNUR ve test
+   edilebilir kılar (durunca gradyanın ilk durağı düz zemin gibi görünür). Yarıçap BURADA yok —
+   her kullanım kendisininkini verir (kod incelemesi #7): aynı elemana iki `rounded-*` binerse
+   kazananı sınıf sırası değil Tailwind'in çıktı sırası belirler. */
+const BLOCK =
+  "block bg-[linear-gradient(90deg,#F0E9E0,#F8F2EA,#F0E9E0)] bg-[length:200%_100%] " +
+  "motion-safe:animate-shimmer";
 
 export default function VenueRowSkeleton() {
   return (

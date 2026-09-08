@@ -12,6 +12,11 @@ export default function Attribution(props: {
   /** Artboard 2024 — kart içinde uzun yasal cümle yerine KISA sağlayıcı adı (`source.<id>`).
       Yasal cümlenin tamamı listenin altındaki birleşik atıfta basılmaya devam eder (spec §11). */
   compact?: boolean;
+  /** Artboard 2570 — atıf, Karar aksiyon şeridinde düğmelerle AYNI satırda duran bir çip.
+      `row`dan farkı: kendi satırını açmaz, üst payı yoktur. Sağlayıcı ikonunu BASMAZ —
+      artboard'daki `ph-google-logo` sağlayıcı başına kod dalı gerektirirdi; `config.sources[]`
+      ikon taşımıyor (spec §11 veri-güdümlülük kuralı). */
+  inline?: boolean;
 }) {
   const { t } = useTranslation();
   const config = useConfigStore((s) => s.config);
@@ -30,7 +35,11 @@ export default function Attribution(props: {
   if (lines.length === 0) return null;
 
   const cls = [
-    props.row ? "flex flex-row flex-wrap items-center gap-4 pt-1.5" : "flex flex-col gap-0.5",
+    props.inline
+      ? "inline-flex flex-row flex-wrap items-center gap-4"
+      : props.row
+        ? "flex flex-row flex-wrap items-center gap-4 pt-1.5"
+        : "flex flex-col gap-0.5",
     "text-[0.6875rem] tracking-[0.02em] text-ink2",
     props.center ? "justify-center text-center" : "",
   ]

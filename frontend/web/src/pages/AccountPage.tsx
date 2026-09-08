@@ -79,7 +79,10 @@ export default function AccountPage() {
   return (
     <Page>
       <PageHeader title={t("account.title")} size="reader" />
+      {/* Artboard 4731/4778: iki bölge de 18px boşluk taşır — `.zone` varsayılanı 16px. */}
       <TwoZone
+        leftGap="md"
+        rightGap="md"
         left={<>
           <Overline>{t("account.legal")}</Overline>
           <SettingsCard label={t("account.legal")}>

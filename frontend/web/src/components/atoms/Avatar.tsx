@@ -14,7 +14,8 @@ const base =
     (29px) — oturum kartı yığını ve roster satırları; `2xs` sonuç kartı kişi satırı (26px); xl = Profil kimlik kartı (80px). */
 const sizes = {
   md: "h-10 w-10 text-[0.9375rem]",
-  sm: "h-[2.125rem] w-[2.125rem] text-[0.8125rem]",
+  // 390 artboard (774) üst çubuk avatarını 32/12'ye küçültür; 1280 (686) 34/13.
+  sm: "h-8 w-8 text-[0.75rem] lg:h-[2.125rem] lg:w-[2.125rem] lg:text-[0.8125rem]",
   xs: "h-[1.8125rem] w-[1.8125rem] text-[0.75rem]",
   "2xs": "h-[1.625rem] w-[1.625rem] text-[0.6875rem]",
   xl: "h-16 w-16 text-2xl lg:h-20 lg:w-20 lg:text-[1.875rem]",

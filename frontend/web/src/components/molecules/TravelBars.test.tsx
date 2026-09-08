@@ -29,4 +29,12 @@ describe("TravelBars", () => {
     rerender(<TravelBars venue={{ id: "v1" }} travel={travel} title="Herkesin yolu" />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  /* Artboard 2580-2584: Karar ekranının `.tb` kartında adalet cümlesi YOK — o cümle imza
+     kartının `.rc-ft` altbilgisinde. `note={false}` iki yüzeyin aynı cümleyi basmasını keser. */
+  it("note={false} adalet satırını düşürür, çubuklar kalır", () => {
+    render(<TravelBars venue={venue({ s: 30, k: 35, a: 25 })} travel={travel} note={false} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.queryByText(/fark 10 dk/)).not.toBeInTheDocument();
+  });
 });

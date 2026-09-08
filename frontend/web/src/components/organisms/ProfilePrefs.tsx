@@ -112,7 +112,16 @@ export default function ProfilePrefs({
       <PrefRow
         label={t("profile.defaultActivity")}
         icon={Icon ? <Icon /> : <Coffee />}
-        value={activity ? `${t(`activity.${activity}`)} · ${t(`activity.group.${groupOf(activity)}`)}` : null}
+        value={
+          activity ? (
+            <>
+              {t(`activity.${activity}`)}
+              {/* Artboard 2718'de (1280) alt satır "Kahve · Yeme-içme", 390'da (2799) yalnız
+                  "Kahve" — dar satırda grup adı etiketi kırıyordu. */}
+              <span className="hidden lg:inline"> · {t(`activity.group.${groupOf(activity)}`)}</span>
+            </>
+          ) : null
+        }
         aside={
           activity && Icon ? (
             // Artboard 2722 `.chip.on`: min-height 36, yatay dolgu 12, 13px.

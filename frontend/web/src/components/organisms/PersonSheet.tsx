@@ -41,7 +41,9 @@ function ActionRow(props: {
     <button type="button" className={ROW} disabled={props.disabled} onClick={props.onClick}>
       <span className={CHIP}>{props.icon}</span>
       <span className="flex flex-col">
-        <span className={`text-[0.875rem] font-bold${props.danger ? " text-flame-deep" : ""}`}>{props.title}</span>
+        {/* Artboard 5613 `.danger` — engelleme #B3261E; marka pembesi (flame-deep) uyarı
+            değil vurgu rengidir. */}
+        <span className={`text-[0.875rem] font-bold${props.danger ? " text-danger" : ""}`}>{props.title}</span>
         <span className="text-xs text-ink2">{props.hint}</span>
       </span>
     </button>
@@ -111,7 +113,7 @@ export default function PersonSheet(props: {
               />
               <div className="mx-4 h-px bg-line" />
               <ActionRow
-                icon={<Prohibit size={17} className="text-flame-deep" aria-hidden />}
+                icon={<Prohibit size={17} className="text-danger" aria-hidden />}
                 danger
                 title={t("social.block")}
                 hint={t("social.blockHint")}

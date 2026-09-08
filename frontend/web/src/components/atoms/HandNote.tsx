@@ -9,7 +9,8 @@ export default function HandNote(props: {
 }) {
   return (
     <p
-      className={`font-hand text-[1.25rem] font-semibold text-ink2 -rotate-[1.5deg]${props.size === "sm" ? " lg:text-[1.125rem]" : ""}${
+      /* Artboard 619 / 665 / 788: `.hand` her üç yerde de `rotate(-2deg)`. */
+      className={`font-hand text-[1.25rem] font-semibold text-ink2 -rotate-2${props.size === "sm" ? " lg:text-[1.125rem]" : ""}${
         props.center ? " text-center" : ""
       }`}
     >

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import { fairnessOf } from "@bumpinto/shared";
-import { formatRating, providerMark } from "../../lib/format";
+import { formatRating } from "../../lib/format";
 import { monogram } from "../../lib/monogram";
 import { fairnessLine } from "../../lib/travelText";
 import type { TravelInfo } from "../../lib/useTravelLabels";
@@ -80,6 +80,8 @@ export default function VenueCard(props: {
   /** Kart yüzeyi — `polaroid` (varsayılan, artboard `.pol` 24/10) ya da `card` (artboard
       `.card` 22/12; W7 finalist kartı). Yalnız yarıçap + iç boşluk değişir. */
   surface?: keyof typeof SURFACES;
+  /** `variant="row"` — berabere 390 sıkı geometrisi (artboard 4361-4364). */
+  compact?: boolean;
   /** Kart GÖVDESİNİN sonuna eklenen satır — W7'de `.f-trail` (2389/2405) kartın İÇİNDE,
       altında kardeş bir öğe olarak DEĞİL. */
   footer?: ReactNode;
@@ -112,7 +114,6 @@ export default function VenueCard(props: {
   const showPhoto = hasPhoto && !broken;
   const hasPrice = v.priceLevel != null && v.priceLevel > 0;
   const hasMeta = v.rating != null || hasPrice;
-  const mark = providerMark(v.provider);
   // Semt YALNIZ orta nokta şehrinden farklıysa gösterilir — aynıysa tekrar (§4.9).
   const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
   const tagline = taglineOf(v);
@@ -140,14 +141,20 @@ export default function VenueCard(props: {
   );
 
   // Artboard 2459/2474: iki finalist ters yönde eğik duruyor (∓2.2°).
+  // Berabere 390'ı (4361-4364) AYNI satırı daha sıkı çizer: kart dolgusu 12/14, foto 56px /
+  // yarıçap 14, eğim YOK — iki kart birden ekrana sığmak zorunda.
   if (props.variant === "row") {
-    const tilt =
-      (v.deckOrder ?? 0) % 2 === 0 ? "transform-[rotate(-2.2deg)]" : "transform-[rotate(2.2deg)]";
+    const compact = props.compact === true;
+    const tilt = compact
+      ? null
+      : (v.deckOrder ?? 0) % 2 === 0
+        ? "transform-[rotate(-2.2deg)]"
+        : "transform-[rotate(2.2deg)]";
     return (
       <div
         className={[
-          // Artboard 2458: padding 12px, satırlar arası 8px.
-          "flex flex-col gap-2 rounded-card bg-card p-3",
+          // Artboard 2458: padding 12px, satırlar arası 8px (berabere 4361: 12/14).
+          `flex flex-col gap-2 rounded-card bg-card ${compact ? "p-[0.75rem_0.875rem]" : "p-3"}`,
           dim,
           props.selected
             ? "border-[1.5px] border-flame-deep shadow-sh2"
@@ -158,12 +165,13 @@ export default function VenueCard(props: {
           .join(" ")}
         style={props.style}
       >
-        <div className="flex items-center gap-[0.875rem]">
+        <div className={`flex items-center ${compact ? "gap-3" : "gap-[0.875rem]"}`}>
           <div
             className={[
-              // Artboard 2459: 70x70, yarıçap 16.
-              "relative flex h-[4.375rem] w-[4.375rem] flex-none items-end",
-              "overflow-hidden rounded-2xl",
+              // Artboard 2459: 70x70 / yarıçap 16 — berabere 4363: 56x56 / yarıçap 14.
+              compact
+                ? "relative flex h-14 w-14 flex-none items-end overflow-hidden rounded-[0.875rem]"
+                : "relative flex h-[4.375rem] w-[4.375rem] flex-none items-end overflow-hidden rounded-2xl",
               tilt,
               photoClass,
             ]
@@ -278,12 +286,6 @@ export default function VenueCard(props: {
                 <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.75rem] leading-[1.45] text-ink2">
                   {v.rating != null && (
                     <strong className="font-bold text-ink">★ {formatRating(v.rating, v.ratingScale)}</strong>
-                  )}
-                  {v.rating != null && mark && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span>{mark}</span>
-                    </>
                   )}
                   {hasPrice && (
                     <>
