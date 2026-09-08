@@ -40,6 +40,12 @@ test("ne silinir / ne kalır listelerini gösterir; 'SİL' yazılmadan onay KAPA
 
 /* Küçük harf kabul edilir: `toLocaleUpperCase("tr-TR")` Türkçe i→İ eşlemesini doğru yapar
    (varsayılan yerelde "sil" → "SIL" olur ve HİÇ eşleşmezdi). */
+test("onay sözcüğü ÇEVRİLİR — test dili tr olduğu için SİL beklenir", async () => {
+  await render(<DeleteAccountScreen />);
+  fireEvent.press(screen.getByText("Hesabımı sil"));
+  expect(await screen.findByText("Onaylamak için SİL yaz")).toBeTruthy();
+});
+
 test("küçük harf 'sil' ve boşluklu giriş kabul edilir", async () => {
   await render(<DeleteAccountScreen />);
   await openSheet(" sil ");

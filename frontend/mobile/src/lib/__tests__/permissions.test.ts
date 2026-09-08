@@ -19,16 +19,24 @@ test("izin varsa sistem diyaloğunu açmaz", async () => {
   expect(req).not.toHaveBeenCalled();
 });
 
-test("sorulabiliyorsa diyaloğu açar; sorulamıyorsa 'blocked'; Ayarlar sistemden açılır", async () => {
-  get.mockResolvedValue({ granted: false, canAskAgain: true });
+test("izin yoksa HER ZAMAN sistem diyaloğunu dener", async () => {
+  /* Android'de `canAskAgain`, `shouldShowRequestPermissionRationale()`'a düşer ve izin HİÇ
+     istenmemişken de false olur. `get*` sonucuna bakıp erken dönmek, diyaloğun ilk seferde
+     hiç açılmaması demekti (2026-09-08 emülatörde görüldü; birim testler yanlış davranışı
+     doğruluyordu). Karar `request*`'a bırakılır. */
+  get.mockResolvedValue({ granted: false, canAskAgain: false });
   req.mockResolvedValue({ granted: false, canAskAgain: true });
   expect(await requestLocationWhenInUse()).toBe("denied");
   expect(req).toHaveBeenCalledTimes(1);
+});
 
+test("kalıcı reddi 'blocked' olarak bildirir; Ayarlar sistemden açılır", async () => {
   get.mockResolvedValue({ granted: false, canAskAgain: false });
-  const spy = jest.spyOn(Linking, "openSettings").mockResolvedValue();
+  // `request*` kalıcı reddi tanır: diyalog AÇMADAN canAskAgain:false döner.
+  req.mockResolvedValue({ granted: false, canAskAgain: false });
   expect(await requestLocationWhenInUse()).toBe("blocked");
-  expect(req).toHaveBeenCalledTimes(1); // ikinci kez sistem diyaloğu AÇILMADI
+
+  const spy = jest.spyOn(Linking, "openSettings").mockResolvedValue();
   await openAppSettings();
   expect(spy).toHaveBeenCalled();
 });

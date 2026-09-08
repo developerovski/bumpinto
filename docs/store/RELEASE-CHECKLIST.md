@@ -43,6 +43,16 @@ Uygulama tarafı **M-5** ile kapandı; bu liste kodun dışındaki kapılardır.
 - [ ] IARC anketi; hedef kitle 13+ (**Families değil**).
 - [ ] Target API 36 (`expo-build-properties`); 16 KB page size — WebRTC yerel modülü geldiğinde
       (M-6) **yeniden koş**.
+- [ ] **İzin seti DERLENMİŞ APK'dan doğrulandı** (`app.config.ts`ten değil). `expo run:android` var
+      olan `android/` dizinini bayat bırakabiliyor — izin değişikliğinden sonra
+      `expo prebuild --clean --platform android` şart (K-M20). Çıktı **tam olarak iki satır**
+      olmalı; `adb shell dumpsys package` KULLANMA (sistemin türetilmiş görünümünü basar,
+      yanlış alarm verir):
+      ```sh
+      aapt2 dump permissions android/app/build/outputs/apk/debug/app-debug.apk | grep uses-permission
+      # uses-permission: name='android.permission.ACCESS_FINE_LOCATION'
+      # uses-permission: name='android.permission.RECORD_AUDIO'
+      ```
 - [ ] Yeni bireysel hesapsa **kapalı test: 12 tester × 14 gün**. Bu M-5 bitmeden **başlatılmalı**
       (kritik yol riski — K-M6).
 - [ ] Feature graphic 1024×500 · ikon 512×512 · 2–8 ekran görüntüsü.

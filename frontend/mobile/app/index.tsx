@@ -26,14 +26,9 @@ export default function Landing() {
   const insets = useSafeAreaInsets();
   const status = useAuthStore((s) => s.status);
   const error = useAuthStore((s) => s.error);
-  const restore = useAuthStore((s) => s.restore);
   const signIn = useAuthStore((s) => s.signIn);
   const signInApple = useAuthStore((s) => s.signInApple);
   const [appleReady, setAppleReady] = useState(false);
-
-  useEffect(() => {
-    void restore();
-  }, [restore]);
 
   useEffect(() => {
     void AppleAuthentication.isAvailableAsync().then(setAppleReady, () => setAppleReady(false));

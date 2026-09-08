@@ -15,11 +15,13 @@ import { useMeStore } from "../../src/store/meStore";
 /**
  * O15 + O16 — hesabı sil (R-M6). Apple 5.1.1(v) ve Play "hesap silme" şartı.
  *
- * ÜÇ adım bilinçlidir: (1) ne silinir / ne kalır, (2) "SİL" yazarak onay, (3) sonuç ekranı.
- * Oturum yalnız sunucu 204 döndükten SONRA kapanır — silme başarısızken çıkış yapmak
- * kullanıcıyı verisi hâlâ dururken dışarıda bırakırdı.
+ * ÜÇ adım bilinçlidir: (1) ne silinir / ne kalır, (2) onay sözcüğünü yazarak doğrulama,
+ * (3) sonuç ekranı. Oturum yalnız sunucu 204 döndükten SONRA kapanır — silme başarısızken
+ * çıkış yapmak kullanıcıyı verisi hâlâ dururken dışarıda bırakırdı.
+ *
+ * Onay sözcüğü ÇEVRİLİR (`del.confirmWord`: SİL / DELETE / VERWIJDER) — web ile aynı davranış.
+ * Sabit kodlanırsa İngilizce arayüzde kullanıcıdan Türkçe bir sözcük istenirdi.
  */
-const CONFIRM_WORD = "SİL";
 
 export default function DeleteAccountScreen() {
   const { t } = useTranslation();
@@ -29,7 +31,10 @@ export default function DeleteAccountScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canDelete = typed.trim().toLocaleUpperCase("tr-TR") === CONFIRM_WORD;
+  const confirmWord = t("del.confirmWord");
+  // TR'de "sil".toUpperCase() → "SIL" (noktasız I); karşılaştırma yerele duyarlı yapılır.
+  const canDelete =
+    typed.trim().toLocaleUpperCase("tr") === confirmWord.toLocaleUpperCase("tr");
 
   const remove = async () => {
     setBusy(true);
@@ -119,7 +124,7 @@ export default function DeleteAccountScreen() {
           <View style={s.grab} />
           <AppText variant="h2">{t("del.sheetTitle")}</AppText>
           <AppText variant="body">
-            {t("del.confirmLabel", { word: CONFIRM_WORD })}
+            {t("del.confirmLabel", { word: confirmWord })}
           </AppText>
           <Input
             value={typed}

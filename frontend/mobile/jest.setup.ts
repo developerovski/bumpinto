@@ -58,6 +58,7 @@ jest.mock("expo-router", () => ({
   /* `jest.fn` (sabit nesne DEĞİL): parametreli rotaları test eden ekranlar bunu
      `mockReturnValue` ile değiştirir. Varsayılan, oturum rotalarının beklediği slug. */
   useLocalSearchParams: jest.fn(() => ({ slug: "x7k2m" })),
+  usePathname: jest.fn(() => "/"),
   /* Muhafız/yönlendirme dalları render edilebilsin diye görünür bir işaret çizer. */
   Redirect: ({ href }: { href?: unknown }) =>
     require("react").createElement(require("react-native").Text, null, `redirect:${String(href)}`),
@@ -84,6 +85,10 @@ jest.mock("@react-native-google-signin/google-signin", () => ({
     signOut: jest.fn(async () => undefined),
   },
 }));
+
+/* Jest ikizi paketin KENDİSİNDEN gelir: `GestureHandlerRootView` yerel modülü açılışta
+   `install()` çağırır ve testte patlar. */
+require("react-native-gesture-handler/jestSetup");
 
 /* Güvenli alan bağlamı: ekranlar `useSafeAreaInsets` çağırır ve testte sağlayıcı yoktur.
    Paketin kendi ikizi kullanılır (sabit kenar boşlukları döner). */

@@ -68,7 +68,9 @@ describe("LegalPage", () => {
   it("gövde çeviri şeridi DEĞİL gerçek çeviridir: EN gizlilik Türkçe cümle taşımaz", async () => {
     await inLanguage("en", "privacy");
     expect(screen.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeInTheDocument();
-    expect(screen.getByText(/streams directly between devices \(P2P\)/)).toBeInTheDocument();
+    // "(P2P)" jargonu 2026-09-08'de kullanıcıya giden metinlerden çıkarıldı (K-M24);
+    // testin amacı EN gövdesinin GERÇEK çeviri olması, bu cümle onu hâlâ kanıtlıyor.
+    expect(screen.getByText(/streams directly between devices/)).toBeInTheDocument();
     expect(screen.queryByText(/cihazlar arası doğrudan/)).not.toBeInTheDocument();
   });
 });
