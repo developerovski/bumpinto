@@ -17,7 +17,7 @@ export function FairnessNote(props: { line: FairnessLine }) {
   const { lead, leadTone, rest } = props.line;
   if (!lead && rest.length === 0) return null;
   return (
-    <span className="text-[0.75rem] text-ink2">
+    <span className="text-[0.75rem] font-medium text-ink2">
       {lead && (
         <strong className={leadTone === "amber" ? "font-bold text-amber-ink" : "font-bold text-ink"}>{lead}</strong>
       )}
@@ -62,15 +62,16 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
             />
           )}
           {f.entries.map((e) => {
-            // A1: kenarlık/zemin/metin TEK dışlayıcı zincir — aynı utility'nin adayları Tailwind v4'te
-            // alfabetik üretildiği için sınıflar aynı anda basılırsa kaynak sırası (ör. `border-grass`)
-            // sessizce kazanır. Öncelik artboard'daki gibi: aykırı > kendin > diğer.
-            const tone =
-              e.id === f.outlierId
-                ? "border-amber bg-white text-ink"
-                : props.travel.selfId && e.id === props.travel.selfId
-                  ? "border-flame-deep bg-flame-deep text-white"
-                  : "border-grass bg-white text-ink";
+            // A1: HER utility ailesinden (kenarlık / zemin+metin) TEK sınıf basılır — aynı ailenin
+            // iki adayı birlikte basılırsa kazananı kaynak sırası değil Tailwind v4'ün alfabetik
+            // çıktısı belirler. Aileler artboard'daki gibi AYRI karar verir: `.me` zemin/metni,
+            // `.far` YALNIZ kenarlığı ezer — yani hem kendin hem aykırıysan flame dolgu + amber
+            // halka birlikte görünür (eskiden aykırılık flame işaretini tümüyle yutuyordu).
+            const self = props.travel.selfId != null && e.id === props.travel.selfId;
+            const border =
+              e.id === f.outlierId ? "border-amber" : self ? "border-flame-deep" : "border-grass";
+            const fill = self ? "bg-flame-deep text-white" : "bg-white text-ink";
+            const tone = `${border} ${fill}`;
             return (
               <span
                 key={e.id}

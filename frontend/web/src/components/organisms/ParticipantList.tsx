@@ -1,6 +1,6 @@
 /* Kaynak: ui.css .field / .row / .a-ov / .muted / .tab / .a-card / .a-dv */
 import { HandWaving } from "@phosphor-icons/react";
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { Button, Overline, Progress } from "../atoms";
@@ -16,21 +16,36 @@ export default function ParticipantList({
   participants,
   slug,
   isHost,
+  hideNudge,
+  anchored,
+  steps,
 }: {
   participants: ParticipantDto[];
   slug: string;
   isHost: boolean;
+  /** Bekle ekranı `WaitingStatus` içinde ZATEN dürtme sunuyor (davetliye de açık); aynı sayfada
+      iki dürtme yüzeyi olmasın diye o ekran bu şeridi kapatır. */
+  hideNudge?: boolean;
+  /** `SessionView.anchored` — çapalı oturumda konum ŞART DEĞİL: sayaç ve satırlar herkesi
+      hazır sayar (artboard W3d 4013–4015: "1 / 1 hazır", %100). */
+  anchored?: boolean;
+  /** Artboard W3 1092–1099: adım şeridi "Kimler var" bloğunun İÇİNDE, ilerleme çubuğunun
+      altında durur. Bileşen olarak değil slot olarak: Bekle ekranı onu başka yerde basıyor. */
+  steps?: ReactNode;
 }) {
   const { t } = useTranslation();
   const viewerId = useSessionStore((s) => s.view?.viewer?.participantId);
   const nudge = useSocialStore((s) => s.nudge);
   const canNudge = useSocialStore((s) => s.canNudge);
   const [sheetFor, setSheetFor] = useState<ParticipantDto | null>(null);
-  // R-W6 kapısı: yalnız çevrimdışı YA DA konumu gelmemiş kişi dürtülür.
+  // R-W6 kapısı: yalnız çevrimdışı YA DA konumu gelmemiş kişi dürtülür. Çapalıda konum
+  // beklenmediği için "konumu yok" dürtme sebebi DEĞİLDİR — geriye yalnız çevrimdışı kalır.
   const waiting = participants.filter(
-    (p) => !!p.id && p.id !== viewerId && !p.manual && !p.blocked && (p.online === false || !p.hasLocation),
+    (p) =>
+      !!p.id && p.id !== viewerId && !p.manual && !p.blocked &&
+      (p.online === false || (!anchored && !p.hasLocation)),
   );
-  const ready = participants.filter((p) => p.hasLocation).length;
+  const ready = anchored ? participants.length : participants.filter((p) => p.hasLocation).length;
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -42,6 +57,7 @@ export default function ParticipantList({
           </span>
         </div>
         <Progress value={ready / Math.max(participants.length, 1)} />
+        {steps}
       </div>
       <div className="rounded-card border border-line bg-card py-0.5 shadow-sh1">
         {participants.map((p, i) => {
@@ -50,11 +66,17 @@ export default function ParticipantList({
           return (
             <Fragment key={p.id ?? i}>
               {i > 0 && <div className="mx-4 h-px bg-line" />}
-              <ParticipantRow participant={p} index={i} isSelf={isSelf} onOptions={setSheetFor} />
+              <ParticipantRow
+                participant={p}
+                index={i}
+                isSelf={isSelf}
+                anchored={anchored}
+                onOptions={setSheetFor}
+              />
             </Fragment>
           );
         })}
-        {isHost && waiting.length > 0 && (
+        {isHost && !hideNudge && waiting.length > 0 && (
           <>
             <div className="mx-4 h-px bg-line" />
             <div className="flex flex-col gap-2 px-4 py-3">

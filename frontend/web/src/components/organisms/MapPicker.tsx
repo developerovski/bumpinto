@@ -10,6 +10,8 @@ export type MapPickerProps = {
   center: LatLng;
   onPick: (loc: { lat: number; lng: number; label: string | null }) => void;
   onCancel: () => void;
+  /** Artboard: 390 alt sayfasında 300px, 1280 sağ bölgesinde 520px. Verilmezse eski 256px. */
+  heightClass?: string;
 };
 
 const GoogleEngine = lazy(() => import("./MapPicker.google"));
@@ -26,7 +28,7 @@ export default function MapPicker(props: MapPickerProps) {
 
   const placeholder = (text: string) => (
     <div className="flex flex-col gap-2">
-      <div className="flex h-[16rem] items-center justify-center overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7] p-6">
+      <div className={`flex items-center justify-center overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7] p-6 ${props.heightClass ?? "h-[16rem]"}`}>
         <Note center>{text}</Note>
       </div>
     </div>

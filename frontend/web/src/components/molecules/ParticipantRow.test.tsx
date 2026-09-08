@@ -72,3 +72,35 @@ describe("ParticipantRow — presence 2.0", () => {
     expect(screen.getByText("engellendi")).toBeInTheDocument();
   });
 });
+
+/** Artboard W3d (4020/4113) — çapalı oturumda konum ŞART DEĞİL: satır bekleyen gibi değil
+    hazır gibi görünür. Rol rozeti ("Kuran") durum rozetini gizlemez (artboard W3 1107–1108). */
+describe("ParticipantRow — çapalı oturum", () => {
+  it("konumsuz katılımcı 'gerekmiyor' der, yeşil Hazır rozeti alır, nabız atmaz", () => {
+    const w = { hasLocation: false, locationLabel: undefined };
+    const { container, rerender } = render(
+      <ParticipantRow participant={ayse(w) as never} index={0} anchored isSelf />,
+    );
+    expect(screen.getByText("Konum vermedin · gerekmiyor")).toBeInTheDocument();
+    expect(screen.getByText("Hazır")).toBeInTheDocument();
+    expect(container.querySelector(".c-pulse")).toBeNull();
+
+    // Başkasının satırında ikinci tekil şahıs YANLIŞ olur.
+    rerender(<ParticipantRow participant={ayse(w) as never} index={0} anchored />);
+    expect(screen.getByText("Konum vermedi · gerekmiyor")).toBeInTheDocument();
+  });
+
+  it("çapa yokken konumsuz satır aynen bekliyor kalır", () => {
+    const w = { hasLocation: false, locationLabel: undefined };
+    const { container } = render(<ParticipantRow participant={ayse(w) as never} index={0} isSelf />);
+    expect(screen.getByText("Konum bekleniyor…")).toBeInTheDocument();
+    expect(screen.getByText("Bekliyor")).toBeInTheDocument();
+    expect(container.querySelector(".c-pulse")).not.toBeNull();
+  });
+
+  it("kuran satırında rol ve durum rozeti birlikte basılır", () => {
+    render(<ParticipantRow participant={ayse({ host: true }) as never} index={0} />);
+    expect(screen.getByText("Kuran")).toBeInTheDocument();
+    expect(screen.getByText("Hazır")).toBeInTheDocument();
+  });
+});

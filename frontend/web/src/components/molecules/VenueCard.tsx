@@ -1,13 +1,16 @@
 /* Kaynak: ui.css .a-pol* / .a-pho* / .a-row-card* / .a-row-thumb* / .a-pick* / DS v2 */
 import { PHOTO_CLASSES, PHOTO_MONO } from "./photoStyles";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
+import { fairnessOf } from "@bumpinto/shared";
 import { formatRating, providerMark } from "../../lib/format";
 import { monogram } from "../../lib/monogram";
+import { fairnessLine } from "../../lib/travelText";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { taglineOf } from "../../lib/venueText";
+import { Badge } from "../atoms";
 import Attribution from "./Attribution";
 import ActivityBadge from "./ActivityBadge";
 import FitLine from "./FitLine";
@@ -22,6 +25,12 @@ import TravelBars from "./TravelBars";
 // ui.css .a-pol-body(8px) + .a-pol--winner .a-pol-body(10px) — W4 kazanan kartı daha ferah.
 const BODY_GAPS = { sm: "gap-2", md: "gap-2.5" };
 
+/* Aynı kart iki AYRI yüzeyde yaşıyor: artboard `.pol` (deste yığını — yarıçap 24, iç boşluk 10)
+   ve `.card` (W7 finalist kartı, 2377 — yarıçap 22, iç boşluk 12). Tek prop, çünkü ikisi
+   BİRLİKTE değişir; `className` ile eklenselerdi hangi `rounded-*`/`p-*` kazanacağını kaynak
+   sırası değil Tailwind'in çıktı sırası belirlerdi (Page.tsx'teki aynı uyarı). */
+const SURFACES = { polaroid: "rounded-3xl p-2.5", card: "rounded-card p-3" };
+
 // .pick — seçim dairesi; seçilide gradyan dolgu + beyaz tik.
 const PICK_BASE = "h-[1.625rem] w-[1.625rem] flex-none rounded-full border-[1.5px]";
 const PICK = `${PICK_BASE} border-line-in`;
@@ -31,6 +40,10 @@ export default function VenueCard(props: {
   venue: VenueDto;
   /** Artboard .pol-ph varsayılanı 264px; W4 sonuç kartı 150px, liste modu 120px. */
   photoHeight?: number;
+  /** Fotoğraf yüksekliği kırılma noktasına göre değişiyorsa (deste: 390'da 210px, 1280'de 240px —
+      artboard 2111 / 2005). Verilirse `photoHeight` satır-içi ölçüsü BASILMAZ: medya sorgusu
+      `style` ile yazılamaz. */
+  photoClassName?: string;
   /** Yığındaki arka kartlar (artboard d2/d3): yalnız fotoğraf alanı, metin yok. */
   photoOnly?: boolean;
   /** Artboard W4: başlık sayfanın h1'i — kart gövdesinde tekrar edilmez. */
@@ -58,6 +71,27 @@ export default function VenueCard(props: {
       `false` geçer: W8 karar artboard'ında `.tb` yalnız sağdaki "Herkesin yolu" kartında TEK kez
       basılır, sol kazanan kartı kişi başı yolu `.rc-ppl` avatar satırlarıyla taşır. */
   travelBars?: boolean;
+  /** Kart gövdesindeki yol sunumu — `bars` (`.tb` kişi başı çubuk, varsayılan), `range` (`.rg`
+      bant + baş harf noktaları; W7 finalist kartı) ya da `none`. `travelBars={false}` ile aynı
+      anlamda `none` verir; ikisi birden verilirse `travelWidget` kazanır. */
+  travelWidget?: "bars" | "range" | "none";
+  /** Artboard `.f-dim` — kilitlenmiş runoff'ta kaybeden finalist. */
+  dim?: boolean;
+  /** Kart yüzeyi — `polaroid` (varsayılan, artboard `.pol` 24/10) ya da `card` (artboard
+      `.card` 22/12; W7 finalist kartı). Yalnız yarıçap + iç boşluk değişir. */
+  surface?: keyof typeof SURFACES;
+  /** Kart GÖVDESİNİN sonuna eklenen satır — W7'de `.f-trail` (2389/2405) kartın İÇİNDE,
+      altında kardeş bir öğe olarak DEĞİL. */
+  footer?: ReactNode;
+  /** Beraberlikte finalist başına oy sayısı (artboard 4368/4383 `.bg g-ne` "1 oy"). Verilirse
+      seçim dairesinin YERİNE basılır: oylama bittiğinde daire artık bir şey ifade etmiyor. */
+  voteCount?: number;
+  /** Başlık düzeyi: deste/liste `h2` (20px, varsayılan), W7 finalist kartı `.h3` (17px). */
+  titleLevel?: "h2" | "h3";
+  /** Artboard 2013/2119 — başlık satırının SAĞINDA adalet rozeti (`.bg g-gr` "Herkese ~aynı").
+      Yalnız deste kartı basar (opt-in): rozet basılınca `.tb` alt satırı lead'i tekrar etmez,
+      yalnız olguyu yazar (artboard 2023 "fark 10 dk · en uzun yol Kerem"). */
+  fairnessBadge?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -82,15 +116,39 @@ export default function VenueCard(props: {
   // Semt YALNIZ orta nokta şehrinden farklıysa gösterilir — aynıysa tekrar (§4.9).
   const locality = v.locality && v.locality !== props.midpointLabel ? v.locality : null;
   const tagline = taglineOf(v);
+  const widget = props.travelWidget ?? (props.travelBars === false ? "none" : "bars");
+  // .f-dim — kaybeden finalist: soluk + doygunluğu düşük.
+  const dim = props.dim ? "opacity-[0.48] saturate-[0.55]" : null;
+  // Adalet rozeti: `fairnessLine` ile TEK kaynak — rozet metni ve `.tb`/`.rg` alt satırındaki
+  // kalın baş cümle aynı hesaptan çıkar, bu yüzden ikisi asla çelişemez.
+  const fairness = props.fairnessBadge ? fairnessOf(v) : null;
+  const fLine = fairness ? fairnessLine(fairness, travel, t) : null;
+  const badgeLead = fLine?.lead ?? null;
 
-  // Artboard 07 Runoff: iki finalist ters yönde eğik duruyor (-2° / +2°).
+  // Seçim dairesi ile "N oy" rozeti AYNI slotu paylaşır (artboard 4368: oylama bitince daire
+  // rozete dönüşür) — iki varyant da aynı ikiliyi bastığından tek yerde kurulur.
+  const voteBadge =
+    props.voteCount != null ? (
+      <Badge tone="neutral">{t("runoff.voteCount", { count: props.voteCount })}</Badge>
+    ) : null;
+  const pickCircle = (
+    <span className={props.selected ? PICK_ON : PICK} aria-hidden>
+      {props.selected && (
+        <i className="mb-0.5 block h-[0.3125rem] w-[0.5625rem] border-b-2 border-l-2 border-b-white border-l-white transform-[rotate(-45deg)]" />
+      )}
+    </span>
+  );
+
+  // Artboard 2459/2474: iki finalist ters yönde eğik duruyor (∓2.2°).
   if (props.variant === "row") {
     const tilt =
-      (v.deckOrder ?? 0) % 2 === 0 ? "transform-[rotate(-2deg)]" : "transform-[rotate(2deg)]";
+      (v.deckOrder ?? 0) % 2 === 0 ? "transform-[rotate(-2.2deg)]" : "transform-[rotate(2.2deg)]";
     return (
       <div
         className={[
-          "rounded-card bg-card p-[0.875rem]",
+          // Artboard 2458: padding 12px, satırlar arası 8px.
+          "flex flex-col gap-2 rounded-card bg-card p-3",
+          dim,
           props.selected
             ? "border-[1.5px] border-flame-deep shadow-sh2"
             : "border border-line shadow-sh1",
@@ -103,7 +161,8 @@ export default function VenueCard(props: {
         <div className="flex items-center gap-[0.875rem]">
           <div
             className={[
-              "relative flex h-[4.625rem] w-[4.625rem] flex-none items-end",
+              // Artboard 2459: 70x70, yarıçap 16.
+              "relative flex h-[4.375rem] w-[4.375rem] flex-none items-end",
               "overflow-hidden rounded-2xl",
               tilt,
               photoClass,
@@ -126,7 +185,7 @@ export default function VenueCard(props: {
               </span>
             )}
           </div>
-          <div className="flex flex-1 flex-col gap-1">
+          <div className="flex flex-1 flex-col gap-[0.1875rem]">
             <h3>{v.name}</h3>
             {/* Artboard `Liste modu 390` `.row.wr` — puan/fiyat satırı + tek adalet rozeti.
                 Karışık destede aktivite rozeti de burada: mobil birinci sınıf artboard,
@@ -143,14 +202,13 @@ export default function VenueCard(props: {
                 </span>
               )}
             </div>
-            <RangeBar venue={v} travel={travel} />
           </div>
-          <span className={props.selected ? PICK_ON : PICK} aria-hidden>
-            {props.selected && (
-              <i className="mb-0.5 block h-[0.3125rem] w-[0.5625rem] border-b-2 border-l-2 border-b-white border-l-white transform-[rotate(-45deg)]" />
-            )}
-          </span>
+          {voteBadge ?? pickCircle}
         </div>
+        {/* Artboard 2466-2470: `.rg` + `.rg-g` kartın TAMAMINI kaplar — metin sütununun içinde
+            değil. Dar sütunda bant ~100px'e sıkışıyor, baş harf noktaları üst üste biniyordu. */}
+        {widget !== "none" && <RangeBar venue={v} travel={travel} />}
+        {props.footer}
       </div>
     );
   }
@@ -160,7 +218,8 @@ export default function VenueCard(props: {
   return (
     <div
       className={[
-        "relative flex w-full flex-col rounded-3xl bg-white p-2.5",
+        `relative flex w-full flex-col bg-white ${SURFACES[props.surface ?? "polaroid"]}`,
+        dim,
         props.selected ? "border-[1.5px] border-flame-deep shadow-sh2" : "border border-line",
         props.className,
       ]
@@ -169,8 +228,20 @@ export default function VenueCard(props: {
       style={props.style}
     >
       <div
-        className={`relative flex items-end overflow-hidden rounded-2xl ${photoClass}`}
-        style={{ height: props.photoOnly ? "100%" : `${(props.photoHeight ?? 264) / 16}rem` }}
+        className={[
+          "relative flex items-end overflow-hidden rounded-2xl",
+          photoClass,
+          props.photoOnly ? null : props.photoClassName,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={
+          props.photoOnly
+            ? { height: "100%" }
+            : props.photoClassName
+              ? undefined
+              : { height: `${(props.photoHeight ?? 264) / 16}rem` }
+        }
       >
         {showPhoto && (
           <img
@@ -195,13 +266,16 @@ export default function VenueCard(props: {
         <div className={`flex flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]} px-2 pt-3 pb-2`}>
           <div className="flex items-start justify-between gap-2">
             <div className={`flex flex-1 flex-col ${BODY_GAPS[props.bodyGap ?? "sm"]}`}>
-              {!props.hideTitle && <h2 className="text-[1.25rem]">{v.name}</h2>}
+              {!props.hideTitle &&
+                (props.titleLevel === "h3" ? <h3>{v.name}</h3> : <h2 className="text-[1.25rem]">{v.name}</h2>)}
               {props.mixedDeck && v.activityType && (
                 <div className="flex"><ActivityBadge activity={v.activityType} /></div>
               )}
               <FitLine venue={v} categories={props.categories ?? []} />
-              {(hasMeta || locality) && (
-                <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.8125rem] leading-[1.45] text-ink2">
+              {/* Artboard 2015: TEK meta satırı — "★ 4.6 · €€ · Bugün 08:00–18:00" (12px, ink2).
+                  Saat eskiden ayrı satırdı; artboard'da aynı `.mi` satırının parçası. */}
+              {(hasMeta || locality || v.hoursToday) && (
+                <div className="flex flex-wrap items-center gap-[0.4375rem] text-[0.75rem] leading-[1.45] text-ink2">
                   {v.rating != null && (
                     <strong className="font-bold text-ink">★ {formatRating(v.rating, v.ratingScale)}</strong>
                   )}
@@ -223,24 +297,24 @@ export default function VenueCard(props: {
                       <span>{locality}</span>
                     </>
                   )}
+                  {v.hoursToday && (
+                    <>
+                      {(hasMeta || locality) && <span aria-hidden>·</span>}
+                      <span>{t("venue.hoursToday", { hours: v.hoursToday })}</span>
+                    </>
+                  )}
                 </div>
-              )}
-              {v.hoursToday && (
-                <span className="text-[0.75rem] text-ink2">
-                  {t("venue.hoursToday", { hours: v.hoursToday })}
-                </span>
               )}
               {tagline && <span className="text-[0.75rem] text-ink2">{tagline}</span>}
             </div>
-            {isPick && (
-              <span className={props.selected ? PICK_ON : PICK} aria-hidden>
-                {props.selected && (
-                  <i className="mb-0.5 block h-[0.3125rem] w-[0.5625rem] border-b-2 border-l-2 border-b-white border-l-white transform-[rotate(-45deg)]" />
-                )}
-              </span>
+            {badgeLead && (
+              <Badge tone={fLine?.leadTone === "amber" ? "amber" : "grass"}>{badgeLead}</Badge>
             )}
+            {voteBadge ?? (isPick && pickCircle)}
           </div>
-          {(props.travelBars ?? true) && <TravelBars venue={v} travel={travel} />}
+          {widget === "bars" && <TravelBars venue={v} travel={travel} hideLead={!!badgeLead} />}
+          {widget === "range" && <RangeBar venue={v} travel={travel} />}
+          {props.footer}
           {(props.attribution ?? true) && <Attribution providers={v.provider ? [v.provider] : []} />}
         </div>
       )}

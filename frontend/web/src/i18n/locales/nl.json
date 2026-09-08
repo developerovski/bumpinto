@@ -45,7 +45,7 @@
     "joinedCount_one": "{{count}} doet mee",
     "joinedCount_other": "{{count}} doen mee",
     "locAuto": "Je huidige locatie",
-    "locAutoHint": "bij {{label}} · automatisch bepaald",
+    "locAutoHint": "bij {{label}} · automatisch gevonden",
     "locAutoHintNoLabel": "automatisch bepaald",
     "locOk": "Oké",
     "locOther": "Typ een andere stad of adres",
@@ -55,7 +55,9 @@
   "waiting": {
     "joined": "Je doet mee!",
     "preparing": "De plekken komen eraan",
-    "copy": "Eerst de lijst, dan stemmen. Laat deze pagina gewoon open.",
+    "copy": "Eerst de lijst, dan stemmen. Je mag het tabblad sluiten — we laten het weten zodra het klaar is.",
+    "copyMobile": "Eerst de lijst, dan stemmen. Je mag de app sluiten — we laten het weten.",
+    "closeHint": "Je mag de pagina sluiten; je ziet het op je vergrendelscherm zodra het klaar is.",
     "who": "Wie er zijn",
     "readyCount": "{{ready}} / {{total}} klaar",
     "host": "Host",
@@ -68,7 +70,9 @@
     "modeHint": "Je moet je locatie opnieuw delen om op te slaan.",
     "offline": "offline",
     "openMap": "Kaart openen",
-    "online": "online"
+    "online": "online",
+    "noLocationNeeded": "Geen locatie · niet nodig",
+    "noLocationNeededSelf": "Jij deelde geen locatie · niet nodig"
   },
   "deck": {
     "seeAll": "Toon alles",
@@ -87,27 +91,30 @@
     "likedNote": "Een like legt je nergens op vast — je kunt de lijst aanpassen als je klaar bent. Likes van anderen zie je in de uitslag.",
     "undoKey": "ongedaan maken",
     "cardsOf": "{{current}} / {{total}} kaarten",
+    "near": "bij {{place}} in de buurt",
     "cardsDone": "{{total}} / {{total}} kaarten · klaar",
     "finishedSticker": "Stapel klaar!",
-    "finishedCopy_one": "Je vond {{count}} plek leuk. De uitslag komt zodra iedereen klaar is.",
-    "finishedCopy_other": "Je vond {{count}} plekken leuk. De uitslag komt zodra iedereen klaar is.",
     "backToDeck": "Terug naar de stapel",
     "likesN_one": "{{count}} like",
     "likesN_other": "{{count}} likes",
-    "swipeHand": "swipe maar — de knoppen doen hetzelfde",
+    "swipeHand": "eerst wat voor iedereen eerlijk is — swipe maar",
+    "fairestFirstHand": "eerst wat voor iedereen eerlijk is",
     "sentCopy": "De uitslag komt zodra iedereen klaar is.",
     "rowDone": "Klaar",
     "rowSwiping": "Swipet",
+    "whoWhere": "Wie waar is",
+    "doneCount": "{{done}} / {{total}} klaar",
     "nudge": "Stuur een duwtje naar wie nog swipet",
     "nudgeText": "{{count}} plekken klaar voor {{activity}}, we wachten op jou:",
     "continueWithout": "Doorgaan zonder {{names}}",
+    "forceHostOnly": "Alleen de organisator ziet “Doorgaan zonder {{names}}”.",
     "allDoneHand": "iedereen is klaar — uitslag komt eraan →",
     "emptyWarn": "Je hebt niets geliked. Als niemand hetzelfde liket, blijft de uitslag leeg.",
     "sendAnyway": "Toch versturen",
-    "likedTitle_one": "Je vond {{count}} plek leuk",
-    "likedTitle_other": "Je vond {{count}} plekken leuk",
+    "likedTitle_one": "Je vond {{count}} plek <0>leuk</0>",
+    "likedTitle_other": "Je vond {{count}} plekken <0>leuk</0>",
     "sentBadge": "Keuzes verstuurd",
-    "sentTitleWaiting": "Nu wachten we · {{name}} swipet nog",
+    "sentTitleWaiting": "Nu wachten we · <0>{{name}}</0> swipet nog",
     "sentTitleAllDone": "Iedereen is klaar — uitslag komt eraan",
     "sentCopyExtra": "Laat deze pagina gewoon open.",
     "othersLabel": "de anderen",
@@ -117,7 +124,8 @@
     "progressLine_other": "<0>{{done}} zijn klaar.</0> {{name}} swipet nog; de uitslag komt zodra iedereen klaar is.",
     "errSend": "Je keuzes konden niet worden verstuurd — probeer opnieuw.",
     "errForce": "De beslissing kon niet worden gestart — probeer opnieuw.",
-    "calibrateHand": "je hebt nog niets geliked — als niemand overlapt blijft het resultaat leeg"
+    "calibrateHand": "je hebt nog niets geliked — als niemand overlapt blijft het resultaat leeg",
+    "finishedCopy": "De uitslag komt zodra iedereen klaar is."
   },
   "travel": {
     "min": "~{{min}} min",
@@ -140,27 +148,34 @@
     "titleMany": "Allemaal goed, een wordt gekozen",
     "titleSent": "Jij zit al vast, een wordt gekozen",
     "copy": "Iedereen vond ze allebei leuk. Je hebt één keuze — de uitslag komt als iedereen gekozen heeft.",
+    "copyWide": "Iedereen vond ze allebei leuk — je hebt één keuze.",
+    "copySent": "Je keuze staat vast — de uitslag komt zodra iedereen vastzit.",
     "copyFallback": "Nog geen overlap — de meest geliefde plekken haalden de finale.",
-    "trailer": "totaal ~{{total}} min · verschil ~{{gap}} min",
+    "trailer": "totaal ~{{total}} min · <0>verschil ~{{gap}} min</0>",
     "note": "wie wat koos, zie je in de uitslag",
     "lockIn": "Mijn keuze vastzetten",
-    "who": "Wie koos",
+    "who": "Wie zette vast",
+    "whoLocked": "Wie koos",
     "choosing": "Aan het kiezen…",
     "lockedBadge": "Vastgezet",
+    "notVoted": "koos niet",
     "lockedTitle": "Je keuze staat vast",
     "lockedCopy": "we wachten op de rest — de uitslag komt zodra iedereen gekozen heeft",
     "lockedCopyName": "{{name}} kiest nog — de uitslag komt zodra iedereen vastzit",
     "countOf": "{{done}} / {{total}}",
-    "votedCount": "{{done}}/{{total}} gekozen",
+    "votedCount": "{{done}} / {{total}} vastgezet",
     "remind": "Herinnering sturen",
     "remindText": "Jouw keuze wacht nog — met één tik vastzetten:",
     "tallyTitle": "Stemmen",
-    "tieNote": "Iedereen koos en het is gelijkspel.",
+    "tieOverline": "Stemmen is klaar",
+    "voteCount_one": "{{count}} stem",
+    "voteCount_other": "{{count}} stemmen",
     "tieTitle": "Gelijkspel",
-    "tieHostCopy": "Jij zette deze meetup op, dus jij hakt de knoop door.",
-    "tieGuestCopy": "{{host}} hakt de knoop door.",
-    "tieDecide": "Maak het definitief",
+    "tieHostCopy": "Iedereen koos en het is gelijkspel. Jij zette deze meetup op, dus jij hakt de knoop door.",
+    "tieGuestCopy": "Iedereen koos en het is gelijkspel. {{host}} hakt de knoop door.",
+    "tieDecide": "Ik beslis",
     "tieFair": "Aan de eerlijkste overlaten",
+    "tieHand": "laat de eerlijkste winnen, niemand baalt →",
     "errDecide": "Uitslag niet opgeslagen — probeer opnieuw.",
     "errVote": "Keuze niet verzonden — probeer opnieuw."
   },
@@ -170,6 +185,7 @@
     "decidedAtSticker": "Beslist · {{time}}",
     "viralTitle": "Is de volgende afspraak aan jou?",
     "viralCopy": "In 30 seconden geregeld — vrienden doen mee via een link.",
+    "viralCtaShort": "Regel",
     "viralCta": "Afspraak maken",
     "viralSticker": "jouw beurt",
     "share": "Deel met de groep",
@@ -186,13 +202,20 @@
     "midpointMeters": "~{{m}} m van het midden",
     "midpointExact": "Precies in het midden",
     "leaveEarlyHand": "{{name}} heeft de langste reis — ~{{min}} min eerder vertrekken en iedereen komt tegelijk aan",
-    "eyebrowUnanimous": "JULLIE KOZEN ALLEMAAL DEZELFDE PLEK",
-    "eyebrowRunoff": "Beslist met stemmen {{a}}–{{b}}",
-    "eyebrowPartial": "zonder {{names}}",
+    "eyebrowUnanimous": "Gemene deler · jullie kozen allemaal dezelfde plek",
+    "eyebrowRunoff": "Gemene deler · beslist met stemmen {{a}}–{{b}}",
+    "eyebrowPartial": "Gemene deler · zonder {{names}}",
     "backup": "Reserveplan",
-    "backupNote": "tweede plek",
     "likedSticker": "{{n}}/{{total}} vond het leuk!",
-    "partialOthers": "{{name}} en anderen"
+    "partialOthers": "{{name}} en anderen",
+    "runoffSticker": "Beslist met stemmen {{a}}–{{b}}",
+    "partialSticker": "zonder {{names}}",
+    "directions": "Route ophalen",
+    "backupLikes_one": "{{count}} like",
+    "backupLikes_other": "{{count}} likes",
+    "backupVotes_one": "{{count}} stem in de stemming",
+    "backupVotes_other": "{{count}} stemmen in de stemming",
+    "backupRange": "iedereen ~{{min}}–{{max}} min"
   },
   "landing": {
     "title": "<0>Spreek af</0><1/>in het midden.",
@@ -235,6 +258,7 @@
     "doneOf": "{{done}}/{{total}} klaar",
     "deckOpen": "Stapel is open!",
     "errLoad": "Afspraken laden mislukt — probeer opnieuw.",
+    "retentionTruncated": "De laatste {{count}} afspraken worden getoond. Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd.",
     "retention": "Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd.",
     "emptyTitle": "Nog geen afspraken",
     "emptyCopy": "Maak er een, stuur de link — de stapel vult zich zodra locaties binnen zijn.",
@@ -283,7 +307,9 @@
     "langHint": "Mensen die via een uitnodigingslink meedoen zien hun eigen browsertaal; jouw keuze geldt alleen voor je eigen account.",
     "logout": "Uitloggen",
     "errSave": "Opslaan mislukt — probeer opnieuw.",
-    "defaultTravelMode": "Standaard vervoer"
+    "defaultTravelMode": "Standaard vervoer",
+    "account": "Account",
+    "accountHint": "Privacy · AVG · vermeldingen · account verwijderen"
   },
   "error": {
     "hmm": "Hmm.",
@@ -298,6 +324,7 @@
     "loading": "Kaart laden…",
     "midpointOnly": "Middelpunt",
     "midpointPending": "Het middelpunt wordt duidelijk zodra je meedoet",
+    "locationsPending": "Locaties verschijnen op de kaart zodra je meedoet.",
     "you": "jij",
     "youPending": "jij · zodra je meedoet",
     "pickOnMap": "Kies op de kaart",
@@ -332,19 +359,19 @@
       "coming": "komt lopend"
     },
     "BIKE": {
-      "name": "Met de fiets",
+      "name": "Fiets",
       "coming": "komt met de fiets"
     },
     "EBIKE": {
-      "name": "Met de e-bike",
+      "name": "E-bike",
       "coming": "komt met de e-bike"
     },
     "TRANSIT": {
-      "name": "Met het OV",
+      "name": "OV",
       "coming": "komt met het OV"
     },
     "CAR": {
-      "name": "Met de auto",
+      "name": "Auto",
       "coming": "komt met de auto"
     },
     "question": "Hoe kom je?",
@@ -367,10 +394,12 @@
     "meetWhere": "Waar spreken jullie af?",
     "modeMidpoint": "Op het middelpunt",
     "modeAnchor": "Op een vaste plek",
+    "midpointHint": "Een eerlijk middelpunt vanaf ieders locatie",
     "anchorLabel": "Ontmoetingsplek",
     "anchorPlaceholder": "Stad of adres",
     "anchorHint": "Locaties worden binnen 2 km van deze plek gezocht.",
     "anchorSet": "Zoeken rond {{label}}",
+    "ownOptional": "Als je wilt; niet verplicht bij een vaste plek",
     "where": "Waar ben je?",
     "ownHint": "je huidige locatie",
     "ownMissing": "Nog geen locatie",
@@ -405,7 +434,15 @@
     "openMap": "Kaart openen",
     "meetingFor": "We spreken af voor {{activity}}",
     "promise": "We zoeken plekken voor {{activity}} rond het middelpunt.",
-    "promiseKm": "We zoeken plekken voor {{activity}} rond het middelpunt (≤ {{km}} km)."
+    "promiseKm": "We zoeken plekken voor {{activity}} rond het middelpunt (≤ {{km}} km).",
+    "code": "code <0>{{code}}</0> · geen account nodig",
+    "noAccount": "geen account nodig",
+    "share": "Delen",
+    "showOnMap": "Op de kaart",
+    "privacy": "Je locatie wordt afgerond op ~1 km getoond; niemand krijgt je exacte adres.",
+    "anchoredBadge": "ontmoetingsplek staat vast",
+    "anchoredNote": "Genodigden kunnen meedoen zonder locatie; reistijden worden vanaf hun eigen locatie berekend.",
+    "anchoredSolo": "Met een vaste plek kun je ook alleen zoeken."
   },
   "venues": {
     "meta": "{{count}} plekken · ≤ {{km}} km van het middelpunt",
@@ -434,7 +471,13 @@
     "searching": "plekken zoeken…",
     "searchingTitle": "Plekken in de buurt zoeken",
     "searchingCopy": "Gesorteerd op ieders rit.",
-    "searchingHand": "duurt meestal 5 seconden"
+    "searchingHand": "duurt meestal 5 seconden",
+    "metaWithPlace": "{{count}} plekken · rond {{place}} · ≤ {{km}} km",
+    "choose": "Kies deze",
+    "soloHand": "niet swipen, kies er gewoon een →",
+    "everyoneSeesShort": "Iedereen ziet deze lijst; na shuffelen gaat het stapeltje open voor iedereen.",
+    "searchingTitleFor": "Zoeken naar {{activity}}plekken in de buurt",
+    "searchingCopyFrom": "Gesorteerd op de reistijd van {{count}} mensen, via {{sources}}."
   },
   "attribution": {
     "google": "Google Maps",
@@ -442,7 +485,21 @@
     "osm": "© OpenStreetMap contributors",
     "open": "© OpenStreetMap-bijdragers · Overture Maps Foundation",
     "tripadvisor": "Gegevens van Tripadvisor",
-    "wikimedia": "Foto: Wikimedia Commons"
+    "wikimedia": "Foto: Wikimedia Commons",
+    "pageTitle": "Bronvermelding en licenties",
+    "mapData": "Locatie- en kaartgegevens",
+    "openSource": "Open source",
+    "everywhere": "Deze bronvermeldingen staan ook op elk scherm waar de gegevens te zien zijn.",
+    "name": {
+      "google": "Google Maps Platform",
+      "foursquare": "Foursquare",
+      "open": "OpenStreetMap"
+    },
+    "desc": {
+      "google": "Locaties, foto's, reistijden · Aanvullende servicevoorwaarden van Google Maps",
+      "foursquare": "Locatiecategorieën en tips",
+      "open": "Adres-/buurtnamen (Nominatim) · ODbL 1.0"
+    }
   },
   "venue": {
     "fitOk": "Voor {{activity}}: {{category}}",
@@ -453,7 +510,7 @@
   },
   "voice": {
     "region": "Spraakchat",
-    "start": "Spraakchat starten",
+    "start": "Starten",
     "restart": "Opnieuw starten",
     "open": "Spraakchat staat aan",
     "members_one": "{{count}} persoon",
@@ -463,6 +520,7 @@
     "joining": "Verbinden…",
     "retry": "Opnieuw proberen",
     "leave": "Verlaten",
+    "more": "Opties voor spraakchat",
     "end": "Voor iedereen beëindigen",
     "mute": "Dempen",
     "unmute": "Dempen opheffen",
@@ -481,7 +539,15 @@
       "HOST": "Spraakchat is beëindigd",
       "TIME_LIMIT": "De tijd is om",
       "EMPTY": "Iedereen is weg, spraakchat gesloten"
-    }
+    },
+    "title": "Spraakchat",
+    "startHint": "Begin met praten voordat iedereen er is",
+    "startAria": "Spraakchat starten",
+    "inCall": "In spraakchat",
+    "speakingBy": "{{name}} spreekt",
+    "mutedHint": "Je microfoon staat uit",
+    "connectFailedTitle": "Verbinden mislukt",
+    "remainingMin": "nog {{min}} min"
   },
   "offline": {
     "title": "Geen verbinding",
@@ -511,7 +577,8 @@
     "appleLogin": "Ingelogd met Apple",
     "errConsent": "Opslaan mislukt — probeer opnieuw.",
     "errExport": "Downloaden mislukt — probeer opnieuw.",
-    "errExportRate": "Je kunt één keer per uur downloaden. Probeer het straks opnieuw."
+    "errExportRate": "Je kunt één keer per uur downloaden. Probeer het straks opnieuw.",
+    "attributions": "Bronvermelding en licenties"
   },
   "consent": {
     "title": "Je toestemmingen",
@@ -551,7 +618,9 @@
     "errAuth": "Je sessie is verlopen. Verifieer je identiteit opnieuw.",
     "doneTitle": "Je account is verwijderd.",
     "doneCopy": "Je gegevens zijn binnen 30 dagen volledig gewist. Wil je ooit weer in het midden afspreken, dan staat de deur open.",
-    "doneHand": "tot ziens →"
+    "doneHand": "tot ziens →",
+    "mobileSubmit": "Mijn account verwijderen",
+    "sheetTitle": "We vragen het nog één keer"
   },
   "support": {
     "cardTitle": "Werkt er iets niet?",
@@ -590,8 +659,8 @@
     "unmute": "Dempen opheffen",
     "muteHint": "Alleen voor jou",
     "reportTitle": "Wat meld je?",
-    "reasonHARASSMENT": "Intimidatie",
-    "reasonIMPERSONATION": "Doet zich voor als iemand anders",
+    "reasonHARASSMENT": "Intimidatie in de spraakchat",
+    "reasonIMPERSONATION": "Aanstootgevende naam",
     "reasonSPAM": "Nep / spam",
     "reasonOTHER": "Iets anders",
     "reportNote": "De melding gaat naar ons team en wordt binnen 24 uur bekeken. {{name}} ziet dit niet.",
@@ -617,5 +686,9 @@
     "download": "Agendabestand downloaden",
     "google": "Openen in Google Calendar",
     "eventTitle": "{{venue}} · {{session}}"
+  },
+  "source": {
+    "google": "Google",
+    "foursquare": "Foursquare"
   }
 }

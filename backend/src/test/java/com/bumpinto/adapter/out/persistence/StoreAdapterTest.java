@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -306,13 +307,19 @@ class StoreAdapterTest {
                 SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
 
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayla",
+        // joined_at ayni transaction'da SABIT; siralama id ASC tie-break'ine duser, bu yuzden
+        // koltuk id'leri kasten artan verilir: beklenen sira Ayla, Ayşe, Kerem, Nokta.
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001"), session1.id(), "Ayla",
                 new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayşe",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000002"), session1.id(), "Ayşe",
                 new GeoPoint(51.7, 5.3), false, Instant.now(), false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Kerem",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000003"), session1.id(), "Kerem",
                 null, false, null, false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Nokta",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000004"), session1.id(), "Nokta",
                 new GeoPoint(51.71, 5.31), false, null, true, "Manuel nokta", null));
 
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Ayla",
@@ -326,27 +333,76 @@ class StoreAdapterTest {
         deck.saveVenues(List.of(decidedVenue));
         sessions.saveSession(session2.decided(decidedVenue.id(), DecisionKind.UNANIMOUS, Instant.now()));
 
-        List<SessionSummary> summaries = sessions.summariesOfHost(hostA, 10);
-        assertThat(summaries).extracting(s -> s.session().id())
-                .containsExactly(session2.id(), session1.id());
+        Instant now = Instant.now();
+        // session2 karar verildi -> gecmis; session1 hala acik.
+        List<SessionSummary> past = sessions.pastSummariesOfHost(hostA, now, 10);
+        List<SessionSummary> open = sessions.openSummariesOfHost(hostA, now);
+        assertThat(past).extracting(s -> s.session().id()).containsExactly(session2.id());
+        assertThat(open).extracting(s -> s.session().id()).containsExactly(session1.id());
 
-        SessionSummary newest = summaries.get(0);
+        SessionSummary newest = past.get(0);
         assertThat(newest.participantCount()).isEqualTo(3);
         assertThat(newest.readyCount()).isEqualTo(3);
         assertThat(newest.doneCount()).isEqualTo(1);
         assertThat(newest.decidedVenueName()).isEqualTo(decidedVenue.name());
         assertThat(newest.decidedVenuePhotoUrl()).isEqualTo(decidedVenue.photoUrl());
 
-        SessionSummary older = summaries.get(1);
+        SessionSummary older = open.get(0);
         assertThat(older.participantCount()).isEqualTo(4);
         assertThat(older.readyCount()).isEqualTo(3);
         assertThat(older.doneCount()).isEqualTo(1);
         assertThat(older.decidedVenueName()).isNull();
         assertThat(older.decidedVenuePhotoUrl()).isNull();
+        // Avatar yigini: sayimlarla AYNI satirlardan, katilma sirasinda (host once). Kerem'in
+        // konumu yok -> ready=false; elle eklenen nokta da sayimlarda oldugu gibi yiginde.
+        assertThat(older.participants())
+                .extracting(SessionSummary.ParticipantSummary::displayName,
+                        SessionSummary.ParticipantSummary::ready,
+                        SessionSummary.ParticipantSummary::host)
+                .containsExactly(tuple("Ayla", true, true), tuple("Ayşe", true, false),
+                        tuple("Kerem", false, false), tuple("Nokta", true, false));
+        assertThat(newest.participants())
+                .extracting(SessionSummary.ParticipantSummary::displayName)
+                .containsExactlyInAnyOrder("Ayla", "Zeynep", "Mert");
 
-        assertThat(sessions.summariesOfHost(hostA, 1)).hasSize(1);
         assertThat(sessions.hostedSessionCount(hostA)).isEqualTo(2);
         assertThat(sessions.distinctGuestsOfHost(hostA)).isEqualTo(4); // Ayşe, Kerem, Zeynep, Mert
+    }
+
+    /**
+     * Bolme SQL'de, tembel expiry ile AYNI kurala gore: TTL'i gecmis satirin KAYITLI statusu
+     * hala COLLECTING olabilir (SessionExpiry hicbir sey yazmaz) ve o satir gecmise aittir.
+     * Tavan da yalniz gecmise uygulanir; acik kutu limitsizdir.
+     */
+    @Test
+    void hostSummariesSplitByLazyExpiryRuleAndCapOnlyThePast() {
+        UUID host = users.upsertByEmail("split-host@bumpinto.test", "Bolen");
+        Instant now = Instant.parse("2026-09-07T12:00:00Z");
+
+        // created_at transaction icinde SABIT -> siralama id DESC'e duser; id'ler kasten artan.
+        Session live = hostedSession(host, "splt001", "11111111-0000-0000-0000-000000000001",
+                SessionStatus.COLLECTING, now.plusSeconds(600));
+        Session timedOut = hostedSession(host, "splt002", "11111111-0000-0000-0000-000000000002",
+                SessionStatus.COLLECTING, now.minusSeconds(1));
+        Session expired = hostedSession(host, "splt003", "11111111-0000-0000-0000-000000000003",
+                SessionStatus.EXPIRED, now.plusSeconds(600));
+        Session decided = hostedSession(host, "splt004", "11111111-0000-0000-0000-000000000004",
+                SessionStatus.DECIDED, now.plusSeconds(600));
+
+        assertThat(sessions.openSummariesOfHost(host, now)).extracting(s -> s.session().id())
+                .containsExactly(live.id());
+        assertThat(sessions.pastSummariesOfHost(host, now, 10)).extracting(s -> s.session().id())
+                .containsExactly(decided.id(), expired.id(), timedOut.id());
+        // Tavan gecmisi keser, sirayi degil: en yeni ikisi.
+        assertThat(sessions.pastSummariesOfHost(host, now, 2)).extracting(s -> s.session().id())
+                .containsExactly(decided.id(), expired.id());
+    }
+
+    private Session hostedSession(UUID hostId, String slug, String id, SessionStatus status,
+                                  Instant expiresAt) {
+        return sessions.saveSession(new Session(UUID.fromString(id), slug, hostId, "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, status, expiresAt, null,
+                List.of()));
     }
 
     /** CSV gidis-donus: 3 aktivite yazilir, ayni sirada geri okunur. */

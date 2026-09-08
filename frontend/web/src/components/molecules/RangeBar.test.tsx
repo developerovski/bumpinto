@@ -51,11 +51,16 @@ describe("RangeBar", () => {
     expect(screen.getByText("~30 dk")).toBeInTheDocument();
   });
 
-  it("kendi kişin AYNI ANDA aykırıysa kenarlık amber (A1 zincirinin önceliği)", () => {
+  /** `.me` (zemin/metin) ve `.far` (yalnız kenarlık) artboard'da AYRI ailelerdir: kendi kişin
+      aynı anda aykırıysa flame dolgu KALIR, üstüne amber halka biner. Kenarlık ailesinden yine
+      tek sınıf basılır (A1) — `border-flame-deep` düşer. */
+  it("kendi kişin AYNI ANDA aykırıysa amber halka + flame dolgu birlikte", () => {
     render(<RangeBar venue={venue({ s: 45, k: 20, a: 25 })} travel={travel} />);
     const cls = screen.getByTestId("range-dot-s").className;
     expect(cls).toContain("border-amber");
     expect(cls).not.toContain("border-flame-deep");
+    expect(cls).toContain("bg-flame-deep");
+    expect(cls).not.toContain("bg-white");
   });
 
   it("tek kişide bant yok; yol verisi yoksa hiç çizilmez", () => {

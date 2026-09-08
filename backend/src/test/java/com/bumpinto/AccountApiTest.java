@@ -82,12 +82,20 @@ class AccountApiTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(list.get("open").size()).isEqualTo(2);
         assertThat(list.get("past").size()).isZero();
+        // Gecmis bos: kesilecek bir sey yok -> bayrak false, alan cevapta MEVCUT.
+        assertThat(list.get("pastTruncated").asBoolean()).isFalse();
         JsonNode newest = list.get("open").get(0);
         assertThat(newest.get("name").asString()).isEqualTo("SOLO kahve"); // en yeni once
         assertThat(newest.get("participantCount").asInt()).isEqualTo(1);
         assertThat(newest.get("readyCount").asInt()).isEqualTo(1);
         assertThat(newest.get("doneCount").asInt()).isZero();
         assertThat(newest.get("decidedVenueName").isNull()).isTrue();
+        // Avatar yigini: tek koltuk, konumunu vermis host.
+        assertThat(newest.get("participants").size()).isEqualTo(1);
+        assertThat(newest.get("participants").get(0).get("displayName").asString())
+                .isEqualTo("Mehmet");
+        assertThat(newest.get("participants").get(0).get("ready").asBoolean()).isTrue();
+        assertThat(newest.get("participants").get(0).get("host").asBoolean()).isTrue();
 
         JsonNode me = json.readTree(mvc.perform(get("/api/me").cookie(at))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -139,6 +147,46 @@ class AccountApiTest {
                         .header("X-Client", "web")
                         .contentType(JSON).content("{\"idToken\":\"gid3\"}"))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * Liste karti ust uste binen avatar yiginini cizer: her koltuk icin bas harf + kesik cizgili
+     * "henuz hazir degil" halkasi. {@code ready} = konumunu verdi mi — {@code readyCount} ile
+     * ayni kural. Sira katilma sirasi, yani host once.
+     */
+    @Test
+    void sessionListCarriesAvatarStack() throws Exception {
+        when(google.verify("gid9"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("stack9@bumpinto.test", "Mehmet"));
+        Cookie at = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid9\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        String slug = json.readTree(mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"sessionType\":\"GROUP\","
+                                + "\"name\":\"Yigin\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("slug").asString();
+        // Konumsuz katilim: sayilir ama HAZIR degil -> kesik cizgili halka.
+        mvc.perform(post("/api/sessions/" + slug + "/participants").contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\"}"))
+                .andExpect(status().isCreated());
+
+        JsonNode card = json.readTree(mvc.perform(get("/api/sessions").cookie(at))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("open").get(0);
+        assertThat(card.get("participantCount").asInt()).isEqualTo(2);
+        assertThat(card.get("readyCount").asInt()).isEqualTo(1);
+        JsonNode people = card.get("participants");
+        assertThat(people.size()).isEqualTo(2);
+        assertThat(people.get(0).get("displayName").asString()).isEqualTo("Mehmet");
+        assertThat(people.get(0).get("host").asBoolean()).isTrue();
+        assertThat(people.get(0).get("ready").asBoolean()).isTrue();
+        assertThat(people.get(1).get("displayName").asString()).isEqualTo("Ayşe");
+        assertThat(people.get(1).get("host").asBoolean()).isFalse();
+        assertThat(people.get(1).get("ready").asBoolean()).isFalse();
+        // Yigin ad/hazirlik disinda hicbir sey tasimaz: koltuk id'si de yaklasik konum da yok.
+        assertThat(people.get(1).size()).isEqualTo(3);
     }
 
     @Test

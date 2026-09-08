@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -101,11 +102,19 @@ public class SessionStoreAdapter implements SessionStorePort {
         participants.deleteById(participantId);
     }
 
-    @Override public List<SessionSummary> summariesOfHost(UUID hostId, int limit) {
-        List<SessionEntity> rows = sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId,
-                PageRequest.of(0, limit));
+    @Override public List<SessionSummary> openSummariesOfHost(UUID hostId, Instant now) {
+        return summariesOf(sessions.findOpenByHost(hostId, now));
+    }
+
+    @Override public List<SessionSummary> pastSummariesOfHost(UUID hostId, Instant now, int limit) {
+        return summariesOf(sessions.findPastByHost(hostId, now, PageRequest.of(0, limit)));
+    }
+
+    /** Satirlar ne olursa olsun TOPLU yuklenir: katilimcilar tek sorgu, mekanlar tek sorgu. */
+    private List<SessionSummary> summariesOf(List<SessionEntity> rows) {
         List<UUID> sessionIds = rows.stream().map(e -> e.id).toList();
-        Map<UUID, List<ParticipantEntity>> bySession = participants.findBySessionIdIn(sessionIds)
+        Map<UUID, List<ParticipantEntity>> bySession = participants
+                .findBySessionIdInOrderByJoinedAtAscIdAsc(sessionIds)
                 .stream().collect(Collectors.groupingBy(p -> p.sessionId));
         Set<UUID> decidedVenueIds = rows.stream().map(e -> e.decidedVenueId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
@@ -174,16 +183,20 @@ public class SessionStoreAdapter implements SessionStorePort {
                                             Map<UUID, VenueEntity> venueById) {
         int ready = 0;
         int done = 0;
+        // Avatar yigini AYNI dongude kurulur: satirlar zaten elimizde, ikinci sorgu yok.
+        List<SessionSummary.ParticipantSummary> people = new ArrayList<>(ps.size());
         for (ParticipantEntity p : ps) {
-            if (p.lat != null && p.lng != null) {
+            boolean located = p.lat != null && p.lng != null;
+            if (located) {
                 ready++;
             }
             if (p.deckDoneAt != null) {
                 done++;
             }
+            people.add(new SessionSummary.ParticipantSummary(p.displayName, located, p.isHost));
         }
         VenueEntity decided = e.decidedVenueId == null ? null : venueById.get(e.decidedVenueId);
-        return new SessionSummary(toSession(e), e.createdAt, ps.size(), ready, done,
+        return new SessionSummary(toSession(e), e.createdAt, ps.size(), ready, done, people,
                 decided == null ? null : decided.name, decided == null ? null : decided.photoUrl);
     }
 

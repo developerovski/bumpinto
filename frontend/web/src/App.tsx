@@ -4,6 +4,7 @@ import RequireAuth from "./components/organisms/RequireAuth";
 import ErrorPage from "./pages/ErrorPage";
 import AccountDeletedPage from "./pages/AccountDeletedPage";
 import AccountPage from "./pages/AccountPage";
+import AttributionsPage from "./pages/AttributionsPage";
 import ConsentPage from "./pages/ConsentPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import LegalPage from "./pages/LegalPage";
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/privacy" element={<LegalPage slug="privacy" />} />
         <Route path="/terms" element={<LegalPage slug="terms" />} />
         <Route path="/data-rights" element={<LegalPage slug="data-rights" />} />
+        <Route path="/attributions" element={<AttributionsPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
         <Route path="/account/consent" element={<RequireAuth><ConsentPage /></RequireAuth>} />

@@ -2,6 +2,7 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.safety.Blocks;
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.Fairness;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.MapLinks;
@@ -15,7 +16,6 @@ import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
-import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.voice.VoiceRoom;
@@ -177,19 +177,28 @@ public class SessionViewAssembler {
                 hostOnline);
     }
 
-    public ApiDtos.SessionListResponse toList(List<SessionSummary> rows) {
-        Map<Boolean, List<ApiDtos.SessionSummaryDto>> byBucket = rows.stream()
-                .map(SessionViewAssembler::toSummaryDto)
-                .collect(Collectors.partitioningBy(d -> d.status() == SessionStatus.DECIDED
-                        || d.status() == SessionStatus.EXPIRED));
-        return new ApiDtos.SessionListResponse(byBucket.get(false), byBucket.get(true));
+    /**
+     * Kutular HAZIR gelir; burada bolme YOK. Bolme eskiden burada yapiliyordu, yani tavan
+     * kutulardan ONCE uygulaniyordu ve yeni oturumlar eski ama hala acik bir oturumu listeden
+     * sessizce dusuruyordu — ayirma artik sorgunun isi (UserProfileQueries.mySessions).
+     */
+    public ApiDtos.SessionListResponse toList(UserProfileQueries.MySessions rows) {
+        return new ApiDtos.SessionListResponse(toSummaryDtos(rows.open()),
+                toSummaryDtos(rows.past()), rows.pastTruncated());
+    }
+
+    private static List<ApiDtos.SessionSummaryDto> toSummaryDtos(List<SessionSummary> rows) {
+        return rows.stream().map(SessionViewAssembler::toSummaryDto).toList();
     }
 
     private static ApiDtos.SessionSummaryDto toSummaryDto(SessionSummary s) {
+        List<ApiDtos.SummaryParticipantDto> people = s.participants().stream()
+                .map(p -> new ApiDtos.SummaryParticipantDto(p.displayName(), p.ready(), p.host()))
+                .toList();
         return new ApiDtos.SessionSummaryDto(s.session().slug(), s.session().name(),
                 s.session().activityTypes(), s.session().sessionType(), s.session().status(),
                 s.createdAt(), s.session().expiresAt(), s.participantCount(), s.readyCount(),
-                s.doneCount(), s.decidedVenueName(), s.decidedVenuePhotoUrl());
+                s.doneCount(), people, s.decidedVenueName(), s.decidedVenuePhotoUrl());
     }
 
     /** 2 ondalik = ~1.1 km enlem hassasiyeti (tek kaynak: TravelMinutes.approx). */

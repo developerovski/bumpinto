@@ -14,6 +14,10 @@ export default function TravelBars(props: {
   travel: TravelInfo;
   /** Kart içinde üstlük (ör. "Herkesin yolu"); deste kartında verilmez. */
   title?: string;
+  /** Adalet baş cümlesi ("Herkese ~aynı") kartın başlık satırında rozet olarak basıldıysa (artboard
+      2013) alt satır onu TEKRAR ETMEZ — yalnız olgu kalır (2023: "fark 10 dk · en uzun yol Kerem").
+      Aynı hesabın (`fairnessLine`) iki sunumu; ikinci bir kural değil. */
+  hideLead?: boolean;
 }) {
   const { t } = useTranslation();
   const f = fairnessOf(props.venue);
@@ -22,7 +26,8 @@ export default function TravelBars(props: {
   const rows = [...f.entries].sort(
     (a, b) => Number(b.id === props.travel.selfId) - Number(a.id === props.travel.selfId),
   );
-  const line = fairnessLine(f, props.travel, t);
+  const full = fairnessLine(f, props.travel, t);
+  const line = props.hideLead ? { ...full, lead: null, leadTone: null } : full;
 
   return (
     <div className="flex flex-col gap-1.5">

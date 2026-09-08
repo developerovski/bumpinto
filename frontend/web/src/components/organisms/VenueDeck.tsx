@@ -31,6 +31,9 @@ const D2_STYLE: CSSProperties = {
 };
 const D3 = `${LAYER} z-0 h-[24.375rem] opacity-45 transform-[rotate(-5deg)_translateY(1.25rem)_scale(0.94)] animate-appear`;
 const FLY = `${LAYER} z-3 pointer-events-none animate-fly-out`;
+// Artboard 2111 / 2005 — ön kartın fotoğrafı 390'da 210px, 1280'de 240px. Satır-içi `style`
+// medya sorgusu tanımadığı için sınıfla verilir (`VenueCard.photoClassName`).
+const FRONT_PHOTO = "h-[13.125rem] lg:h-[15rem]";
 
 const KBD =
   "inline-flex h-6 min-w-[1.625rem] items-center justify-center rounded-[0.4375rem] " +
@@ -125,10 +128,12 @@ export default function VenueDeck(props: {
           <VenueCard
             venue={current}
             className={D1}
+            photoClassName={FRONT_PHOTO}
             travel={props.travel}
             mixedDeck={props.mixedDeck}
             categories={categories}
             midpointLabel={props.midpointLabel}
+            fairnessBadge
           />
         </SwipeCard>
         {flying.map((f) => (
@@ -153,10 +158,12 @@ export default function VenueDeck(props: {
             <VenueCard
               venue={f.venue}
               className={D1}
+              photoClassName={FRONT_PHOTO}
               travel={props.travel}
               mixedDeck={props.mixedDeck}
               categories={categories}
               midpointLabel={props.midpointLabel}
+              fairnessBadge
             />
           </div>
         ))}
@@ -173,6 +180,15 @@ export default function VenueDeck(props: {
         onPass={() => commit("left")}
         onLike={() => commit("right")}
       />
+      {/* Artboard 2034/2140: el yazısı gerekçe notu aksiyonların ALTINDA, klavye ipucunun ÜSTÜNDE
+          ve İKİ kırılımda da görünür — deste sırası bir ürün vaadidir ("önce herkese en adil
+          olanlar"), yalnız mobil ipucu değil. 390 cümlesi jesti de anlatır (2140). */}
+      <div className="mt-3">
+        <HandNote center>
+          <span className="lg:hidden">{t("deck.swipeHand")}</span>
+          <span className="hidden lg:inline">{t("deck.fairestFirstHand")}</span>
+        </HandNote>
+      </div>
       <div className="mt-3 hidden flex-none items-center justify-center gap-2 lg:flex">
         <span className={KBD}>←</span>
         <span className="text-[0.75rem] text-ink2">{t("deck.pass")}</span>
@@ -182,9 +198,6 @@ export default function VenueDeck(props: {
         <span className="mx-1 text-[0.75rem] text-ink2">·</span>
         <span className={KBD}>⌫</span>
         <span className="text-[0.75rem] text-ink2">{t("deck.undoKey")}</span>
-      </div>
-      <div className="mt-3 lg:hidden">
-        <HandNote center>{t("deck.swipeHand")}</HandNote>
       </div>
       {/* Kalan kart ≤ 2 ve hiç beğeni yoksa TEK kalibrasyon notu (§5.C "Deste"). */}
       {remaining <= 2 && likedCount === 0 && (

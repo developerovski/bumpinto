@@ -56,14 +56,52 @@ describe("backupOf", () => {
     expect(backupOf(view, "v1")?.id).toBe("v2"); // "v2" < "v3"
   });
 
-  it("BackupPlan bileşeni adı ve 'ikinci sırada' notunu gösterir", () => {
-    render(<BackupPlan view={buildView({ voteTally: { v1: 3, v2: 2 } })} winnerId="v1" tint={0} />);
+  it("tek satır: 'Yedek plan: <ad> · N beğeni · herkes ~min–max dk' (artboard .f-back)", () => {
+    render(
+      <BackupPlan
+        view={buildView({
+          likeCounts: { v1: 5, v2: 2 },
+          venues: [
+            venues[0],
+            {
+              ...venues[1],
+              travel: [
+                { participantId: "p1", minutes: 25 },
+                { participantId: "p2", minutes: 40 },
+              ],
+            },
+            venues[2],
+          ],
+        })}
+        winnerId="v1"
+      />,
+    );
     expect(screen.getByText("Koffie Top Hundred")).toBeInTheDocument();
-    expect(screen.getByText("ikinci sırada")).toBeInTheDocument();
+    expect(screen.getByText(/2 beğeni/)).toBeInTheDocument();
+    expect(screen.getByText(/herkes ~25–40 dk/)).toBeInTheDocument();
+    // Artboard'da 44px'lik küçük görsel YOK — satır yalnız metin + caret (img/monogram yok).
+    expect(screen.queryByText("kt")).not.toBeInTheDocument();
+  });
+
+  it("oylamayla karar verildiyse sayı beğeni değil OY (artboard 3795)", () => {
+    render(
+      <BackupPlan
+        view={buildView({ decisionKind: "RUNOFF", voteTally: { v1: 2, v2: 1 }, likeCounts: { v2: 9 } })}
+        winnerId="v1"
+      />,
+    );
+    expect(screen.getByText(/oylamada 1 oy/)).toBeInTheDocument();
+    expect(screen.queryByText(/beğeni/)).not.toBeInTheDocument();
+  });
+
+  it("sayı/aralık verisi yoksa o parçalar hiç yazılmaz (0 uydurulmaz)", () => {
+    render(<BackupPlan view={buildView({ voteTally: { v1: 3, v2: 2 } })} winnerId="v1" />);
+    expect(screen.getByText("Koffie Top Hundred")).toBeInTheDocument();
+    expect(screen.queryByText(/beğeni|oy|dk/)).not.toBeInTheDocument();
   });
 
   it("yedek yoksa BackupPlan hiçbir şey render etmez", () => {
-    const { container } = render(<BackupPlan view={buildView()} winnerId="v1" tint={0} />);
+    const { container } = render(<BackupPlan view={buildView()} winnerId="v1" />);
     expect(container).toBeEmptyDOMElement();
   });
 });

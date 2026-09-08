@@ -256,4 +256,98 @@ describe("VenueCard", () => {
     );
     expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
   });
+
+  // Artboard 2015: saat AYRI satır değil, TEK `.mi` satırının parçası.
+  it("saat bilgisi puan/fiyat/semt ile AYNI meta satırında yaşar", () => {
+    const { container } = render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage", rating: 4.6, priceLevel: 2, hoursToday: "08:00–18:00" }}
+      />,
+    );
+    const meta = [...container.querySelectorAll("div")].find((d) =>
+      (d.textContent ?? "").startsWith("★ 4,6") && d.className.includes("flex-wrap"),
+    );
+    expect(meta?.textContent).toContain("Bugün 08:00–18:00");
+    expect(meta?.className).toContain("text-[0.75rem]");
+  });
+
+  // Artboard 2013 + 2023: rozet başlık satırında, alt satır lead'i TEKRAR ETMEZ.
+  it("fairnessBadge ile adalet rozeti başlık satırında basılır ve yol satırında tekrar etmez", () => {
+    render(
+      <VenueCard
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+          ],
+        }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+        fairnessBadge
+      />,
+    );
+    expect(screen.getAllByText("Herkese ~aynı")).toHaveLength(1);
+    expect(screen.getByText(/fark 5 dk/)).toBeInTheDocument();
+  });
+
+  it("fairnessBadge geçilmezse rozet basılmaz, lead eskisi gibi yol satırında kalır", () => {
+    render(
+      <VenueCard
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+          ],
+        }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getAllByText("Herkese ~aynı")).toHaveLength(1);
+  });
+
+  // Artboard 2111 / 2005 — ön kart fotoğrafı 390'da 210px, 1280'de 240px; satır-içi ölçü BASILMAZ.
+  it("photoClassName verilince yükseklik sınıfla gelir, style ile değil", () => {
+    const { container } = render(
+      <VenueCard venue={{ id: "v1", name: "Café Berlage" }} photoClassName="h-[13.125rem] lg:h-[15rem]" />,
+    );
+    const photo = container.querySelector(".h-\\[13\\.125rem\\]") as HTMLElement | null;
+    expect(photo).toBeTruthy();
+    expect(photo?.style.height).toBe("");
+  });
+
+  /**
+   * Artboard 4368/4383: oylama bitince başlık satırındaki seçim dairesi "N oy" rozetine döner —
+   * daire artık bir şey ifade etmiyor. `footer` ise `.f-trail`'in kartın İÇİNDE yaşamasını
+   * sağlar (eskiden kartın altında kardeş bir öğeydi).
+   */
+  it("voteCount verilince seçim dairesinin yerini 'N oy' rozeti alır ve footer kart içinde basılır", () => {
+    const { container } = render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage" }}
+        variant="row"
+        selected
+        voteCount={1}
+        footer={<span>toplam ~90 dk</span>}
+      />,
+    );
+    expect(screen.getByText("1 oy")).toBeInTheDocument();
+    // Seçim dairesi (PICK_BASE 26px) artık basılmaz.
+    expect(container.innerHTML).not.toContain("w-[1.625rem]");
+    // footer kartın kendi kutusunun içindedir, kardeşi değil.
+    expect(container.firstElementChild?.textContent).toContain("toplam ~90 dk");
+  });
+
+  // Artboard `.pol` (24/10) ve `.card` (22/12) AYNI bileşenin iki yüzeyi — tek prop, çünkü
+  // `className` ile eklenirse hangi `rounded-*`/`p-*` kazanacağını Tailwind çıktı sırası belirler.
+  it("surface='card' yarıçap + iç boşluğu artboard `.card` değerine çevirir", () => {
+    const { container } = render(
+      <VenueCard venue={{ id: "v1", name: "Café Berlage" }} surface="card" />,
+    );
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.className).toContain("rounded-card");
+    expect(card.className).not.toContain("rounded-3xl");
+  });
 });

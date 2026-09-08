@@ -1,5 +1,5 @@
-/* Kaynak: artboard W20 frag 68/69/70 — scrim + bottom sheet; centers on `lg+`); */
-import { Flag, Prohibit, SpeakerSlash } from "@phosphor-icons/react";
+/* Kaynak: artboard W20 frag 68/69/70 — scrim + alt sayfa; `lg+`'te sağ-alta yanaşır (`.dk .sheet`). */
+import { Check, Flag, Prohibit, SpeakerSlash } from "@phosphor-icons/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
@@ -7,13 +7,27 @@ import { useSocialStore, type ReportReason } from "../../store/socialStore";
 import { useVoiceStore } from "../../store/voiceStore";
 import { Avatar, Button } from "../atoms";
 
-/** §2 sözleşmesi: `ReportRequest.reason` birliği. `satisfies` derlemede kilitler. */
-const REASONS = ["HARASSMENT", "SPAM", "IMPERSONATION", "OTHER"] as const satisfies readonly ReportReason[];
+/** §2 sözleşmesi: `ReportRequest.reason` birliği. `satisfies` derlemede kilitler.
+    Sıra artboard W20·Bildirildi (5794-5814) ile aynı: "Rahatsız edici ad" → "Sesli sohbette
+    taciz" → "Sahte / spam" → "Başka". Tasarımın ilk satırının sunucuda karşılığı YOK
+    (`ReportRequest.reason` yalnız HARASSMENT|SPAM|IMPERSONATION|OTHER kabul eder), bu yüzden
+    enum uydurmak yerine metin var olan üyelere yeniden eşlendi: IMPERSONATION = "rahatsız edici
+    ad" (ad üzerinden kimlik ihlali), HARASSMENT = "sesli sohbette taciz". Ayrı bir anlam gerekirse
+    uçta `OFFENSIVE_NAME` üyesi istenmeli. */
+const REASONS = ["IMPERSONATION", "HARASSMENT", "SPAM", "OTHER"] as const satisfies readonly ReportReason[];
 
-const ROW = "flex w-full items-center gap-3 px-4 py-[0.8125rem] text-left";
+/* Artboard `.srow.st` (521) ve sebep satırları (5796) aynı ölçüde: 12px/16px, 12px boşluk. */
+const ROW = "flex w-full items-center gap-3 px-4 py-3 text-left";
+/* `.sheet` (466): 28px üst yarıçap, 10/20/26px iç boşluk. `lg`: `.dk .sheet` (566) — ortalanmış
+   modal değil, lobinin üstünde sağ-alta (48px/28px) yanaşan 420px'lik 24px yarıçaplı panel. */
 const SHEET =
-  "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-[26rem] flex-col gap-3.5 rounded-t-card " +
-  "border border-line bg-card p-5 shadow-sh2 lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:rounded-card";
+  "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-[26rem] flex-col gap-3.5 rounded-t-[1.75rem] " +
+  "border border-line bg-card px-5 pt-2.5 pb-[1.625rem] shadow-sh2 " +
+  "lg:left-auto lg:right-12 lg:bottom-7 lg:mx-0 lg:w-[26.25rem] lg:max-w-none lg:rounded-[1.5rem]";
+/* `.srow.st .ic` (522): 32px kum dolgulu, 10px yarıçaplı kutu; glif 17px. */
+const CHIP = "flex h-8 w-8 flex-none items-center justify-center rounded-[0.625rem] bg-sand text-ink2";
+/* `.grab` (468): 40×5px `--line2` tutamak. Yalnız alt sayfa halinde — `.dk`'de yok. */
+const GRAB = "mx-auto mb-1 h-[5px] w-10 flex-none rounded-[3px] bg-line2 lg:hidden";
 
 function ActionRow(props: {
   icon: ReactNode;
@@ -25,16 +39,24 @@ function ActionRow(props: {
 }) {
   return (
     <button type="button" className={ROW} disabled={props.disabled} onClick={props.onClick}>
-      {props.icon}
+      <span className={CHIP}>{props.icon}</span>
       <span className="flex flex-col">
         <span className={`text-[0.875rem] font-bold${props.danger ? " text-flame-deep" : ""}`}>{props.title}</span>
-        <span className="text-[0.8125rem] text-ink2">{props.hint}</span>
+        <span className="text-xs text-ink2">{props.hint}</span>
       </span>
     </button>
   );
 }
 
-export default function PersonSheet(props: { slug: string; participant: ParticipantDto; onClose: () => void }) {
+/** `index`: satırdaki avatar renginin (avA/avB/avC…) aynısı. Artboard 5604'te alt sayfa başlığı
+    kişinin KENDİ rengini taşır; liste sırasını yalnız `ParticipantList` bilir, o yüzden dışarıdan
+    gelir. Verilmezse 0 — eski davranış. */
+export default function PersonSheet(props: {
+  slug: string;
+  participant: ParticipantDto;
+  index?: number;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const p = props.participant;
   const name = p.displayName ?? "?";
@@ -61,17 +83,18 @@ export default function PersonSheet(props: { slug: string; participant: Particip
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-ink/35" onClick={props.onClose} aria-hidden />
+      <div className="fixed inset-0 z-40 bg-ink/42" onClick={props.onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         className={SHEET}
         aria-label={step === "menu" ? name : t("social.reportTitle")}
       >
+        <span aria-hidden className={GRAB} />
         {step === "menu" ? (
           <>
             <div className="flex items-center gap-3">
-              <Avatar name={name} index={0} ring />
+              <Avatar name={name} index={props.index ?? 0} ring />
               <div className="flex flex-col">
                 <span className="font-head text-h3 font-bold">{name}</span>
                 <span className="text-[0.8125rem] text-ink2">
@@ -81,14 +104,14 @@ export default function PersonSheet(props: { slug: string; participant: Particip
             </div>
             <div className="rounded-card border border-line">
               <ActionRow
-                icon={<Flag size={20} aria-hidden />}
+                icon={<Flag size={17} aria-hidden />}
                 title={t("social.report")}
                 hint={t("social.reportHint")}
                 onClick={() => setStep("report")}
               />
               <div className="mx-4 h-px bg-line" />
               <ActionRow
-                icon={<Prohibit size={20} className="text-flame-deep" aria-hidden />}
+                icon={<Prohibit size={17} className="text-flame-deep" aria-hidden />}
                 danger
                 title={t("social.block")}
                 hint={t("social.blockHint")}
@@ -97,7 +120,7 @@ export default function PersonSheet(props: { slug: string; participant: Particip
               />
               <div className="mx-4 h-px bg-line" />
               <ActionRow
-                icon={<SpeakerSlash size={20} aria-hidden />}
+                icon={<SpeakerSlash size={17} aria-hidden />}
                 hint={t("social.muteHint")}
                 title={muted ? t("social.unmute") : t("social.mute")}
                 onClick={() => {
@@ -124,12 +147,15 @@ export default function PersonSheet(props: { slug: string; participant: Particip
                     className={ROW}
                     onClick={() => setReason(value)}
                   >
+                    {/* `.chk` (167-169): 26px daire, 1.5px `--line-in`; seçili = `--grad` dolgu + beyaz 14px tik. */}
                     <span
                       aria-hidden
-                      className={`h-5 w-5 flex-none rounded-full border-2 ${
-                        reason === value ? "border-flame bg-flame" : "border-line2"
+                      className={`flex h-[1.625rem] w-[1.625rem] flex-none items-center justify-center rounded-full border-[1.5px] ${
+                        reason === value ? "border-transparent bg-[image:var(--grad)] text-white" : "border-line-in"
                       }`}
-                    />
+                    >
+                      {reason === value && <Check size={14} />}
+                    </span>
                     <span className="text-[0.875rem] font-bold">{t(`social.reason${value}`)}</span>
                   </button>
                 </div>

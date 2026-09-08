@@ -896,6 +896,7 @@ export interface components {
         SessionListResponse: {
             open?: components["schemas"]["SessionSummaryDto"][];
             past?: components["schemas"]["SessionSummaryDto"][];
+            pastTruncated?: boolean;
         };
         SessionSummaryDto: {
             slug?: string;
@@ -915,8 +916,14 @@ export interface components {
             readyCount?: number;
             /** Format: int32 */
             doneCount?: number;
+            participants?: components["schemas"]["SummaryParticipantDto"][];
             decidedVenueName?: string;
             decidedVenuePhotoUrl?: string;
+        };
+        SummaryParticipantDto: {
+            displayName?: string;
+            ready?: boolean;
+            host?: boolean;
         };
         PreviewParticipantDto: {
             displayName?: string;

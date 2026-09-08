@@ -54,7 +54,9 @@
   "waiting": {
     "joined": "Katıldın!",
     "preparing": "Mekanlar geliyor",
-    "copy": "Önce liste, sonra oylama. Sayfayı kapatma yeter.",
+    "copy": "Önce liste, sonra oylama. Sekmeyi kapatsan da olur — hazır olunca haber veririz.",
+    "copyMobile": "Önce liste, sonra oylama. Uygulamayı kapatsan da haber veririz.",
+    "closeHint": "Sayfayı kapatsan da olur; hazır olunca kilit ekranından görürsün.",
     "who": "Kimler var",
     "readyCount": "{{ready}} / {{total}} hazır",
     "host": "Kuran",
@@ -67,7 +69,9 @@
     "modeHint": "Kaydetmek için konumunu yeniden vermen gerekir.",
     "offline": "çevrimdışı",
     "openMap": "Haritayı aç",
-    "online": "çevrimiçi"
+    "online": "çevrimiçi",
+    "noLocationNeeded": "Konum vermedi · gerekmiyor",
+    "noLocationNeededSelf": "Konum vermedin · gerekmiyor"
   },
   "deck": {
     "seeAll": "Hepsini gör",
@@ -85,24 +89,29 @@
     "likedNote": "Beğeni seni bağlamaz — bitirince listeden düzeltebilirsin. Diğerlerinin beğenileri sonuçta belli olur.",
     "undoKey": "geri al",
     "cardsOf": "{{current}} / {{total}} kart",
+    "near": "{{place}} civarı",
     "cardsDone": "{{total}} / {{total}} kart · bitti",
     "finishedSticker": "Deste bitti!",
-    "finishedCopy": "{{count}} mekanı beğendin. Herkes bitirince sonuç açıklanır.",
+    "finishedCopy": "Herkes bitirince sonuç açıklanır.",
     "backToDeck": "Desteye dön",
     "likesN": "{{count}} beğeni",
-    "swipeHand": "kaydır gitsin — butonlar da aynı işi yapar",
-    "likedTitle": "{{count}} mekan beğendin",
+    "swipeHand": "önce herkese en adil olanlar — kaydır gitsin",
+    "fairestFirstHand": "önce herkese en adil olanlar",
+    "likedTitle": "{{count}} mekan <0>beğendin</0>",
     "sentCopy": "Herkes bitirince sonuç açıklanır.",
     "rowDone": "Bitirdi",
     "rowSwiping": "Kaydırıyor",
+    "whoWhere": "Kim nerede",
+    "doneCount": "{{done}} / {{total}} bitti",
     "nudge": "Bekleyenleri dürt",
     "nudgeText": "{{activity}} için {{count}} mekan hazır, seni bekliyoruz:",
     "continueWithout": "{{names}} olmadan devam et",
+    "forceHostOnly": "“{{names}} olmadan devam et” yalnız kurana görünür.",
     "allDoneHand": "herkes bitirdi — sonuç birazdan →",
     "emptyWarn": "Hiç beğeni seçmedin. Kimse ortak beğenmezse sonuç boş kalır.",
     "sendAnyway": "Yine de gönder",
     "sentBadge": "Beğenilerin gönderildi",
-    "sentTitleWaiting": "Şimdi bekliyoruz · {{name}} kaydırıyor",
+    "sentTitleWaiting": "Şimdi bekliyoruz · <0>{{name}}</0> kaydırıyor",
     "sentTitleAllDone": "Herkes bitirdi — sonuç birazdan açıklanır",
     "sentCopyExtra": "Sayfayı açık bırakman yeter.",
     "othersLabel": "diğerleri",
@@ -133,27 +142,33 @@
     "titleMany": "Hepsi güzel, biri seçilecek",
     "titleSent": "Seçimini yaptın, biri seçilecek",
     "copy": "Herkes ikisini de beğendi. Tek seçim hakkın var — sonuç herkes seçince açıklanır.",
+    "copyWide": "İkisini de herkes beğendi — tek seçim hakkın var.",
+    "copySent": "Seçimin kilitli — sonuç herkes kilitleyince açıklanır.",
     "copyFallback": "Henüz ortak nokta yok — en çok beğenilen mekanlar finalde.",
-    "trailer": "toplam ~{{total}} dk · fark ~{{gap}} dk",
+    "trailer": "toplam ~{{total}} dk · <0>fark ~{{gap}} dk</0>",
     "note": "kim neyi seçti, sonuçta belli olur",
     "lockIn": "Seçimimi kilitle",
-    "who": "Kim seçti",
+    "who": "Kim kilitledi",
+    "whoLocked": "Kim seçti",
     "choosing": "Seçiyor…",
     "lockedBadge": "Kilitledi",
+    "notVoted": "seçmedi",
     "lockedTitle": "Seçimin kilitli",
     "lockedCopy": "diğerlerini bekliyoruz — sonuç herkes seçince açıklanır",
     "lockedCopyName": "{{name}} seçiyor — herkes kilitleyince sonuç açıklanır",
     "countOf": "{{done}} / {{total}}",
-    "votedCount": "{{done}}/{{total}} seçti",
+    "votedCount": "{{done}} / {{total}} kilitledi",
     "remind": "Hatırlatma gönder",
     "remindText": "Seçim seni bekliyor, tek tıkla kilitle:",
     "tallyTitle": "Oylar",
-    "tieNote": "Herkes seçti ve berabere kaldı.",
+    "tieOverline": "Oylama bitti",
+    "voteCount": "{{count}} oy",
     "tieTitle": "Berabere",
-    "tieHostCopy": "Buluşmayı sen kurdun, son sözü sen söylüyorsun.",
-    "tieGuestCopy": "{{host}} son kararı veriyor.",
-    "tieDecide": "Kararı ver",
+    "tieHostCopy": "Herkes seçti ve berabere kaldı. Buluşmayı sen kurdun, son sözü sen söylüyorsun.",
+    "tieGuestCopy": "Herkes seçti ve berabere kaldı. {{host}} son kararı veriyor.",
+    "tieDecide": "Kararı ben vereyim",
     "tieFair": "Adil olana bırak",
+    "tieHand": "adil olana bırak, kimse üzülmez →",
     "errDecide": "Karar kaydedilemedi — tekrar dene.",
     "errVote": "Seçim gönderilemedi — tekrar dene."
   },
@@ -163,6 +178,7 @@
     "decidedAtSticker": "Karar verildi · {{time}}",
     "viralTitle": "Sıradaki buluşma senden mi?",
     "viralCopy": "30 saniyede kur — arkadaşların linkle katılır.",
+    "viralCtaShort": "Kur",
     "viralCta": "Buluşma kur",
     "viralSticker": "sıra sende",
     "share": "Gruba paylaş",
@@ -179,13 +195,18 @@
     "midpointMeters": "Herkesin ortasına ~{{m}} m",
     "midpointExact": "Tam ortada",
     "leaveEarlyHand": "{{name}} en uzaktan geliyor — ~{{min}} dk önce çıkarsa herkes aynı anda varır",
-    "eyebrowUnanimous": "HEPİNİZ AYNI YERİ BEĞENDİ",
-    "eyebrowRunoff": "Oylamayla {{a}}–{{b}}",
-    "eyebrowPartial": "{{names}} olmadan",
+    "eyebrowUnanimous": "Ortak nokta · hepiniz aynı yeri beğendi",
+    "eyebrowRunoff": "Ortak nokta · oylamayla {{a}}–{{b}}",
+    "eyebrowPartial": "Ortak nokta · {{names}} olmadan",
     "backup": "Yedek plan",
-    "backupNote": "ikinci sırada",
     "likedSticker": "{{n}}/{{total}} beğendi!",
-    "partialOthers": "{{name}} ve diğerleri"
+    "partialOthers": "{{name}} ve diğerleri",
+    "runoffSticker": "Oylamayla {{a}}–{{b}}",
+    "partialSticker": "{{names}} olmadan",
+    "directions": "Yol tarifi al",
+    "backupLikes": "{{count}} beğeni",
+    "backupVotes": "oylamada {{count}} oy",
+    "backupRange": "herkes ~{{min}}–{{max}} dk"
   },
   "landing": {
     "title": "<0>Ortada</0><1/>buluşalım.",
@@ -227,6 +248,7 @@
     "doneOf": "{{done}}/{{total}} bitirdi",
     "deckOpen": "Deste açık!",
     "errLoad": "Buluşmalar yüklenemedi — tekrar dene.",
+    "retentionTruncated": "Son {{count}} buluşma gösteriliyor. Buluşmalar 24 saatte kapanır, 30 günde silinir.",
     "retention": "Buluşmalar 24 saatte kapanır, 30 günde silinir.",
     "emptyTitle": "Henüz buluşma yok",
     "emptyCopy": "İlkini kur, linki at — konumlar toplanınca deste kendiliğinden gelir.",
@@ -275,7 +297,9 @@
     "langHint": "Davet linkiyle gelenler kendi tarayıcı dilini görür; senin seçimin yalnız senin hesabın için.",
     "logout": "Çıkış yap",
     "errSave": "Kaydedilemedi — tekrar dene.",
-    "defaultTravelMode": "Varsayılan ulaşım"
+    "defaultTravelMode": "Varsayılan ulaşım",
+    "account": "Hesap",
+    "accountHint": "Gizlilik · KVKK · atıflar · hesabı sil"
   },
   "error": {
     "hmm": "Hmm.",
@@ -290,6 +314,7 @@
     "loading": "Harita yükleniyor…",
     "midpointOnly": "Orta nokta",
     "midpointPending": "Orta nokta sen katılınca netleşir",
+    "locationsPending": "Katılınca konumlar haritada görünür.",
     "you": "sen",
     "youPending": "sen · katılınca",
     "pickOnMap": "Haritadan seç",
@@ -359,10 +384,12 @@
     "meetWhere": "Nerede buluşulsun?",
     "modeMidpoint": "Orta noktada",
     "modeAnchor": "Belli bir yerde",
+    "midpointHint": "Herkesin konumundan adil orta nokta",
     "anchorLabel": "Buluşma yeri",
     "anchorPlaceholder": "Şehir ya da adres",
     "anchorHint": "Mekanlar bu noktanın 2 km çevresinde aranır.",
     "anchorSet": "{{label}} çevresinde aranacak",
+    "ownOptional": "İstersen; çapalı buluşmada zorunlu değil",
     "where": "Sen neredesin?",
     "ownHint": "şu anki konumun",
     "ownMissing": "Konumun henüz yok",
@@ -397,7 +424,15 @@
     "openMap": "Haritayı aç",
     "meetingFor": "{{activity}} için buluşuyoruz",
     "promise": "Orta nokta çevresinde {{activity}} mekanları aranacak.",
-    "promiseKm": "Orta nokta çevresinde {{activity}} mekanları aranacak (≤ {{km}} km)."
+    "promiseKm": "Orta nokta çevresinde {{activity}} mekanları aranacak (≤ {{km}} km).",
+    "code": "kod <0>{{code}}</0> · hesap gerekmez",
+    "noAccount": "hesap gerekmez",
+    "share": "Paylaş",
+    "showOnMap": "Haritada gör",
+    "privacy": "Konumun ~1 km yuvarlanarak gösterilir; tam adres kimseye gitmez.",
+    "anchoredBadge": "buluşma yeri belli",
+    "anchoredNote": "Davetliler konum vermeden de katılabilir; süreler kendi konumlarına göre hesaplanır.",
+    "anchoredSolo": "Çapalı buluşmada tek başına da arayabilirsin."
   },
   "venues": {
     "meta": "{{count}} mekan · orta noktadan ≤ {{km}} km",
@@ -426,7 +461,13 @@
     "searching": "mekanlar aranıyor…",
     "searchingTitle": "Çevredeki mekanlar aranıyor",
     "searchingCopy": "Herkesin yoluna göre sıralanıyor.",
-    "searchingHand": "genelde 5 saniye sürer"
+    "searchingHand": "genelde 5 saniye sürer",
+    "metaWithPlace": "{{count}} mekan · {{place}} civarı · ≤ {{km}} km",
+    "choose": "Bunu seç",
+    "soloHand": "kaydırmak yok, beğendiğini seç →",
+    "everyoneSeesShort": "Herkes bu listeyi görüyor; karıştırınca deste herkese açılır.",
+    "searchingTitleFor": "Çevredeki {{activity}} mekanları aranıyor",
+    "searchingCopyFrom": "{{sources}} kaynağından {{count}} kişinin yoluna göre sıralanıyor."
   },
   "attribution": {
     "google": "Google Maps",
@@ -434,7 +475,21 @@
     "osm": "© OpenStreetMap contributors",
     "open": "© OpenStreetMap katkıcıları · Overture Maps Foundation",
     "tripadvisor": "Veriler Tripadvisor'dan",
-    "wikimedia": "Fotoğraf: Wikimedia Commons"
+    "wikimedia": "Fotoğraf: Wikimedia Commons",
+    "pageTitle": "Atıflar ve lisanslar",
+    "mapData": "Mekan ve harita verisi",
+    "openSource": "Açık kaynak",
+    "everywhere": "Bu atıflar, verinin göründüğü her ekranda da yer alır.",
+    "name": {
+      "google": "Google Maps Platform",
+      "foursquare": "Foursquare",
+      "open": "OpenStreetMap"
+    },
+    "desc": {
+      "google": "Mekanlar, fotoğraflar, yol süreleri · Google Haritalar Ek Hizmet Şartları",
+      "foursquare": "Mekan kategorileri ve ipuçları",
+      "open": "Adres/semt adları (Nominatim) · ODbL 1.0"
+    }
   },
   "venue": {
     "fitOk": "{{activity}} için: {{category}}",
@@ -445,7 +500,7 @@
   },
   "voice": {
     "region": "Sesli sohbet",
-    "start": "Sesli sohbeti başlat",
+    "start": "Başlat",
     "restart": "Yeniden başlat",
     "open": "Sesli sohbet açık",
     "members": "{{count}} kişi",
@@ -454,6 +509,7 @@
     "joining": "Bağlanıyor…",
     "retry": "Tekrar dene",
     "leave": "Ayrıl",
+    "more": "Sesli sohbet seçenekleri",
     "end": "Herkes için bitir",
     "mute": "Mikrofonu kapat",
     "unmute": "Mikrofonu aç",
@@ -472,7 +528,15 @@
       "HOST": "Sesli sohbet bitirildi",
       "TIME_LIMIT": "Süre doldu",
       "EMPTY": "Herkes ayrıldı, sesli sohbet kapandı"
-    }
+    },
+    "title": "Sesli sohbet",
+    "startHint": "Herkes gelmeden konuşmaya başla",
+    "startAria": "Sesli sohbeti başlat",
+    "inCall": "Sesli sohbette",
+    "speakingBy": "{{name}} konuşuyor",
+    "mutedHint": "Mikrofonun kapalı",
+    "connectFailedTitle": "Bağlanılamadı",
+    "remainingMin": "{{min}} dk kaldı"
   },
   "offline": {
     "title": "Bağlantı yok",
@@ -502,7 +566,8 @@
     "appleLogin": "Apple ile giriş",
     "errConsent": "Kaydedilemedi — tekrar dene.",
     "errExport": "Veriler indirilemedi — tekrar dene.",
-    "errExportRate": "Saatte bir kez indirilebilir. Biraz sonra tekrar dene."
+    "errExportRate": "Saatte bir kez indirilebilir. Biraz sonra tekrar dene.",
+    "attributions": "Atıflar ve lisanslar"
   },
   "consent": {
     "title": "Açık rıza tercihlerin",
@@ -542,7 +607,9 @@
     "errAuth": "Oturumun düşmüş. Kimliğini yeniden doğrula.",
     "doneTitle": "Hesabın silindi.",
     "doneCopy": "Verilerin 30 gün içinde tamamen temizlenir. Bir gün ortada buluşmak istersen, kapı açık.",
-    "doneHand": "görüşürüz →"
+    "doneHand": "görüşürüz →",
+    "mobileSubmit": "Hesabımı sil",
+    "sheetTitle": "Son kez soruyoruz"
   },
   "support": {
     "cardTitle": "Bir şey mi takıldı?",
@@ -581,8 +648,8 @@
     "unmute": "Susturmayı kaldır",
     "muteHint": "Yalnız senin için",
     "reportTitle": "Neyi bildiriyorsun?",
-    "reasonHARASSMENT": "Taciz",
-    "reasonIMPERSONATION": "Sahtecilik / başkasını taklit",
+    "reasonHARASSMENT": "Sesli sohbette taciz",
+    "reasonIMPERSONATION": "Rahatsız edici ad",
     "reasonSPAM": "Sahte / spam",
     "reasonOTHER": "Başka",
     "reportNote": "Bildirim ekibimize gider; 24 saat içinde bakılır. {{name}} bunu görmez.",
@@ -608,5 +675,9 @@
     "download": "Takvim dosyası indir",
     "google": "Google Calendar'da aç",
     "eventTitle": "{{venue}} · {{session}}"
+  },
+  "source": {
+    "google": "Google",
+    "foursquare": "Foursquare"
   }
 }

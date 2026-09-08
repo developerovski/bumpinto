@@ -158,6 +158,48 @@ describe("VenueBrowser", () => {
     expect(screen.getAllByText(/önce herkese en adil olanlar/)).toHaveLength(1);
   });
 
+  /** Artboard W3c 1693: SOLO'da kaydırılacak deste YOK — grup kopyası oraya uymuyordu. */
+  it("SOLO'da el yazısı not seçime çağırır, adalet kopyası basılmaz", () => {
+    render(<VenueBrowser {...base} mode="solo" />);
+    expect(screen.getByText("kaydırmak yok, beğendiğini seç →")).toBeInTheDocument();
+    expect(screen.queryByText(/önce herkese en adil olanlar/)).not.toBeInTheDocument();
+  });
+
+  /** Artboard W3c 1645+: SOLO satırının sonunda "Bunu seç"; grupta satır aksiyonu YOK. */
+  it("SOLO: her satırda 'Bunu seç' düğmesi var ve onay kartını açar; grupta hiç yok", () => {
+    const { rerender } = render(<VenueBrowser {...base} mode="host" />);
+    expect(screen.queryAllByRole("button", { name: "Bunu seç" })).toHaveLength(0);
+    rerender(<VenueBrowser {...base} mode="solo" />);
+    const buttons = screen.getAllByRole("button", { name: "Bunu seç" });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[1]);
+    expect(screen.getByText("Seçimin")).toBeInTheDocument();
+    // Ad iki kez: satır başlığı + onay kartı — kart DOĞRU satırın altında açıldı.
+    expect(screen.getAllByText("Puanlı Kahve")).toHaveLength(2);
+  });
+
+  /** §4.6 çeşitlilik kapısı: uyum satırı ancak listede ≥2 FARKLI kategori varsa basılır. */
+  it("satırda uyum cümlesi — tek kategorili listede hiç basılmaz", () => {
+    const same = venues.map((v) => ({ ...v, category: "Café", activityType: "COFFEE" as const }));
+    const { rerender } = render(<VenueBrowser {...base} venues={same} mode="host" />);
+    expect(screen.queryByText(/Kahve için/)).not.toBeInTheDocument();
+
+    const mixed = [
+      { ...venues[0], category: "Café", activityType: "COFFEE" as const },
+      { ...venues[1], category: "Bakery", activityType: "COFFEE" as const },
+    ];
+    rerender(<VenueBrowser {...base} venues={mixed} mode="host" />);
+    expect(screen.getByText("Kahve için: café")).toBeInTheDocument();
+    expect(screen.getByText("Kahve değil: bakery")).toBeInTheDocument();
+  });
+
+  /** Kategori artık ÜSTLÜK olarak da basılmaz — aynı bilgi `.f-fit` cümlesinde. */
+  it("satırda kategori üstlüğü yok", () => {
+    const withCategory = venues.map((v) => ({ ...v, category: "Café" }));
+    render(<VenueBrowser {...base} venues={withCategory} mode="host" />);
+    expect(screen.queryByText("Café")).not.toBeInTheDocument();
+  });
+
   it("sağlayıcı bilinmiyorsa listede atıf hiç basılmaz", () => {
     useConfigStore.setState({ config: CONFIG });
     render(<VenueBrowser {...base} mode="host" />);

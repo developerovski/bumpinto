@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,7 +53,12 @@ describe("ConsentPage", () => {
     expect(screen.getByRole("switch", { name: "Kullanım verisi" })).toHaveAttribute("aria-checked", "false");
   });
 
-  it("konum kapalıyken uyarı satırı görünür", () => {
+  /* Artboard 4906/5090: not KALICI bilgidir — kapatmanın sonucu KAPATMADAN ÖNCE de okunmalı,
+     yoksa rıza "bilgilendirilmiş" olmaz. */
+  it("konum uyarısı anahtar açıkken de kapalıyken de görünür", () => {
+    at();
+    expect(screen.getByText(/adres yazarak katılırsın/)).toBeInTheDocument();
+    cleanup();
     at({ location: false });
     expect(screen.getByText(/adres yazarak katılırsın/)).toBeInTheDocument();
   });

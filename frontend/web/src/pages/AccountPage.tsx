@@ -2,7 +2,7 @@
    sağ: kimlik kartı + saklama notu + çıkış. Play "hesap yönetimi" ve Apple 5.1.1
    gizlilik erişimi bu ekrandan sağlanır. */
 import {
-  ChartLine, DownloadSimple, FileText, Lifebuoy, Scroll as ScrollIcon,
+  ChartLine, DownloadSimple, FileText, Lifebuoy, MapTrifold, Scroll as ScrollIcon,
   ShieldCheck, SignOut, ToggleRight, Trash,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -78,7 +78,7 @@ export default function AccountPage() {
 
   return (
     <Page>
-      <PageHeader title={t("account.title")} />
+      <PageHeader title={t("account.title")} size="reader" />
       <TwoZone
         left={<>
           <Overline>{t("account.legal")}</Overline>
@@ -98,6 +98,10 @@ export default function AccountPage() {
           {error && <ErrorText>{error}</ErrorText>}
           <Overline>{t("account.about")}</Overline>
           <SettingsCard label={t("account.about")}>
+            {/* Artboard 4762–4767: `Hakkında` kartı İKİ satır taşır, atıf satırı destekten ÖNCE.
+                Sağlayıcı atfı yalnız veri ekranlarında değil kalıcı bir sayfada da bulunmalı
+                (Google Haritalar Ek Hizmet Şartları / Foursquare / ODbL). */}
+            <SettingRow icon={<MapTrifold size={ICON} />} label={t("account.attributions")} to="/attributions" />
             <SettingRow icon={<Lifebuoy size={ICON} />} label={t("account.support")} to="/support" />
           </SettingsCard>
           <Overline>{t("account.danger")}</Overline>

@@ -27,6 +27,23 @@
      DEĞİŞMEZ. Ölçüldü — #a96a0b/#fff1d6 = 3.96:1 (AA altı), #7e4f06 = 6.25:1;
      #de2456/#ffe9ef = 4.04:1, #c41c4b = 5.02:1. */
   --color-amber-ink: #7e4f06;
+  /* Artboard W10b (4500/4631) — çevrimdışı şeridinin amber zemine ait kenarlığı. */
+  --color-amber-line: #f3ddb0;
+  /* Artboard `.danger` (W13/W18/W20) — tehlikeli bölge metni; `#c0392b` çıkış düğmesinin
+     kendi tonudur, ikisi AYRI değerlerdir. */
+  --color-danger: #b3261e;
+  /* Artboard `.rg-t` / `.tb-b` — yol çubuğunun boş rayı (sand'den bir tık koyu). */
+  --color-track: #efe7dc;
+  /* Artboard `.sk` — iskelet parıltısı; `animate-pulse` yerine soldan sağa süpürme. */
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
   --color-flame-ink: #c41c4b;
   --color-sand: #f4eee6;
   --color-line: #f1e8de;

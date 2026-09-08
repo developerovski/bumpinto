@@ -1,14 +1,15 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { MoonStars } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import { Note, Page } from "../components/atoms";
-import JoinFormFields from "../components/molecules/JoinFormFields";
+import JoinFormFields, { type JoinError } from "../components/molecules/JoinFormFields";
 import JoinIntro from "../components/molecules/JoinIntro";
 import LazyBoundary from "../components/molecules/LazyBoundary";
 import TwoZone from "../components/molecules/TwoZone";
 import WhoIsHere from "../components/molecules/WhoIsHere";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { apiErrorCode } from "../lib/apiError";
-import { DEFAULT_MAP_CENTER, approx } from "../lib/geo";
+import { approx } from "../lib/geo";
 import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { useAuthStore } from "../store/authStore";
 import { useSessionStore } from "../store/sessionStore";
@@ -16,9 +17,6 @@ import { useOwnLocation } from "../store/useOwnLocation";
 
 /* Harita ayrı chunk (harita politikası §4.7) — tembel yüklenir. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
-/* Seçici de ayrı chunk VE yalnız düğmeye basılınca render edilir: faturalanan birim
-   `new google.maps.Map()` örneğidir, sayfa yüklemesi değil. */
-const MapPicker = lazy(() => import("../components/organisms/MapPicker"));
 
 /** Kendi pinimizin id'si — gercek katilimci id'si henuz yok (katilim oncesi). */
 const SELF_PIN = "self";
@@ -30,8 +28,7 @@ export default function JoinForm() {
   const me = useAuthStore((s) => s.me);
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [error, setError] = useState<JoinError | null>(null);
   const [travelMode, setTravelMode] = useState<TravelMode>(me?.defaultTravelMode ?? DEFAULT_TRAVEL_MODE);
   // profil `me` çoğu zaman bu sayfa ilk render edildiğinde henüz yüklenmemiştir (davet linki
   // taze sayfa yüklemesiyle açılır) — geldiğinde ön-doldur, ama kullanıcı elle seçtiyse üzerine yazma.
@@ -74,7 +71,7 @@ export default function JoinForm() {
     try {
       const location = await loc.resolve();
       if (!location && loc.address.trim()) {
-        setError(t("join.errGeocode"));
+        setError({ kind: "geocode", message: t("join.errGeocode") });
         return;
       }
       // token HttpOnly cookie'de — web'de saklanmaz; join() görünümü tazeler
@@ -88,16 +85,26 @@ export default function JoinForm() {
     } catch (e) {
       // Kod, prose değil: backend 409'u `participants_too_far_apart` ile işaretliyor, çünkü
       // kullanıcının yapabileceği somut bir şey var — host'tan sabit bir yer istemek.
-      setError(t(apiErrorCode(e) === "participants_too_far_apart"
-        ? "join.errTooFar" : "join.errJoin"));
+      setError(apiErrorCode(e) === "participants_too_far_apart"
+        ? { kind: "tooFar", message: t("join.errTooFar") }
+        : { kind: "join", message: t("join.errJoin") });
     } finally {
       setSubmitting(false);
     }
   }
 
+  // Artboard W4b: 409 ekrana bir kart eklediğinde giriş bloğu sıkışır ve sağdaki kart
+  // özet şeridi yerine kişi başına satıra döner (4133 / 4229).
+  const tooFar = error?.kind === "tooFar";
+
   return (
     <Page>
       <TwoZone
+        // .zone gap 18px (artboard 1264) — varsayılan 16px değil.
+        leftGap="md"
+        // Artboard Katıl 390 (1344–1376): sağ bölge YOK — kart, harita ve el yazısı not
+        // yalnız ≥1024'te çıkar.
+        rightLgOnly
         left={
           <>
             <JoinIntro
@@ -105,7 +112,7 @@ export default function JoinForm() {
               sessionName={preview?.name ?? null}
               activities={preview?.activityTypes ?? []}
               count={preview?.participantCount ?? 0}
-              hostOnline={preview?.hostOnline}
+              compact={tooFar}
             />
             <JoinFormFields
               name={name}
@@ -120,28 +127,23 @@ export default function JoinForm() {
               onAddressChange={loc.setAddress}
               onUseLocation={loc.detect}
               onOtherAddress={loc.otherAddress}
-              onPickOnMap={() => setPickerOpen(true)}
               onTravelModeChange={handleTravelModeChange}
               onSubmit={submit}
             />
-            {pickerOpen && (
-              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
-                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
-                  <MapPicker
-                    center={loc.coords ?? DEFAULT_MAP_CENTER}
-                    onPick={(picked) => {
-                      loc.setPicked(picked);
-                      setPickerOpen(false);
-                    }}
-                    onCancel={() => setPickerOpen(false)}
-                  />
-                </Suspense>
-              </LazyBoundary>
-            )}
           </>
         }
         right={
-          <WhoIsHere participants={preview?.participants ?? []}>
+          <WhoIsHere participants={preview?.participants ?? []} rows={tooFar} hostOnline={preview?.hostOnline}>
+            {preview?.hostOnline === false && preview.hostDisplayName && (
+              // Artboard W4b 1280 (4252–4255): host çevrimdışı notu SAĞ bölgede amber kart —
+              // katılımı engellemez, bu yüzden formun akışından çıkarıldı.
+              <div className="flex items-center gap-2.5 rounded-card border border-amber-line bg-amber-wash p-[0.75rem_0.875rem] shadow-sh1">
+                <MoonStars size={19} aria-hidden className="flex-none text-amber" />
+                <span className="flex-1 text-[0.75rem] text-ink">
+                  {t("join.hostAway", { host: preview.hostDisplayName })}
+                </span>
+              </div>
+            )}
             <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
               <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
                 <MapView
@@ -150,7 +152,9 @@ export default function JoinForm() {
                   venues={[]}
                   midpoint={null}
                   radiusKm={null}
-                  caption={t("map.midpointPending")}
+                  caption={t("map.locationsPending")}
+                  // Artboard 1322: 290px (varsayılan 320px değil).
+                  heightClass="h-[18.125rem]"
                   lgOnly
                 />
               </Suspense>

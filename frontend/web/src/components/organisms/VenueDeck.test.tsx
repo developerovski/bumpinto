@@ -74,4 +74,44 @@ describe("VenueDeck jesti (plan 14)", () => {
       screen.queryByText("hiç beğenmedin — kimse ortak beğenmezse sonuç boş kalır"),
     ).not.toBeInTheDocument();
   });
+
+  // Artboard 2034: gerekçe notu 1280'de DE var; 390 cümlesi jesti de anlatır (2140).
+  it("el yazısı gerekçe notunu iki kırılım için de basar", () => {
+    render(<VenueDeck venues={venues} />);
+    expect(screen.getByText("önce herkese en adil olanlar — kaydır gitsin")).toBeInTheDocument();
+    expect(screen.getByText("önce herkese en adil olanlar")).toBeInTheDocument();
+  });
+
+  // Artboard sırası: aksiyonlar → el yazısı not → klavye ipucu.
+  it("el yazısı not aksiyonlarla klavye ipucunun ARASINDA durur", () => {
+    const { container } = render(<VenueDeck venues={venues} />);
+    const text = container.textContent ?? "";
+    const iAction = text.indexOf("Café Berlage");
+    const iHand = text.indexOf("önce herkese en adil olanlar — kaydır gitsin");
+    const iKbd = text.indexOf("geri al");
+    expect(iAction).toBeLessThan(iHand);
+    expect(iHand).toBeLessThan(iKbd);
+  });
+
+  // Artboard 2013: adalet rozeti YALNIZ ön kartta (deste kartı), arka kartlarda gövde yok.
+  it("ön kart başlık satırında adalet rozetini gösterir", () => {
+    render(
+      <VenueDeck
+        venues={[
+          {
+            id: "a",
+            name: "Café Berlage",
+            deckOrder: 0,
+            travel: [
+              { participantId: "p1", minutes: 25 },
+              { participantId: "p2", minutes: 30 },
+            ],
+          },
+        ]}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+      />,
+    );
+    // Rozet basıldığı için `.tb` alt satırı lead'i TEKRAR ETMEZ — tek kopya kalır.
+    expect(screen.getAllByText("Herkese ~aynı")).toHaveLength(1);
+  });
 });

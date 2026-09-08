@@ -16,6 +16,7 @@ import com.bumpinto.domain.safety.Block;
 import com.bumpinto.domain.safety.Report;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
+import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.user.UserProfile;
@@ -76,9 +77,29 @@ public class FakeStores {
             participants.remove(participantId);
         }
 
-        @Override public List<SessionSummary> summariesOfHost(UUID hostId, int limit) {
+        @Override public List<SessionSummary> openSummariesOfHost(UUID hostId, Instant now) {
+            return summariesOfHost(hostId, s -> !isPast(s, now), Long.MAX_VALUE);
+        }
+
+        @Override public List<SessionSummary> pastSummariesOfHost(UUID hostId, Instant now,
+                                                                  int limit) {
+            return summariesOfHost(hostId, s -> isPast(s, now), limit);
+        }
+
+        /**
+         * SQL'deki bolmenin AYNISI: kayitli statusu hala COLLECTING ama TTL'i gecmis satir
+         * gecmise duser (Session.isExpired ile ayni sinir: now > expiresAt).
+         */
+        private static boolean isPast(Session s, Instant now) {
+            return s.status() == SessionStatus.DECIDED || s.status() == SessionStatus.EXPIRED
+                    || s.isExpired(now);
+        }
+
+        private List<SessionSummary> summariesOfHost(UUID hostId, Predicate<Session> bucket,
+                                                     long limit) {
             return sessions.values().stream()
                     .filter(s -> s.hostId().equals(hostId))
+                    .filter(bucket)
                     // Adaptor'la ayni tie-break: findByHostIdOrderByCreatedAtDescIdDesc
                     .sorted(Comparator.comparing(this::createdAtOf, Comparator.reverseOrder())
                             .thenComparing(Session::id, Comparator.reverseOrder()))
@@ -147,7 +168,12 @@ public class FakeStores {
             List<Participant> ps = participantsOf(s.id());
             int ready = (int) ps.stream().filter(Participant::hasLocation).count();
             int done = (int) ps.stream().filter(Participant::deckDone).count();
-            return new SessionSummary(s, createdAtOf(s), ps.size(), ready, done, null, null);
+            List<SessionSummary.ParticipantSummary> people = ps.stream()
+                    .map(p -> new SessionSummary.ParticipantSummary(p.displayName(),
+                            p.hasLocation(), p.host()))
+                    .toList();
+            return new SessionSummary(s, createdAtOf(s), ps.size(), ready, done, people,
+                    null, null);
         }
     }
 

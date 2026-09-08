@@ -50,6 +50,30 @@ describe("PersonSheet", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("sebep listesi artboard sırasını ve metnini taşır; ilk satır varsayılan seçili", () => {
+    sheet();
+    fireEvent.click(screen.getByRole("button", { name: /Bildir/ }));
+    // Artboard W20·Bildirildi (5794-5814). Sunucuda `OFFENSIVE_NAME` yok — metin var olan
+    // enum üyelerine eşlendi (IMPERSONATION = "Rahatsız edici ad").
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
+      "Rahatsız edici ad",
+      "Sesli sohbette taciz",
+      "Sahte / spam",
+      "Başka",
+    ]);
+    expect(screen.getByRole("radio", { name: "Rahatsız edici ad" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("varsayılan sebep IMPERSONATION olarak gider", async () => {
+    const report = vi.fn().mockResolvedValue(undefined);
+    useSocialStore.setState({ report } as never);
+    sheet();
+    fireEvent.click(screen.getByRole("button", { name: /Bildir/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Gönder" }));
+    expect(report).toHaveBeenCalledWith("x", "k", "Kerem", "IMPERSONATION", undefined);
+    await waitFor(() => expect(report).toHaveBeenCalledTimes(1));
+  });
+
   it("Engelle store'a gider; Sustur yereldir (hiçbir uç çağrılmaz)", async () => {
     const block = vi.fn().mockResolvedValue(undefined);
     useSocialStore.setState({ block } as never);

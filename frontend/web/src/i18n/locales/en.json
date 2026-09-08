@@ -45,7 +45,7 @@
     "joinedCount_one": "{{count}} joined",
     "joinedCount_other": "{{count}} joined",
     "locAuto": "Your current location",
-    "locAutoHint": "near {{label}} · detected automatically",
+    "locAutoHint": "around {{label}} · detected automatically",
     "locAutoHintNoLabel": "detected automatically",
     "locOk": "OK",
     "locOther": "Type another city or address",
@@ -55,7 +55,9 @@
   "waiting": {
     "joined": "You're in!",
     "preparing": "Venues are on the way",
-    "copy": "First the list, then the vote. Just keep this page open.",
+    "copy": "First the list, then the vote. You can close the tab — we'll let you know when it's ready.",
+    "copyMobile": "First the list, then the vote. You can close the app — we'll let you know.",
+    "closeHint": "You can close the page; you'll see it on your lock screen when it's ready.",
     "who": "Who's here",
     "readyCount": "{{ready}} / {{total}} ready",
     "host": "Host",
@@ -68,7 +70,9 @@
     "modeHint": "You'll need to share your location again to save.",
     "offline": "offline",
     "openMap": "Open the map",
-    "online": "online"
+    "online": "online",
+    "noLocationNeeded": "No location · not needed",
+    "noLocationNeededSelf": "You didn't share a location · not needed"
   },
   "deck": {
     "seeAll": "See all",
@@ -87,27 +91,30 @@
     "likedNote": "Liking doesn't lock you in — you can edit the list once you're done. Others' likes show up in the result.",
     "undoKey": "undo",
     "cardsOf": "{{current}} / {{total}} cards",
+    "near": "near {{place}}",
     "cardsDone": "{{total}} / {{total}} cards · done",
     "finishedSticker": "Deck done!",
-    "finishedCopy_one": "You liked {{count}} place. The result shows once everyone's done.",
-    "finishedCopy_other": "You liked {{count}} places. The result shows once everyone's done.",
     "backToDeck": "Back to the deck",
     "likesN_one": "{{count}} like",
     "likesN_other": "{{count}} likes",
-    "swipeHand": "swipe away — the buttons do the same",
+    "swipeHand": "fairest for everyone first — just swipe",
+    "fairestFirstHand": "fairest for everyone first",
     "sentCopy": "The result shows once everyone's done.",
     "rowDone": "Done",
     "rowSwiping": "Swiping",
+    "whoWhere": "Who's where",
+    "doneCount": "{{done}} / {{total}} done",
     "nudge": "Nudge the ones waiting",
     "nudgeText": "{{count}} places ready for {{activity}}, we're waiting on you:",
     "continueWithout": "Continue without {{names}}",
+    "forceHostOnly": "Only the host sees “Continue without {{names}}”.",
     "allDoneHand": "everyone's done — result coming up →",
     "emptyWarn": "You didn't like anything. If no one has a shared like, the result stays empty.",
     "sendAnyway": "Send anyway",
-    "likedTitle_one": "You liked {{count}} place",
-    "likedTitle_other": "You liked {{count}} places",
+    "likedTitle_one": "You <0>liked</0> {{count}} place",
+    "likedTitle_other": "You <0>liked</0> {{count}} places",
     "sentBadge": "Likes sent",
-    "sentTitleWaiting": "Now we wait · {{name}} is still swiping",
+    "sentTitleWaiting": "Now we wait · <0>{{name}}</0> is still swiping",
     "sentTitleAllDone": "Everyone's done — result coming up",
     "sentCopyExtra": "Just keep this page open.",
     "othersLabel": "the others",
@@ -117,7 +124,8 @@
     "progressLine_other": "<0>{{done}} finished.</0> {{name}} is still swiping; the result shows once everyone's done.",
     "errSend": "Couldn't send your likes — try again.",
     "errForce": "Couldn't start the decision — try again.",
-    "calibrateHand": "you haven't liked anything yet — if no one overlaps, the result stays empty"
+    "calibrateHand": "you haven't liked anything yet — if no one overlaps, the result stays empty",
+    "finishedCopy": "The result shows once everyone is done."
   },
   "travel": {
     "min": "~{{min}} min",
@@ -140,27 +148,34 @@
     "titleMany": "All are great, one gets picked",
     "titleSent": "You're locked in, one gets picked",
     "copy": "Everyone liked both. You get one pick — the result shows once everyone has chosen.",
+    "copyWide": "Everyone liked both — you get one pick.",
+    "copySent": "Your pick is locked — the result shows once everyone has locked in.",
     "copyFallback": "No overlap yet — the most-liked spots made the final round.",
-    "trailer": "total ~{{total}} min · gap ~{{gap}} min",
+    "trailer": "total ~{{total}} min · <0>gap ~{{gap}} min</0>",
     "note": "who picked what shows in the result",
     "lockIn": "Lock in my pick",
-    "who": "Who picked",
+    "who": "Who locked in",
+    "whoLocked": "Who picked",
     "choosing": "Choosing…",
     "lockedBadge": "Locked in",
+    "notVoted": "didn't pick",
     "lockedTitle": "Your pick is locked",
     "lockedCopy": "waiting on the others — the result shows once everyone has picked",
     "lockedCopyName": "{{name}} is choosing — the result shows once everyone has locked in",
     "countOf": "{{done}} / {{total}}",
-    "votedCount": "{{done}}/{{total}} picked",
+    "votedCount": "{{done}} / {{total}} locked in",
     "remind": "Send a reminder",
     "remindText": "Your pick is waiting — lock it in with one tap:",
     "tallyTitle": "Votes",
-    "tieNote": "Everyone picked and it came out level.",
+    "tieOverline": "Voting is done",
+    "voteCount_one": "{{count}} vote",
+    "voteCount_other": "{{count}} votes",
     "tieTitle": "It's a tie",
-    "tieHostCopy": "You set this meetup up, so you get the final call.",
-    "tieGuestCopy": "{{host}} is making the final call.",
-    "tieDecide": "Make it official",
+    "tieHostCopy": "Everyone picked and it came out level. You set this meetup up, so you get the final call.",
+    "tieGuestCopy": "Everyone picked and it came out level. {{host}} is making the final call.",
+    "tieDecide": "I'll decide",
     "tieFair": "Defer to the fairest",
+    "tieHand": "defer to the fairest, nobody loses →",
     "errDecide": "Couldn't set the result — try again.",
     "errVote": "Couldn't send your pick — try again."
   },
@@ -170,6 +185,7 @@
     "decidedAtSticker": "Decided · {{time}}",
     "viralTitle": "Is the next meetup on you?",
     "viralCopy": "Set one up in 30 seconds — friends join with a link.",
+    "viralCtaShort": "Set up",
     "viralCta": "Start a meetup",
     "viralSticker": "your turn",
     "share": "Share with the group",
@@ -186,13 +202,20 @@
     "midpointMeters": "~{{m}} m from the midpoint",
     "midpointExact": "Right in the middle",
     "leaveEarlyHand": "{{name}} has the longest way — leaving ~{{min}} min early gets everyone there together",
-    "eyebrowUnanimous": "YOU ALL PICKED THE SAME PLACE",
-    "eyebrowRunoff": "Decided by vote {{a}}–{{b}}",
-    "eyebrowPartial": "without {{names}}",
+    "eyebrowUnanimous": "Common ground · you all picked the same place",
+    "eyebrowRunoff": "Common ground · decided by vote {{a}}–{{b}}",
+    "eyebrowPartial": "Common ground · without {{names}}",
     "backup": "Backup plan",
-    "backupNote": "second place",
     "likedSticker": "{{n}}/{{total}} liked it!",
-    "partialOthers": "{{name}} and others"
+    "partialOthers": "{{name}} and others",
+    "runoffSticker": "Decided by vote {{a}}–{{b}}",
+    "partialSticker": "without {{names}}",
+    "directions": "Get directions",
+    "backupLikes_one": "{{count}} like",
+    "backupLikes_other": "{{count}} likes",
+    "backupVotes_one": "{{count}} vote in the runoff",
+    "backupVotes_other": "{{count}} votes in the runoff",
+    "backupRange": "everyone ~{{min}}–{{max}} min"
   },
   "landing": {
     "title": "<0>Meet</0><1/>in the middle.",
@@ -235,6 +258,7 @@
     "doneOf": "{{done}}/{{total}} done",
     "deckOpen": "Deck's open!",
     "errLoad": "Couldn't load your meetups — try again.",
+    "retentionTruncated": "Showing the last {{count}} meet-ups. Meet-ups close in 24 hours and are deleted after 30 days.",
     "retention": "Meetups close after 24 hours and are deleted after 30 days.",
     "emptyTitle": "No meetups yet",
     "emptyCopy": "Start one, send the link — the deck fills in once locations are in.",
@@ -283,7 +307,9 @@
     "langHint": "People who join via an invite link see their own browser language; your choice only applies to your account.",
     "logout": "Sign out",
     "errSave": "Couldn't save — try again.",
-    "defaultTravelMode": "Default travel mode"
+    "defaultTravelMode": "Default travel mode",
+    "account": "Account",
+    "accountHint": "Privacy · GDPR · attributions · delete account"
   },
   "error": {
     "hmm": "Hmm.",
@@ -298,6 +324,7 @@
     "loading": "Loading map…",
     "midpointOnly": "Midpoint",
     "midpointPending": "The midpoint settles once you join",
+    "locationsPending": "Locations appear on the map once you join.",
     "you": "you",
     "youPending": "you · once you join",
     "pickOnMap": "Pick on map",
@@ -328,7 +355,7 @@
   },
   "travelMode": {
     "WALK": {
-      "name": "Walk",
+      "name": "Walking",
       "coming": "walking over"
     },
     "BIKE": {
@@ -367,10 +394,12 @@
     "meetWhere": "Where should you meet?",
     "modeMidpoint": "At the midpoint",
     "modeAnchor": "At a specific place",
+    "midpointHint": "A fair midpoint from everyone's location",
     "anchorLabel": "Meeting spot",
     "anchorPlaceholder": "City or address",
     "anchorHint": "Venues are searched within 2 km of this spot.",
     "anchorSet": "Searching around {{label}}",
+    "ownOptional": "If you like; not required for an anchored meet-up",
     "where": "Where are you?",
     "ownHint": "your current location",
     "ownMissing": "No location yet",
@@ -405,7 +434,15 @@
     "openMap": "Open map",
     "meetingFor": "Meeting up for {{activity}}",
     "promise": "We'll look for {{activity}} spots around the midpoint.",
-    "promiseKm": "We'll look for {{activity}} spots around the midpoint (≤ {{km}} km)."
+    "promiseKm": "We'll look for {{activity}} spots around the midpoint (≤ {{km}} km).",
+    "code": "code <0>{{code}}</0> · no account needed",
+    "noAccount": "no account needed",
+    "share": "Share",
+    "showOnMap": "Show on map",
+    "privacy": "Your location is shown rounded to ~1 km; nobody gets your exact address.",
+    "anchoredBadge": "meeting spot is set",
+    "anchoredNote": "Guests can join without sharing a location; travel times are worked out from their own.",
+    "anchoredSolo": "With a set meeting spot you can search on your own."
   },
   "venues": {
     "meta": "{{count}} venues · ≤ {{km}} km from the midpoint",
@@ -434,7 +471,13 @@
     "searching": "looking for places…",
     "searchingTitle": "Looking for places nearby",
     "searchingCopy": "Sorted by everyone's trip.",
-    "searchingHand": "usually takes 5 seconds"
+    "searchingHand": "usually takes 5 seconds",
+    "metaWithPlace": "{{count}} places · around {{place}} · ≤ {{km}} km",
+    "choose": "Pick this",
+    "soloHand": "no swiping, just pick one →",
+    "everyoneSeesShort": "Everyone sees this list; shuffling opens the deck for all.",
+    "searchingTitleFor": "Looking for {{activity}} spots nearby",
+    "searchingCopyFrom": "Sorting by {{count}} people's travel, from {{sources}}."
   },
   "attribution": {
     "google": "Google Maps",
@@ -442,7 +485,21 @@
     "osm": "© OpenStreetMap contributors",
     "open": "© OpenStreetMap contributors · Overture Maps Foundation",
     "tripadvisor": "Data from Tripadvisor",
-    "wikimedia": "Photo: Wikimedia Commons"
+    "wikimedia": "Photo: Wikimedia Commons",
+    "pageTitle": "Attributions and licences",
+    "mapData": "Place and map data",
+    "openSource": "Open source",
+    "everywhere": "These attributions also appear on every screen where the data is shown.",
+    "name": {
+      "google": "Google Maps Platform",
+      "foursquare": "Foursquare",
+      "open": "OpenStreetMap"
+    },
+    "desc": {
+      "google": "Places, photos, travel times · Google Maps Additional Terms of Service",
+      "foursquare": "Place categories and tips",
+      "open": "Address/neighbourhood names (Nominatim) · ODbL 1.0"
+    }
   },
   "venue": {
     "fitOk": "For {{activity}}: {{category}}",
@@ -453,7 +510,7 @@
   },
   "voice": {
     "region": "Voice chat",
-    "start": "Start voice chat",
+    "start": "Start",
     "restart": "Start again",
     "open": "Voice chat is on",
     "members_one": "{{count}} person",
@@ -463,6 +520,7 @@
     "joining": "Connecting…",
     "retry": "Try again",
     "leave": "Leave",
+    "more": "Voice chat options",
     "end": "End for everyone",
     "mute": "Mute",
     "unmute": "Unmute",
@@ -481,7 +539,15 @@
       "HOST": "Voice chat was ended",
       "TIME_LIMIT": "Time is up",
       "EMPTY": "Everyone left, voice chat closed"
-    }
+    },
+    "title": "Voice chat",
+    "startHint": "Start talking before everyone arrives",
+    "startAria": "Start voice chat",
+    "inCall": "In voice chat",
+    "speakingBy": "{{name}} is speaking",
+    "mutedHint": "Your mic is off",
+    "connectFailedTitle": "Couldn’t connect",
+    "remainingMin": "{{min}} min left"
   },
   "offline": {
     "title": "No connection",
@@ -511,7 +577,8 @@
     "appleLogin": "Signed in with Apple",
     "errConsent": "Couldn't save — try again.",
     "errExport": "Couldn't download your data — try again.",
-    "errExportRate": "You can download once per hour. Try again shortly."
+    "errExportRate": "You can download once per hour. Try again shortly.",
+    "attributions": "Attributions and licences"
   },
   "consent": {
     "title": "Your consent settings",
@@ -551,7 +618,9 @@
     "errAuth": "Your session expired. Verify your identity again.",
     "doneTitle": "Your account is deleted.",
     "doneCopy": "Your data is fully cleared within 30 days. If you ever want to meet in the middle again, the door is open.",
-    "doneHand": "see you →"
+    "doneHand": "see you →",
+    "mobileSubmit": "Delete my account",
+    "sheetTitle": "Asking one last time"
   },
   "support": {
     "cardTitle": "Something not working?",
@@ -590,8 +659,8 @@
     "unmute": "Unmute",
     "muteHint": "Only for you",
     "reportTitle": "What are you reporting?",
-    "reasonHARASSMENT": "Harassment",
-    "reasonIMPERSONATION": "Impersonation",
+    "reasonHARASSMENT": "Harassment in voice chat",
+    "reasonIMPERSONATION": "Offensive name",
     "reasonSPAM": "Fake / spam",
     "reasonOTHER": "Something else",
     "reportNote": "The report goes to our team and is reviewed within 24 hours. {{name}} won't see it.",
@@ -617,5 +686,9 @@
     "download": "Download calendar file",
     "google": "Open in Google Calendar",
     "eventTitle": "{{venue}} · {{session}}"
+  },
+  "source": {
+    "google": "Google",
+    "foursquare": "Foursquare"
   }
 }

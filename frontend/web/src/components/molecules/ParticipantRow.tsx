@@ -13,8 +13,9 @@ function hhmm(iso: string, locale: string): string | null {
   return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
-/** Artboard W2 · .srow — avatar + ad/alt satır + tek rozet.
-    Rozet önceliği artboard'dan: kuran satırında "Kuran", diğerlerinde hazır/bekliyor.
+/** Artboard W2 · .srow — avatar + ad/alt satır + rozet(ler).
+    Artboard v3 (W3 1107–1108): kuran satırında "Kuran" rozeti durum rozetini GİZLEMEZ, ikisi
+    birlikte basılır — "Kuran" bir rol, "Hazır/Bekliyor" bir durum.
     Alt satır: "{{şehir}} · <ikon> ~{{dk}} dk" — ikon ve dakika `travelMode`/`midpointMinutes`
     alanları ZATEN katılımcı nesnesinin üstünde (B-7:T1, üretilmiş tipte), ayrı prop olarak
     THREAD edilmez. Geliş animasyonu: `animate-appear` (reduced-motion `@layer base`'te kapalı).
@@ -26,10 +27,18 @@ export default function ParticipantRow(props: {
   index: number;
   isSelf?: boolean;
   onOptions?: (participant: ParticipantDto) => void;
+  /** `SessionView.anchored` — çapalı oturumda merkez host'un seçtiği sabit noktadır, kimsenin
+      konumu GEREKMEZ. Bu yüzden konumsuz katılımcı "bekleyen" değil HAZIR sayılır
+      (artboard W3d 4020/4113). */
+  anchored?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const p = props.participant;
   const mode = p.hasLocation ? p.travelMode : undefined;
+  // Çapalıda konum vermemek bir eksiklik değil: satır hazır görünür (halka + yeşil rozet),
+  // nabız/kesikli avatar YOK — kimse bu kişiyi beklemiyor.
+  const noLocationNeeded = props.anchored === true && !p.hasLocation;
+  const ready = p.hasLocation || noLocationNeeded;
   const icons = mode ? MODE_ICON[mode] : [];
   // `online` sunucudan gelir; istemci canlilik TURETMEZ. undefined = bilgi yok, cevrimici say
   // (yeni alan gelmeden once render edilen gorunumler kisiyi haksiz yere solutmasin).
@@ -40,27 +49,30 @@ export default function ParticipantRow(props: {
   // Alan yoksa metin UYDURULMAZ: linkOpenedAt yoksa mevcut "Konum bekleniyor…" kalır.
   const waitingLine = p.hasLocation
     ? p.locationLabel
-    : p.linkOpenedAt
-      ? t("presence.linkOpened")
-      : t("waiting.waitingLocation");
+    : noLocationNeeded
+      ? t(props.isSelf ? "waiting.noLocationNeededSelf" : "waiting.noLocationNeeded")
+      : p.linkOpenedAt
+        ? t("presence.linkOpened")
+        : t("waiting.waitingLocation");
   const seen = away && p.lastSeenAt ? hhmm(p.lastSeenAt, i18n.resolvedLanguage ?? i18n.language) : null;
   // K12: konuşma bilgisi ses deposundan (istemcide ölçülür); üyelik görünümden (`inVoice`).
   const speaking = useVoiceStore((s) =>
     props.isSelf ? s.selfSpeaking : !!(p.id && s.peers[p.id]?.speaking),
   );
   const inVoice = !!p.inVoice;
+  // Artboard satır dolgusu: 390'da 11px, 1280'de 13px.
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
+      className={`flex items-center gap-3 px-4 py-[0.6875rem] lg:py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
     >
       <span
-        className={`relative inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}${!p.hasLocation ? " c-pulse" : ""}`}
+        className={`relative inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}${!ready ? " c-pulse" : ""}`}
       >
         <Avatar
           name={p.displayName ?? "?"}
           index={props.index}
-          ring={p.hasLocation}
-          waiting={!p.hasLocation}
+          ring={ready}
+          waiting={!ready}
         />
         {online && (
           <i
@@ -82,7 +94,7 @@ export default function ParticipantRow(props: {
           )}
           {speaking && <span className="sr-only">{t("voice.speaking")}</span>}
         </span>
-        <span className="flex items-center gap-1.5 text-[0.8125rem] text-ink2">
+        <span className="flex items-center gap-1.5 text-[0.75rem] text-ink2">
           {waitingLine}
           {icons.length > 0 && (
             <>
@@ -120,13 +132,10 @@ export default function ParticipantRow(props: {
           <DotsThree size={20} weight="bold" aria-hidden />
         </button>
       )}
-      {p.host ? (
-        <Badge tone="neutral">{t("waiting.host")}</Badge>
-      ) : (
-        <Badge tone={p.hasLocation ? "grass" : "amber"}>
-          {p.hasLocation ? t("waiting.ready") : t("waiting.waitingBadge")}
-        </Badge>
-      )}
+      {p.host && <Badge tone="neutral">{t("waiting.host")}</Badge>}
+      <Badge tone={ready ? "grass" : "amber"}>
+        {ready ? t("waiting.ready") : t("waiting.waitingBadge")}
+      </Badge>
     </div>
   );
 }

@@ -64,4 +64,56 @@ describe("LikedList", () => {
     expect(screen.getByText(/^Sen /)).toBeInTheDocument();
     expect(screen.queryByText(/Arkadaşın/)).not.toBeInTheDocument();
   });
+
+  // Artboard 2053: satır meta'sı "★ 4.4 · €" — fiyat eskiden hiç basılmıyordu.
+  it("puanın yanında fiyat seviyesini de yazar", () => {
+    render(
+      <LikedList
+        venues={[{ id: "a", name: "Café Berlage", rating: 4.4, priceLevel: 1 }]}
+        liked={{ a: true }}
+      />,
+    );
+    expect(screen.getByText("★ 4,4 · €")).toBeInTheDocument();
+  });
+
+  // Artboard 2065: uyum satırı beğeni listesinde de var — destede ≥2 kategori varsa.
+  it("categories geçilince uyum satırını basar", () => {
+    render(
+      <LikedList
+        venues={[{ id: "a", name: "Bakkerij Bart", category: "Fırın", activityType: "COFFEE" }]}
+        liked={{ a: true }}
+        categories={["Espresso bar", "Fırın"]}
+      />,
+    );
+    expect(screen.getByText("Kahve değil: fırın")).toBeInTheDocument();
+  });
+
+  // Artboard 2054: `.rg` bandının üstünde adalet rozeti.
+  it("adalet rozetini satırda gösterir", () => {
+    render(
+      <LikedList
+        venues={[
+          {
+            id: "a",
+            name: "Café Berlage",
+            travel: [
+              { participantId: "p1", minutes: 25 },
+              { participantId: "p2", minutes: 30 },
+            ],
+          },
+        ]}
+        liked={{ a: true }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getAllByText("Herkese ~aynı").length).toBeGreaterThan(0);
+  });
+
+  // Artboard 390 (3413) kartı son satırda kapatır; not YALNIZ 1280'de var.
+  it("alt not yalnız ≥1024'te görünür (lg kapısı sınıfta)", () => {
+    render(<LikedList venues={[{ id: "a", name: "Café Berlage" }]} liked={{ a: true }} />);
+    const note = screen.getByText(/Beğeni seni bağlamaz/);
+    expect(note.className).toContain("hidden");
+    expect(note.className).toContain("lg:block");
+  });
 });

@@ -3,8 +3,8 @@
    Gövde ÜÇ DİLDE de tam yazılıdır (çeviri şeridi yok, 2026-09-07 kullanıcı düzeltmesi);
    `/data-rights`te rejim dile bağlıdır: TR = KVKK, EN/NL = GDPR. */
 import { useTranslation } from "react-i18next";
-import { Overline, Page } from "../components/atoms";
-import LegalBlocks from "../components/molecules/LegalBlocks";
+import { Page } from "../components/atoms";
+import LegalBlocks, { LegalMeta } from "../components/molecules/LegalBlocks";
 import PageHeader from "../components/molecules/PageHeader";
 import ReaderZone from "../components/molecules/ReaderZone";
 import { LEGAL_DOCS, bodyFor, type LegalSlug } from "../content/legal";
@@ -18,9 +18,9 @@ export default function LegalPage({ slug }: { slug: LegalSlug }) {
   }).format(new Date(doc.updated));
   return (
     <Page>
-      <PageHeader title={t(doc.titleKey)} />
+      <PageHeader title={t(doc.titleKey)} size="reader" />
       <ReaderZone>
-        <Overline>{t("legal.updated", { date, version: doc.version })}</Overline>
+        <LegalMeta>{t("legal.updated", { date, version: doc.version })}</LegalMeta>
         <LegalBlocks blocks={bodyFor(doc.body, lang)} />
       </ReaderZone>
     </Page>

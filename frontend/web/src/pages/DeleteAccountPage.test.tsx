@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +38,32 @@ describe("DeleteAccountPage", () => {
     expect(screen.getByText("google-signin")).toBeInTheDocument();
     expect(screen.getByText("apple-signin")).toBeInTheDocument();
     expect(screen.queryByLabelText(/SİL yaz/)).not.toBeInTheDocument();
+  });
+
+  /* Artboard 5272–5274: `.fld` içinde GÖRÜNÜR etiket. Daha önce etiket yalnız `aria-label`
+     olduğundan ekranda boş bir kutu duruyordu. */
+  it("onay alanının etiketi ekranda görünür ve input'a bağlıdır", () => {
+    at(true);
+    const label = screen.getByText("Onaylamak için SİL yaz");
+    expect(label.tagName).toBe("LABEL");
+    expect(label).toHaveAttribute("for", "del-confirm");
+    expect(screen.getByLabelText(/SİL yaz/)).toHaveAttribute("id", "del-confirm");
+  });
+
+  /* Artboard 5322–5324 + 5329–5366: 390'da silme AYRI bir onay adımıdır. Onay bloğu
+     ÇOĞALTILMAZ — tek input alt sayfaya taşınır (yazılan metin de korunur). */
+  it("390 akışı: `Hesabımı sil` onay alt sayfasını açar, Vazgeç kapatır", () => {
+    at(true);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    type("SİL");
+    fireEvent.click(screen.getByRole("button", { name: /Hesabımı sil/ }));
+    const sheet = screen.getByRole("dialog", { name: "Son kez soruyoruz" });
+    expect(within(sheet).getByLabelText(/SİL yaz/)).toHaveValue("SİL");
+    expect(screen.getAllByLabelText(/SİL yaz/)).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /Hesabımı sil/ })).not.toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Vazgeç" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/SİL yaz/)).toHaveValue("SİL");
   });
 
   it("girişli: kim olduğu yazar; SİL yazılmadan buton kapalı", () => {

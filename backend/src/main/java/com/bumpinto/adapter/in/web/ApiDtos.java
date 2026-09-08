@@ -288,16 +288,31 @@ public final class ApiDtos {
     public record ViewerDto(UUID participantId, boolean host, UUID runoffVoteVenueId) {
     }
 
+    /**
+     * Liste kartindaki ust uste binen avatar yigininin satiri. Bas harf {@code displayName}'den
+     * cizilir; {@code ready} false ise kesik cizgili "henuz hazir degil" halkasi. Koltuk id'si,
+     * e-posta ve konum YOK — kart bunlarin hicbirini gostermez.
+     */
+    public record SummaryParticipantDto(String displayName, boolean ready, boolean host) {
+    }
+
     public record SessionSummaryDto(String slug, String name,
                                     List<ActivityType> activityTypes,
                                     SessionType sessionType, SessionStatus status,
                                     Instant createdAt, Instant expiresAt, int participantCount,
                                     int readyCount, int doneCount,
+                                    /** Sayimlarla AYNI kaynak; sira katilma sirasi (host once). */
+                                    List<SummaryParticipantDto> participants,
                                     String decidedVenueName, String decidedVenuePhotoUrl) {
     }
 
-    /** open: DECIDED/EXPIRED disi; past: karar verilmis ya da suresi dolmus. */
-    public record SessionListResponse(List<SessionSummaryDto> open, List<SessionSummaryDto> past) {
+    /**
+     * open: acik oturumlar, TAVANSIZ; past: karar verilmis ya da suresi dolmus olanlar, en fazla
+     * 20. {@code pastTruncated} true ise gecmiste gosterilmeyen satirlar var — istemci "daha
+     * eski oturumlar var" diyebilsin diye acikca soylenir, sessizce kesilmez.
+     */
+    public record SessionListResponse(List<SessionSummaryDto> open, List<SessionSummaryDto> past,
+                                      boolean pastTruncated) {
     }
 
     public record LocationPrefDto(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,

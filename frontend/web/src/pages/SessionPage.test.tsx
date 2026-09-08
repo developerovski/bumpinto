@@ -45,7 +45,8 @@ describe("SessionPage yönlendirme", () => {
   });
   it("BROWSING + host → Mekanlar (Karıştır)", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "h", host: true } });
-    expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeInTheDocument();
+    // İki kopya: 1280 başlığı (`DesktopOnly`) + 390 `.cta` (`MobileCta`) — bkz. VenuesPage.
+    expect(screen.getAllByRole("button", { name: "Karıştır ve kaydır" }).length).toBeGreaterThan(0);
   });
   it("BROWSING + davetli → salt okunur rozet", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "a", host: false } });
@@ -88,7 +89,8 @@ describe("SessionPage — ses dock'u", () => {
   });
   it("BROWSING + host → dock hâlâ görünür (aşama geçişi switch'i değiştirir, dock'u değil)", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "h", host: true } });
-    expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeInTheDocument();
+    // İki kopya: 1280 başlığı (`DesktopOnly`) + 390 `.cta` (`MobileCta`) — bkz. VenuesPage.
+    expect(screen.getAllByRole("button", { name: "Karıştır ve kaydır" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Sesli sohbeti başlat/ })).toBeInTheDocument();
   });
 

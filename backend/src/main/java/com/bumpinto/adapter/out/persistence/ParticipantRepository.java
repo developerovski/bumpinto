@@ -15,7 +15,8 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
      *  (konum girisi) satiri heap'te sona tasiyip sirayi degistiriyordu. */
     List<ParticipantEntity> findBySessionIdOrderByJoinedAtAscIdAsc(UUID sessionId);
 
-    List<ParticipantEntity> findBySessionIdIn(Collection<UUID> sessionIds);
+    /** Toplu yukleme icin AYNI siralama: liste karti ile lobi ayni yuzleri ayni sirada dizer. */
+    List<ParticipantEntity> findBySessionIdInOrderByJoinedAtAscIdAsc(Collection<UUID> sessionIds);
 
     Optional<ParticipantEntity> findBySessionIdAndUserId(UUID sessionId, UUID userId);
 

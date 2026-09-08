@@ -11,7 +11,9 @@ export default function AccountDeletedPage() {
     <PlainShell>
       <Page center>
         <OneZone>
-          <MapMark />
+          {/* Artboard 5486: veda ekranının iğnesi SÖNÜK (`.mk-pin` ink3, gölgesiz) — marka
+              gradyanı ve kırmızı gölge bu ekranda kutlama gibi okunuyordu. */}
+          <MapMark muted />
           <Heading>{t("del.doneTitle")}</Heading>
           <Lead>{t("del.doneCopy")}</Lead>
           <HandNote>{t("del.doneHand")}</HandNote>

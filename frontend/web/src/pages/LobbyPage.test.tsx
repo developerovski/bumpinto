@@ -56,7 +56,7 @@ describe("LobbyPage", () => {
       useSessionStore.setState({ slug: "x7k2m", view: view as never });
       render(<LobbyPage view={view as never} />);
       const map = await screen.findByTestId("mapview");
-      expect(screen.queryByRole("button", { name: "Haritayı aç" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Haritada gör" })).not.toBeInTheDocument();
       /* Sabit `lg:h-[calc(100dvh-14rem)]` masaüstünde ~290px taşma bırakıyordu: kabuk 224px
          değil ~511px. Ölçü artık kabuktan gelir — haritada sabit lg yüksekliği YASAK. */
       expect(map.className).toContain("fit:h-full");
@@ -69,12 +69,32 @@ describe("LobbyPage", () => {
     }
   });
 
-  it("390: harita mount edilmez, ghost görünür", () => {
+  /** 390'da harita yok; onu açan düğme artboard 1198'e göre orta nokta kartının içindeki
+      40px ikon düğmesi ("Haritada gör") — kart altındaki tam genişlikli düğme kaldırıldı. */
+  it("390: harita mount edilmez, orta nokta kartındaki 'Haritada gör' düğmesi görünür", () => {
     const view = { ...base, participants: [host, ayse] };
     useSessionStore.setState({ slug: "x7k2m", view: view as never });
     render(<LobbyPage view={view as never} />);
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Haritada gör" })).toBeInTheDocument();
+  });
+
+  /** Davet kartı v3: mono link + oturum kodu + ikon-only kopyala + "Paylaş". Kod SUNUCUDAN
+      gelir (`SessionView.joinCode`) — yoksa uydurulmaz, satır yalnız "hesap gerekmez" der. */
+  it("davet kartı oturum kodunu ve Paylaş düğmesini basar; kod yoksa uydurmaz", () => {
+    const view = { ...base, joinCode: "X7K2M", participants: [host, ayse] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    const { unmount } = render(<LobbyPage view={view as never} />);
+    expect(screen.getByText("X7K2M").parentElement).toHaveTextContent("kod X7K2M · hesap gerekmez");
+    expect(screen.getByRole("button", { name: "Kopyala" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Paylaş/ })).toBeInTheDocument();
+    unmount();
+
+    const noCode = { ...base, participants: [host, ayse] };
+    useSessionStore.setState({ slug: "x7k2m", view: noCode as never });
+    render(<LobbyPage view={noCode as never} />);
+    expect(screen.queryByText(/^kod /)).not.toBeInTheDocument();
+    expect(screen.getByText("hesap gerekmez")).toBeInTheDocument();
   });
 
   /** B-10 çapalı oturumda `find-venues` önkoşulunu kaldırdı (DeckFlow.findVenues artık
@@ -85,6 +105,32 @@ describe("LobbyPage", () => {
     useSessionStore.setState({ slug: "x7k2m", view: view as never });
     render(<LobbyPage view={view as never} />);
     expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
+  });
+
+  /** Çapalıda merkez host'un seçtiği sabit noktadır: kimsenin konumu GEREKMEZ. Sayaç, satır
+      metni, rozet ve notlar bunu dürüstçe söylemeli — konumsuz host "bekleyen" değildir
+      (artboard W3d 3993/4013–4022/4029/4046). */
+  it("çapalı oturumda konumsuz host hazır sayılır: 1 / 1, 'gerekmiyor', çapa notları", () => {
+    const hostNoLoc = { id: "h", displayName: "Mehmet", host: true, hasLocation: false, manual: false };
+    const view = { ...base, anchored: true, participants: [hostNoLoc] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    render(<LobbyPage view={view as never} />);
+    expect(screen.getByText("1 / 1 hazır")).toBeInTheDocument();
+    expect(screen.getByText("Konum vermedin · gerekmiyor")).toBeInTheDocument();
+    expect(screen.getByText("Hazır")).toBeInTheDocument();
+    expect(screen.getByText("buluşma yeri belli")).toBeInTheDocument();
+    expect(screen.getByText(/Davetliler konum vermeden de katılabilir/)).toBeInTheDocument();
+    expect(screen.getByText("Çapalı buluşmada tek başına da arayabilirsin.")).toBeInTheDocument();
+    // "Mehmet yetişemezse sonradan katılır" — kendi kendini bekleyen host YOK.
+    expect(screen.queryByText(/yetişemezse/)).not.toBeInTheDocument();
+  });
+
+  it("çapasız lobide durum rozeti ve gizlilik notu değişmez", () => {
+    const view = { ...base, participants: [host, ayse] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    render(<LobbyPage view={view as never} />);
+    expect(screen.getByText("konumlar toplanıyor")).toBeInTheDocument();
+    expect(screen.getByText(/~1 km yuvarlanarak/)).toBeInTheDocument();
   });
 
   it("'Mekanları bul' basılınca istek sürerken iskelet gösterilir", async () => {

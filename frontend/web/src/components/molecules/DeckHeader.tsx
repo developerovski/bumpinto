@@ -4,11 +4,20 @@ import { useTranslation } from "react-i18next";
 import { Button, Progress } from "../atoms";
 import SessionHeader from "./SessionHeader";
 
-/** Artboard .bsm — küçük beyaz buton; `Button` atomunun `size="sm"` varyantı.
-    DeckScreen liste modunun "Desteye dön" aksiyonu da bu bileşeni paylaşır. */
+/** Artboard .bsm — küçük beyaz buton; `Button` atomunun `size="sm"` varyantı (42px / 14px).
+    DeckScreen liste modunun "Desteye dön" aksiyonu da bu bileşeni paylaşır.
+    390'da artboard `.bsm`i satır içinde 34px / 13px'e indiriyor (2103, 2287): başlığın yanında
+    tam boy pill oturum adını sıkıştırıyordu. `max-lg:` ezmesi Button'un `className` ekiyle
+    verilir — atomun kendi ölçüsü DEĞİŞMEZ (başka ekranlarda 42px doğru). */
 export function HeaderButton(props: { onClick: () => void; children: ReactNode }) {
   return (
-    <Button type="button" kind="white" size="sm" onClick={props.onClick}>
+    <Button
+      type="button"
+      kind="white"
+      size="sm"
+      className="max-lg:min-h-[2.125rem] max-lg:text-[0.8125rem]"
+      onClick={props.onClick}
+    >
       {props.children}
     </Button>
   );
@@ -29,6 +38,7 @@ export default function DeckHeader(props: {
   return (
     <div className="mb-3 flex flex-none flex-col gap-3">
       <SessionHeader
+        titleSize="sm"
         title={props.title}
         meta={
           <>

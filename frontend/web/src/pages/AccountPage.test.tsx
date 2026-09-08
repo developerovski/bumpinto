@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,15 @@ describe("AccountPage", () => {
     expect(screen.getByRole("link", { name: /Veri hakların/ })).toHaveAttribute("href", "/data-rights");
     expect(screen.getByRole("link", { name: /Açık rıza tercihlerin/ })).toHaveAttribute("href", "/account/consent");
     expect(screen.getByRole("link", { name: /Hesabı sil/ })).toHaveAttribute("href", "/account/delete");
+  });
+
+  /* Artboard 4762–4767: `Hakkında` kartı iki satır taşır ve atıf satırı destekten ÖNCE gelir. */
+  it("Hakkında kartı atıf sayfasına ve desteğe götürür", () => {
+    at();
+    const about = screen.getByRole("list", { name: "Hakkında" });
+    const links = within(about).getAllByRole("link");
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/attributions", "/support"]);
+    expect(links[0]).toHaveAccessibleName(/Atıflar ve lisanslar/);
   });
 
   it("anahtar sunucudaki rızayı yansıtır ve açılınca üç alanla yazılır", async () => {

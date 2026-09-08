@@ -26,7 +26,9 @@ export default function TypeSelector(props: { value: SessionType; onChange: (t: 
           onSelect={() => props.onChange("SOLO")}
         />
       </div>
-      <div className="flex flex-col gap-2 lg:hidden">
+      {/* Artboard 390 (964–967): segment ortalı bir satırda, seçilen tipin açıklaması
+          altında ORTALI — masaüstünün sola yaslı kart çifti değişmez. */}
+      <div className="flex flex-col items-center gap-2 text-center lg:hidden">
         <Segmented
           value={props.value}
           onChange={props.onChange}

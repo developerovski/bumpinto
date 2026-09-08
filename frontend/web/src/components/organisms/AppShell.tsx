@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link, Outlet } from "react-router-dom";
+import { OnlineProvider } from "../../lib/onlineContext";
 import { useOnline, useRetryOnline } from "../../lib/useOnline";
 import OfflineBanner from "../molecules/OfflineBanner";
 import ToastHost from "../molecules/ToastHost";
@@ -8,7 +9,7 @@ import TopBar from "../molecules/TopBar";
 /** react-router layout route: her sayfa üst çubuğun altında render olur. */
 export default function AppShell() {
   const { t } = useTranslation();
-  const { online, lastOnlineAt } = useOnline();
+  const net = useOnline();
   const { retry, checking } = useRetryOnline();
   return (
     // Dikey flex kabuk: üst çubuk + sayfa + atıf altbilgisi TAM olarak bir ekran eder. Harita
@@ -22,9 +23,13 @@ export default function AppShell() {
           ÖNCE erişilebilirlik ağacında olmalı, yoksa ekran okuyucu ilk anonsu kaçırır. Tek
           yer, tek kural: /sessions, oturum ekranları ve profil aynı şeridi görür. */}
       <div role="status" aria-live="polite">
-        <OfflineBanner online={online} lastOnlineAt={lastOnlineAt} onRetry={retry} retrying={checking} />
+        <OfflineBanner online={net.online} lastOnlineAt={net.lastOnlineAt} onRetry={retry} retrying={checking} />
       </div>
-      <Outlet />
+      {/* Ağ durumu sayfalara buradan iner: /sessions bayat içeriği soluklaştırıp eylemlerini
+          kilitler (artboard W10b). Kanca tek yerde çağrılır — bkz. lib/onlineContext.tsx. */}
+      <OnlineProvider value={net}>
+        <Outlet />
+      </OnlineProvider>
       <footer className="flex flex-col items-center gap-2 px-5 pb-4 text-center text-[0.6875rem] text-ink2">
         <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <Link to="/privacy" className="text-ink2">{t("legal.privacy")}</Link>

@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
 import { fairestOf } from "@bumpinto/shared";
-import { Note, Page } from "../components/atoms";
+import { HandNote, Page } from "../components/atoms";
+import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
 import RunoffIntro from "../components/molecules/RunoffIntro";
-import RunoffStatus from "../components/molecules/RunoffStatus";
+import RunoffStatus, { RunoffLockCard } from "../components/molecules/RunoffStatus";
 import RunoffTie from "../components/molecules/RunoffTie";
+import ShareButton from "../components/molecules/ShareButton";
 import TwoZone from "../components/molecules/TwoZone";
 import RunoffList from "../components/organisms/RunoffList";
 import { sessionActivities } from "../lib/activity";
@@ -48,10 +50,17 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
   const tie = allVoted(voters, voted);
   const host = isHost(props.view);
   const hostName = voters.find((p) => p.host)?.displayName ?? "";
-  // Sunucu-kapılı sayım: voteTally yalnız herkes kilitleyince ya da DECIDED'da dolu gelir (B-7:T2).
-  // Yalnız RunoffTie'de gösterilir — `tie` ile aynı oy kümesini kullandığından RunoffStatus'un
-  // sent dalına bu veriyle hiç ulaşılmaz (code-review bulgusu, bkz. RunoffStatus.tsx).
+  // Sunucu-kapılı sayım: voteTally yalnız herkes kilitleyince ya da DECIDED'da dolu gelir (B-7:T2),
+  // yani pratikte YALNIZ beraberlikte. Artboard 4368/4383'te sayı ayrı bir liste değil, finalist
+  // kartının başlık satırındaki "N oy" rozetidir — RunoffList'e geçer.
   const tally = v.voteTally && Object.keys(v.voteTally).length > 0 ? v.voteTally : undefined;
+  // Kalan kişi sayısı kilit kartının notunu belirler (§4.8: tam 1 kişiyse ADLI ve olumlu).
+  // Kart 1280'de RunoffStatus içinde, 390'da yapışkan CTA'da basılır — not iki yerde de aynı.
+  const waiting = voters.filter((p) => !voted.includes(p.id!));
+  const lockedNote =
+    waiting.length === 1
+      ? t("runoff.lockedCopyName", { name: waiting[0].displayName ?? "" })
+      : t("runoff.lockedCopy");
 
   const shareUrl = `${location.origin}/j/${v.slug ?? ""}`;
   const shareText = t("runoff.remindText");
@@ -90,10 +99,10 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
               finalists={finalists.length}
               reason={v.runoffReason}
               sent={sent}
+              tie={tie}
+              host={host}
+              hostName={hostName}
             />
-            {/* Beraberlik durumu, "neden runoff" kopyasına EK bir durum notudur — reason kopyası
-                RunoffIntro içinde zaten görünür. */}
-            {tie && <Note>{t("runoff.tieNote")}</Note>}
             <RunoffList
               finalists={finalists}
               choice={selected}
@@ -101,22 +110,31 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
               disabled={tie ? !host : sent}
               travel={travel}
               mixedDeck={activities.length > 1}
+              tie={tie}
+              tally={tally}
             />
+            {/* Artboard 4392/4450 — el yazısı dürtü kartların ALTINDA, CTA'nın üstünde; iki
+                kırılma noktasında da akışın içinde. */}
+            {tie && host && <HandNote>{t("runoff.tieHand")}</HandNote>}
+            {/* 1280'de karar butonları sol bölgede yan yana (4452-4453); 390'daki ikizleri
+                aşağıdaki yapışkan CTA'da. İkisi aynı anda GÖRÜNMEZ (lg kapısı), yalnız DOM'da
+                iki kez bulunur — RunoffList'in iki kırılma noktalı listesiyle aynı desen. */}
+            {tie && (
+              <DesktopOnly>
+                <RunoffTie
+                  host={host}
+                  choice={selected}
+                  sending={busy}
+                  onDecide={decide}
+                  onFair={decideFair}
+                  error={error}
+                  layout="row"
+                />
+              </DesktopOnly>
+            )}
           </>
         }
-        right={tie ? (
-          <RunoffTie
-            host={host}
-            hostName={hostName}
-            choice={selected}
-            sending={busy}
-            onDecide={decide}
-            onFair={decideFair}
-            error={error}
-            tally={tally}
-            finalists={finalists}
-          />
-        ) : (
+        right={
           <RunoffStatus
             participants={v.participants ?? []}
             votedIds={voted}
@@ -128,9 +146,31 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
             error={error}
             shareText={shareText}
             shareUrl={shareUrl}
+            tie={tie}
           />
-        )}
+        }
       />
+      {/* Artboard 390 `.cta` — aksiyonlar sayfanın dibine yapışır: beraberlikte host'un iki
+          çıkışı (4398-4402), kendi seçimin kilitliyken kilit kartı + hatırlatma (2497-2513). */}
+      {tie ? (
+        host && (
+          <MobileCta>
+            <RunoffTie
+              host={host}
+              choice={selected}
+              sending={busy}
+              onDecide={decide}
+              onFair={decideFair}
+              error={error}
+            />
+          </MobileCta>
+        )
+      ) : sent ? (
+        <MobileCta>
+          <RunoffLockCard title={t("runoff.lockedTitle")} note={lockedNote} />
+          <ShareButton text={shareText} url={shareUrl} label={t("runoff.remind")} kind="white" />
+        </MobileCta>
+      ) : null}
     </Page>
   );
 }

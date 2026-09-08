@@ -12,17 +12,43 @@ export default function PersonRow(props: {
   isSelf?: boolean;
   ring?: boolean;
   waiting?: boolean;
+  /** Artboard `.av-s` (29px) roster satırı; varsayılan 44px kalır (mevcut çağıranlar değişmez). */
+  size?: "md" | "xs";
+  /** Artboard `.avw > .od` — çevrimiçi noktası + `.off` soluk satır. `ParticipantRow` ile AYNI
+      kural: `online` sunucudan gelir, istemci canlılık türetmez; elle eklenen noktada gösterilmez. */
+  presence?: boolean;
   /** Sağdaki tek rozet — çağıran tona/etikete karar verir (bitti/kaydırıyor, kilitli/seçiyor…). */
   children?: ReactNode;
   className?: string;
 }) {
   const { t } = useTranslation();
   const p = props.participant;
+  const away = props.presence === true && p.online === false && !p.manual;
+  const online = props.presence === true && p.online !== false && !p.manual;
   return (
-    <div role="listitem" className={`flex items-center gap-3 py-2.5 ${props.className ?? ""}`.trim()}>
-      <Avatar name={p.displayName ?? "?"} index={props.index} ring={props.ring} waiting={props.waiting} />
+    <div
+      role="listitem"
+      className={`flex items-center gap-3 py-2.5${away ? " opacity-55" : ""} ${props.className ?? ""}`.trim()}
+    >
+      <span className="relative inline-flex flex-none rounded-full">
+        <Avatar
+          name={p.displayName ?? "?"}
+          index={props.index}
+          ring={props.ring}
+          waiting={props.waiting}
+          size={props.size ?? "md"}
+        />
+        {online && (
+          <i
+            data-testid="online-dot"
+            aria-hidden
+            className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-card bg-grass"
+          />
+        )}
+      </span>
       <span className="flex-1 text-left text-[0.875rem] font-semibold">
         {props.isSelf ? t("travel.self") : p.displayName}
+        {away && <span className="ml-1.5 font-normal text-ink2">· {t("waiting.offline")}</span>}
       </span>
       {props.children}
     </div>

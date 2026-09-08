@@ -31,9 +31,38 @@ describe("WhyHere", () => {
     expect(screen.getByText("Uyum")).toBeInTheDocument();
     expect(screen.getByText("Kahve için: espresso bar")).toBeInTheDocument();
     expect(screen.getByText("Yer")).toBeInTheDocument();
-    expect(screen.getByText("Kleine Berg 16, Eindhoven merkez")).toBeInTheDocument();
-    // Mesafe artık WinnerCard'ın meta satırında — adres varken YER ekseni tekrar etmez.
-    expect(screen.queryByText("Tam ortada")).not.toBeInTheDocument();
+    // Artboard 2562 (1280) adres, 2640 (390) mesafe yazar — iki sürüm de DOM'da, görünürlüğü
+    // ölçü seçer (rapor I · P2-B3).
+    expect(screen.getByText("Kleine Berg 16, Eindhoven merkez").className).toContain("hidden lg:inline");
+    expect(screen.getByText("Tam ortada").className).toContain("lg:hidden");
+  });
+
+  it("YER ekseni bugünün saatlerini de taşır (artboard 2562)", () => {
+    render(
+      <WhyHere
+        view={view}
+        venue={{
+          hoursToday: "08:00–18:00",
+          address: "Kleine Berg 16, Eindhoven merkez",
+          lat: 51.4416,
+          lng: 5.4697,
+        }}
+        labels={labels}
+      />,
+    );
+    expect(
+      screen.getByText("Bugün 08:00–18:00 · Kleine Berg 16, Eindhoven merkez"),
+    ).toBeInTheDocument();
+  });
+
+  it("390'da kart kabuğu ve 'Neden burası?' başlığı yalnız ≥1024'te açılır", () => {
+    const { container } = render(
+      <WhyHere view={view} venue={{ travel: [{ participantId: "p1", minutes: 25 }] }} labels={labels} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("lg:rounded-card");
+    expect(root.className).not.toContain(" bg-card");
+    expect(screen.getByText("Neden burası?").parentElement?.className).toContain("hidden lg:block");
   });
 
   it("category yoksa Uyum ekseni hiç çizilmez (yer tutucu yazılmaz)", () => {
@@ -63,28 +92,16 @@ describe("WhyHere", () => {
     expect(screen.getByText("Herkesin ortasına ~550 m")).toBeInTheDocument();
   });
 
-  it("fark ≥10 dk iken HandNote çıkar, altında çıkmaz", () => {
-    const { rerender } = render(
+  /* El yazısı not artık `WhyHere` içinde DEĞİL — artboard 2586'da `.tb` kartının altında, sağ
+     bölgede duruyor (rapor I · P2-9). Kuralın kendisi `ResultScreen.test.tsx`te doğrulanıyor. */
+  it("el yazısı notu artık burada basılmaz", () => {
+    render(
       <WhyHere
         view={view}
         venue={{
           travel: [
             { participantId: "p1", minutes: 25 },
             { participantId: "p3", minutes: 35 },
-          ],
-        }}
-        labels={labels}
-      />,
-    );
-    expect(screen.getByText("Kerem en uzaktan geliyor — ~10 dk önce çıkarsa herkes aynı anda varır")).toBeInTheDocument();
-
-    rerender(
-      <WhyHere
-        view={view}
-        venue={{
-          travel: [
-            { participantId: "p1", minutes: 25 },
-            { participantId: "p3", minutes: 30 },
           ],
         }}
         labels={labels}
@@ -108,7 +125,6 @@ describe("WhyHere", () => {
     );
     expect(screen.getByText("Herkes ~25–35 dk")).toBeInTheDocument();
     expect(screen.queryByText(/en uzun yol/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/önce çıkarsa herkes aynı anda varır/)).not.toBeInTheDocument();
   });
 
   /**

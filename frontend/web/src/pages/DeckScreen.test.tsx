@@ -71,3 +71,46 @@ describe("DeckScreen — kart anatomisi canlı destede kablolu (§4.9)", () => {
     expect(screen.queryByText("Eindhoven")).not.toBeInTheDocument();
   });
 });
+
+// Artboard 2097-2141: 390'da deste ekranında sağ bölge (beğeni listesi + ilerleme kartı) YOK.
+describe("DeckScreen — 390 yerleşimi", () => {
+  it("aktif destede sağ bölge yalnız ≥1024'te görünür", () => {
+    useDeckStore.setState({ slug: "x", index: 0, liked: {}, listMode: false, sending: false, sent: false });
+    const { getByTestId } = render(<DeckScreen slug="x" view={buildView()} />);
+    expect(getByTestId("zone-right").className).toContain("hidden lg:flex");
+  });
+
+  it("liste modunda da sağ bölge yalnız ≥1024'te görünür (aynı mekanlar iki kez listelenmez)", () => {
+    useDeckStore.setState({ slug: "x", index: 0, liked: {}, listMode: true, sending: false, sent: false });
+    const { getByTestId } = render(<DeckScreen slug="x" view={buildView()} />);
+    expect(getByTestId("zone-right").className).toContain("hidden lg:flex");
+  });
+
+  // Artboard 1993: "4 / 12 kart · Eindhoven civarı".
+  it("başlık meta'sına orta nokta etiketini ekler", () => {
+    useDeckStore.setState({ slug: "x", index: 3, liked: {}, listMode: false, sending: false, sent: false });
+    render(<DeckScreen slug="x" view={buildView({ midpointLabel: "Eindhoven" })} />);
+    expect(screen.getByText("4 / 12 kart · Eindhoven civarı")).toBeInTheDocument();
+  });
+
+  it("orta nokta yoksa meta yalnız kart sayısıdır", () => {
+    useDeckStore.setState({ slug: "x", index: 3, liked: {}, listMode: false, sending: false, sent: false });
+    render(<DeckScreen slug="x" view={buildView()} />);
+    expect(screen.getByText("4 / 12 kart")).toBeInTheDocument();
+  });
+});
+
+// Artboard 2288-2354: satırlar TEK kart içinde, gönder butonu çerçevenin dibinde.
+describe("DeckScreen — liste modu", () => {
+  it("gönder butonunu hem yapışkan mobil ayakta hem masaüstü akışında basar", () => {
+    useDeckStore.setState({ slug: "x", index: 0, liked: {}, listMode: true, sending: false, sent: false });
+    render(<DeckScreen slug="x" view={buildView()} />);
+    expect(screen.getAllByRole("button", { name: "Beğenilerimi gönder" })).toHaveLength(2);
+  });
+
+  it("her mekan için polaroid değil tek işaret kutulu satır basar", () => {
+    useDeckStore.setState({ slug: "x", index: 0, liked: {}, listMode: true, sending: false, sent: false });
+    render(<DeckScreen slug="x" view={buildView()} />);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(12);
+  });
+});

@@ -7,6 +7,7 @@ vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }))
 import { api } from "../lib/api";
 import { geocode } from "../lib/geocode";
 import { resetConfig, useConfigStore } from "../store/configStore";
+import { useSocialStore } from "../store/socialStore";
 import WaitingRoom from "./WaitingRoom";
 
 const view = {
@@ -27,7 +28,10 @@ const view = {
 describe("WaitingRoom", () => {
   /* §4.7'nin "Bekle'de harita yok" maddesi 2026-09-04 presence kararı §7 ile değişti:
      lg'de varsayılan açık, 390'da ghost arkasında. */
-  it("lg: harita ghost'a basmadan mount edilir", async () => {
+  /* §4.7'nin "Bekle'de harita yok" maddesi 2026-09-04 presence kararı §7 ile lg'de varsayılan
+     açık olmuştu; W5 artboard'ının sağ bölgesinde harita HİÇ yok (orta nokta + "Mekanlar geliyor"
+     + adım şeridi) — harita artık iki kırılımda da ghost'un arkasında. */
+  it("lg: harita KENDİLİĞİNDEN açılmaz, ghost'un arkasında kalır", () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) =>
       ({
@@ -40,18 +44,28 @@ describe("WaitingRoom", () => {
         removeListener: () => {},
         dispatchEvent: () => false,
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      render(<WaitingRoom view={view as never} />);
+      expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("harita açıldığında sabit lg yüksekliği taşımaz, kalanı doldurur", async () => {
     // MapView artik motoru config'ten okuyor — bu testte "api" mock'u yalniz updateLocation
     // taniyor, config seed edilmezse load() cokuyordu. Motor secimi burada onemsiz.
     useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
     try {
       render(<WaitingRoom view={view as never} />);
+      fireEvent.click(screen.getByRole("button", { name: "Haritayı aç" }));
       const map = await screen.findByTestId("mapview");
       // LobbyPage ile AYNI sözleşme: harita sabit lg yüksekliği taşımaz, kalanı doldurur.
       expect(map.className).toContain("fit:h-full");
       expect(map.className).not.toMatch(/lg:h-\[/);
       expect(screen.getByRole("main")).toHaveAttribute("data-fit");
     } finally {
-      window.matchMedia = original;
       resetConfig();
     }
   });
@@ -62,19 +76,28 @@ describe("WaitingRoom", () => {
     expect(screen.getByRole("button", { name: "Haritayı aç" })).toBeInTheDocument();
   });
 
-  it("§5.C gizlilik satırı LobbyPage ile AYNI anahtarla görünür", () => {
+  /* Artboard 390 `.cta` notu; konum gizliliği cümlesi (`join.privacy`) katılma anına ait,
+     bu ekranda tekrarlanmaz. */
+  it("kapatma notu basılır, gizlilik satırı bu ekranda YOK", () => {
     render(<WaitingRoom view={view as never} />);
     expect(
-      screen.getByText("Konumun bu buluşma için kullanılır ve gruba haritada yaklaşık gösterilir."),
+      screen.getByText("Sayfayı kapatsan da olur; hazır olunca kilit ekranından görürsün."),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Konumun bu buluşma için kullanılır ve gruba haritada yaklaşık gösterilir."),
+    ).not.toBeInTheDocument();
   });
 
-  it("390 sırası: sağ bölge (orta nokta) `order-1`, sol bölge (roster) `order-2` — ≥1024'te sıfırlanır", () => {
+  /* Artboard 390 sırası "Katıldın → … → roster"; TwoZone iki bölgeyi geçişmeli basamadığı için
+     sol bölge (Katıldın + roster) 390'da ÖNCE akar — `order-*` ezmesi kalktı. */
+  it("390 sırası: sol bölge (Katıldın + roster) önce, order ezmesi yok", () => {
     const { getByTestId } = render(<WaitingRoom view={view as never} />);
-    expect(getByTestId("zone-left").className).toContain("order-2");
-    expect(getByTestId("zone-left").className).toContain("lg:order-none");
-    expect(getByTestId("zone-right").className).toContain("order-1");
-    expect(getByTestId("zone-right").className).toContain("lg:order-none");
+    const left = getByTestId("zone-left");
+    const right = getByTestId("zone-right");
+    expect(left.className).not.toContain("order-2");
+    expect(right.className).not.toContain("order-1");
+    expect(left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(left).toHaveTextContent("Katıldın!");
   });
 
   it("Konum ve ulaşım: panel açılır, mod seçilir, kaydet konumu+modu birlikte gönderir", async () => {
@@ -114,6 +137,23 @@ describe("WaitingRoom", () => {
     expect(await screen.findByText(
       "Bu buluşma katılımcıların orta noktasında yapılıyor ve sen gruptan çok uzaktasın. Host'tan sabit bir buluşma yeri seçmesini iste.",
     )).toBeInTheDocument();
+  });
+
+  /* Artboard (1880 / 1960-1963) dürtme butonunu DAVETLİ görünümünde gösteriyor: kurana özel
+     değil. Buton paylaş-linki kopyalamaz, gerçek uç noktayı çağırır (60 sn soğuma sunucuda). */
+  it("davetli de bekleyeni dürtebilir, gerçek dürtme çağrılır", () => {
+    const nudge = vi.fn();
+    useSocialStore.setState({ nudge, nudgedAt: {} });
+    const withWaiting = {
+      ...view,
+      participants: [
+        ...view.participants,
+        { id: "k", displayName: "Kerem", host: false, hasLocation: false, manual: false },
+      ],
+    };
+    render(<WaitingRoom view={withWaiting as never} />);
+    fireEvent.click(screen.getByRole("button", { name: "Kerem'i dürt" }));
+    expect(nudge).toHaveBeenCalledWith("x7k2m", "k", "Kerem");
   });
 
   it("çevrimdışı katılımcı roster'da işaretlenir, çevrimiçi olan işaretlenmez", () => {

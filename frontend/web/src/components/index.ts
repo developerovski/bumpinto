@@ -17,7 +17,7 @@ export { default as JoinFormFields } from "./molecules/JoinFormFields";
 export { default as JoinIntro } from "./molecules/JoinIntro";
 export { default as JoinedCard } from "./molecules/JoinedCard";
 export { default as LangMenu } from "./molecules/LangMenu";
-export { default as LegalBlocks } from "./molecules/LegalBlocks";
+export { default as LegalBlocks, LegalMeta } from "./molecules/LegalBlocks";
 export { default as LikedList } from "./molecules/LikedList";
 export { default as MapMark } from "./molecules/MapMark";
 export { default as MobileCta, DesktopOnly } from "./molecules/MobileCta";

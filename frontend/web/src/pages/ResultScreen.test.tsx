@@ -63,15 +63,57 @@ function captureShareText(view: View, viewer: { participantId: string; host: boo
 }
 
 describe("ResultScreen — Karar v2", () => {
-  it("harita YOK; adres TEK yerde (WhyHere'in YER ekseni) ve 'Google Maps'te aç' var", () => {
+  it("harita YOK; adres artboard'daki İKİ yerde (başlık meta satırı + YER ekseni)", () => {
     renderResult(buildView());
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
-    // Adres WinnerCard'ın meta satırında tekrar edilmez — yalnız WhyHere'in YER ekseninde.
-    expect(screen.getAllByText(/Kleine Berg/)).toHaveLength(1);
+    // Artboard 2538 (başlığın altındaki `.mi`) + 2562 (`.f-why` YER ekseni) — `.rc` kartının
+    // kendi meta satırı adresi TEKRAR ETMEZ (üçüncü kopya yok).
+    expect(screen.getAllByText(/Kleine Berg/)).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Google Maps'te aç" })).toHaveAttribute(
       "href",
       expect.stringContaining("google.com/maps"),
     );
+  });
+
+  it("artboard bölge dağılımı: sol = kart + neden burası + aksiyonlar + yedek plan, sağ = çubuklar + el yazısı + viral", () => {
+    renderResult(
+      buildView({
+        likeCounts: { v1: 3, v2: 2 },
+        venues: [
+          ...(buildView().venues ?? []),
+          { id: "v2", name: "Koffie Top Hundred" },
+        ],
+      }),
+    );
+    const left = within(screen.getByTestId("zone-left"));
+    const right = within(screen.getByTestId("zone-right"));
+    expect(left.getByText("Neden burası?")).toBeInTheDocument();
+    expect(left.getByText("Koffie Top Hundred")).toBeInTheDocument();
+    expect(left.getByRole("button", { name: "Takvime ekle" })).toBeInTheDocument();
+    expect(right.getByText("Herkesin yolu")).toBeInTheDocument();
+    expect(right.getByText(/önce çıkarsa herkes aynı anda varır/)).toBeInTheDocument();
+  });
+
+  it("390: dibe yapışan 'Yol tarifi al' + oturum adı/paylaş başlığı, yedek plan ve çubuk kartı gizli", () => {
+    renderResult(
+      buildView({
+        likeCounts: { v1: 3, v2: 2 },
+        venues: [
+          ...(buildView().venues ?? []),
+          { id: "v2", name: "Koffie Top Hundred" },
+        ],
+      }),
+    );
+    // Aynı hedefe iki düğme: 1280 aksiyon şeridi (`DesktopOnly`) + 390 `.cta` (`MobileCta`).
+    const directions = screen.getAllByRole("link", { name: "Yol tarifi al" });
+    expect(directions).toHaveLength(2);
+    for (const link of directions) {
+      expect(link).toHaveAttribute("href", expect.stringContaining("google.com/maps"));
+    }
+    expect(screen.getByText("Kahve buluşması")).toBeInTheDocument();
+    // `.tb` kartı ve `.f-back` yalnız ≥1024'te (390'da `.rc-ppl` aynı dakikaları taşıyor).
+    expect(screen.getByText("Herkesin yolu").closest("div.hidden")).not.toBeNull();
+    expect(screen.getByText("Koffie Top Hundred").closest("div.hidden")).not.toBeNull();
   });
 
   it("karar ekranı herkesin yolunu TEK çubuk kartında basar (davetli dahil), ~dk, km yok", () => {
@@ -84,9 +126,10 @@ describe("ResultScreen — Karar v2", () => {
     expect(screen.getByTestId("travel-fill-a")).toBeInTheDocument();
     // "k" (Kerem) fixture'ın en uzun bacağı — TravelBars'ın bg-flame dalını tetikleyen tek id.
     expect(screen.getByTestId("travel-fill-k")).toBeInTheDocument();
-    expect(screen.getByText("~35 dk")).toBeInTheDocument();
-    expect(screen.getByText("~30 dk")).toBeInTheDocument();
-    expect(screen.getByText("~25 dk")).toBeInTheDocument();
+    // Dakika artboard'da İKİ yerde: `.rc-ppl` kişi satırı (2547–2551) + `.tb` çubuk kartı (2581).
+    expect(screen.getAllByText("~35 dk")).toHaveLength(2);
+    expect(screen.getAllByText("~30 dk")).toHaveLength(2);
+    expect(screen.getAllByText("~25 dk")).toHaveLength(2);
     expect(screen.queryByText(/km/)).not.toBeInTheDocument();
     expect(screen.queryByTestId("travel-list")).not.toBeInTheDocument();
   });
@@ -101,10 +144,12 @@ describe("ResultScreen — Karar v2", () => {
 
   it("eyebrow decisionKind'a göre: UNANIMOUS / RUNOFF / PARTIAL", () => {
     const u1 = renderResult(buildView({ decisionKind: "UNANIMOUS" }));
-    expect(screen.getByText("HEPİNİZ AYNI YERİ BEĞENDİ")).toBeInTheDocument();
+    expect(screen.getByText("Ortak nokta · hepiniz aynı yeri beğendi")).toBeInTheDocument();
     u1.unmount();
 
     const u2 = renderResult(buildView({ decisionKind: "RUNOFF", voteTally: { v1: 2, v2: 1 } }));
+    expect(screen.getByText("Ortak nokta · oylamayla 2–1")).toBeInTheDocument();
+    // Artboard 3761: aynı skor kartın sol çıkartmasında da var — önek TAŞIMAZ.
     expect(screen.getByText("Oylamayla 2–1")).toBeInTheDocument();
     u2.unmount();
 
@@ -114,7 +159,7 @@ describe("ResultScreen — Karar v2", () => {
         participants: [mehmet, ayse, { ...kerem, deckDone: false }],
       }),
     );
-    expect(screen.getByText("Kerem olmadan")).toBeInTheDocument();
+    expect(screen.getByText("Ortak nokta · Kerem olmadan")).toBeInTheDocument();
     u3.unmount();
   });
 
@@ -149,7 +194,7 @@ describe("ResultScreen — Karar v2", () => {
         participants: [{ ...mehmet, deckDone: true }, { ...ayse, deckDone: false }, { ...kerem, deckDone: false }],
       }),
     );
-    expect(screen.getByText("Ayşe ve Kerem olmadan")).toBeInTheDocument();
+    expect(screen.getByText("Ortak nokta · Ayşe ve Kerem olmadan")).toBeInTheDocument();
     u1.unmount();
 
     renderResult(
@@ -158,16 +203,17 @@ describe("ResultScreen — Karar v2", () => {
         participants: [{ ...mehmet, deckDone: false }, { ...ayse, deckDone: false }, { ...kerem, deckDone: false }],
       }),
     );
-    expect(screen.getByText("Mehmet ve diğerleri olmadan")).toBeInTheDocument();
+    expect(screen.getByText("Ortak nokta · Mehmet ve diğerleri olmadan")).toBeInTheDocument();
   });
 
   it("ortalama uzaklık 50 m'ye yuvarlanır; <100 m 'tam ortada' (WinnerCard meta satırı)", () => {
+    // İki kopya: WinnerCard'ın meta satırı + WhyHere'in 390 sürümü (aynı `geo` kaynağı).
     const u1 = renderResult(buildView());
-    expect(screen.getByText(/Tam ortada/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Tam ortada/)).toHaveLength(2);
     u1.unmount();
 
     renderResult(buildView({ midpoint: { lat: 51.4467, lng: 5.4697 } }));
-    expect(screen.getByText(/Herkesin ortasına ~550 m/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Herkesin ortasına ~550 m/)).toHaveLength(2);
   });
 
   it("en uzak ≥10 dk fark varsa HandNote çıkar, altında çıkmaz", () => {
@@ -189,6 +235,25 @@ describe("ResultScreen — Karar v2", () => {
               { participantId: "me", minutes: 30 },
               { participantId: "a", minutes: 28 },
               { participantId: "k", minutes: 32 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(screen.queryByText(/önce çıkarsa herkes aynı anda varır/)).not.toBeInTheDocument();
+  });
+
+  it("en uzun yolun sahibi adlandırılamıyorsa el yazısı not hiç basılmaz", () => {
+    renderResult(
+      buildView({
+        participants: [],
+        venues: [
+          {
+            id: "v1",
+            name: "Café Berlage",
+            travel: [
+              { participantId: "x1", minutes: 25 },
+              { participantId: "x2", minutes: 35 },
             ],
           },
         ],

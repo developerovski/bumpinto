@@ -11,7 +11,9 @@ export function useOnline(): OnlineState {
   const [state, setState] = useState<OnlineState>(() => ({
     // Desteklenmiyorsa (eski WebView) ÇEVRİMİÇİ say — yanlış şerit basmak, basmamaktan kötüdür.
     online: typeof navigator.onLine === "boolean" ? navigator.onLine : true,
-    lastOnlineAt: null,
+    // Zaten çevrimdışıyken açılan sayfada "offline" OLAYI hiç gelmez; şerit tek satıra düşerdi
+    // (artboard 4504/4635 iki satır ister). İstemcinin kendi ölçtüğü an dürüst kaynaktır.
+    lastOnlineAt: navigator.onLine === false ? Date.now() : null,
   }));
   useEffect(() => {
     const goOffline = () => setState((s) => (s.online ? { online: false, lastOnlineAt: Date.now() } : s));

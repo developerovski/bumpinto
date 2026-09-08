@@ -59,7 +59,9 @@ export default function MapPickerMapLibre(props: MapPickerProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="h-[16rem] overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7]">
+      {/* Artboard 3879/3953: ipucu haritanın ÜSTÜNDE — kullanıcı ne yapacağını dokunmadan önce okur. */}
+      <Note>{t("map.pickHint")}</Note>
+      <div className={`overflow-hidden rounded-[1.25rem] border border-line bg-[#f3efe7] ${props.heightClass ?? "h-[16rem]"}`}>
         {!failed ? (
           <div ref={box} className="h-full w-full" />
         ) : (
@@ -68,14 +70,19 @@ export default function MapPickerMapLibre(props: MapPickerProps) {
           </div>
         )}
       </div>
-      <Note>{t("map.pickHint")}</Note>
-      <div className="flex gap-2">
-        <Button type="button" size="fit" onClick={() => void confirm()} disabled={busy || failed}>
-          {t("map.pickConfirm")}
-        </Button>
-        <Button type="button" kind="white" size="fit" onClick={props.onCancel}>
-          {t("map.pickCancel")}
-        </Button>
+      {/* Artboard 3892–3895: İptal ÖNCE (`.b-gh`), Burayı seç sonra (`.b-fl`); ikisi de `flex:1`.
+          Genişlik saracak div'den gelir — Button kendi `className`'ini üretir, dışarıdan almaz. */}
+      <div className="flex gap-2.5">
+        <div className="flex-1">
+          <Button type="button" kind="ghost" onClick={props.onCancel}>
+            {t("map.pickCancel")}
+          </Button>
+        </div>
+        <div className="flex-1">
+          <Button type="button" onClick={() => void confirm()} disabled={busy || failed}>
+            {t("map.pickConfirm")}
+          </Button>
+        </div>
       </div>
     </div>
   );

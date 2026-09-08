@@ -91,35 +91,25 @@ describe("JoinForm — host çevrimiçiliği", () => {
   });
 });
 
-/** Harita seçici: faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil —
-    katılım ekranı bugün 390'da hiç harita mount etmiyor, seçici de ancak düğmeye basılınca gelmeli. */
-describe("JoinForm — haritadan seç", () => {
-  // MapPicker artik motoru config'ten okuyor (spec §7) — api.getConfig burada mock'lu degil,
-  // seed edilmezse gercek fetch'e dusup Burayi sec dugmesi gec/gecersiz belirir.
+/** Artboard Katıl (1280 ve 390) konum bloğunu "Başka bir şehir ya da adres yaz" bağlantısında
+    BİTİRİR — katılım ekranında harita seçici yok. Kural aynı zamanda maliyet kuralıdır:
+    faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil. */
+describe("JoinForm — harita seçici yok", () => {
+  // MapPicker motoru config'ten okuyor (spec §7) — seed edilmezse gerçek fetch'e düşerdi.
   beforeEach(() => {
     useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
   });
   afterEach(() => resetConfig());
 
-  function renderJoin() {
+  it("katılım ekranı hiçbir durumda harita seçici sunmaz", async () => {
     useAuthStore.setState({ status: "anon", me: null });
     useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
-    return render(<MemoryRouter><JoinForm /></MemoryRouter>);
-  }
-
-  it("390'da harita seçici VARSAYILAN mount edilmez — yükleme başına ücret buradan doğar", async () => {
-    renderJoin();
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
     // Sağdaki MapView de tembel; onun DOM'a düşmesini beklemek tembel chunk'lara fırsat verir.
-    // Seçici varsayılan render edilseydi düğmesi en geç bu noktada belirirdi.
     await screen.findByTestId("mapview");
-    expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
-  });
 
-  it("'haritadan seç'e basılınca seçici açılır", async () => {
-    renderJoin();
-    fireEvent.click(screen.getByRole("button", { name: "Haritadan seç" }));
-    // MapPicker artık lazy chunk (motor anahtarı, spec §7) — Suspense çözümüne biraz pay ver.
-    expect(await screen.findByRole("button", { name: "Burayı seç" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Haritadan seç" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
   });
 });
 
@@ -159,5 +149,35 @@ describe("JoinForm — gruptan çok uzak", () => {
 
     expect(await screen.findByText("Katılamadın — bu oturum kapanmış olabilir."))
       .toBeInTheDocument();
+  });
+});
+
+/** Artboard W4b 1280 (4229–4250): 409 halinde sağdaki kart özet şeridi bırakır, kişi başına
+    satıra döner — "kim hazır" sorusu tek tek cevaplanır. */
+describe("JoinForm — 409 sonrası sağ kart", () => {
+  it("çok uzak hatasından sonra kart kişi satırlarına döner", async () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({
+      slug: "x7k2m",
+      preview: {
+        slug: "x7k2m", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP",
+        status: "COLLECTING", hostDisplayName: "Mehmet", participantCount: 2, hostOnline: false,
+        participants: [
+          { displayName: "Mehmet", host: true, hasLocation: true },
+          { displayName: "Kerem", host: false, hasLocation: false },
+        ],
+      } as never,
+      join: vi.fn().mockRejectedValue({ response: { data: { error: "participants_too_far_apart" } } }),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    // Önce özet şerit: "Mehmet hazır." cümlesi.
+    expect(screen.getByText(/Mehmet hazır\./)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Ayşe" } });
+    fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
+
+    expect(await screen.findByText("Kuran · çevrimdışı")).toBeInTheDocument();
+    expect(screen.getByText("Konum bekleniyor…")).toBeInTheDocument();
+    expect(screen.queryByText(/Mehmet hazır\./)).not.toBeInTheDocument();
   });
 });

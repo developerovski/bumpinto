@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SessionView } from "@bumpinto/shared";
-import { Page } from "../components/atoms";
+import { fairnessOf, type SessionView } from "@bumpinto/shared";
+import { HandNote, LinkButton, Page } from "../components/atoms";
 import BackupPlan from "../components/molecules/BackupPlan";
 import Confetti from "../components/molecules/Confetti";
+import MobileCta from "../components/molecules/MobileCta";
 import ResultActions from "../components/molecules/ResultActions";
+import SessionHeader from "../components/molecules/SessionHeader";
+import ShareButton from "../components/molecules/ShareButton";
 import TravelBars from "../components/molecules/TravelBars";
 import TwoZone from "../components/molecules/TwoZone";
 import ViralCard from "../components/molecules/ViralCard";
 import WhyHere from "../components/molecules/WhyHere";
 import WinnerCard from "../components/molecules/WinnerCard";
-import { GROUP_TINT, groupOf, sessionActivities } from "../lib/activity";
 import { claimReveal } from "../lib/reveal";
 import { useTravelLabels } from "../lib/useTravelLabels";
+import { venueLink } from "../lib/venueLink";
 import { votersOf } from "../lib/voters";
 
 /** Karardan önce bitirmemiş kişi(ler): PARTIAL eyebrow'u için, ada ek almadan. `Intl.ListFormat`
@@ -34,7 +37,11 @@ function partialNames(
   return moreLabel(names[0]);
 }
 
-/** Artboard Karar 1280 · Sonuç — kazanan mekan + "neden burası" + herkesin yolu + yedek plan.
+/** Artboard Karar 1280 (2515–2598) / 390 (2599–2666) · Sonuç. Bölge dağılımı artboard'dan:
+    SOL = üstlük/başlık/meta → `.rc` kartı → "Neden burası?" → aksiyon şeridi → yedek plan;
+    SAĞ = "Herkesin yolu" çubukları → el yazısı not → viral kart (rapor I · P1-4, P2-9).
+    390'da tek sütuna düşer; orada `.tb` kartı ve yedek plan gizli (`.rc-ppl` aynı dakikaları
+    zaten taşır — P1-B2, P2-B5) ve "Yol tarifi al" ekranın dibine yapışır (P1-B1).
     Harita YOK (§4.7) — Karar ekranında harita bileşeni hiç mount edilmez. */
 export default function ResultScreen({ view }: { view: SessionView }) {
   const { t, i18n } = useTranslation();
@@ -42,8 +49,6 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   const winner = (v.venues ?? []).find((venue) => venue.id === v.decidedVenueId);
   const participants = v.participants ?? [];
   const isHost = !!v.viewer?.host;
-  // Tint KAZANANIN kendi alanından: karışık destede oturumun ilk alanı yanlış renk verirdi.
-  const tint = GROUP_TINT[groupOf(winner?.activityType ?? sessionActivities(v)[0] ?? "")];
   // travel[] katılımcı UUID'siyle anahtarlı (artboard W3 rozet metni).
   const travel = useTravelLabels(view);
 
@@ -87,38 +92,75 @@ export default function ResultScreen({ view }: { view: SessionView }) {
 
   const shareText = t("result.shareText", { name: v.name ?? "", venue: winner.name ?? "" });
   const shareUrl = `${location.origin}${location.pathname}`;
+  const href = venueLink(winner);
+
+  // El yazısı notu (artboard 2586) artık sağ bölgede, `.tb` kartının ALTINDA — `WhyHere` kartının
+  // içinde değil. Kural aynen korunur: yalnız fark ≥ 10 dk VE adlandırılabilir bir kişi varken
+  // (isim yoksa "{{name}} en uzaktan geliyor" boş öznesiyle basılmaz).
+  const fairness = fairnessOf(winner);
+  const longestName = fairness ? (travel.labels[fairness.longestId] ?? "") : "";
+  const handNote =
+    fairness && fairness.spread >= 10 && longestName
+      ? t("result.leaveEarlyHand", { name: longestName, min: fairness.spread })
+      : null;
 
   return (
     <Page variant="result">
       {reveal && <Confetti />}
+      {/* Artboard 2611: 390'ın ilk satırı oturum adı + paylaş. 1280'de başlık `h1` olduğu için
+          bu satır yok; metin paylaşımı da yalnız burada yaşar (rapor I · P2-B1). */}
+      <div className="lg:hidden">
+        <SessionHeader
+          title={v.name}
+          action={<ShareButton text={shareText} url={shareUrl} size="sm" />}
+        />
+      </div>
       <TwoZone
         left={
           <>
             <WinnerCard
               venue={winner}
               travel={travel}
+              participants={participants}
               decisionKind={v.decisionKind}
               decidedAt={v.decidedAt}
               midpoint={v.midpoint}
+              midpointLabel={v.midpointLabel}
               likeCount={likeCount}
               voterCount={voterCount}
               tally={tally}
               names={names}
             />
+            <WhyHere view={v} venue={winner} labels={travel.labels} />
             <ResultActions view={v} venue={winner} shareText={shareText} shareUrl={shareUrl} />
+            {/* 390 artboard'ında yedek plan satırı YOK (2599–2666). */}
+            <div className="hidden lg:block">
+              <BackupPlan view={v} winnerId={winner.id ?? ""} />
+            </div>
           </>
         }
         right={
           <>
-            <WhyHere view={v} venue={winner} labels={travel.labels} />
-            <div className="rounded-card border border-line bg-card p-[1rem_1.125rem] shadow-sh1">
+            {/* 390'da `.rc-ppl` aynı dakikaları taşıyor — çubuk kartı yalnız ≥1024'te. */}
+            <div className="hidden rounded-card border border-line bg-card p-[1rem_1.125rem] shadow-sh1 lg:block">
               <TravelBars venue={winner} travel={travel} title={t("travel.bars")} />
             </div>
-            <BackupPlan view={v} winnerId={winner.id ?? ""} tint={tint} />
+            {handNote && (
+              <div className="mt-3.5 mx-1">
+                <HandNote>{handNote}</HandNote>
+              </div>
+            )}
             <ViralCard host={isHost} />
           </>
         }
       />
+      {href && (
+        <MobileCta>
+          <LinkButton href={href} target="_blank" rel="noreferrer" kind="flame">
+            {t("result.directions")}
+          </LinkButton>
+        </MobileCta>
+      )}
     </Page>
   );
 }
