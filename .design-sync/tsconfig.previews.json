@@ -18,14 +18,15 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": "..",
+    /* baseUrl YOK (TS 6'da deprecated, TS 7'de kalkıyor): `paths` artık bu dosyanın
+       kendi dizinine göre çözülüyor, o yüzden hepsi `../` ile repo köküne çıkar. */
     "paths": {
-      "@bumpinto/web": ["frontend/web/src/components/index.ts"],
+      "@bumpinto/web": ["../frontend/web/src/components/index.ts"],
       /* .design-sync/node_modules -> .ds-sync/node_modules sembolik bağı @types/react 19
          taşıyor, uygulama ise 18'de. Sabitlenmezse preview'lar app'in görmediği
          "Icon cannot be used as a JSX component" gibi sahte hatalar üretir. */
-      "react": ["node_modules/@types/react"],
-      "react/*": ["node_modules/@types/react/*"]
+      "react": ["../node_modules/@types/react"],
+      "react/*": ["../node_modules/@types/react/*"]
     },
     "types": ["vite/client"]
   },

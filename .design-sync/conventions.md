@@ -2,11 +2,12 @@
 
 BumpInto is a Turkish-first "meet in the middle" app. Its design system is small, opinionated
 and **phone-shaped**: warm paper background, one flame/pink accent, heavy display type,
-sticker-and-polaroid playfulness. Screens are a single centred 480px column, never a wide layout.
+sticker-and-polaroid playfulness. Screens are a single centred column: 480px on phones,
+opening to 1120px from `lg` (1024px) up. Only `Page wide` removes the cap entirely.
 
 ### 1. Always mount inside `BumpIntoProvider`
 
-Most of the 79 components call `useTranslation()`. Outside the provider they render raw i18n keys
+Most of the 80 components call `useTranslation()`. Outside the provider they render raw i18n keys
 (`join.title`) instead of copy. The provider ships in the bundle with an initialised i18next
 instance pinned to Turkish, exported alongside the components:
 
@@ -21,9 +22,11 @@ const { BumpIntoProvider, Page, Wordmark, Button } = window.BumpInto;
 </BumpIntoProvider>
 ```
 
-`Page` is the layout shell — a 480px max-width, full-viewport-height flex column with the product's own
-gutter and rhythm. `variant` is `default`, `deck`, `result`, or `landing`; a separate `center`
-boolean prop vertically centres the content. Start every screen with it.
+`Page` is the layout shell — a centred, full-viewport-height flex column with the product's own
+gutter and rhythm, capped at 480px on phones and 1120px from `lg`. `variant` is `default`, `deck`,
+`result`, or `landing`; `center` vertically centres the content. Two layout escapes: `wide` drops
+the `lg` cap so a map fills the right-hand side (Mekanlar), and `fit` keeps the cap but makes the
+page a single non-scrolling screen (Lobi/Bekle). Start every screen with it.
 
 ### 2. The styling idiom — read this before writing any class
 
@@ -52,8 +55,8 @@ So, in order of preference:
    `flex` `gap-3` `p-4` `text-center`.
 
 Two gotchas: there is **no `text-display` utility** — display sizing comes from the base layer's
-`h1`, so use the `Heading` component. And there is no `flame2` token or utility at all:
-the coral end of the brand gradient lives inside `--grad`’s own literal value.
+`h1`, so use the `Heading` component. The coral end of the brand gradient is also exposed on its own, as
+`--color-flame2` (`#ff7854`) with a matching `bg-flame2` utility.
 
 The DS also ships a few hand-drawn glyph classes used by its own components: `c-check`
 (the green tick), `c-mark`/`c-mark-pin`/`c-mark-ring`/`c-mark-dot` (map mark) and `c-dv-text`.
@@ -65,7 +68,8 @@ no longer resolve.
 
 Read `_ds/<folder>/styles.css` and its `@import` closure before styling — it is the authoritative
 list of what resolves. Per component, read `components/<group>/<Name>/<Name>.prompt.md` for usage
-and `<Name>.d.ts` for the props contract. Groups are `atoms`, `molecules`, `organisms`, plus `general` for the two exports that ship without a natural home (`HeaderButton`, `DesktopOnly`).
+and `<Name>.d.ts` for the props contract. Groups are `atoms`, `molecules`, `organisms`, plus `general` for the three exports that ship without a natural home (`HeaderButton`,
+`DesktopOnly`, `LegalMeta`).
 
 ### 4. Copy
 

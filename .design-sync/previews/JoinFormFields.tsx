@@ -61,11 +61,11 @@ export function ManualAddress() {
     <div style={COL}>
       <JoinFormFields
         {...NOOP}
-        name="Elif"
-        address="Moda Sahil, Kadıköy"
+        name="Selin"
+        address="Bağdat Cad. 214, Caddebostan"
         locationState="denied"
         locationLabel={null}
-        travelMode="BIKE"
+        travelMode="WALK"
         error={null}
         busy={false}
       />
@@ -73,8 +73,49 @@ export function ManualAddress() {
   );
 }
 
-/** Sunucu hatası — `ErrorText` gönder butonunun ÜSTÜNDE, tuğla kırmızısıyla. */
-export function WithError() {
+/** `error.kind = "geocode"` — yazılan adres çözülemedi. Hata KİMLİĞİNE göre yerleşiyor:
+    geocode hatası ulaşım türü satırının ALTINDA, CTA bloğunun hemen ÜSTÜNDE çıplak
+    `ErrorText` olarak basılır. (Bileşenin kendi kaynak yorumu "alanın hemen altında"
+    diyor ama kod `TravelModeField`ten SONRA yerleştiriyor — render bunu doğruluyor.) */
+export function AddressNotFound() {
+  return (
+    <div style={COL}>
+      <JoinFormFields
+        {...NOOP}
+        name="Elif"
+        address="Moda Sahil, Kadıköy"
+        locationState="denied"
+        locationLabel={null}
+        travelMode="BIKE"
+        error={{ kind: "geocode", message: "Bu adresi bulamadık, biraz daha açar mısın?" }}
+        busy={false}
+      />
+    </div>
+  );
+}
+
+/** `error.kind = "tooFar"` (409) — CTA'nın ÜSTÜNDE, flame-wash zeminli kendi kartında
+    (artboard 4164). Üç hâl içinde görsel olarak en ayrık olanı. */
+export function TooFar() {
+  return (
+    <div style={COL}>
+      <JoinFormFields
+        {...NOOP}
+        name="Deniz"
+        address=""
+        locationState="granted"
+        locationLabel="Ataşehir"
+        travelMode="TRANSIT"
+        error={{ kind: "tooFar", message: "Buluşma noktası sana 42 km uzakta." }}
+        busy={false}
+      />
+    </div>
+  );
+}
+
+/** `error.kind = "join"` — genel katılım hatası, Katıl düğmesinin ALTINDA ve
+    ortalanmış (artboard 1395–1397). */
+export function JoinRejected() {
   return (
     <div style={COL}>
       <JoinFormFields
@@ -84,7 +125,7 @@ export function WithError() {
         locationState="granted"
         locationLabel="Beşiktaş"
         travelMode="CAR"
-        error="Bu buluşmaya katılım kapanmış."
+        error={{ kind: "join", message: "Bu buluşmaya katılım kapanmış." }}
         busy={false}
       />
     </div>
