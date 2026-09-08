@@ -1,19 +1,61 @@
-/* Karar dokümanı §2 (politika) + §5.B.9 — sağlayıcı atfı. Google içeriğinin yanında
-   "Google Maps" metni, FSQ verisi olan ekranda "Powered by Foursquare" zorunlu.
-   `provider` (B-7:T4) gelene kadar HER İKİ metin alt alta basılır; alan gelince tek satır.
-   Saf birleşim mantığı `../../lib/provider`'da (Fast Refresh). */
+/* Spec §11 — atıf VERİ-GÜDÜMLÜ: ekrandaki sağlayıcı kimlikleri `/api/config.sources[]` ile eşleşir,
+   metin i18n anahtarından gelir. Sağlayıcı başına kod dalı YOK. */
 import { useTranslation } from "react-i18next";
+import { useConfigStore } from "../../store/configStore";
 
-export default function Attribution(props: { provider?: string; center?: boolean }) {
+export default function Attribution(props: {
+  providers: string[];
+  center?: boolean;
+  /** Artboard `.f-attrs` — kart ALTINDA tek yatay şerit (gap 16px). Liste/ızgara altında bir kez
+      basılan atıf bu dizilimi kullanır; kart gövdesindeki atıf dikey kalır (varsayılan). */
+  row?: boolean;
+  /** Artboard 2024 — kart içinde uzun yasal cümle yerine KISA sağlayıcı adı (`source.<id>`).
+      Yasal cümlenin tamamı listenin altındaki birleşik atıfta basılmaya devam eder (spec §11). */
+  compact?: boolean;
+  /** Artboard 2570 — atıf, Karar aksiyon şeridinde düğmelerle AYNI satırda duran bir çip.
+      `row`dan farkı: kendi satırını açmaz, üst payı yoktur. Sağlayıcı ikonunu BASMAZ —
+      artboard'daki `ph-google-logo` sağlayıcı başına kod dalı gerektirirdi; `config.sources[]`
+      ikon taşımıyor (spec §11 veri-güdümlülük kuralı). */
+  inline?: boolean;
+}) {
   const { t } = useTranslation();
-  const cls = `flex flex-col gap-0.5 text-[0.6875rem] text-ink3 ${props.center ? "text-center" : ""}`;
-  if (props.provider === "GOOGLE") return <p className={cls}>{t("attribution.google")}</p>;
-  if (props.provider === "FOURSQUARE") return <p className={cls}>{t("attribution.foursquare")}</p>;
-  // B-7:T4 öncesi: hangi sağlayıcı olduğunu bilmiyoruz, ikisini de yazmak politikaya uygundur.
+  const config = useConfigStore((s) => s.config);
+  if (!config) return null; // config gelmeden yanlış atıf basmaktansa hiç basma
+
+  const ids = new Set(props.providers.map((p) => p.toLowerCase()));
+  const lines = config.sources
+    .filter((s) => ids.has(s.id.toLowerCase()))
+    .map((s) => ({
+      key: s.id,
+      // Kısa ad yoksa yasal cümleye düşer — sağlayıcı başına kod dalı YOK, yalnız anahtar seçimi.
+      text: props.compact ? t(`source.${s.id}`, { defaultValue: t(s.attributionKey) }) : t(s.attributionKey),
+      url: s.attributionUrl,
+    }));
+  // Döşeme atfı: MapLibre'de haritanın kendi atıf denetimi basar, burada tekrar basmıyoruz.
+  if (lines.length === 0) return null;
+
+  const cls = [
+    props.inline
+      ? "inline-flex flex-row flex-wrap items-center gap-4"
+      : props.row
+        ? "flex flex-row flex-wrap items-center gap-4 pt-1.5"
+        : "flex flex-col gap-0.5",
+    "text-[0.6875rem] tracking-[0.02em] text-ink2",
+    props.center ? "justify-center text-center" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <p className={cls}>
-      <span>{t("attribution.google")}</span>
-      <span>{t("attribution.foursquare")}</span>
+      {lines.map((l) =>
+        l.url ? (
+          <a key={l.key} href={l.url} target="_blank" rel="noreferrer" className="text-ink2 underline">
+            {l.text}
+          </a>
+        ) : (
+          <span key={l.key}>{l.text}</span>
+        ),
+      )}
     </p>
   );
 }

@@ -1,11 +1,16 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.user.UserDataExport;
+import com.bumpinto.domain.safety.ReportReason;
+import jakarta.validation.constraints.AssertTrue;
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.venue.TaglineSource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
@@ -175,11 +180,21 @@ public final class ApiDtos {
                                  /** Acik soketi var ya da 45 sn icinde koptu; manual satirlarda daima false. */
                                  boolean online,
                                  /** Kendi ses konusuna abone (spec K4); SOLO'da daima false. */
-                                 boolean inVoice) {
+                                 boolean inVoice,
+                                 /** Goruntuleyen bu kisiyi engelledi mi; engellenen tarafta daima false. */
+                                 boolean blocked,
+                                 /** Son WS gelisi/kopusu; hic baglanmamissa null (R-B8). */
+                                 Instant lastSeenAt,
+                                 /** Daveti ILK actigi an; acmadiysa null. */
+                                 Instant linkOpenedAt) {
+    }
+
+    /** OSRM T10'a kadar HER yol suresi tahmindir (estimated=true); gercek deger geldiginde degisir. */
+    public record TravelDto(UUID participantId, int minutes, boolean estimated) {
     }
 
     /**
-     * mapsUrl: saglayici vermezse yol tarifi adresine duser (spec §5.A.6) — "Yol tarifi al"
+     * mapsUrl: goruntuleyenin ulasim turuyle MapLinks'ten uretilir (spec §10) — "Yol tarifi al"
      * butonu hicbir oturumda olu kalmaz. placeLink: mekanin kendi sayfasi (Maps ya da site).
      */
     public record VenueDto(UUID id, String name, double lat, double lng, Double rating,
@@ -188,7 +203,10 @@ public final class ApiDtos {
                            String provider, String category, String address, String locality,
                            Integer ratingCount, String hoursToday, String placeLink,
                            /** Hangi ilgi alanindan geldigi; atif cozulemediyse null. */
-                           ActivityType activityType) {
+                           ActivityType activityType,
+                           Double popularity, Integer ratingScale, List<TravelDto> travel,
+                           /** "Neyle bilinir" tek satiri (&lt;=80); veri yoksa null, UI gizler. */
+                           String tagline, TaglineSource taglineSource) {
     }
 
     public record SessionView(String slug, String name, List<ActivityType> activityTypes,
@@ -216,7 +234,9 @@ public final class ApiDtos {
                               /** Merkez host'un sectigi sabit nokta mi (orta nokta degil). */
                               boolean anchored,
                               /** Ses odasi: null = kapali. SOLO'da hep null (start SOLO'yu reddeder). */
-                              VoiceDto voice) {
+                              VoiceDto voice,
+                              /** 5 haneli davet kodu; YALNIZ uyeye gonderilir (R-B9). */
+                              String joinCode) {
     }
 
     public record VoiceDto(Instant endsAt) {
@@ -252,6 +272,15 @@ public final class ApiDtos {
     }
 
     /**
+     * {@code /j/{slug}} sayfasinin OG/Twitter meta etiketlerini besleyen KAMU verisi. Etiketleri
+     * HTML'e basmak web izinin isidir (W-15): backend SPA'nin index.html'ini uretmez ve tek bir
+     * baslik satiri icin ikinci bir sunum katmani acmak dogru olmazdi.
+     */
+    public record OgMetaDto(String title, String description, String imageUrl, String url,
+                            boolean expired) {
+    }
+
+    /**
      * Istegi yapan kisinin oturumdaki yeri. Katilimci token'i -> o satir; host JWT -> host satiri.
      * {@code runoffVoteVenueId} KENDI elemeoyudur (yoksa null): istemci onu useState'te tutarsa
      * sayfa yenilenince kaybolur. Baskasinin oyu bu gorunume hic girmez.
@@ -259,16 +288,31 @@ public final class ApiDtos {
     public record ViewerDto(UUID participantId, boolean host, UUID runoffVoteVenueId) {
     }
 
+    /**
+     * Liste kartindaki ust uste binen avatar yigininin satiri. Bas harf {@code displayName}'den
+     * cizilir; {@code ready} false ise kesik cizgili "henuz hazir degil" halkasi. Koltuk id'si,
+     * e-posta ve konum YOK — kart bunlarin hicbirini gostermez.
+     */
+    public record SummaryParticipantDto(String displayName, boolean ready, boolean host) {
+    }
+
     public record SessionSummaryDto(String slug, String name,
                                     List<ActivityType> activityTypes,
                                     SessionType sessionType, SessionStatus status,
                                     Instant createdAt, Instant expiresAt, int participantCount,
                                     int readyCount, int doneCount,
+                                    /** Sayimlarla AYNI kaynak; sira katilma sirasi (host once). */
+                                    List<SummaryParticipantDto> participants,
                                     String decidedVenueName, String decidedVenuePhotoUrl) {
     }
 
-    /** open: DECIDED/EXPIRED disi; past: karar verilmis ya da suresi dolmus. */
-    public record SessionListResponse(List<SessionSummaryDto> open, List<SessionSummaryDto> past) {
+    /**
+     * open: acik oturumlar, TAVANSIZ; past: karar verilmis ya da suresi dolmus olanlar, en fazla
+     * 20. {@code pastTruncated} true ise gecmiste gosterilmeyen satirlar var — istemci "daha
+     * eski oturumlar var" diyebilsin diye acikca soylenir, sessizce kesilmez.
+     */
+    public record SessionListResponse(List<SessionSummaryDto> open, List<SessionSummaryDto> past,
+                                      boolean pastTruncated) {
     }
 
     public record LocationPrefDto(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
@@ -279,9 +323,62 @@ public final class ApiDtos {
     public record StatsDto(long sessionsHosted, long friendsMet) {
     }
 
+    /** §2: consents{location, microphone, analytics, updatedAt, version}. */
+    public record ConsentsDto(boolean location, boolean microphone, boolean analytics,
+                              Instant updatedAt, int version) {
+    }
+
     public record MeResponse(UUID id, String email, String displayName,
                              LocationPrefDto defaultLocation, ActivityType defaultActivity,
-                             String language, TravelMode defaultTravelMode, StatsDto stats) {
+                             String language, TravelMode defaultTravelMode, StatsDto stats,
+                             List<AuthProvider> authProviders, ConsentsDto consents) {
+    }
+
+    /** Uc anahtar da ZORUNLU: eksik alan "degistirme" degil, belirsiz rizadir. */
+    public record UpdateConsentsRequest(@NotNull Boolean location, @NotNull Boolean microphone,
+                                        @NotNull Boolean analytics) {
+    }
+
+    public record DeleteAccountRequest(@NotBlank String deleteConfirmToken) {
+
+        @Override
+        public String toString() {
+            return "DeleteAccountRequest[deleteConfirmToken=" + masked(deleteConfirmToken) + "]";
+        }
+    }
+
+    public record ReportRequest(@NotBlank String sessionSlug, @NotNull UUID targetParticipantId,
+                                @NotNull ReportReason reason, @Size(max = 500) String note) {
+    }
+
+    public record ReportResponse(UUID id, Instant createdAt) {
+    }
+
+    /** Ikisinden TAM BIRI: hesap engeli (userId) ya da oturum kapsamli anonim engel. */
+    public record BlockRequest(UUID userId, UUID participantId, String sessionSlug) {
+
+        @AssertTrue(message = "exactly one of userId/participantId is required")
+        public boolean isTargetExclusive() {
+            return (userId == null) != (participantId == null)
+                    && (participantId == null || (sessionSlug != null && !sessionSlug.isBlank()));
+        }
+    }
+
+    public record BlockDto(UUID id, UUID userId, UUID participantId, Instant createdAt) {
+    }
+
+    public record DeleteTokenResponse(String deleteConfirmToken, Instant expiresAt) {
+
+        @Override
+        public String toString() {
+            return "DeleteTokenResponse[deleteConfirmToken=" + masked(deleteConfirmToken)
+                    + ", expiresAt=" + expiresAt + "]";
+        }
+    }
+
+    /** GDPR tasinabilirlik dosyasinin govdesi; konumlar YUVARLANMISTIR (~1.1 km). */
+    public record ExportResponse(Instant exportedAt, UserDataExport.Profile profile,
+                                 List<UserDataExport.Participation> participations) {
     }
 
     /** Tam degistirme: null = o tercihi temizle (displayName haric: null = degistirme). */
@@ -291,4 +388,13 @@ public final class ApiDtos {
                                   String language,
                                   TravelMode defaultTravelMode) {
     }
+
+    public record ConfigTilesDto(String styleUrl) {}
+    public record ConfigSourceDto(String id, String attributionKey, String attributionUrl, Integer ratingScale) {}
+    public record ConfigResponse(String mapEngine, ConfigTilesDto tiles, List<ConfigSourceDto> sources) {}
+    public record GeocodeRequest(@NotBlank @Size(max = 200) String query, Double biasLat, Double biasLng) {}
+    public record GeocodeResponse(double lat, double lng, String label) {}
+    public record ReverseGeocodeRequest(@NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
+                                        @NotNull @DecimalMin("-180") @DecimalMax("180") Double lng) {}
+    public record ReverseGeocodeResponse(String label) {}
 }

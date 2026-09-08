@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -54,14 +55,17 @@ class DeckFlowTest {
     Participant host;
     Participant ayse;
 
+    // ratingScale SABIT verilir: normalizedRating ayni oranda kalir, testler ham puana gore
+    // sirali kalabilir (ratingScale null olsaydi hepsi normalize'de null'a duserdi).
     static VenueCandidate cand(int i, double rating) {
         return new VenueCandidate("foursquare", "fsq-" + i, "Mekan " + i,
-                new GeoPoint(51.5 + i * 0.001, 5.5), rating, 2, null, "https://maps/" + i);
+                new GeoPoint(51.5 + i * 0.001, 5.5), rating, 2, null,
+                null, null, null, null, null, null, null, null, 5, null);
     }
 
     static VenueCandidate candAt(int i, double rating, GeoPoint at) {
         return new VenueCandidate("foursquare", "x" + i, "Mekan " + i, at, rating, 2, null,
-                "https://maps/" + i);
+                null, null, null, null, null, null, null, null, 5, null);
     }
 
     @BeforeEach
@@ -81,7 +85,7 @@ class DeckFlowTest {
         clock = Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC);
         presence = new FakeStores.FakePresence();
         flow = new DeckFlow(store, deck, provider, events, new DecisionEngine(), clock, geocoder,
-                presence);
+                presence, (s, d, m) -> Optional.empty());
 
         hostUser = UUID.randomUUID();
         // Sabit id: shuffle tohumu session.id()'den gelir, rastgele id testi kimlik

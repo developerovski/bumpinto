@@ -1,17 +1,26 @@
 package com.bumpinto.adapter.in.web;
 
+import org.springframework.security.oauth2.jwt.Jwt;
+import com.bumpinto.application.safety.Blocks;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
+import com.bumpinto.domain.port.PresenceStampsPort;
+import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.voice.Seat;
 import com.bumpinto.infra.security.ParticipantPrincipal;
@@ -20,6 +29,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,7 +41,11 @@ class SessionViewAssemblerTest {
 
     FakeStores.FakePresence presence = new FakeStores.FakePresence();
     FakeStores.FakeVoiceRooms rooms = new FakeStores.FakeVoiceRooms();
-    SessionViewAssembler assembler = new SessionViewAssembler(presence, rooms);
+    RoutingPort routing = (s, d, m) -> Optional.empty();
+    Blocks blocks = mock(Blocks.class);
+    PresenceStampsPort stamps = mock(PresenceStampsPort.class);
+    SessionViewAssembler assembler =
+            new SessionViewAssembler(presence, rooms, routing, blocks, stamps);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -44,13 +59,14 @@ class SessionViewAssemblerTest {
 
     Venue venue(UUID sessionId, GeoPoint at) {
         return new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Café", at, 4.6, 2,
-                null, null, 0);
+                null, 0, null, null, null, null, null, "https://maps.example/place/g1",
+                null, 0.8, 10, null);
     }
 
     Venue venue(String externalId, ActivityType activityType) {
         return new Venue(UUID.randomUUID(), UUID.randomUUID(), "google", externalId, "V",
-                new GeoPoint(51.44, 5.47), 4.6, 2, null, null, 0,
-                null, null, null, null, null, null, activityType);
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
+                null, null, null, null, null, null, activityType, null, null, null);
     }
 
     SessionQueries.SessionSnapshot snapshotWith(List<ActivityType> activityTypes,
@@ -125,6 +141,32 @@ class SessionViewAssemblerTest {
         assertThat(fairness.spreadMinutes())
                 .isEqualTo(minutes.get(driver.id()) - minutes.get(walker.id()));
         assertThat(fairness.longestParticipantId()).isEqualTo(driver.id());
+    }
+
+    /** OSRM gercek sure dondurdugunde travel[].estimated hepsi false olmali (haversine degil). */
+    @Test
+    void travelIsRealWhenRoutingAnswers() {
+        Session s = session(SessionType.GROUP);
+        Participant walker = new Participant(UUID.randomUUID(), s.id(), "Yaya",
+                new GeoPoint(51.44123, 5.47456), false, null, false, "Eindhoven", TravelMode.WALK);
+        Participant driver = new Participant(UUID.randomUUID(), s.id(), "Suruc",
+                new GeoPoint(51.69781, 5.30374), false, null, false, "Den Bosch", TravelMode.CAR);
+        Venue v = venue(s.id(), new GeoPoint(51.44, 5.47));
+        RoutingPort canned = (sources, destinations, mode) -> switch (mode) {
+            case WALK -> Optional.of(new int[][] {{300}}); // 5 dk
+            case CAR -> Optional.of(new int[][] {{900}}); // 15 dk
+            default -> Optional.empty();
+        };
+        SessionViewAssembler real =
+                new SessionViewAssembler(presence, rooms, canned, blocks, stamps);
+
+        ApiDtos.SessionView view = real.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);
+
+        ApiDtos.VenueDto dto = view.venues().get(0);
+        assertThat(dto.travel()).allMatch(t -> !t.estimated());
+        assertThat(dto.travelMinutes().get(walker.id())).isEqualTo(5);
+        assertThat(dto.travelMinutes().get(driver.id())).isEqualTo(15);
     }
 
     /**
@@ -255,9 +297,9 @@ class SessionViewAssemblerTest {
         Participant a = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
         Participant b = person(s.id(), new GeoPoint(51.69, 5.30), "Den Bosch", false);
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "f1", "Café Berlage",
-                new GeoPoint(51.4412, 5.4712), null, null, null, null, 0,
+                new GeoPoint(51.4412, 5.4712), null, null, null, 0,
                 "Coffee Shop", "Eindhoven", "Eindhoven", null, null, "https://berlage.nl",
-                null);
+                null, null, null, null);
 
         ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(a, b), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
@@ -269,9 +311,91 @@ class SessionViewAssemblerTest {
         assertThat(dto.ratingCount()).isNull();
         assertThat(dto.hoursToday()).isNull();
         assertThat(dto.placeLink()).isEqualTo("https://berlage.nl");
-        // mapsUrl bos → yol tarifi baglantisi turetilir (spec §5.A.6; "Yol tarifi al" olu kalmaz)
+        // Uye olmayan (auth null) goruntuleyen icin arac varsayilani CAR'dir (spec §10).
         assertThat(dto.mapsUrl())
-                .isEqualTo("https://www.google.com/maps/dir/?api=1&destination=51.4412,5.4712");
+                .isEqualTo("https://www.google.com/maps/dir/?api=1&destination=51.4412,5.4712&travelmode=driving");
+    }
+
+    /**
+     * mapsUrl artik saglayicidan degil, goruntuleyenin ulasim turundan (MapLinks) uretilir
+     * (spec §10) — ayni mekan icin herkes kendi turune gore FARKLI baglanti gorur.
+     */
+    /** "Neyle bilinir" satiri sunucuda turetilir; DTO onu ve KAYNAGINI (atif satiri) tasir. */
+    @Test
+    void taglineAndSourceReachTheVenueDto() {
+        Session s = session(SessionType.GROUP);
+        Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "x", "Kaffee",
+                new GeoPoint(51.4, 5.4), 8.4, 2, null, 0, "Coffee shop", null, "Eindhoven",
+                12, null, null, ActivityType.COFFEE, 0.9, 10, null,
+                "Best flat white in town", TaglineSource.FSQ);
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
+
+        assertThat(dto.tagline()).isEqualTo("Best flat white in town");
+        assertThat(dto.taglineSource()).isEqualTo(TaglineSource.FSQ);
+    }
+
+    @Test
+    void mapsUrlUsesTheViewersTravelModeAndCarriesNewFields() {
+        Session s = session(SessionType.GROUP);
+        Participant walker = new Participant(UUID.randomUUID(), s.id(), "Yaya",
+                new GeoPoint(51.44, 5.47), false, null, false, "Eindhoven", TravelMode.WALK);
+        Venue v = venue(s.id(), new GeoPoint(51.4412, 5.4712));
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(walker), List.of(v), Map.of(), Map.of(), Map.of()), authFor(walker))
+                .venues().get(0);
+
+        assertThat(dto.mapsUrl()).endsWith("&travelmode=walking");
+        assertThat(dto.mapsUrl()).contains("destination=51.4412,5.4712");
+        assertThat(dto.placeLink()).isEqualTo(v.placeLink());
+        assertThat(dto.ratingScale()).isEqualTo(v.ratingScale());
+        assertThat(dto.popularity()).isEqualTo(v.popularity());
+        assertThat(dto.travel()).isNotEmpty();
+        assertThat(dto.travel()).allMatch(ApiDtos.TravelDto::estimated);
+    }
+
+    /** Linki acan katilimci degilse (davet linkiyle bakan misafir) araba varsayilir. */
+    @Test
+    void mapsUrlFallsBackToDrivingForNonMembers() {
+        Session s = session(SessionType.GROUP);
+        Participant a = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
+        Venue v = venue(s.id(), new GeoPoint(51.4412, 5.4712));
+
+        ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(a), List.of(v), Map.of(), Map.of(), Map.of()), null)
+                .venues().get(0);
+
+        assertThat(dto.mapsUrl()).endsWith("&travelmode=driving");
+    }
+
+    /** Hesap kimligi tasiyan auth: assembler engel sorgusunu bu id ile yapar. */
+    private static UsernamePasswordAuthenticationToken accountAuth(UUID userId) {
+        return new UsernamePasswordAuthenticationToken(
+                Jwt.withTokenValue("t").header("alg", "HS256").subject(userId.toString())
+                        .claim("email", "v@bumpinto.test").build(),
+                null, List.of());
+    }
+
+    /** Engel TEK YON: engelleyen "blocked" gorur, engellenen hicbir isaret gormez. */
+    @Test
+    void blockedFlagIsSetOnlyForTheViewerWhoBlocked() {
+        UUID viewerUser = UUID.randomUUID();
+        Session s = session(SessionType.GROUP);
+        Participant them = person(s.id(), new GeoPoint(51.44, 5.47), "Eindhoven", false);
+        Participant mine = person(s.id(), new GeoPoint(51.45, 5.48), "Eindhoven", false);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(
+                s, List.of(them, mine), List.of(), Map.of(), Map.of(), Map.of());
+        when(blocks.hiddenParticipantIds(eq(viewerUser), any(), any()))
+                .thenReturn(Set.of(them.id()));
+
+        ApiDtos.SessionView view = assembler.toView(snap, accountAuth(viewerUser));
+
+        assertThat(view.participants()).filteredOn(p -> p.id().equals(them.id()))
+                .extracting(ApiDtos.ParticipantDto::blocked).containsExactly(true);
+        assertThat(view.participants()).filteredOn(p -> !p.id().equals(them.id()))
+                .extracting(ApiDtos.ParticipantDto::blocked).containsOnly(false);
     }
 
     private static UsernamePasswordAuthenticationToken authFor(Participant participant) {
@@ -296,6 +420,44 @@ class SessionViewAssemblerTest {
                 .containsExactlyInAnyOrder(tuple(here.id(), true), tuple(gone.id(), false));
     }
 
+    /**
+     * "Son gorulen · 12:38" cevrimdisi kisi icin YAZILIR: damga presence koltugunun omrunden
+     * bagimsizdir, yoksa satirda anlatilacak hicbir sey kalmazdi.
+     */
+    @Test
+    void offlineParticipantCarriesLastSeenAndLinkOpenedStamps() {
+        Session s = session(SessionType.GROUP);
+        Participant ayse = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        Instant seen = Instant.parse("2026-09-06T12:38:00Z");
+        Instant opened = Instant.parse("2026-09-06T12:10:00Z");
+        when(stamps.stampsOf(any()))
+                .thenReturn(Map.of(ayse.id(), new PresenceStampsPort.Stamps(seen, opened)));
+
+        ApiDtos.ParticipantDto row = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(ayse), List.of(), Map.of(), Map.of(), Map.of()), null)
+                .participants().stream().filter(p -> p.id().equals(ayse.id()))
+                .findFirst().orElseThrow();
+
+        assertThat(row.online()).isFalse();
+        assertThat(row.lastSeenAt()).isEqualTo(seen);
+        assertThat(row.linkOpenedAt()).isEqualTo(opened);
+    }
+
+    /** Damgasi olmayan koltuk haritada YOK: "hic gorulmedi" null'dur, sifir zaman degil. */
+    @Test
+    void participantWithoutStampsCarriesNulls() {
+        Session s = session(SessionType.GROUP);
+        Participant ayse = person(s.id(), new GeoPoint(51.3855, 5.7120), "Someren", false);
+        when(stamps.stampsOf(any())).thenReturn(Map.of());
+
+        ApiDtos.ParticipantDto row = assembler.toView(new SessionQueries.SessionSnapshot(
+                s, List.of(ayse), List.of(), Map.of(), Map.of(), Map.of()), null)
+                .participants().get(0);
+
+        assertThat(row.lastSeenAt()).isNull();
+        assertThat(row.linkOpenedAt()).isNull();
+    }
+
     @Test
     void voiceIsNullWhenClosedAndCarriesEndsAtAndMembersWhenOpen() {
         Session s = session(SessionType.GROUP);
@@ -315,6 +477,30 @@ class SessionViewAssemblerTest {
         assertThat(open.voice().endsAt()).isEqualTo(endsAt);
         assertThat(open.participants().stream().filter(ApiDtos.ParticipantDto::inVoice)
                 .map(ApiDtos.ParticipantDto::id)).containsExactly(ayse.id());
+    }
+
+    /**
+     * R-B9 gizlilik siniri: kod UYEYE gider, uye olmayana GITMEZ ve onizlemede HIC yer almaz.
+     * Uc zaten uye olmayana 403 veriyor ama alan viewer'a bagli olmasaydi, ileride acilacak
+     * herhangi bir "uyesiz gorunum" kodu sessizce disari tasirdi. Onizleme tarafi ayrica
+     * govde uzerinden sinanir: koda karsi kod aramasi yasaktir (§2).
+     */
+    @Test
+    void joinCodeGoesToMembersOnlyAndNeverIntoThePreview() throws Exception {
+        Session base = session(SessionType.GROUP);
+        Session s = new Session(base.id(), base.slug(), base.hostId(), base.name(),
+                base.activityTypes(), base.sessionType(), base.status(), base.expiresAt(),
+                null, List.of(), null, null, null, null, null, "X7K2M");
+        Participant me = person(s.id(), new GeoPoint(51.6978, 5.3037), "Den Bosch", false);
+        SessionQueries.SessionSnapshot snap = new SessionQueries.SessionSnapshot(
+                s, List.of(me), List.of(), Map.of(), Map.of(), Map.of());
+
+        assertThat(assembler.toView(snap, authFor(me)).joinCode()).isEqualTo("X7K2M");
+        assertThat(assembler.toView(snap, null).joinCode()).isNull();
+
+        String preview = new ObjectMapper().findAndRegisterModules()
+                .writeValueAsString(assembler.toPreview(snap));
+        assertThat(preview).doesNotContain("X7K2M").doesNotContain("joinCode");
     }
 
     @Test

@@ -1,0 +1,50 @@
+# ActivityType -> acik veri kategorileri.
+# overture: categories.primary slug'lari  |  osm: "<key>=<value>" ciftleri
+# backend/src/main/resources/venue-sources/open.yml bu dosyanin aynadaki esidir (B-13 uretti):
+# oradaki her liste, "=" iceren OSM ciftleri ve icermeyen Overture slug'lari olarak burada
+# ikiye ayrilmistir — deger ayni, sekil farkli. Biri degisince digeri de degisir (spec §16.7).
+COFFEE:
+  overture: [cafe, coffee_shop]
+  osm: ["amenity=cafe"]
+FOOD:
+  overture: [restaurant, fast_food]
+  osm: ["amenity=restaurant"]
+BAR:
+  overture: [bar, pub]
+  osm: ["amenity=bar", "amenity=pub"]
+NIGHTLIFE:
+  overture: [nightclub, music_venue]
+  osm: ["amenity=nightclub"]
+MUSEUM:
+  overture: [museum]
+  osm: ["tourism=museum"]
+THEME_PARK:
+  overture: [amusement_park, zoo]
+  osm: ["tourism=theme_park", "tourism=zoo"]
+ART:
+  overture: [art_gallery, arts_and_entertainment]
+  osm: ["tourism=gallery"]
+WALK:
+  overture: [park, garden]
+  osm: ["leisure=park", "leisure=garden"]
+HIKE:
+  overture: [hiking_trail, nature_preserve]
+  osm: ["route=hiking", "natural=heath"]
+SWIM:
+  overture: [swimming_pool, water_park]
+  osm: ["leisure=swimming_pool", "leisure=water_park"]
+FITNESS:
+  overture: [gym]
+  osm: ["leisure=fitness_centre", "leisure=sports_centre"]
+CINEMA:
+  overture: [cinema]
+  osm: ["amenity=cinema"]
+GAMES:
+  overture: [arcade, board_game_cafe]
+  osm: ["leisure=amusement_arcade"]
+ADVENTURE:
+  overture: [climbing_gym, go_kart_track]
+  osm: ["leisure=climbing"]
+ACTIVITY:
+  overture: [bowling_alley]
+  osm: ["leisure=bowling_alley", "leisure=pitch"]

@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.safety.VoiceAdmission;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
@@ -27,8 +28,10 @@ class VoiceRoomListener {
 
     private final VoiceRoomsPort rooms;
     private final SessionEventsPort events;
+    private final VoiceAdmission admission;
 
-    VoiceRoomListener(VoiceRoomsPort rooms, SessionEventsPort events) {
+    VoiceRoomListener(VoiceRoomsPort rooms, SessionEventsPort events, VoiceAdmission admission) {
+        this.admission = admission;
         this.rooms = rooms;
         this.events = events;
     }
@@ -46,6 +49,14 @@ class VoiceRoomListener {
         // yeniden baglanir, ya da SUBSCRIBE/UNSUBSCRIBE tekrar eder ama kume sabit kalir) her
         // istemciye gereksiz bir GET /api/sessions/{slug} yaptirir.
         Set<UUID> before = rooms.roomOf(me.sessionId()).map(VoiceRoom::memberIds).orElse(Set.of());
+        // §2: engelli cift ayni odaya alinmaz. Kapi ABONELIKTE: uyelik burada dogar, sonradan
+        // iptal etmek arada bir sinyal penceresi birakirdi.
+        Set<UUID> blocked = admission.blockedWith(me.sessionId(), me.participantId());
+        if (before.stream().anyMatch(blocked::contains)) {
+            // Sessizce dusurmek istemciyi "baglaniyor"da birakirdi; zil roster'i tazeletir.
+            events.publish(me.slug(), SessionEvent.blocked());
+            return;
+        }
         rooms.join(me.sessionId(), me.participantId(),
                         new Seat(accessor.getSessionId(), accessor.getSubscriptionId()))
                 .filter(room -> !room.memberIds().equals(before))

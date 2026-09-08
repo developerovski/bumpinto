@@ -74,7 +74,8 @@ public class SessionCommands {
                 clock.instant().plus(SESSION_TTL), null, List.of(),
                 null, null, null,
                 anchor == null ? null : Texts.label(anchor.label()),
-                anchor == null ? null : anchor.point()));
+                anchor == null ? null : anchor.point(),
+                store.freshJoinCode()));
         requireWithinSpread(session, hostLocation, null);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),

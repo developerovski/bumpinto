@@ -15,16 +15,23 @@ type VoiceState = {
   muted: boolean;
   peers: Record<string, PeerSnapshot>;
   selfSpeaking: boolean;
+  /** Yerel sustur — sunucuya gitmez, §2: 'sustur' uçsuz. */
+  mutedPeers: Record<string, true>;
   /** Son kapanışın sebebi; dock 10 sn gösterir. */
   endedReason: EndReason | null;
   micDenied: boolean;
   /** Kimlik isteği 409 DIŞINDA bir hatayla düştü (oda kapanmadı — ağ/sunucu sorunu). */
   connectFailed: boolean;
+  /** Odanın toplam uzunluğu (dk). `VoiceDto` yalnız `endsAt` taşıdığı için ancak odanın
+      AÇILDIĞI an gözlenerek türetilir; oda açıkken gelen kişide `null` kalır ve dock süre
+      ipucunu HİÇ basmaz (uydurma yok). */
+  limitMinutes: number | null;
   start: () => Promise<void>;
   end: () => Promise<void>;
   join: () => Promise<void>;
   leave: () => void;
   toggleMute: () => void;
+  togglePeerMute: (participantId: string) => void;
   ended: (reason: EndReason) => void;
   resetRoster: () => void;
 };
@@ -53,9 +60,12 @@ let missingCount = 0;
 
 const stopTracks = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
 
-/** Görünümdeki ses üyeleri (kendimiz dahil; mesh kendini eler). */
+/** Görünümdeki ses üyeleri (kendimiz dahil; mesh kendini eler). Engelli çifti sunucu zaten
+    aynı odaya almaz (§2) — istemci süzmesi savunma katmanı, roster yarışında bile ses açılmaz. */
 export function rosterOf(view: SessionView | null): string[] {
-  return (view?.participants ?? []).filter((p) => p.inVoice && p.id).map((p) => p.id as string);
+  return (view?.participants ?? [])
+    .filter((p) => p.inVoice && p.id && !p.blocked)
+    .map((p) => p.id as string);
 }
 
 function teardown() {
@@ -78,9 +88,11 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   muted: false,
   peers: {},
   selfSpeaking: false,
+  mutedPeers: {},
   endedReason: null,
   micDenied: false,
   connectFailed: false,
+  limitMinutes: null,
 
   start: async () => {
     const { slug, refresh } = useSessionStore.getState();
@@ -175,6 +187,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         createLevels: (cb) => createLevelSampler(cb, { context: audioCtx }),
       });
       mesh.setMuted(get().muted);
+      mesh.setMutedPeers(Object.keys(get().mutedPeers));
       const roster = rosterOf(useSessionStore.getState().view);
       mesh.setRoster(roster);
       lastRoster = roster.join(",");
@@ -199,6 +212,14 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     const muted = !get().muted;
     mesh?.setMuted(muted);
     set({ muted });
+  },
+
+  togglePeerMute: (participantId) => {
+    const next = { ...get().mutedPeers };
+    if (next[participantId]) delete next[participantId];
+    else next[participantId] = true;
+    set({ mutedPeers: next });
+    mesh?.setMutedPeers(Object.keys(next));
   },
 
   /** WS yeniden bağlanınca çağrılır: bir sonraki görünüm güncellemesinde setRoster'ı DEĞİŞMEMİŞ
@@ -244,4 +265,41 @@ useSessionStore.subscribe((state) => {
   if (roster === lastRoster) return;
   lastRoster = roster;
   mesh?.setRoster(rosterIds);
+});
+
+/* Oda açılışını izleyen ikinci abonelik — roster aboneliği "in/joining" dışında erken dönüyor,
+   uzunluk ise oda kapalıyken (idle) yakalanmak zorunda. `undefined`, "henüz hiç gözlenmedi"
+   demektir — "bilinen kapalı" (`null`) ile karıştırılmaz: aksi hâlde sayfaya oda ZATEN açıkken
+   gelen kişi de "açılış" gibi sayılır ve uzunluk uydurulmuş olurdu. */
+let lastSlug: string | null | undefined;
+let lastEndsAt: string | null | undefined;
+
+/** Test kancası: modül düzeyindeki oda hafızasını sıfırlar. */
+export function resetVoiceRoom() {
+  lastSlug = undefined;
+  lastEndsAt = undefined;
+  useVoiceStore.setState({ limitMinutes: null });
+}
+
+useSessionStore.subscribe((state) => {
+  // bind() ÖNCE `view: null` yazar, ardından refresh() gerçek görünümü getirir. `view` YOKKEN
+  // hafızaya yazılırsa bu adım "bilinen kapalı" (`null`) sayılır ve refresh() dolu bir görünümle
+  // (oda ZATEN açık olsa bile) döndüğünde sanki o an "açılmış" gibi görünüp uzunluk uydurulur.
+  if (!state.view) return;
+  if (state.slug !== lastSlug) {
+    // Oturum değişti: bir önceki odadan türetilen uzunluk yeni oturuma taşınmasın.
+    lastSlug = state.slug;
+    lastEndsAt = undefined;
+    useVoiceStore.setState({ limitMinutes: null });
+  }
+  const endsAt = state.view.voice?.endsAt ?? null;
+  if (endsAt === lastEndsAt) return;
+  const opened = lastEndsAt === null && endsAt !== null;
+  lastEndsAt = endsAt;
+  if (!opened) return;
+  const rawMinutes = Math.round((new Date(endsAt).getTime() - Date.now()) / 60_000);
+  // İstemci saati kesin değil (40 sn'lik kayma 30'u 29/31 yapar) — 5 dk'ya yuvarla (sunucunun
+  // kendi yuvarlama alışkanlığıyla uyumlu); süresi geçmiş oda kapısı yuvarlamadan SONRA uygulanır.
+  const minutes = Math.round(rawMinutes / 5) * 5;
+  useVoiceStore.setState({ limitMinutes: minutes > 0 ? minutes : null });
 });

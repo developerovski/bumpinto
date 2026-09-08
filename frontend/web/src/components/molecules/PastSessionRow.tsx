@@ -2,8 +2,8 @@
 import { useTranslation } from "react-i18next";
 import type { SessionSummaryDto } from "@bumpinto/shared";
 import { Badge } from "../atoms";
-import { GROUP_TINT, groupOf } from "../../lib/activity";
-import VenueCard from "./VenueCard";
+import { GROUP_TINT, activityListLabel, groupOf } from "../../lib/activity";
+import VenueThumb from "./VenueThumb";
 
 /** Artboard W1 · geçmiş buluşma satırı — küçük görsel + ad/tarih + rozet. */
 export default function PastSessionRow({ row, index }: { row: SessionSummaryDto; index: number }) {
@@ -14,22 +14,24 @@ export default function PastSessionRow({ row, index }: { row: SessionSummaryDto;
     month: "short",
   });
   const date = row.createdAt ? fmt.format(new Date(row.createdAt)) : "";
+  // Karar çıkmamış ve adlandırılmamış oturumun `decidedVenueName` de `name` de yoktur —
+  // başlık boş bir <h3> olarak kalıyordu. `SessionCard` ile AYNI yedek: etkinlik etiketi.
+  const title =
+    row.decidedVenueName ?? row.name ?? activityListLabel(row.activityTypes ?? [], t, i18n.resolvedLanguage ?? "en");
   return (
     <div className={`flex items-center gap-3 px-4 py-[0.8125rem]${decided ? "" : " opacity-65"}`}>
-      <div className="h-12 w-12 flex-none">
-        <VenueCard
-          venue={{ id: row.slug, name: row.decidedVenueName ?? row.name ?? "?", photoUrl: row.decidedVenuePhotoUrl, deckOrder: index }}
-          tint={GROUP_TINT[groupOf(row.activityTypes?.[0] ?? "")]}
-          photoOnly
-          photoHeight={48}
-          /* `photoOnly` dalında foto kutusu height:100% (VenueCard.tsx:167) — belirli
-             yükseklikli bir ata olmadan 0'a çöküyordu ve satırda boş bir şerit kalıyordu.
-             48px'i veren dıştaki `h-12`; kart kökünün onu devralması gerekiyor. */
-          className="h-full"
-        />
-      </div>
+      {/* Artboard W1 (734): 48px, 14px köşe, ÇIPLAK gradyan karo — polaroid kart chrome'u YOK.
+          `VenueCard photoOnly` deste yığınının d2/d3 kartları içindir (beyaz kart + %100 yükseklik):
+          48px'lik bir satırda kartın dolgusu görseli ~26px'e düşürüyordu. Küçük görselin bileşeni
+          `VenueThumb` (LikedList da bunu kullanır). */}
+      <VenueThumb
+        venue={{ id: row.slug, name: title, photoUrl: row.decidedVenuePhotoUrl, deckOrder: index }}
+        tint={GROUP_TINT[groupOf(row.activityTypes?.[0] ?? "")]}
+        size={48}
+        radiusClass="rounded-[0.875rem]"
+      />
       <div className="flex flex-1 flex-col gap-0.5">
-        <h3>{row.decidedVenueName ?? row.name}</h3>
+        <h3>{title}</h3>
         <span className="text-[0.75rem] text-ink2">
           {date} · {decided ? t("sessions.people", { count: row.participantCount ?? 0 }) : t("sessions.noDecision")}
         </span>

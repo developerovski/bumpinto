@@ -2,6 +2,7 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.session.VoiceCommands;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import org.springframework.scheduling.TaskScheduler;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -38,13 +40,17 @@ class PresenceListener {
     private final SessionEventsPort events;
     private final TaskScheduler scheduler;
     private final VoiceCommands voice;
+    private final PresenceStampsPort stamps;
+    private final Clock clock;
 
     PresenceListener(PresencePort presence, SessionEventsPort events, TaskScheduler scheduler,
-                     VoiceCommands voice) {
+                     VoiceCommands voice, PresenceStampsPort stamps, Clock clock) {
         this.presence = presence;
         this.events = events;
         this.scheduler = scheduler;
         this.voice = voice;
+        this.stamps = stamps;
+        this.clock = clock;
     }
 
     /**
@@ -119,6 +125,18 @@ class PresenceListener {
         // accessor.getSessionId(): WS/STOMP baglantisinin kendi kimligi — ayni katilimcinin iki
         // sekmesini ayirir, presence.arrived/left'in eslesmeyen kopmayi ayiklamasi bunun uzerine kurulu.
         change.accept(sessionId, participantId, accessor.getSessionId());
+        // Damga hem geliste hem kopusta yazilir: "son gorulen" kisinin en son BURADA oldugu andir
+        // ve kopus ani onun ta kendisidir. InMemoryPresence 45 sn sonra koltugu budar, bu satir kalir.
+        try {
+            stamps.touchLastSeen(participantId, clock.instant());
+        } catch (RuntimeException e) {
+            // Damga SUSLEMEDIR, kopusun kendisi degil. Buradan disari sizan bir istisna once
+            // yayini, sonra onDisconnect'teki grace zilini atlatirdi — zil calmazsa endIfEmpty
+            // hic cagrilmaz ve ses odasi sonsuza kadar acik kalir (asagidaki try/catch tam da
+            // bunu onlemek icin yazilmisti; bu satir ona yeni bir kapi acmasin). Ayni olayin
+            // kardes dinleyicisi de (VoiceRoomListener) multicaster'da birlikte dusrdu.
+            log.warn("presence stamp failed for {}: {}", participantId, e.getMessage());
+        }
         events.publish(slug, SessionEvent.presenceChanged());
     }
 

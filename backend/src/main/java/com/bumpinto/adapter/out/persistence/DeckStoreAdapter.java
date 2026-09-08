@@ -3,9 +3,11 @@ package com.bumpinto.adapter.out.persistence;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.Venue;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,11 +23,14 @@ public class DeckStoreAdapter implements DeckStorePort {
     private final VenueRepository venues;
     private final SwipeRepository swipes;
     private final VoteRepository votes;
+    private final Clock clock;
 
-    public DeckStoreAdapter(VenueRepository venues, SwipeRepository swipes, VoteRepository votes) {
+    public DeckStoreAdapter(VenueRepository venues, SwipeRepository swipes, VoteRepository votes,
+                            Clock clock) {
         this.venues = venues;
         this.swipes = swipes;
         this.votes = votes;
+        this.clock = clock;
     }
 
     @Override public List<Venue> saveVenues(List<Venue> list) {
@@ -41,7 +46,6 @@ public class DeckStoreAdapter implements DeckStorePort {
             e.rating = v.rating();
             e.priceLevel = v.priceLevel();
             e.photoUrl = v.photoUrl();
-            e.mapsUrl = v.mapsUrl();
             e.deckOrder = v.deckOrder();
             e.category = v.category();
             e.address = v.address();
@@ -50,6 +54,12 @@ public class DeckStoreAdapter implements DeckStorePort {
             e.hoursToday = v.hoursToday();
             e.placeLink = v.placeLink();
             e.activityType = v.activityType() == null ? null : v.activityType().name();
+            e.popularity = v.popularity();
+            e.ratingScale = v.ratingScale();
+            e.photoRef = v.photoRef();
+            e.tagline = v.tagline();
+            e.taglineSource = v.taglineSource() == null ? null : v.taglineSource().name();
+            e.fetchedAt = clock.instant();
             return e;
         }).toList());
         return list;
@@ -59,9 +69,11 @@ public class DeckStoreAdapter implements DeckStorePort {
         return venues.findBySessionIdOrderByDeckOrder(sessionId).stream()
                 .map(e -> new Venue(e.id, e.sessionId, e.provider, e.externalId, e.name,
                         new GeoPoint(e.lat, e.lng), e.rating, e.priceLevel, e.photoUrl,
-                        e.mapsUrl, e.deckOrder, e.category, e.address, e.locality, e.ratingCount,
+                        e.deckOrder, e.category, e.address, e.locality, e.ratingCount,
                         e.hoursToday, e.placeLink,
-                        e.activityType == null ? null : ActivityType.valueOf(e.activityType)))
+                        e.activityType == null ? null : ActivityType.valueOf(e.activityType),
+                        e.popularity, e.ratingScale, e.photoRef, e.tagline,
+                        e.taglineSource == null ? null : TaglineSource.valueOf(e.taglineSource)))
                 .toList();
     }
 

@@ -1,7 +1,12 @@
 export { createHttp, type AuthProviders, type HttpOptions } from "./http";
 export {
   createBumpintoApi,
+  type AppConfig,
+  type AppConfigSource,
+  type AppleLoginRequest,
   type BumpintoApi,
+  type ConsentsInput,
+  type MapEngine,
   type MeResponse,
   type ParticipantDto,
   type Schemas,
@@ -24,4 +29,5 @@ export {
   type Fairness,
   type FairnessVenue,
   type TravelEntry,
+  type TravelLeg,
 } from "./fairness";

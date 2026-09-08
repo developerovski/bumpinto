@@ -1,14 +1,27 @@
 /* Karar dokümanı §4.1–4.2, §4.5 — adalet metriğinin TEK kaynağı.
-   Chips, rozet ve sıralama aynı nesneyi okur; başka yerde dakika aritmetiği yapılmaz. */
+   Yol çubukları ve sıralama aynı nesneyi okur; başka yerde dakika aritmetiği yapılmaz. */
+/** `VenueDto.travel[]` bacağı (B-13/plan30). `estimated` UI'da kullanılmaz (spec §9). */
+export type TravelLeg = { participantId?: string; minutes?: number; estimated?: boolean };
+
 /** Modülün ihtiyaç duyduğu mekan şekli — YAPISAL tür. Paylaşımlı paket web'in B-7 köprüsüne
     bağlanamaz; `VenueDto` ve web'in `Venue`'sü bu şekli zaten karşılar (M-3 de karşılayacak). */
 export type FairnessVenue = {
   id?: string;
   rating?: number;
+  /** `AppConfigSource.ratingScale` null olabilir — daraltma çağıranı kırar (W-12). */
+  ratingScale?: number | null;
   deckOrder?: number;
-  travelMinutes?: Record<string, number>;
+  /** K-B26: `travelMinutes` yerine TEK kaynak. */
+  travel?: TravelLeg[];
   fairness?: { maxMinutes?: number; spreadMinutes?: number; longestParticipantId?: string };
 };
+
+/** Normalize puan: ölçek farkı sıralamayı bozmasın (FSQ 10'luk, TA/Google 5'lik — spec §11). Ölçek yoksa 5. */
+function normRating(v: FairnessVenue): number {
+  if (v.rating == null) return -1;
+  const scale = v.ratingScale ?? 5;
+  return scale > 0 ? v.rating / scale : -1;
+}
 
 /** Sunucu 5 dk'ya yuvarlıyor (B-7:T1); alan gelene kadar istemci de aynı adımı uygular.
     Sunucu değeri geldiğinde idempotent — ikinci yuvarlama sayıyı değiştirmez. */
@@ -46,9 +59,12 @@ export function median(values: number[]): number {
 }
 
 export function fairnessOf(venue: FairnessVenue): Fairness | null {
-  const raw = Object.entries(venue.travelMinutes ?? {});
+  const raw = (venue.travel ?? [])
+    .filter((leg): leg is { participantId: string; minutes: number } =>
+      typeof leg.participantId === "string" && typeof leg.minutes === "number")
+    .map((leg) => [leg.participantId, leg.minutes] as const);
   if (raw.length === 0) {
-    // `travelMinutes` henüz yok (B-7:T1 öncesi, ya da bu alan viewer'a özel bir kesitte
+    // `travel[]` henüz yok (B-7:T1 öncesi, ya da bu alan viewer'a özel bir kesitte
     // eksik) ama sunucunun toplu `fairness` alanı geldiyse (B-7:T1) YİNE DE bir Fairness
     // üretilir — kişi bazlı `entries` yok, min/max/spread doğrudan sunucudan türer, `total`
     // bilinmiyorsa `max`'a düşer (eskiden WhyHere'in yerel `fairnessForAxis`i yapardı —
@@ -101,7 +117,7 @@ export function byFairness(a: FairnessVenue, b: FairnessVenue): number {
 
 /** "Puan" sırası: puan azalan; puansız kart sona. */
 export function byRating(a: FairnessVenue, b: FairnessVenue): number {
-  return (b.rating ?? -1) - (a.rating ?? -1) || (a.deckOrder ?? 0) - (b.deckOrder ?? 0);
+  return normRating(b) - normRating(a) || (a.deckOrder ?? 0) - (b.deckOrder ?? 0);
 }
 
 /** Beraberlikte "adil olana bırak" seçimi (§5.C Runoff): min fark → min toplam → puan.
@@ -115,7 +131,7 @@ export function fairestOf<T extends FairnessVenue>(venues: T[]): T | null {
     return (
       fa.spread - fb.spread ||
       fa.total - fb.total ||
-      (b.rating ?? -1) - (a.rating ?? -1) ||
+      normRating(b) - normRating(a) ||
       (a.id ?? "").localeCompare(b.id ?? "", "en")
     );
   })[0];

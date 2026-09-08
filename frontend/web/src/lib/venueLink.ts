@@ -1,11 +1,17 @@
 import type { VenueDto } from "@bumpinto/shared";
 
-/** Mekanın kanonik dış bağlantısı: önce kendi sayfası (yorum/fotoğraf — "detay" isteğinin
-    karşılığı), sonra yol tarifi. Zincir TEK yerde: WinnerCard ve VenuePopCard aynı sıralamayı
-    okur; iki yerde ayrı yazılsaydı sessizce ayrışırdı.
+/** "Google Maps'te aç" düğmesinin hedefi: HER ZAMAN koordinat tabanlı yol tarifi (spec §10).
+    Backend SessionViewAssembler bunu boşsa zaten üretip DTO'ya koyar; "bağlantı yok" durumu yalnız
+    saklama süresi kırpmasından (§11) SONRA var olur, çağıranların `href && …` koruması bunun içindir.
 
-    Üçüncü halka (lat/lng'den hesaplanan yol tarifi adresi) YOK: backend'in
-    SessionViewAssembler.directionsUrl'i mapsUrl boşsa onu zaten üretip DTO'ya koyuyor. */
-export function venueLink(v: Pick<VenueDto, "placeLink" | "mapsUrl">): string | null {
-  return v.placeLink || v.mapsUrl || null;
+    Eskiden `placeLink` önceliklenirdi; ama her kaynak (Foursquare, açık taban) oraya mekanın WEB
+    SİTESİNİ yazıyor. "Google Maps'te aç" düğmesi kafenin sitesini açıyordu (2026-09-06, manuel test).
+    Site artık ayrı bağlantı: `websiteLink`. */
+export function venueLink(v: Pick<VenueDto, "mapsUrl">): string | null {
+  return v.mapsUrl || null;
+}
+
+/** Mekanın kendi sitesi; kaynaklar `placeLink`e `website` alanını yazar. Yoksa null, bağlantı çizilmez. */
+export function websiteLink(v: Pick<VenueDto, "placeLink">): string | null {
+  return v.placeLink || null;
 }

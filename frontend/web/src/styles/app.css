@@ -23,6 +23,28 @@
   --color-violet-wash: #f1ebff;
   --color-amber: #a96a0b;
   --color-amber-wash: #fff1d6;
+  /* Artboard `.g-am` / `.g-fl` ezmeleri (v3): rozet METNİ koyulaşır, zemin ve marka rengi
+     DEĞİŞMEZ. Ölçüldü — #a96a0b/#fff1d6 = 3.96:1 (AA altı), #7e4f06 = 6.25:1;
+     #de2456/#ffe9ef = 4.04:1, #c41c4b = 5.02:1. */
+  --color-amber-ink: #7e4f06;
+  /* Artboard W10b (4500/4631) — çevrimdışı şeridinin amber zemine ait kenarlığı. */
+  --color-amber-line: #f3ddb0;
+  /* Artboard `.danger` (W13/W18/W20) — tehlikeli bölge metni; `#c0392b` çıkış düğmesinin
+     kendi tonudur, ikisi AYRI değerlerdir. */
+  --color-danger: #b3261e;
+  /* Artboard `.rg-t` / `.tb-b` — yol çubuğunun boş rayı (sand'den bir tık koyu). */
+  --color-track: #efe7dc;
+  /* Artboard `.sk` — iskelet parıltısı; `animate-pulse` yerine soldan sağa süpürme. */
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+  --color-flame-ink: #c41c4b;
   --color-sand: #f4eee6;
   --color-line: #f1e8de;
   --color-line2: #e4d9cd;
@@ -51,6 +73,17 @@
   --animate-rise: rise 0.32s var(--ease-stack);
   --animate-promote: promote 0.32s var(--ease-stack);
   --animate-appear: appear 0.32s var(--ease-stack);
+  --animate-pulse-soft: pulse-soft 1.8s var(--ease-stack) infinite;
+  /* Artboard `.pulse` (441-442): halka FLAME, amber değil — ve 12px'e kadar açılır. */
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(222, 36, 86, 0.35);
+    }
+    60% {
+      box-shadow: 0 0 0 0.75rem rgba(222, 36, 86, 0);
+    }
+  }
   /* Karar efekti (DecisionBurst): kap ömrü = en uzun parçacık; --tx/--ty/--rot parçacık hedefi. */
   --animate-burst-life: burst-life 0.9s linear forwards;
   --animate-confetti: confetti 0.9s cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
@@ -184,6 +217,12 @@
       overflow: clip;
     }
   }
+  /* Deste animasyonları kartı ±90vw'ye uçurur; kabuk yatayda kırpar ki gövde genişlemesin ve
+     altta yatay kaydırma çubuğu belirmesin (ölçüldü 2026-09-06). `clip`: kaydırma kabı yaratmaz,
+     dikey akış ve sticky üst çubuk aynen kalır. */
+  [data-app-shell] {
+    overflow-x: clip;
+  }
   body {
     margin: 0;
     background: var(--color-paper);
@@ -272,7 +311,27 @@
     background: var(--color-line);
   }
 
-  /* ui.css .a-check — Artboard W2: yeşil onay kartındaki beyaz daire + tik işareti. */
+  /* ui.css .a-check — Artboard W2: yeşil onay kartındaki beyaz daire + tik işareti.
+     30px temel ölçü artboard `.f-lockdot`ından (382) gelir; "Katıldın!" kartı 390'da 28,
+     1280'de 32 kullanır (1903-1905 / 1812) — modifier o iki değeri taşır. */
+  .c-check--joined {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .c-check--joined > i {
+    width: 0.5625rem;
+    height: 0.34375rem;
+  }
+  @media (min-width: 64rem) {
+    .c-check--joined {
+      width: 2rem;
+      height: 2rem;
+    }
+    .c-check--joined > i {
+      width: 0.6875rem;
+      height: 0.40625rem;
+    }
+  }
   .c-check {
     width: 1.875rem;
     height: 1.875rem;
@@ -320,11 +379,11 @@
   }
   .c-mark-dot--a {
     left: 0;
-    top: 0.75rem;
+    top: 1.125rem;
   }
   .c-mark-dot--b {
     right: 0;
-    bottom: 0.625rem;
+    bottom: 0.875rem;
   }
   .c-mark-pin {
     position: absolute;
@@ -353,5 +412,12 @@
   .c-mark-pin--muted {
     background: var(--color-ink3);
     box-shadow: none;
+  }
+
+  /* Artboard .av-wt.pulse — konumu beklenen katılımcının halkası. `prefers-reduced-motion`
+     kuralı @layer base'te TÜM animasyonları kapatır: sınıf kalır, hareket durur. */
+  .c-pulse {
+    border-radius: 50%;
+    animation: var(--animate-pulse-soft);
   }
 }

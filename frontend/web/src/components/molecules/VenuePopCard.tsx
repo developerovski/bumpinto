@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
-import { venueLink } from "../../lib/venueLink";
+import { venueLink, websiteLink } from "../../lib/venueLink";
 import { LinkButton, Overline } from "../atoms";
 import VenueMeta from "./VenueMeta";
 import VenueThumb from "./VenueThumb";
@@ -11,6 +11,8 @@ import VenueThumb from "./VenueThumb";
 /** Haritadaki seçili mekan kartı (artboard `.popcard`). UI review 2026-09-03: 52px küçük resim
     kartın yarısını kaplayan boşlukla birlikte okunmuyordu — fotoğraf artık tam genişlik afiş,
     metin altında tek sütun akıyor ve dokunmatikte kartı kapatmak için bir düğme var. */
+const SITE_LINK = "self-start text-[0.75rem] text-ink2 underline underline-offset-2 hover:text-ink";
+
 export default function VenuePopCard(props: {
   venue: VenueDto;
   tint: number;
@@ -24,6 +26,7 @@ export default function VenuePopCard(props: {
   const { t } = useTranslation();
   const v = props.venue;
   const link = venueLink(v);
+  const site = websiteLink(v);
 
   return (
     <div className="absolute left-4 top-4 z-[5] flex w-[19.5rem] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[1.25rem] border border-line bg-white shadow-sh2">
@@ -44,15 +47,19 @@ export default function VenuePopCard(props: {
         {v.category && <Overline>{v.category}</Overline>}
         <h3 className="font-head text-[1.0625rem] font-bold leading-tight">{v.name}</h3>
         <VenueMeta venue={v} travel={props.travel} midpointLabel={props.midpointLabel} />
-        {v.hoursToday && (
-          <span className="text-[0.75rem] text-ink3">{t("venue.hoursToday", { hours: v.hoursToday })}</span>
-        )}
+        {/* Bugünün saati artık VenueMeta'nın kendi satırında basılıyor (R-W8) — burada TEKRAR basmak
+            "Bugün 08:00–18:00" ifadesini iki kez yazdırıyordu. */}
         {/* Bağlantı `action` yuvasına GİRMEZ: orası onay durumunda SelectionCard ile dolu ve
             dış çıkış "Kilitle" ile birincillik yarışına girmemeli — ghost, kendi satırında. */}
         {link && (
           <LinkButton href={link} target="_blank" rel="noreferrer" kind="ghost" size="fit">
             {t("venue.openInMaps")}
           </LinkButton>
+        )}
+        {site && (
+          <a href={site} target="_blank" rel="noreferrer" className={SITE_LINK}>
+            {t("venue.website")}
+          </a>
         )}
         {props.action}
       </div>

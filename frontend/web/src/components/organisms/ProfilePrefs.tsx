@@ -1,3 +1,4 @@
+import { CaretDown, Car, Check, Coffee, Globe, MapPin } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MeResponse } from "@bumpinto/shared";
@@ -11,7 +12,8 @@ import PrefRow from "../molecules/PrefRow";
 import TravelModeField from "../molecules/TravelModeField";
 import { useOwnLocation } from "../../store/useOwnLocation";
 
-type Panel = "location" | "activity" | "language" | "travelMode" | null;
+/* Dil artık açılır panel değil (kartın hep açık bej ayağı) — bu yüzden listede yok. */
+type Panel = "location" | "activity" | "travelMode" | null;
 
 /** Artboard W9 · Profil tercihler kartı — konum, etkinlik, ulaşım ve dil düzenlenebilir açılır
     panelli. `defaultTravelMode` yalnız Katıl formunu İSTEMCİ tarafında ön-doldurur (backend
@@ -32,9 +34,15 @@ export default function ProfilePrefs({
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState<Panel>(null);
   const [error, setError] = useState<string | null>(null);
+  /* Dil bloğu HEP açık olduğundan hatası ayrı tutulur: ortak `error` burada gösterilseydi
+     etkinlik/ulaşım panelindeki hata dil ayağında da tekrar ederdi. */
+  const [langError, setLangError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const activity = me.defaultActivity;
   const Icon = activity ? ACTIVITY_ICONS[activity] : undefined;
+  // 390 ikon karoları (2792-2814): artboard seçili tercihin kendi glifini gösterir; hiç seçim
+  // yoksa artboard'ın varsayılan glifleri (ph-coffee / ph-car) kalır.
+  const TravelIcon = me.defaultTravelMode ? MODE_ICON[me.defaultTravelMode][0] : Car;
   const currentCode = me.language ?? i18n.resolvedLanguage;
   const currentLang = LANGUAGES.find((l) => l.code === currentCode)?.label ?? "";
   const loc = useOwnLocation({
@@ -73,6 +81,7 @@ export default function ProfilePrefs({
     <div className="rounded-card border border-line bg-card py-0.5 shadow-sh1">
       <PrefRow
         label={t("profile.defaultLocation")}
+        icon={<MapPin />}
         value={me.defaultLocation?.label ?? null}
         open={open === "location"}
         onToggle={() => toggle("location")}
@@ -102,10 +111,21 @@ export default function ProfilePrefs({
       <div className="mx-[1.125rem] h-px bg-line" />
       <PrefRow
         label={t("profile.defaultActivity")}
-        value={activity ? `${t(`activity.${activity}`)} · ${t(`activity.group.${groupOf(activity)}`)}` : null}
+        icon={Icon ? <Icon /> : <Coffee />}
+        value={
+          activity ? (
+            <>
+              {t(`activity.${activity}`)}
+              {/* Artboard 2718'de (1280) alt satır "Kahve · Yeme-içme", 390'da (2799) yalnız
+                  "Kahve" — dar satırda grup adı etiketi kırıyordu. */}
+              <span className="hidden lg:inline"> · {t(`activity.group.${groupOf(activity)}`)}</span>
+            </>
+          ) : null
+        }
         aside={
           activity && Icon ? (
-            <span className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-flame-deep bg-flame-wash px-3 py-1.5 text-[0.875rem] font-semibold text-flame-deep">
+            // Artboard 2722 `.chip.on`: min-height 36, yatay dolgu 12, 13px.
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-full border-[1.5px] border-flame-deep bg-flame-wash px-3 text-[0.8125rem] font-semibold text-flame-deep">
               <Icon size={18} aria-hidden />
               {t(`activity.${activity}`)}
             </span>
@@ -128,14 +148,16 @@ export default function ProfilePrefs({
       <div className="mx-[1.125rem] h-px bg-line" />
       <PrefRow
         label={t("profile.defaultTravelMode")}
+        icon={<TravelIcon />}
         value={me.defaultTravelMode ? t(MODE_LABEL_KEY[me.defaultTravelMode].name) : null}
         aside={
           me.defaultTravelMode ? (
-            <span className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-flame-deep bg-flame-wash px-3 py-1.5 text-[0.875rem] font-semibold text-flame-deep">
+            // Artboard 2731 `.f-mode`: ÇIPLAK 12px ink2 glif — dolu chip değil. Etiket zaten
+            // satırın alt yazısında ("Arabayla"); chip onu tekrar ediyordu.
+            <span className="inline-flex items-center gap-1 text-[0.75rem] text-ink2" aria-hidden>
               {MODE_ICON[me.defaultTravelMode].map((I, i) => (
-                <I key={i} size={18} aria-hidden />
+                <I key={i} size={16} />
               ))}
-              {t(MODE_LABEL_KEY[me.defaultTravelMode].name)}
             </span>
           ) : undefined
         }
@@ -152,23 +174,35 @@ export default function ProfilePrefs({
         </div>
       </PrefRow>
       <div className="mx-[1.125rem] h-px bg-line" />
-      <PrefRow
-        label={t("profile.language")}
-        value={`${currentLang} · ${t("profile.languageNote")}`}
-        open={open === "language"}
-        onToggle={() => toggle("language")}
-      >
+      {/* Dil bloğu PrefRow DEĞİL: artboard 2735-2747'de kartın BEJ ayağı olarak HEP AÇIK durur
+          (radius 0 0 22px 22px, caret AŞAĞI bakar) — seçenekler `.pop-r` satırları, seçili olan
+          flame-wash zeminde ph-check ile işaretli. Açılır panele gerek yok, üç seçenek zaten
+          görünüyor. Radyo girdileri sr-only: erişilebilir ad etiketin metninden gelir. */}
+      <div className="flex flex-col gap-3 rounded-b-card bg-[#fbf5ec] px-[1.125rem] py-3.5">
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-[0.625rem] bg-sand text-[1.0625rem] text-ink2 lg:hidden"
+            aria-hidden
+          >
+            <Globe />
+          </span>
+          <span className="flex flex-1 flex-col items-start gap-0.5 text-left">
+            <span className="text-[0.875rem] font-bold">{t("profile.language")}</span>
+            <span className="text-[0.75rem] text-ink2">{`${currentLang} · ${t("profile.languageNote")}`}</span>
+          </span>
+          <CaretDown size={16} className="flex-none text-ink3" aria-hidden />
+        </div>
         <div
           role="radiogroup"
           aria-label={t("profile.language")}
-          className="mx-[1.125rem] mb-3.5 flex flex-col gap-0.5 rounded-2xl border border-line bg-white p-1.5"
+          className="flex flex-col gap-0.5 rounded-[0.875rem] border border-line bg-white p-1.5"
         >
           {LANGUAGES.map((l) => {
             const checked = currentCode === l.code;
             return (
               <label
                 key={l.code}
-                className={`flex cursor-pointer items-center justify-between rounded-[0.625rem] px-3 py-2.5 text-[0.875rem] font-semibold ${
+                className={`flex cursor-pointer items-center justify-between rounded-[0.625rem] px-3 py-2.5 text-[0.875rem] font-semibold focus-within:outline-[2.5px] focus-within:outline-flame-deep focus-within:outline-offset-2 ${
                   checked ? "bg-flame-wash text-flame-deep" : "text-ink"
                 }`}
               >
@@ -179,17 +213,18 @@ export default function ProfilePrefs({
                   value={l.code}
                   checked={checked}
                   onChange={() => {
-                    setError(null);
-                    void onLanguage(l.code).catch(() => setError(t("profile.errSave")));
+                    setLangError(null);
+                    void onLanguage(l.code).catch(() => setLangError(t("profile.errSave")));
                   }}
-                  className="accent-flame-deep"
+                  className="sr-only"
                 />
+                {checked && <Check size={16} aria-hidden />}
               </label>
             );
           })}
         </div>
-        {open === "language" && <div className="mx-[1.125rem] mb-3.5">{errorNode}</div>}
-      </PrefRow>
+        {langError && <ErrorText>{langError}</ErrorText>}
+      </div>
     </div>
   );
 }

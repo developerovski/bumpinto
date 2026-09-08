@@ -7,7 +7,10 @@ const WINNER = {
   priceLevel: 2,
   deckOrder: 1,
   mapsUrl: "https://maps.google.com/?q=Karak%C3%B6y+Lokantas%C4%B1",
-  travelMinutes: { "p-self": 28, "p-elif": 34 },
+  travel: [
+    { participantId: "p-self", minutes: 28 },
+    { participantId: "p-elif", minutes: 34 },
+  ],
 };
 
 /** W4 · sonuç sayfasının kutlama konfetisi: sun noktası, eğik flame kare ve mor

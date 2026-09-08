@@ -11,6 +11,8 @@ const cols = {
 // .zone varsayılanı 16px; artboard Landing sol 18px / sağ 26px kullanır (yalnız ≥1024).
 const zoneGaps = {
   default: "",
+  // Karar 1280 sol bölgesi 14px (artboard 2534) — varsayılan 16px'ten dar.
+  sm: "lg:gap-[0.875rem]",
   md: "lg:gap-[1.125rem]",
   lg: "lg:gap-[1.625rem]",
 };
@@ -33,12 +35,19 @@ export default function TwoZone(props: {
       Yalnız GÖRSEL sırayı değiştirir (`order-*`, ≥1024'te `lg:order-none` ile sıfırlanır) —
       DOM/okuma sırası AYNI kalır, bileşen tek yerde kalır (kopyalanmaz). */
   mobileFirst?: "right";
+  /** Artboard 390'da iki bölgenin çocukları BİRBİRİNE GEÇER (ör. Lobi: davet kartı → orta nokta
+      → roster). `mobileFirst` bölge bütününü taşır, bu ise bölge kutularını `display:contents`
+      yaparak çocukları tek mobil sütunun kardeşi hâline getirir; sıra artık çocuk başına
+      `order-*` ile verilir. ≥1024'te iki bölge normale döner. Bileşen HÂLÂ tek yerde kalır. */
+  interleave?: boolean;
 }) {
   const leftOrder = props.mobileFirst === "right" ? "order-2 lg:order-none" : "";
   const rightOrder = props.mobileFirst === "right" ? "order-1 lg:order-none" : "";
   // Bölge içi kaydırma kabı; sol bölgede davet kartının kart üstüne taşan sticker'ı kırpılmasın
   // diye üstte 16px pay açılır ve aynı kadar negatif marjla hizası geri alınır.
   const fillZone = props.fill ? "fit:min-h-0 fit:overflow-y-auto" : "";
+  // `display:contents` yalnız mobilde: kutunun kendi `gap`i düşer, dış kabın `gap-4`ü geçerli olur.
+  const flatten = props.interleave ? "max-lg:contents" : "";
   return (
     <div
       className={[
@@ -50,7 +59,7 @@ export default function TwoZone(props: {
     >
       <div
         data-testid="zone-left"
-        className={`flex min-w-0 flex-col gap-4 ${leftOrder} ${zoneGaps[props.leftGap ?? "default"]} ${fillZone} ${
+        className={`flex min-w-0 flex-col gap-4 ${flatten} ${leftOrder} ${zoneGaps[props.leftGap ?? "default"]} ${fillZone} ${
           props.fill ? "fit:-mt-4 fit:pt-4" : ""
         }`}
       >
@@ -59,7 +68,7 @@ export default function TwoZone(props: {
       <div
         data-testid="zone-right"
         className={
-          `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ${rightOrder} ` +
+          `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ${flatten} ${rightOrder} ` +
           `${zoneGaps[props.rightGap ?? "default"]} ${fillZone}`
         }
       >

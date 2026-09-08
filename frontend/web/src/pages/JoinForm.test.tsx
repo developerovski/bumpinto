@@ -1,9 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store/authStore";
+import { resetConfig, useConfigStore } from "../store/configStore";
 import { useSessionStore } from "../store/sessionStore";
 import JoinForm from "./JoinForm";
+
+// `getConfig()` gerçek ağa gitmesin — MapView/MapPicker aynı configStore'u paylaşıyor; gerçek
+// fetch'in GEÇ hatası (AggregateError) sonraki testin seed ettiği config'i sessizce eziyordu
+// (MapPicker artık motoru config'ten okuyor, spec §7) ve MapLibre'yi mocksuz çökertiyordu.
+vi.mock("../lib/api", () => ({ api: { getConfig: vi.fn(() => new Promise(() => {})) } }));
 
 /** Katıl formunun ulaşım türü alanı: profil varsayılanından ön-dolar, yoksa CAR'a düşer,
     kullanıcı değiştirirse gönderilen `travelMode` değişir. Konum/geocode akışına GİRMEZ —
@@ -85,26 +91,28 @@ describe("JoinForm — host çevrimiçiliği", () => {
   });
 });
 
-/** Harita seçici: faturalanan birim `new google.maps.Map()` ÖRNEĞİdir, sayfa yüklemesi değil —
-    katılım ekranı bugün 390'da hiç harita mount etmiyor, seçici de ancak düğmeye basılınca gelmeli. */
-describe("JoinForm — haritadan seç", () => {
-  function renderJoin() {
+/** Katılım ekranında harita seçici VAR: konum izni reddedilen davetlinin adres yazmaktan başka
+    çıkışı olmalı (artboard bu düğmeyi çizmiyor, ama yerine bir yol da koymuyor — kaldırıldığında
+    ekran çıkmaz sokağa dönüyor). Maliyet kuralı korunur: faturalanan birim
+    `new google.maps.Map()` ÖRNEĞİdir, o yüzden harita YALNIZ düğmeye basılınca mount edilir. */
+describe("JoinForm — haritadan konum seçme", () => {
+  // MapPicker motoru config'ten okuyor (spec §7) — seed edilmezse gerçek fetch'e düşerdi.
+  beforeEach(() => {
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
     useAuthStore.setState({ status: "anon", me: null });
     useSessionStore.setState({ slug: "x7k2m", preview: null, join: vi.fn().mockResolvedValue(undefined) });
-    return render(<MemoryRouter><JoinForm /></MemoryRouter>);
-  }
-
-  it("390'da harita seçici VARSAYILAN mount edilmez — yükleme başına ücret buradan doğar", async () => {
-    renderJoin();
-    // Sağdaki MapView de tembel; onun DOM'a düşmesini beklemek tembel chunk'lara fırsat verir.
-    // Seçici varsayılan render edilseydi düğmesi en geç bu noktada belirirdi.
-    await screen.findByTestId("mapview");
-    expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
   });
+  afterEach(() => resetConfig());
 
-  it("'haritadan seç'e basılınca seçici açılır", async () => {
-    renderJoin();
-    fireEvent.click(screen.getByRole("button", { name: "Haritadan seç" }));
+  it("adres alanının altında 'Haritadan seç' sunar; seçici AÇILANA kadar mount edilmez", async () => {
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    // Sağdaki MapView de tembel; onun DOM'a düşmesini beklemek tembel chunk'lara fırsat verir.
+    await screen.findByTestId("mapview");
+
+    const pick = screen.getByRole("button", { name: "Haritadan seç" });
+    // Düğmeye basılmadan harita SEÇİCİSİ yok — faturalanan birim onun `new google.maps.Map()`ı.
+    expect(screen.queryByRole("button", { name: "Burayı seç" })).not.toBeInTheDocument();
+    fireEvent.click(pick);
     expect(await screen.findByRole("button", { name: "Burayı seç" })).toBeInTheDocument();
   });
 });
@@ -145,5 +153,35 @@ describe("JoinForm — gruptan çok uzak", () => {
 
     expect(await screen.findByText("Katılamadın — bu oturum kapanmış olabilir."))
       .toBeInTheDocument();
+  });
+});
+
+/** Artboard W4b 1280 (4229–4250): 409 halinde sağdaki kart özet şeridi bırakır, kişi başına
+    satıra döner — "kim hazır" sorusu tek tek cevaplanır. */
+describe("JoinForm — 409 sonrası sağ kart", () => {
+  it("çok uzak hatasından sonra kart kişi satırlarına döner", async () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    useSessionStore.setState({
+      slug: "x7k2m",
+      preview: {
+        slug: "x7k2m", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP",
+        status: "COLLECTING", hostDisplayName: "Mehmet", participantCount: 2, hostOnline: false,
+        participants: [
+          { displayName: "Mehmet", host: true, hasLocation: true },
+          { displayName: "Kerem", host: false, hasLocation: false },
+        ],
+      } as never,
+      join: vi.fn().mockRejectedValue({ response: { data: { error: "participants_too_far_apart" } } }),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    // Önce özet şerit: "Mehmet hazır." cümlesi.
+    expect(screen.getByText(/Mehmet hazır\./)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Ayşe" } });
+    fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
+
+    expect(await screen.findByText("Kuran · çevrimdışı")).toBeInTheDocument();
+    expect(screen.getByText("Konum bekleniyor…")).toBeInTheDocument();
+    expect(screen.queryByText(/Mehmet hazır\./)).not.toBeInTheDocument();
   });
 });

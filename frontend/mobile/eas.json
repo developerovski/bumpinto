@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 23.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8060",
+        "EXPO_PUBLIC_WEB_BASE": "https://bumpinto.app"
+      }
+    },
+    "preprod": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://preprod.bumpinto.app",
+        "EXPO_PUBLIC_WEB_BASE": "https://preprod.bumpinto.app"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://bumpinto.app",
+        "EXPO_PUBLIC_WEB_BASE": "https://bumpinto.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

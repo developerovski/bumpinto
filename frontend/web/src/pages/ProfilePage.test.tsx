@@ -23,7 +23,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("'s-Hertogenbosch")).toBeInTheDocument();
     expect(screen.getAllByText("Kahve").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /^Dil/ }));
+    // Artboard 2735-2747: dil bloğu kartın HEP AÇIK bej ayağıdır — açmak için tıklama yok.
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
     await vi.waitFor(() => expect(api.updateMe).toHaveBeenCalledWith(
       expect.objectContaining({ language: "en", displayName: "Mehmet Şerefoğlu", defaultActivity: "COFFEE" })));
@@ -47,6 +47,15 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Bisikletle" }));
     await vi.waitFor(() => expect(api.updateMe).toHaveBeenCalledWith(
       expect.objectContaining({ defaultTravelMode: "BIKE", displayName: "Mehmet Şerefoğlu", defaultActivity: "COFFEE" })));
+  });
+
+  it("telefonda 'Hesap' bölümü /account ve /support satırlarını taşır", () => {
+    useAuthStore.setState({ status: "signed", me });
+    render(<MemoryRouter><ProfilePage /></MemoryRouter>);
+    // Artboard 390 (2815-2828): masaüstünde /account avatar menüsünden açılır, telefonda o menü
+    // yoktur — bu satırlar olmadan gizlilik/KVKK/hesabı sil yüzeyine hiç ulaşılamaz.
+    expect(screen.getByRole("link", { name: /Hesap ve veriler/ })).toHaveAttribute("href", "/account");
+    expect(screen.getByRole("link", { name: "Destek" })).toHaveAttribute("href", "/support");
   });
 
   it("adı düzenler ve kaydeder", async () => {

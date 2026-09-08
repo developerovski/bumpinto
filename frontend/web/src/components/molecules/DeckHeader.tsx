@@ -4,11 +4,20 @@ import { useTranslation } from "react-i18next";
 import { Button, Progress } from "../atoms";
 import SessionHeader from "./SessionHeader";
 
-/** Artboard .bsm — küçük beyaz buton; `Button` atomunun `size="sm"` varyantı.
-    DeckScreen liste modunun "Desteye dön" aksiyonu da bu bileşeni paylaşır. */
+/** Artboard .bsm — küçük beyaz buton; `Button` atomunun `size="sm"` varyantı (42px / 14px).
+    DeckScreen liste modunun "Desteye dön" aksiyonu da bu bileşeni paylaşır.
+    390'da artboard `.bsm`i satır içinde 34px / 13px'e indiriyor (2103, 2287): başlığın yanında
+    tam boy pill oturum adını sıkıştırıyordu. `max-lg:` ezmesi Button'un `className` ekiyle
+    verilir — atomun kendi ölçüsü DEĞİŞMEZ (başka ekranlarda 42px doğru). */
 export function HeaderButton(props: { onClick: () => void; children: ReactNode }) {
   return (
-    <Button type="button" kind="white" size="sm" onClick={props.onClick}>
+    <Button
+      type="button"
+      kind="white"
+      size="sm"
+      className="max-lg:min-h-[2.125rem] max-lg:text-[0.8125rem]"
+      onClick={props.onClick}
+    >
       {props.children}
     </Button>
   );
@@ -24,11 +33,17 @@ export default function DeckHeader(props: {
   likesMeta?: string;
   progress: number;
   onSeeAll?: () => void;
+  /** ≥1024 kısa ses denetimi — "Tümünü gör" ile aynı aksiyon satırında (kullanıcı kararı
+      2026-09-08: ses denetimi her oturum ekranının başlık satırında yaşar). */
+  voice?: ReactNode;
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mb-3 flex flex-none flex-col gap-3">
+    // Artboard 2098/2105 (390): başlık satırı 10px, ilerleme çubuğu 12px alt boşluk taşır;
+    // 1280'de ikisi de `.wrap` gap'i olan 16px (1989).
+    <div className="mb-3 flex flex-none flex-col gap-[0.625rem] lg:mb-4 lg:gap-4">
       <SessionHeader
+        titleSize="sm"
         title={props.title}
         meta={
           <>
@@ -37,7 +52,12 @@ export default function DeckHeader(props: {
           </>
         }
         action={
-          props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>
+          (props.voice || props.onSeeAll) && (
+            <div className="flex items-center gap-2">
+              {props.voice}
+              {props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>}
+            </div>
+          )
         }
       />
       <Progress value={props.progress} />

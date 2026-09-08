@@ -1,21 +1,29 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.safety.Blocks;
 import com.bumpinto.application.session.SessionQueries;
+import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.Fairness;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.geo.MapLinks;
 import com.bumpinto.domain.geo.SessionCenter;
+import com.bumpinto.domain.geo.TravelLeg;
 import com.bumpinto.domain.geo.TravelMinutes;
+import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.PresencePort;
+import com.bumpinto.domain.port.PresenceStampsPort;
+import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
-import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.venue.Venue;
 import com.bumpinto.domain.voice.VoiceRoom;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,12 +35,23 @@ import java.util.stream.Collectors;
 @Component
 public class SessionViewAssembler {
 
+    /** Damgasi hic olmayan koltuk icin iki null: haritada anahtar YOK demek "hic gorulmedi". */
+    private static final PresenceStampsPort.Stamps EMPTY_STAMPS =
+            new PresenceStampsPort.Stamps(null, null);
+
     private final PresencePort presence;
     private final VoiceRoomsPort rooms;
+    private final RoutingPort routing;
+    private final Blocks blocks;
+    private final PresenceStampsPort stamps;
 
-    public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms) {
+    public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms, RoutingPort routing,
+                                Blocks blocks, PresenceStampsPort stamps) {
         this.presence = presence;
         this.rooms = rooms;
+        this.routing = routing;
+        this.blocks = blocks;
+        this.stamps = stamps;
     }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
@@ -49,7 +68,19 @@ public class SessionViewAssembler {
         Double radiusKm = center == null ? null : Math.round(center.radiusKm() * 10) / 10.0;
         GeoPoint midpointFor = center == null ? null : center.point();
         Set<UUID> present = presence.presentIn(snap.session().id());
+        // "Su an burada" ile "en son ne zaman buradaydi" AYRI kaynaklardir: ilki surec icinde
+        // yasar ve grace penceresinden sonra unutulur, ikincisi kalicidir.
+        Map<UUID, PresenceStampsPort.Stamps> marks = stamps.stampsOf(snap.session().id());
         Optional<VoiceRoom> room = rooms.roomOf(snap.session().id());
+        ApiDtos.ViewerDto viewer = WebPrincipals.viewerOf(snap, auth);
+        // Uye degilse (link'i acan ama katilmamis biri) arac varsayilanina duser: CAR.
+        TravelMode viewerMode = viewer == null ? TravelMode.CAR
+                : snap.participants().stream().filter(p -> p.id().equals(viewer.participantId()))
+                        .findFirst().map(Participant::travelMode).orElse(TravelMode.CAR);
+
+        // Engel TEK YONLU: yalniz GORUNTULEYENIN engelledikleri isaretlenir.
+        Set<UUID> hidden = blocks.hiddenParticipantIds(WebPrincipals.accountIdOrNull(auth),
+                snap.session().id(), snap.participants());
 
         List<ApiDtos.ParticipantDto> participants = snap.participants().stream()
                 .map(p -> new ApiDtos.ParticipantDto(p.id(), p.displayName(), p.host(),
@@ -59,34 +90,51 @@ public class SessionViewAssembler {
                         midpointFor == null || !p.hasLocation() ? null
                                 : TravelMinutes.between(p.location(), p.travelMode(), midpointFor),
                         present.contains(p.id()),
-                        room.map(r -> r.hasMember(p.id())).orElse(false)))
+                        room.map(r -> r.hasMember(p.id())).orElse(false),
+                        hidden.contains(p.id()),
+                        marks.getOrDefault(p.id(), EMPTY_STAMPS).lastSeenAt(),
+                        marks.getOrDefault(p.id(), EMPTY_STAMPS).linkOpenedAt()))
                 .toList();
 
         // Elle konumlarin yol suresi de gosterilir (Bireysel'de "Ayşe 28′").
-        List<ApiDtos.VenueDto> venues = snap.venues().stream().map(v -> {
-            // Konumu olan HERKES (viewer ve elle konumlar dahil): 3. kisi asla dusmez (§4.3),
-            // dakika yuvarlanmis konumdan gelir (§4.4) — TravelMinutes.byParticipant DeckFlow
-            // ile AYNI kod yolu (tek kaynak, kopya kayma riski yok).
-            Map<UUID, Integer> travel = TravelMinutes.byParticipant(located, v.location());
+        // Oturum basina MOD basina TEK matris: OSRM burada bir kez sorulur, mekan basina degil.
+        List<GeoPoint> venuePoints = snap.venues().stream().map(Venue::location).toList();
+        List<Map<UUID, TravelLeg>> legs = located.isEmpty() ? List.of()
+                : TravelMinutes.byParticipant(located, venuePoints, routing);
+        List<ApiDtos.VenueDto> venues = new ArrayList<>();
+        for (int i = 0; i < snap.venues().size(); i++) {
+            Venue v = snap.venues().get(i);
+            Map<UUID, TravelLeg> leg = legs.isEmpty() ? Map.of() : legs.get(i);
+            // Eski sozlesme korunur: dakika haritasi hala Integer.
+            Map<UUID, Integer> travelMinutes = new LinkedHashMap<>();
+            leg.forEach((id, l) -> travelMinutes.put(id, l.minutes()));
             // Hic konumlu katilimci yoksa (0,0,null) degil null: "herkes esit" YALANI yazilmaz.
-            ApiDtos.FairnessDto fairness = located.isEmpty() ? null : toFairnessDto(Fairness.of(travel));
-            return new ApiDtos.VenueDto(v.id(), v.name(), v.location().lat(), v.location().lng(),
-                    v.rating(), v.priceLevel(), v.photoUrl(), directionsUrl(v), v.deckOrder(),
-                    travel, fairness,
+            ApiDtos.FairnessDto fairness = located.isEmpty() ? null : toFairnessDto(Fairness.of(travelMinutes));
+            List<ApiDtos.TravelDto> travel = leg.entrySet().stream()
+                    .map(e -> new ApiDtos.TravelDto(e.getKey(), e.getValue().minutes(), e.getValue().estimated()))
+                    .toList();
+            String mapsUrl = MapLinks.directions(v.location().lat(), v.location().lng(), viewerMode);
+            venues.add(new ApiDtos.VenueDto(v.id(), v.name(), v.location().lat(), v.location().lng(),
+                    v.rating(), v.priceLevel(), v.photoUrl(), mapsUrl, v.deckOrder(),
+                    travelMinutes, fairness,
                     v.provider(), v.category(), v.address(), v.locality(), v.ratingCount(),
-                    v.hoursToday(), v.placeLink(), v.activityType());
-        }).toList();
+                    v.hoursToday(), v.placeLink(), v.activityType(),
+                    v.popularity(), v.ratingScale(), travel, v.tagline(), v.taglineSource()));
+        }
         return new ApiDtos.SessionView(snap.session().slug(), snap.session().name(),
                 snap.session().activityTypes(), snap.session().sessionType(),
                 snap.session().status(), snap.session().expiresAt(),
                 participants, venues, snap.session().runoffVenueIds(),
                 snap.session().decidedVenueId(), snap.voteTally(), midpoint, radiusKm,
                 snap.runoffVotes().keySet().stream().sorted().toList(),
-                WebPrincipals.viewerOf(snap, auth),
+                viewer,
                 snap.session().midpointLabel(), snap.session().decisionKind(),
                 snap.session().decidedAt(), snap.session().runoffReason(), snap.likeCounts(),
                 emptyActivityTypes(snap), center != null && center.anchored(),
-                room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null));
+                room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null),
+                // Uc zaten uye olmayana 403 veriyor; alan yine de viewer'a bagli — savunma tek
+                // satirdir ve kodun kime gittigini kodun kendisi soyler.
+                viewer == null ? null : snap.session().joinCode());
     }
 
     /**
@@ -129,34 +177,34 @@ public class SessionViewAssembler {
                 hostOnline);
     }
 
-    public ApiDtos.SessionListResponse toList(List<SessionSummary> rows) {
-        Map<Boolean, List<ApiDtos.SessionSummaryDto>> byBucket = rows.stream()
-                .map(SessionViewAssembler::toSummaryDto)
-                .collect(Collectors.partitioningBy(d -> d.status() == SessionStatus.DECIDED
-                        || d.status() == SessionStatus.EXPIRED));
-        return new ApiDtos.SessionListResponse(byBucket.get(false), byBucket.get(true));
+    /**
+     * Kutular HAZIR gelir; burada bolme YOK. Bolme eskiden burada yapiliyordu, yani tavan
+     * kutulardan ONCE uygulaniyordu ve yeni oturumlar eski ama hala acik bir oturumu listeden
+     * sessizce dusuruyordu — ayirma artik sorgunun isi (UserProfileQueries.mySessions).
+     */
+    public ApiDtos.SessionListResponse toList(UserProfileQueries.MySessions rows) {
+        return new ApiDtos.SessionListResponse(toSummaryDtos(rows.open()),
+                toSummaryDtos(rows.past()), rows.pastTruncated());
+    }
+
+    private static List<ApiDtos.SessionSummaryDto> toSummaryDtos(List<SessionSummary> rows) {
+        return rows.stream().map(SessionViewAssembler::toSummaryDto).toList();
     }
 
     private static ApiDtos.SessionSummaryDto toSummaryDto(SessionSummary s) {
+        List<ApiDtos.SummaryParticipantDto> people = s.participants().stream()
+                .map(p -> new ApiDtos.SummaryParticipantDto(p.displayName(), p.ready(), p.host()))
+                .toList();
         return new ApiDtos.SessionSummaryDto(s.session().slug(), s.session().name(),
                 s.session().activityTypes(), s.session().sessionType(), s.session().status(),
                 s.createdAt(), s.session().expiresAt(), s.participantCount(), s.readyCount(),
-                s.doneCount(), s.decidedVenueName(), s.decidedVenuePhotoUrl());
+                s.doneCount(), people, s.decidedVenueName(), s.decidedVenuePhotoUrl());
     }
 
     /** 2 ondalik = ~1.1 km enlem hassasiyeti (tek kaynak: TravelMinutes.approx). */
     static ApiDtos.GeoPointDto approx(GeoPoint p) {
         GeoPoint rounded = TravelMinutes.approx(p);
         return new ApiDtos.GeoPointDto(rounded.lat(), rounded.lng());
-    }
-
-    /** Saglayici mapsUrl vermediyse API'siz yol tarifi adresi (spec §5.A.6). */
-    private static String directionsUrl(Venue v) {
-        if (v.mapsUrl() != null && !v.mapsUrl().isBlank()) {
-            return v.mapsUrl();
-        }
-        return "https://www.google.com/maps/dir/?api=1&destination="
-                + v.location().lat() + "," + v.location().lng();
     }
 
     private static ApiDtos.FairnessDto toFairnessDto(Fairness f) {

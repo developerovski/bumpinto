@@ -30,4 +30,6 @@ class SessionEntity {
     String midpointLabel;
     Double anchorLat;
     Double anchorLng;
+    /** 5 haneli davet kodu (V18); unique index sema tarafinda. */
+    String joinCode;
 }

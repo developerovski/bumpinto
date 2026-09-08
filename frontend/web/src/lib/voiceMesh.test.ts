@@ -382,4 +382,16 @@ describe("VoiceMesh", () => {
     h.mesh.setRoster(["a", "b", "c"]); // kapalı mesh yeni bağlantı açmaz
     expect(FakePeer.all).toHaveLength(1);
   });
+
+  it("setMutedPeers uzak sesi susturur ve geri açar", () => {
+    const h = harness("a");
+    h.mesh.setRoster(["a", "b"]);
+    const pc = FakePeer.all[0];
+    pc.ontrack?.({ streams: [{} as MediaStream] });
+
+    h.mesh.setMutedPeers(["b"]);
+    expect(h.audio.muted).toBe(true);
+    h.mesh.setMutedPeers([]);
+    expect(h.audio.muted).toBe(false);
+  });
 });

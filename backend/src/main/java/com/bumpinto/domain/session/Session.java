@@ -16,12 +16,25 @@ public record Session(UUID id, String slug, UUID hostId, String name,
                       /** Merkezin adi; capasizsa find-venues'te, capaliysa olusturmada yazilir. */
                       String midpointLabel,
                       /** Host'un sabit bulusma noktasi; null ise orta nokta modu. */
-                      GeoPoint anchor) {
+                      GeoPoint anchor,
+                      /** 5 haneli davet kodu (R-B9); eski satirlarda ve backfill disinda null. */
+                      String joinCode) {
 
     /** Listeler KOPYALANIR: cagiranin elindeki liste sonradan degisse oturum bozulmaz. */
     public Session {
         activityTypes = List.copyOf(activityTypes);
         runoffVenueIds = List.copyOf(runoffVenueIds);
+    }
+
+    /** Kod ONCESI imza (B-14 ve oncesi cagri yerleri kirilmaz). */
+    public Session(UUID id, String slug, UUID hostId, String name,
+                   List<ActivityType> activityTypes, SessionType sessionType,
+                   SessionStatus status, Instant expiresAt, UUID decidedVenueId,
+                   List<UUID> runoffVenueIds, Instant decidedAt, DecisionKind decisionKind,
+                   RunoffReason runoffReason, String midpointLabel, GeoPoint anchor) {
+        this(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
+                decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
+                midpointLabel, anchor, null);
     }
 
     /** Eski imza: karar meta'si, merkez etiketi ve capa henuz yok. */
@@ -30,7 +43,7 @@ public record Session(UUID id, String slug, UUID hostId, String name,
                    SessionType sessionType, SessionStatus status, Instant expiresAt,
                    UUID decidedVenueId, List<UUID> runoffVenueIds) {
         this(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt, decidedVenueId,
-                runoffVenueIds, null, null, null, null, null);
+                runoffVenueIds, null, null, null, null, null, null);
     }
 
     public boolean isExpired(Instant now) {
@@ -44,13 +57,13 @@ public record Session(UUID id, String slug, UUID hostId, String name,
     public Session withStatus(SessionStatus newStatus) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, newStatus,
                 expiresAt, decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
-                midpointLabel, anchor);
+                midpointLabel, anchor, joinCode);
     }
 
     public Session withMidpointLabel(String label) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
                 decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason, label,
-                anchor);
+                anchor, joinCode);
     }
 
     /** runoffReason KORUNUR: "runoff'tan cikan karar" izini karar sonrasi da anlatir. */
@@ -59,13 +72,13 @@ public record Session(UUID id, String slug, UUID hostId, String name,
         Objects.requireNonNull(when, "when");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.DECIDED, expiresAt, venueId, runoffVenueIds, when, kind,
-                runoffReason, midpointLabel, anchor);
+                runoffReason, midpointLabel, anchor, joinCode);
     }
 
     public Session inRunoff(List<UUID> venueIds, RunoffReason reason) {
         Objects.requireNonNull(reason, "reason");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.RUNOFF, expiresAt, null, List.copyOf(venueIds), null, null, reason,
-                midpointLabel, anchor);
+                midpointLabel, anchor, joinCode);
     }
 }

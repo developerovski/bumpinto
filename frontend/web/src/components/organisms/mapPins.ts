@@ -1,10 +1,7 @@
 /* Kaynak: DS v2 §10 Harita dili — .pin-av / .pin-av.man / .mpin / .vpin(.on/.big) */
 import type { ParticipantDto, VenueDto } from "@bumpinto/shared";
+import { personGradient } from "../../lib/personColor";
 
-const PALETTE = [
-  "linear-gradient(135deg,#fd3e6b,#d91e52)", "linear-gradient(135deg,#18b26b,#0b7a44)",
-  "linear-gradient(135deg,#7c4dff,#5a2fd0)", "linear-gradient(135deg,#ffb020,#e08900)",
-];
 const SWATCH = ["bg-[#f9c08a]", "bg-[#8fddbb]", "bg-[#c1a8f5]", "bg-[#ffe08a]"];
 
 function el(className: string, text?: string) {
@@ -17,6 +14,8 @@ function el(className: string, text?: string) {
 /** Katılımcı pini: büyük, kalın beyaz halkalı, gölgeli avatar + adlı etiket + kuyruk.
     Elle konum (manual) kesikli halka. Mekan pinlerinden belirgin biçimde daha büyük ve daha
     üstte (UI review 2026-09-03: küçük daireler haritada kayboluyordu). */
+/** `index` KANONİK dizindir (`SessionView.participants` sırası) — çizim döngüsünün sayacı
+    değil; pin, avatar yığınıyla aynı rengi taşımak zorunda. */
 export function participantPin(p: ParticipantDto, index: number, label?: string) {
   // Cevrimdisi katilimci SOLUK cizilir: konumu hala gecerlidir (satir silinmez), yalnizca kisi
   // su an odada degildir. Ayri ikon ya da damga YOK — urunun dil kurallari suclayici isaret
@@ -32,7 +31,7 @@ export function participantPin(p: ParticipantDto, index: number, label?: string)
     (p.manual ? "border-2 border-line-in bg-sand text-ink" : "border-[3px] border-white text-white"),
     (p.displayName || "?")[0]?.toUpperCase(),
   );
-  if (!p.manual) av.style.background = PALETTE[index % PALETTE.length];
+  if (!p.manual) av.style.background = personGradient(index);
   ring.appendChild(av);
   wrap.appendChild(ring);
   wrap.appendChild(el("h-2.5 w-[3px] rounded-sm bg-ink"));
@@ -67,5 +66,14 @@ export function venuePin(v: VenueDto, tint: number, selected: boolean, text?: st
   wrap.style.cursor = "pointer";
   wrap.appendChild(badge);
   wrap.appendChild(tail);
+  return wrap;
+}
+
+/** Nokta seçici pini (MapPicker) — ad yok, tek damla. Google dalı AdvancedMarker'ın varsayılan pinini kullanır; bu yalnız MapLibre için. */
+export function pickPin() {
+  const wrap = el("flex flex-col items-center");
+  wrap.appendChild(el("h-[1.125rem] w-[1.125rem] rounded-full border-[3px] border-white bg-flame-deep shadow-[0_6px_18px_rgba(39,32,59,0.35)]"));
+  wrap.appendChild(el("h-2.5 w-[3px] rounded-sm bg-ink"));
+  wrap.style.cursor = "grab";
   return wrap;
 }

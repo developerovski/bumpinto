@@ -1,0 +1,46 @@
+info:
+  name: Forward Geocode
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/geocode"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "query": "Eindhoven",
+        "biasLat": 51.44,
+        "biasLng": 5.47
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("geocodeLat", res.body.lat);
+        }
+    - type: tests
+      code: |-
+        test("200 ya da 404 doner", function() {
+          expect([200, 404]).to.include(res.status);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Auth: hesap JWT'si YA DA katilimci token'i yeter (SecurityConfig'de ozel bir kapi yok,
+    genel "authenticated" kurali ikisini de kabul eder).
+
+    `query`: 1-200 karakter, zorunlu. `biasLat`/`biasLng`: opsiyonel — verilirse arama o
+    noktanin ~40 km cevresine oncelik verir (sonuc yine disaridan gelebilir, sert filtre degil).
+
+    404 = HATA DEGIL, sonuc yok demektir (bkz. GeocodePort javadoc) — istemci "bulunamadi"
+    gosterir, konsola hata basmaz.
+
+    Rate limit: `geocode` kovasi, 10/dk (Nominatim politikasi: 1 istek/sn).

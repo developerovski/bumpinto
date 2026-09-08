@@ -43,9 +43,10 @@ export function MultiActivity() {
   );
 }
 
-/** Host çevrimdışı: ikinci bir not eklenir. KAPI DEĞİL — katılım her durumda açık,
-    çünkü davet linkinin ana akışı asenkrondur (host linki paylaşıp telefonu kilitler). */
-export function HostAway() {
+/** `compact` — 409 "çok uzak" kartı ekrana girdiğinde giriş bloğu sıkışır: <1024'te
+    rozet satırı ve alt başlık düşer, başlık 26px'e iner. ≥1024'te hiçbiri değişmez,
+    yani bu hücre (900px çekim) sıkışmış dalı gösterir. */
+export function Compact() {
   return (
     <div style={COL}>
       <JoinIntro
@@ -53,7 +54,7 @@ export function HostAway() {
         sessionName="Kahve turu"
         activities={ACTIVITIES_ONE}
         count={3}
-        hostOnline={false}
+        compact
       />
     </div>
   );

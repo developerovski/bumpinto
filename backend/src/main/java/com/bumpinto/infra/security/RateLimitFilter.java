@@ -19,15 +19,22 @@ import org.springframework.web.util.UriUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE) // güvenlik zincirinden önce — ucuz reddet
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    /** capacity = dakikadaki istek hakkı (greedy refill). */
-    public record Policy(String id, String method, Pattern path, int capacity) {
+    /** capacity = {@code window} başına istek hakkı (greedy refill). */
+    public record Policy(String id, String method, Pattern path, int capacity, Duration window) {
+
+        /** Varsayılan pencere 1 dakika: mevcut politikaların hepsi böyleydi. */
+        public Policy(String id, String method, Pattern path, int capacity) {
+            this(id, method, path, capacity, Duration.ofMinutes(1));
+        }
     }
 
     /**
@@ -41,25 +48,54 @@ public class RateLimitFilter extends OncePerRequestFilter {
     static List<Policy> defaultPolicies() {
         return List.of(
                 new Policy("auth", "POST", Pattern.compile("^/api/auth/google$"), 5),
+                new Policy("auth-apple", "POST", Pattern.compile("^/api/auth/apple$"), 5),
                 new Policy("join", "POST", Pattern.compile("^/api/sessions/[^/]+/participants$"), 10),
                 new Policy("find", "POST", Pattern.compile("^/api/sessions/[^/]+/find-venues$"), 3),
                 new Policy("create", "POST", Pattern.compile("^/api/sessions$"), 10),
+                new Policy("delete-account", "DELETE", Pattern.compile("^/api/me$"), 3),
+                new Policy("report", "POST", Pattern.compile("^/api/reports$"), 5),
                 // Handshake kendi kovasinda: yoksa /api altina tasinmasi onu sessizce 240'tan
                 // (fallback) 120'ye (api) dusururdu. 240 BILINCLI: TRUST_FORWARDED_FOR
                 // varsayilan false oldugu icin ingress arkasinda TUM istemciler tek kovayi
                 // paylasir; backend restart'indan sonra 5 sn'de bir yeniden baglanan bir grup
                 // daha dar bir kovayi aninda tuketir ve presence hic dolmaz.
                 new Policy("ws", "GET", Pattern.compile("^/api/sessions/[^/]+/ws$"), 240),
+                // Ingress arkasinda TRUST_FORWARDED_FOR kapaliyken tum istemciler tek kovadadir; 30/dk pay birakir.
+                new Policy("geocode", "POST", Pattern.compile("^/api/geocode(/reverse)?$"), 30),
+                // R-B6: dis aktarma 1/saat. Dakikalik bir kural burada 60 dosya/saat demekti.
+                new Policy("export", "GET", Pattern.compile("^/api/me/export$"), 1,
+                        Duration.ofHours(1)),
+                // R-B9: kod uzayi 32^5 ama 10/dk kaba kuvveti anlamsiz kilar.
+                new Policy("bycode", "GET", Pattern.compile("^/api/sessions/by-code/[^/]+$"), 10),
+                // R-B10: OG karti /api ALTINDA DEGIL, yani catch-all'a hic dusmez; kendi
+                // politikasi olmasa 240'lik FALLBACK'te kalirdi. 60/dk onizleme botlarinin
+                // ayni linki paralel cekmesine yeter (render zaten surec ici onbellekli).
+                new Policy("og", "GET", Pattern.compile("^/og/.*"), 60),
                 new Policy("api", null, Pattern.compile("^/api/.*"), 120));
+    }
+
+    /** Pencerenin uzerine pay: greedy refill son damlayi pencerenin TAM sonunda koyar. */
+    static final Duration EVICTION_MARGIN = Duration.ofMinutes(10);
+
+    /**
+     * Kova penceresi DOLANA KADAR yasamali. Erken tahliye edilen kova bir sonraki istekte DOLU
+     * dogar — yani tahliye bedava bir sifirlamadir: 10 dk'lik sabit TTL, 1 saatlik export
+     * kovasini 1/saat degil ~6/saat yapardi. TTL bu yuzden en uzun pencereden TURETILIR;
+     * sabit bir sayi, ileride eklenen daha uzun bir politikada ayni hatayi sessizce geri getirir.
+     * FALLBACK de hesaba katilir: eslesmeyen istek onun kovasina duser.
+     */
+    static Duration bucketTtl(List<Policy> policies) {
+        return Stream.concat(policies.stream(), Stream.of(FALLBACK))
+                .map(Policy::window)
+                .max(Comparator.naturalOrder())
+                .orElseThrow()
+                .plus(EVICTION_MARGIN);
     }
 
     private final List<Policy> policies;
     private final boolean trustForwardedFor;
     // Tek pod için in-memory yeterli; çoklu pod'da bucket4j-redis'e geçilir (spec §3 Redis notu)
-    private final LoadingCache<String, Bucket> buckets = Caffeine.newBuilder()
-            .maximumSize(100_000)
-            .expireAfterAccess(Duration.ofMinutes(10))
-            .build(RateLimitFilter::newBucket);
+    private final LoadingCache<String, Bucket> buckets;
 
     /** Iki ctor var; isaretlenmezse Spring no-arg arar ve acilista patlar (bkz. GoogleIdVerifier). */
     @Autowired
@@ -71,13 +107,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
     RateLimitFilter(List<Policy> policies, boolean trustForwardedFor) {
         this.policies = policies;
         this.trustForwardedFor = trustForwardedFor;
+        // expireAfterWrite DEGIL: o, surekli dovulen bir kovayi da suresi dolunca sifirlar ve
+        // saldirgana periyodik bedava reset verir. Erisimden sayilmali. Bellek maximumSize'la sinirli.
+        this.buckets = Caffeine.newBuilder()
+                .maximumSize(100_000)
+                .expireAfterAccess(bucketTtl(policies))
+                .build(RateLimitFilter::newBucket);
     }
 
+    /** Anahtar kovanın SEKLINI de tasir: capacity ya da pencere degisirse ayri kova acilir. */
     private static Bucket newBucket(String key) {
-        int capacity = Integer.parseInt(key.substring(0, key.indexOf(':')));
+        String[] parts = key.split(":", 3);
+        int capacity = Integer.parseInt(parts[0]);
+        Duration window = Duration.ofSeconds(Long.parseLong(parts[1]));
         return Bucket.builder()
-                .addLimit(limit -> limit.capacity(capacity)
-                        .refillGreedy(capacity, Duration.ofMinutes(1)))
+                .addLimit(limit -> limit.capacity(capacity).refillGreedy(capacity, window))
                 .build();
     }
 
@@ -89,6 +133,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         buckets.invalidateAll();
     }
 
+    /**
+     * Önbelleğin GERÇEKTEN kurulduğu TTL. {@link #bucketTtl} doğru olup builder'a bağlanmamış
+     * olabilir; o dikiş yalnız buradan görülür (kova erken tahliye = bedava sıfırlama).
+     */
+    Duration configuredBucketTtl() {
+        return buckets.policy().expireAfterAccess().orElseThrow().getExpiresAfter();
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
@@ -98,13 +150,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         && p.path().matcher(path).matches())
                 .findFirst()
                 .orElse(FALLBACK);
-        String key = match.capacity() + ":" + match.id() + ":" + clientIp(request);
+        String key = match.capacity() + ":" + match.window().toSeconds() + ":" + match.id()
+                + ":" + clientIp(request);
         if (buckets.get(key).tryConsume(1)) {
             chain.doFilter(request, response);
             return;
         }
         response.setStatus(429);
-        response.setHeader("Retry-After", "60");
+        // Pencereden turetilir: saatlik kovaya "60 sn sonra dene" demek yeniden deneme firtinasidir.
+        response.setHeader("Retry-After", String.valueOf(match.window().toSeconds()));
         response.setContentType("application/json");
         response.getWriter().write("{\"error\":\"too many requests\"}");
     }

@@ -1,9 +1,12 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.error.UnavailableException;
 import com.bumpinto.application.error.ConflictException;
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.error.TooManyRequestsException;
+import com.bumpinto.domain.geo.GeocodeBusyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -40,6 +43,20 @@ class ApiExceptionHandler {
         return new ApiError(e.getMessage());
     }
 
+    /** Kota asimi sunucu hatasi degil, "az sonra tekrar dene"dir. */
+    @ExceptionHandler(TooManyRequestsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    ApiError tooMany(TooManyRequestsException e) {
+        return new ApiError(e.getMessage());
+    }
+
+    /** Throttle atlamasi "sonuc yok" degil "tekrar dene"dir: 429. */
+    @ExceptionHandler(GeocodeBusyException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    ApiError geocodeBusy(GeocodeBusyException e) {
+        return new ApiError("geocode_busy");
+    }
+
     /**
      * Google id_token'in reddi (imza/issuer/exp/audience) KULLANICI tarafinin hatasidir: 401.
      * Eslenmezse GoogleIdVerifier.verify'in JwtException'i 500 olarak sizar ve gecmis bir
@@ -59,6 +76,13 @@ class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     ApiError badRequest(IllegalArgumentException e) {
+        return new ApiError(e.getMessage());
+    }
+
+    /** Ozellik yapilandirilmamis (ornegin Apple anahtari yok): istemci hatasi degil, 503. */
+    @ExceptionHandler(UnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    ApiError unavailable(UnavailableException e) {
         return new ApiError(e.getMessage());
     }
 }

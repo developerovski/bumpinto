@@ -1,0 +1,19 @@
+id: open
+# Overture categories.primary slug'lari ve OSM etiket ciftleri karisik; tek desen ikisini de kapsar.
+idPattern: "^[a-z0-9_]+(=[a-z0-9_]+)?$"
+categories:
+  COFFEE: [cafe, coffee_shop, amenity=cafe]
+  FOOD: [restaurant, amenity=restaurant, fast_food]
+  BAR: [bar, pub, amenity=bar, amenity=pub]
+  NIGHTLIFE: [nightclub, amenity=nightclub, music_venue]
+  WALK: [park, leisure=park, garden, leisure=garden]
+  HIKE: [hiking_trail, route=hiking, nature_preserve, natural=heath]
+  SWIM: [swimming_pool, leisure=swimming_pool, water_park, leisure=water_park]
+  FITNESS: [gym, leisure=fitness_centre, leisure=sports_centre]
+  CINEMA: [cinema, amenity=cinema]
+  MUSEUM: [museum, tourism=museum]
+  ART: [art_gallery, tourism=gallery, arts_and_entertainment]
+  THEME_PARK: [amusement_park, tourism=theme_park, zoo, tourism=zoo]
+  GAMES: [arcade, leisure=amusement_arcade, board_game_cafe]
+  ADVENTURE: [climbing_gym, leisure=climbing, go_kart_track]
+  ACTIVITY: [bowling_alley, leisure=bowling_alley, leisure=pitch]

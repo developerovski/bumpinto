@@ -1,5 +1,8 @@
 package com.bumpinto.adapter.out.persistence;
 
+import com.bumpinto.domain.port.BlockStorePort;
+import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
@@ -11,7 +14,9 @@ import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.domain.user.UserProfile;
+import com.bumpinto.domain.venue.TaglineSource;
 import com.bumpinto.domain.venue.Venue;
+import com.bumpinto.infra.config.AppConfig;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -40,7 +46,8 @@ import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class})
+@Import({SessionStoreAdapter.class, DeckStoreAdapter.class, UserStoreAdapter.class,
+        ReportStoreAdapter.class, BlockStoreAdapter.class, AppConfig.class})
 class StoreAdapterTest {
 
     @ServiceConnection
@@ -50,6 +57,44 @@ class StoreAdapterTest {
     @Autowired DeckStoreAdapter deck;
     @Autowired UserStoreAdapter users;
     @Autowired UserRepository userRows;
+    @Autowired BlockStorePort blocks;
+
+    private static final Instant T0 = Instant.parse("2026-09-06T10:00:00Z");
+
+    @Test
+    void appleSubIsThePrimaryMatcherAndEmailTheSecondary() {
+        UUID google = users.upsertByEmail("ayse@bumpinto.test", "Ayse");
+        UUID merged = users.upsertByAppleSub("apple-sub-1", "ayse@bumpinto.test", "Ayse");
+        assertThat(merged).isEqualTo(google);
+        assertThat(users.profileOf(merged).orElseThrow().authProviders())
+                .containsExactlyInAnyOrder(AuthProvider.GOOGLE, AuthProvider.APPLE);
+        // Private-relay e-postasiyla ikinci giris: e-posta TUTMAZ, sub tutar -> ayni hesap.
+        assertThat(users.upsertByAppleSub("apple-sub-1", "xyz@privaterelay.appleid.com", "Ayse"))
+                .isEqualTo(google);
+    }
+
+    @Test
+    void softDeleteReleasesTheIdentityAndHidesTheProfile() {
+        UUID id = users.upsertByAppleSub("apple-sub-2", "mehmet@bumpinto.test", "Mehmet");
+        users.saveAppleRefreshToken(id, "rt-1");
+        assertThat(users.appleRefreshToken(id)).contains("rt-1");
+        users.softDelete(id, T0, T0.plus(Duration.ofDays(30)));
+        assertThat(users.profileOf(id)).isEmpty();
+        // Kimlik serbest: ayni e-posta yeni bir hesap acabilir.
+        assertThat(users.upsertByEmail("mehmet@bumpinto.test", "Mehmet")).isNotEqualTo(id);
+    }
+
+    @Test
+    void blocksAreReadableFromBothEndsAndOnlyTheOwnerCanDeleteThem() {
+        UUID me = users.upsertByEmail("me@bumpinto.test", "Ben");
+        UUID other = users.upsertByEmail("other@bumpinto.test", "O");
+        UUID blockId = blocks.save(Block.ofUser(UUID.randomUUID(), me, other, T0)).id();
+        assertThat(blocks.blockedUserIdsOf(me)).containsExactly(other);
+        assertThat(blocks.blockerUserIdsOf(other)).containsExactly(me);
+        assertThat(blocks.delete(other, blockId)).isFalse();
+        assertThat(blocks.delete(me, blockId)).isTrue();
+        assertThat(blocks.blocksOf(me)).isEmpty();
+    }
 
     @Test
     void fullRoundTripThroughPorts() {
@@ -71,7 +116,7 @@ class StoreAdapterTest {
         assertThat(readHost).isEqualTo(host);
 
         Venue v = new Venue(UUID.randomUUID(), s.id(), "foursquare", "fsq1", "Café Berlage",
-                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", "https://maps", 0);
+                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", 0);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(s.id())).containsExactly(v); // tüm kolonlar geri okunur
 
@@ -218,7 +263,7 @@ class StoreAdapterTest {
         UserRepository racing = mock(UserRepository.class);
         when(racing.findByEmail("race@x.dev"))
                 .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(UserEntity.of(winner, "race@x.dev", "Ayşe", "google")));
+                .thenReturn(Optional.of(UserEntity.of(winner, "race@x.dev", "Ayşe", AuthProvider.GOOGLE)));
         when(racing.saveAndFlush(any()))
                 .thenThrow(new DataIntegrityViolationException("duplicate key: users_email_key"));
 
@@ -262,13 +307,19 @@ class StoreAdapterTest {
                 SessionStatus.COLLECTING,
                 Instant.now().plusSeconds(600), null, List.of()));
 
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayla",
+        // joined_at ayni transaction'da SABIT; siralama id ASC tie-break'ine duser, bu yuzden
+        // koltuk id'leri kasten artan verilir: beklenen sira Ayla, Ayşe, Kerem, Nokta.
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001"), session1.id(), "Ayla",
                 new GeoPoint(51.6978, 5.3037), true, null, false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Ayşe",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000002"), session1.id(), "Ayşe",
                 new GeoPoint(51.7, 5.3), false, Instant.now(), false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Kerem",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000003"), session1.id(), "Kerem",
                 null, false, null, false, null, null));
-        sessions.saveParticipant(new Participant(UUID.randomUUID(), session1.id(), "Nokta",
+        sessions.saveParticipant(new Participant(
+                UUID.fromString("aaaaaaaa-0000-0000-0000-000000000004"), session1.id(), "Nokta",
                 new GeoPoint(51.71, 5.31), false, null, true, "Manuel nokta", null));
 
         sessions.saveParticipant(new Participant(UUID.randomUUID(), session2.id(), "Ayla",
@@ -282,27 +333,76 @@ class StoreAdapterTest {
         deck.saveVenues(List.of(decidedVenue));
         sessions.saveSession(session2.decided(decidedVenue.id(), DecisionKind.UNANIMOUS, Instant.now()));
 
-        List<SessionSummary> summaries = sessions.summariesOfHost(hostA, 10);
-        assertThat(summaries).extracting(s -> s.session().id())
-                .containsExactly(session2.id(), session1.id());
+        Instant now = Instant.now();
+        // session2 karar verildi -> gecmis; session1 hala acik.
+        List<SessionSummary> past = sessions.pastSummariesOfHost(hostA, now, 10);
+        List<SessionSummary> open = sessions.openSummariesOfHost(hostA, now);
+        assertThat(past).extracting(s -> s.session().id()).containsExactly(session2.id());
+        assertThat(open).extracting(s -> s.session().id()).containsExactly(session1.id());
 
-        SessionSummary newest = summaries.get(0);
+        SessionSummary newest = past.get(0);
         assertThat(newest.participantCount()).isEqualTo(3);
         assertThat(newest.readyCount()).isEqualTo(3);
         assertThat(newest.doneCount()).isEqualTo(1);
         assertThat(newest.decidedVenueName()).isEqualTo(decidedVenue.name());
         assertThat(newest.decidedVenuePhotoUrl()).isEqualTo(decidedVenue.photoUrl());
 
-        SessionSummary older = summaries.get(1);
+        SessionSummary older = open.get(0);
         assertThat(older.participantCount()).isEqualTo(4);
         assertThat(older.readyCount()).isEqualTo(3);
         assertThat(older.doneCount()).isEqualTo(1);
         assertThat(older.decidedVenueName()).isNull();
         assertThat(older.decidedVenuePhotoUrl()).isNull();
+        // Avatar yigini: sayimlarla AYNI satirlardan, katilma sirasinda (host once). Kerem'in
+        // konumu yok -> ready=false; elle eklenen nokta da sayimlarda oldugu gibi yiginde.
+        assertThat(older.participants())
+                .extracting(SessionSummary.ParticipantSummary::displayName,
+                        SessionSummary.ParticipantSummary::ready,
+                        SessionSummary.ParticipantSummary::host)
+                .containsExactly(tuple("Ayla", true, true), tuple("Ayşe", true, false),
+                        tuple("Kerem", false, false), tuple("Nokta", true, false));
+        assertThat(newest.participants())
+                .extracting(SessionSummary.ParticipantSummary::displayName)
+                .containsExactlyInAnyOrder("Ayla", "Zeynep", "Mert");
 
-        assertThat(sessions.summariesOfHost(hostA, 1)).hasSize(1);
         assertThat(sessions.hostedSessionCount(hostA)).isEqualTo(2);
         assertThat(sessions.distinctGuestsOfHost(hostA)).isEqualTo(4); // Ayşe, Kerem, Zeynep, Mert
+    }
+
+    /**
+     * Bolme SQL'de, tembel expiry ile AYNI kurala gore: TTL'i gecmis satirin KAYITLI statusu
+     * hala COLLECTING olabilir (SessionExpiry hicbir sey yazmaz) ve o satir gecmise aittir.
+     * Tavan da yalniz gecmise uygulanir; acik kutu limitsizdir.
+     */
+    @Test
+    void hostSummariesSplitByLazyExpiryRuleAndCapOnlyThePast() {
+        UUID host = users.upsertByEmail("split-host@bumpinto.test", "Bolen");
+        Instant now = Instant.parse("2026-09-07T12:00:00Z");
+
+        // created_at transaction icinde SABIT -> siralama id DESC'e duser; id'ler kasten artan.
+        Session live = hostedSession(host, "splt001", "11111111-0000-0000-0000-000000000001",
+                SessionStatus.COLLECTING, now.plusSeconds(600));
+        Session timedOut = hostedSession(host, "splt002", "11111111-0000-0000-0000-000000000002",
+                SessionStatus.COLLECTING, now.minusSeconds(1));
+        Session expired = hostedSession(host, "splt003", "11111111-0000-0000-0000-000000000003",
+                SessionStatus.EXPIRED, now.plusSeconds(600));
+        Session decided = hostedSession(host, "splt004", "11111111-0000-0000-0000-000000000004",
+                SessionStatus.DECIDED, now.plusSeconds(600));
+
+        assertThat(sessions.openSummariesOfHost(host, now)).extracting(s -> s.session().id())
+                .containsExactly(live.id());
+        assertThat(sessions.pastSummariesOfHost(host, now, 10)).extracting(s -> s.session().id())
+                .containsExactly(decided.id(), expired.id(), timedOut.id());
+        // Tavan gecmisi keser, sirayi degil: en yeni ikisi.
+        assertThat(sessions.pastSummariesOfHost(host, now, 2)).extracting(s -> s.session().id())
+                .containsExactly(decided.id(), expired.id());
+    }
+
+    private Session hostedSession(UUID hostId, String slug, String id, SessionStatus status,
+                                  Instant expiresAt) {
+        return sessions.saveSession(new Session(UUID.fromString(id), slug, hostId, "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, status, expiresAt, null,
+                List.of()));
     }
 
     /** CSV gidis-donus: 3 aktivite yazilir, ayni sirada geri okunur. */
@@ -324,9 +424,10 @@ class StoreAdapterTest {
     void venueProviderFieldsRoundTrip() {
         UUID sessionId = newSession("venue-fields").id();
         Venue v = new Venue(UUID.randomUUID(), sessionId, "google", "g1", "Espresso Bar",
-                new GeoPoint(51.44, 5.47), 4.6, 2, null, "https://maps/g1", 0,
+                new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
                 "Espresso bar", "Kleine Berg 16, Eindhoven", "Eindhoven", 312,
-                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE);
+                "Tuesday: 8:00 AM – 6:00 PM", "https://maps/g1", ActivityType.COFFEE,
+                0.8, 5, "photos/g1/REF1", "Best flat white in town", TaglineSource.FSQ);
         deck.saveVenues(List.of(v));
         assertThat(deck.venuesOf(sessionId).get(0)).isEqualTo(v);
     }
@@ -359,6 +460,42 @@ class StoreAdapterTest {
         assertThat(sessions.sessionBySlug(saved.slug()).orElseThrow().anchor()).isNull();
     }
 
+    /**
+     * Kod bir DEFA uretilir ve oturumun omru boyunca DEGISMEZ. Dort kopya metodunun (withStatus,
+     * withMidpointLabel, inRunoff, decided) hepsi ayri ayri sinanir: biri {@code joinCode} yerine
+     * null tasisaydi elindeki kodla katilmaya calisan davetli oturumu KAYBEDERDI ve durum
+     * degisimine kadar her sey yesil gorunurdu.
+     */
+    @Test
+    void joinCodeSurvivesReloadAndEveryCopyMethod() {
+        UUID host = users.upsertByEmail("joincode@x.dev", "Kod");
+        Session saved = sessions.saveSession(new Session(UUID.randomUUID(), "joincd", host, "Cuma",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, SessionStatus.COLLECTING,
+                Instant.now().plusSeconds(600), null, List.of(), null, null, null, null, null,
+                "X7K2M"));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        Venue v = venue(saved, "joincd-venue", 0);
+        deck.saveVenues(List.of(v));
+        Session read = sessions.sessionBySlug("joincd").orElseThrow();
+
+        sessions.saveSession(read.withStatus(SessionStatus.SWIPING));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.withMidpointLabel("Eindhoven"));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.inRunoff(List.of(v.id()), RunoffReason.FALLBACK));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+
+        sessions.saveSession(read.decided(v.id(), DecisionKind.UNANIMOUS, T0));
+        assertThat(reloadJoinCode()).isEqualTo("X7K2M");
+    }
+
+    private String reloadJoinCode() {
+        return sessions.sessionBySlug("joincd").orElseThrow().joinCode();
+    }
+
     private Session newSession(String slug) {
         UUID host = users.upsertByEmail(slug + "@x.dev", "Host " + slug);
         return sessions.saveSession(new Session(UUID.randomUUID(), slug, host, "Cuma",
@@ -384,6 +521,6 @@ class StoreAdapterTest {
 
     private Venue venue(Session s, String externalId, int order) {
         return new Venue(UUID.randomUUID(), s.id(), "foursquare", externalId, "Café " + externalId,
-                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", "https://maps", order);
+                new GeoPoint(51.44, 5.47), 4.6, 2, "https://photo", order);
     }
 }

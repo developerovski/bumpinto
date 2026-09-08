@@ -1,8 +1,10 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../lib/api", () => ({ api: { me: vi.fn(), loginGoogle: vi.fn(), logout: vi.fn(), updateMe: vi.fn() } }));
+vi.mock("../lib/api", () => ({ api: { me: vi.fn(), loginGoogle: vi.fn(), logout: vi.fn(), updateMe: vi.fn(),
+  putConsents: vi.fn(), deleteMe: vi.fn(), loginApple: vi.fn(), exportMyData: vi.fn() } }));
 
+import { analyticsConsent, resetAnalytics } from "../lib/analytics";
 import { api } from "../lib/api";
 import i18n from "../i18n";
 import { useAuthStore } from "./authStore";
@@ -11,7 +13,10 @@ const me = { id: "u1", email: "m@x.test", displayName: "Mehmet", language: "nl",
   defaultLocation: undefined, defaultActivity: undefined, stats: { sessionsHosted: 1, friendsMet: 2 } };
 
 describe("authStore", () => {
-  beforeEach(() => useAuthStore.setState({ status: "unknown", me: null }));
+  beforeEach(() => {
+    resetAnalytics();
+    useAuthStore.setState({ status: "unknown", me: null });
+  });
   afterEach(async () => {
     await i18n.changeLanguage("tr");
   });
@@ -51,5 +56,28 @@ describe("authStore", () => {
     vi.mocked(api.updateMe).mockResolvedValueOnce({ ...meWithMode, displayName: "Mehmet S." });
     await useAuthStore.getState().updatePrefs({ displayName: "Mehmet S." });
     expect(api.updateMe).toHaveBeenCalledWith(expect.objectContaining({ defaultTravelMode: "BIKE", displayName: "Mehmet S." }));
+  });
+
+  it("me.consents.analytics true ise analitik kapısı açılır", async () => {
+    vi.mocked(api.me).mockResolvedValue({ id: "u1", consents: { location: true, microphone: false, analytics: true } } as never);
+    await useAuthStore.getState().load();
+    expect(analyticsConsent()).toBe(true);
+  });
+
+  it("saveConsents mevcut rızaların üstüne patch biner ve me tazelenir", async () => {
+    useAuthStore.setState({ status: "signed", me: { id: "u1", consents: { location: true, microphone: true, analytics: false } } as never });
+    vi.mocked(api.putConsents).mockResolvedValue(undefined);
+    vi.mocked(api.me).mockResolvedValue({ id: "u1", consents: { location: true, microphone: true, analytics: true } } as never);
+    await useAuthStore.getState().saveConsents({ analytics: true });
+    expect(api.putConsents).toHaveBeenCalledWith({ location: true, microphone: true, analytics: true });
+    expect(analyticsConsent()).toBe(true);
+  });
+
+  it("deleteAccount oturumu anon'a düşürür ve analitiği kapatır", async () => {
+    useAuthStore.setState({ status: "signed", me: { id: "u1" } as never });
+    vi.mocked(api.deleteMe).mockResolvedValue(undefined);
+    await useAuthStore.getState().deleteAccount();
+    expect(useAuthStore.getState().status).toBe("anon");
+    expect(analyticsConsent()).toBe(false);
   });
 });

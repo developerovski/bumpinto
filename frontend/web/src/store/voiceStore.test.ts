@@ -28,6 +28,7 @@ vi.mock("../lib/voiceMesh", () => {
     static throwOnce = false;
     roster: string[] = [];
     muted = false;
+    mutedPeers: string[] = [];
     signals: unknown[] = [];
     closed = false;
     constructor(public deps: { myId: string; iceServers: unknown; send: (s: unknown) => void }) {
@@ -39,6 +40,7 @@ vi.mock("../lib/voiceMesh", () => {
     }
     setRoster(ids: string[]) { this.roster = ids; }
     setMuted(muted: boolean) { this.muted = muted; }
+    setMutedPeers(ids: string[]) { this.mutedPeers = ids; }
     async handleSignal(signal: unknown) { this.signals.push(signal); }
     close() { this.closed = true; }
   }
@@ -49,7 +51,7 @@ import { api } from "../lib/api";
 import { VoiceMesh } from "../lib/voiceMesh";
 import { liveChannel } from "./liveChannel";
 import { useSessionStore } from "./sessionStore";
-import { rosterOf, useVoiceStore } from "./voiceStore";
+import { resetVoiceRoom, rosterOf, useVoiceStore } from "./voiceStore";
 
 type FakeMeshType = { last: { deps: { myId: string; iceServers: unknown; send: (s: unknown) => void;
   createLevels?: unknown };
@@ -359,5 +361,54 @@ describe("voiceStore", () => {
   it("rosterOf: inVoice olan katılımcı id'leri", () => {
     expect(rosterOf(view as never)).toEqual(["h"]);
     expect(rosterOf(null)).toEqual([]);
+  });
+
+  it("togglePeerMute yereldir ve iki yönlü çalışır", () => {
+    useVoiceStore.setState({ mutedPeers: {} });
+    useVoiceStore.getState().togglePeerMute("a");
+    expect(useVoiceStore.getState().mutedPeers.a).toBe(true);
+    useVoiceStore.getState().togglePeerMute("a");
+    expect(useVoiceStore.getState().mutedPeers.a).toBeUndefined();
+  });
+
+  it("rosterOf engelli katılımcıyı ses odasına almaz", () => {
+    const view = { participants: [{ id: "a", inVoice: true }, { id: "b", inVoice: true, blocked: true }] };
+    expect(rosterOf(view as never)).toEqual(["a"]);
+  });
+});
+
+// Üst describe'ın beforeEach'i her testten önce dolu `voice.endsAt` taşıyan bir `view` yazıyor —
+// bu iki test "açılış" ANINI izole biçimde kurmak zorunda, o yüzden AYRI bir describe'da yaşarlar
+// (üst blokun beforeEach'i buraya sızmaz). `resetVoiceRoom()` her testin ilk satırı.
+describe("voiceStore — oda uzunluğu (limitMinutes)", () => {
+  const withVoice = (min: number) => ({
+    ...view, voice: { endsAt: new Date(Date.now() + min * 60_000).toISOString() },
+  });
+
+  it("oda GÖZ ÖNÜNDE açılırsa uzunluk türetilir", () => {
+    resetVoiceRoom();
+    useSessionStore.setState({ slug: "x", view: { ...view, voice: null } as never });
+    useSessionStore.setState({ slug: "x", view: withVoice(30) as never });
+    expect(useVoiceStore.getState().limitMinutes).toBe(30);
+  });
+
+  it("oda ZATEN açıkken sayfaya gelindiyse uzunluk bilinmez", () => {
+    resetVoiceRoom();
+    // Gerçek sıra (bind() → refresh()): önce view null yazılır, SONRA dolu görünüm gelir.
+    useSessionStore.setState({ slug: "x", view: null as never });
+    useSessionStore.setState({ slug: "x", view: withVoice(12) as never });
+    expect(useVoiceStore.getState().limitMinutes).toBeNull();
+  });
+
+  it("oturum değişince (slug farklı) bir önceki odadan türetilen uzunluk taşınmaz", () => {
+    resetVoiceRoom();
+    useSessionStore.setState({ slug: "x", view: { ...view, voice: null } as never });
+    useSessionStore.setState({ slug: "x", view: withVoice(30) as never });
+    expect(useVoiceStore.getState().limitMinutes).toBe(30);
+
+    // B oturumuna geçiş: bind() burada da view'ı ÖNCE null yazar.
+    useSessionStore.setState({ slug: "y", view: null as never });
+    useSessionStore.setState({ slug: "y", view: withVoice(15) as never });
+    expect(useVoiceStore.getState().limitMinutes).toBeNull();
   });
 });

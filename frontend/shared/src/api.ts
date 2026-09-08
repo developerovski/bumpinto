@@ -9,6 +9,25 @@ export type MeResponse = Schemas["MeResponse"];
 export type SessionSummaryDto = Schemas["SessionSummaryDto"];
 export type SessionPreview = Schemas["SessionPreview"];
 
+/* Yazma gövdesi §2: üç boolean. Üretilen istek şemasının adı B-14'e bağlı olduğundan ELLE
+   yazılır — alanlar birebir aynı. Okuma `MeResponse.consents`'tan (updatedAt/version dahil). */
+export type ConsentsInput = { location: boolean; microphone: boolean; analytics: boolean };
+export type AppleLoginRequest = { identityToken: string; nonce: string; fullName?: string };
+
+/* /api/config sözleşmesi (spec §7) ELLE yazılır: üç planın (B-13 / W-12 / I-2) ortak sözleşmesi. */
+export type MapEngine = "maplibre" | "google";
+export type AppConfigSource = {
+  id: string;
+  attributionKey: string;
+  attributionUrl: string | null;
+  ratingScale: 5 | 10 | null;
+};
+export type AppConfig = {
+  mapEngine: MapEngine;
+  tiles: { styleUrl: string };
+  sources: AppConfigSource[];
+};
+
 export function createBumpintoApi(http: AxiosInstance) {
   return {
     loginGoogle: (idToken: string) =>
@@ -49,6 +68,11 @@ export function createBumpintoApi(http: AxiosInstance) {
     logout: () => http.post("/api/auth/logout").then(() => undefined),
     preview: (slug: string) =>
       http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
+    getConfig: () => http.get<AppConfig>("/api/config").then((r) => r.data),
+    geocode: (body: { query: string; biasLat?: number; biasLng?: number }) =>
+      http.post<{ lat: number; lng: number; label: string }>("/api/geocode", body).then((r) => r.data),
+    reverseGeocode: (body: { lat: number; lng: number }) =>
+      http.post<{ label: string | null }>("/api/geocode/reverse", body).then((r) => r.data),
     voiceStart: (slug: string) =>
       http.post<Schemas["VoiceStartResponse"]>(`/api/sessions/${slug}/voice`).then((r) => r.data),
     voiceEnd: (slug: string) =>
@@ -56,6 +80,22 @@ export function createBumpintoApi(http: AxiosInstance) {
     voiceCredentials: (slug: string) =>
       http.post<Schemas["VoiceCredentialsResponse"]>(`/api/sessions/${slug}/voice/credentials`)
         .then((r) => r.data),
+    report: (body: Schemas["ReportRequest"]) =>
+      http.post("/api/reports", body).then(() => undefined),
+    blockParticipant: (body: Schemas["BlockRequest"]) =>
+      http.post<Schemas["BlockDto"]>("/api/me/blocks", body).then((r) => r.data),
+    nudge: (slug: string, participantId: string) =>
+      http.post(`/api/sessions/${slug}/nudge/${participantId}`).then(() => undefined),
+    loginApple: (body: AppleLoginRequest) =>
+      http.post<Schemas["LoginResponse"]>("/api/auth/apple", body).then((r) => r.data),
+    // PUT yanıt gövdesi sözleşmede sabit değil — yazımdan sonra `me()` tazelenir (authStore).
+    putConsents: (body: ConsentsInput) =>
+      http.put("/api/me/consents", body).then(() => undefined),
+    // 1/saat sınırlı, attachment JSON. Blob alınır; indirmeyi çağıran yapar.
+    // NOT (K-W27): sunucu ucu B-15'te iniyor — o zamana dek çalışma anında 404 döner.
+    exportMyData: () =>
+      http.get<Blob>("/api/me/export", { responseType: "blob" }).then((r) => r.data),
+    deleteMe: () => http.delete("/api/me").then(() => undefined),
   };
 }
 

@@ -1,15 +1,17 @@
 import type { Schemas } from "@bumpinto/shared";
-import { ArrowLeft } from "@phosphor-icons/react";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { ArrowLeft, MapPin } from "@phosphor-icons/react";
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, ErrorText, HandNote, Heading, Note, Overline, Page } from "../components/atoms";
+import { Button, ErrorText, HandNote, Heading, Note, Page } from "../components/atoms";
 import ActivityPicker from "../components/molecules/ActivityPicker";
 import Field from "../components/molecules/Field";
 import InvitePreview from "../components/molecules/InvitePreview";
 import LazyBoundary from "../components/molecules/LazyBoundary";
 import LocationField from "../components/molecules/LocationField";
+import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
 import Segmented from "../components/molecules/Segmented";
+import Sheet from "../components/molecules/Sheet";
 import TravelModeField from "../components/molecules/TravelModeField";
 import TwoZone from "../components/molecules/TwoZone";
 import TypeSelector from "../components/molecules/TypeSelector";
@@ -29,6 +31,13 @@ const MapView = lazy(() => import("../components/organisms/MapView"));
 const MapPicker = lazy(() => import("../components/organisms/MapPicker"));
 
 type Activity = Schemas["CreateSessionRequest"]["activityTypes"][number];
+
+/** DS `.lb` — form bölüm başlığı (Field/LocationField ile AYNI ölçü: 14px/600, cümle düzeni).
+    `.ov` (11.5px, büyük harf) YALNIZ etkinlik grup başlıkları ve "Konumlar" için ayrıldı —
+    artboard 817/831/895 vs 836/900; tek formda iki başlık sistemi karışmaz. */
+function Label({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={`text-[0.875rem] font-semibold${className ? ` ${className}` : ""}`}>{children}</span>;
+}
 
 /** Artboard W2 "Yeni oturum" — Grup: link kur; Bireysel: konumları elle ekle, harita önizlemesinde gör. */
 export default function NewSessionPage() {
@@ -150,70 +159,154 @@ export default function NewSessionPage() {
   );
   const count = pointCount(own, points);
   const errorMessage = localError ?? (error ? t(error) : null);
-  // 390'da harita hiç mount edilmez (§4.7) — SOLO'da sağ bölge ve harita yalnız gerçek lg
-  // genişlikte (JoinForm deseni: `lgOnly` + `TwoZone.rightLgOnly`); jsdom `matchMedia`
-  // uygulamıyor → test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz
-  // haritanın mount olmadığını doğrulayabilir. GRUP'ta sağ bölge (davet önizlemesi) 390'da
-  // görünür kalır — yalnız SOLO'nun harita kolonu gizlenir.
+  // 390'da harita hiç mount edilmez (§4.7) — sağ bölge ve harita yalnız gerçek lg genişlikte
+  // (JoinForm deseni: `lgOnly` + `TwoZone.rightLgOnly`); jsdom `matchMedia` uygulamıyor →
+  // test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz haritanın mount
+  // olmadığını doğrulayabilir. Artboard 962–1044/3905–3947: 390'da GRUP'un davet önizlemesi de
+  // yok — sağ bölge her iki tipte de masaüstüne özgüdür.
   const desktop = useMediaQuery("(min-width: 1024px)");
+  // Artboard 893–898: SOLO 1280'de "Nerede buluşulsun?" SAĞ bölgenin tepesinde durur; GRUP'ta
+  // (artboard 3852) solda kalır. Blok TEK örnektir — iki bölgeye birden basılsaydı
+  // `session-anchor` id'si ve radiogroup ikizlenirdi. 390'da sağ bölge gizli olduğu için
+  // koşul `desktop`a bağlı: alan hiçbir genişlikte kaybolmaz.
+  const meetWhereInRight = desktop && type === "SOLO";
+
+  const meetWhere = (
+    <div className="flex flex-col gap-2">
+      <Label>{t("newSession.meetWhere")}</Label>
+      <Segmented
+        value={anchorMode}
+        onChange={(m) => {
+          setAnchorMode(m);
+          // Moddan çıkarken alan da temizlenir: dolu görünen ama store'da karşılığı
+          // olmayan bir adres kullanıcıyı çıkmaza sokuyordu.
+          if (m === "MIDPOINT") setAnchorQuery("");
+        }}
+        ariaLabel={t("newSession.meetWhere")}
+        options={[
+          { value: "MIDPOINT", label: t("newSession.modeMidpoint") },
+          { value: "ANCHOR", label: t("newSession.modeAnchor") },
+        ]}
+      />
+      {anchorMode === "ANCHOR" ? (
+        <>
+          <Field
+            id="session-anchor"
+            /* Artboard 3856/3924: iç içe alt alanın `.lb`'si 13px'e iniyor — üstteki
+               "Nerede buluşulsun?" başlığıyla aynı ölçüde durmaz. */
+            labelSize="sm"
+            label={t("newSession.anchorLabel")}
+            placeholder={t("newSession.anchorPlaceholder")}
+            value={anchorQuery}
+            onChange={(e) => setAnchorQuery(e.target.value)}
+            onBlur={() => void resolveAnchor()}
+          />
+          {/* Artboard 3856–3860: sıra etiket → alan → "Haritadan seç" (`.btn.b-wh.bsm`) → ipucu.
+              `align-self:flex-start` YALNIZ 1280'de (3858); 390'da düğme tam genişlik (3927). */}
+          <div className="lg:self-start">
+            <Button type="button" kind="white" size="sm" onClick={() => setPicker("anchor")}>
+              <MapPin size={18} aria-hidden />
+              {t("map.pickOnMap")}
+            </Button>
+          </div>
+          {/* Artboard 3860: ipucu çapa çözüldükten SONRA da "2 km" sözünü veriyor. Onayı
+              ipucunun YERİNE basmak, yarıçapı tam gerektiği anda ekrandan siliyordu. */}
+          {anchor && <Note>{t("newSession.anchorSet", { label: anchor.label ?? "" })}</Note>}
+          <Note>{t("newSession.anchorHint")}</Note>
+        </>
+      ) : (
+        <Note>{t("newSession.midpointHint")}</Note>
+      )}
+    </div>
+  );
+
+  const pickerNode = picker && (
+    <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+      <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+        <MapPicker
+          center={anchor ?? own ?? DEFAULT_MAP_CENTER}
+          /* Artboard 3880 / 3960: 1280 sağ bölgede 520px, 390 alt sayfasında 300px. */
+          heightClass="h-[18.75rem] lg:h-[32.5rem]"
+          onPick={(picked) => {
+            if (picker === "anchor") {
+              anchorReq.current += 1; // uçuştaki geocode cevabını geçersiz kıl
+              setAnchor(picked);
+              resolvedQuery.current = picked.label ?? "";
+              setAnchorQuery(picked.label ?? "");
+            } else {
+              loc.setPicked(picked);
+            }
+            setPicker(null);
+          }}
+          onCancel={() => setPicker(null)}
+        />
+      </Suspense>
+    </LazyBoundary>
+  );
+
+  // Artboard 888–890 (1280) `.row` + `.btn.fit` + ipucu YAN YANA; 1044–1047 (390) `.cta`
+  // kaydırma alanının DIŞINDA, tam genişlik. Aynı düğme iki yerleşimde de basılır — biri
+  // `lg:hidden`, diğeri `hidden lg:flex`.
+  const ctaButton = (size: "md" | "fit") =>
+    type === "GROUP" ? (
+      <Button size={size} onClick={create} disabled={busy || submitting}>
+        {t("newSession.createGroup")}
+      </Button>
+    ) : (
+      <Button size={size} onClick={create} disabled={busy || submitting || (anchorMode !== "ANCHOR" && count < 2)}>
+        {t("newSession.findVenues")}
+      </Button>
+    );
+  /* Not, düğmeyle AYNI kapıya bağlı: çapalı modda iki nokta şartı düştüğü için
+     "En az 2 konum gerekir." açık bir düğmenin altında yalan olurdu. */
+  const ctaNote =
+    type === "SOLO" && anchorMode !== "ANCHOR" ? (
+      <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
+    ) : null;
 
   return (
     <Page>
-      <Link to="/sessions">
+      {/* Artboard 811: `.row` 6px boşluk, 13px/600, ink2 — genel `a` rengini (flame-deep)
+          taşımaz, bir gezinme bağlantısıdır. 390'da (962/3912) kaydırma alanı
+          doğrudan h1 ile başlıyor — bağlantı SİLİNMEZ, yalnız lg'ye saklanır (mobilde
+          tarayıcı/uygulama geri hareketi zaten var). */}
+      <Link
+        to="/sessions"
+        className="hidden w-fit items-center gap-1.5 text-[0.8125rem] font-semibold text-ink2 no-underline lg:flex"
+      >
         <ArrowLeft size={16} aria-hidden />
         {t("newSession.back")}
       </Link>
-      <Heading>{t("newSession.title")}</Heading>
+      {/* Artboard 963/3916: Yeni oturum 390 başlığı 30px. */}
+      <Heading size="compact">{t("newSession.title")}</Heading>
       <TwoZone
         left={
           <>
-            <Overline>{t("newSession.how")}</Overline>
-            <TypeSelector value={type} onChange={setType} />
-            <Overline>{t("newSession.what")}</Overline>
-            <Note>{t("newSession.whatHint", { max: MAX_ACTIVITIES })}</Note>
-            <ActivityPicker value={activities} onToggle={toggleActivity} />
+            <div className="flex flex-col gap-2">
+              {/* Artboard 963/3916: 390'da h1'i DOĞRUDAN segment izliyor, etiket yok — etiket
+                  silinmez, `lg`'ye saklanır; 390'da zaten radiogroup'un `aria-label`'ı. */}
+              <Label className="hidden lg:block">{t("newSession.how")}</Label>
+              <TypeSelector value={type} onChange={setType} />
+            </div>
+            <div className="flex flex-col gap-2">
+              {/* Artboard 830–832: başlık ve sayaç TEK satırda, aynı taban çizgisinde. */}
+              <div className="flex items-baseline justify-between gap-4">
+                <Label>{t("newSession.what")}</Label>
+                <Note>{t("newSession.whatHint", { max: MAX_ACTIVITIES })}</Note>
+              </div>
+              <ActivityPicker value={activities} onToggle={toggleActivity} />
+            </div>
             <Field
               id="session-name"
-              label={`${t("newSession.name")} ${t("newSession.nameOptional")}`}
+              label={t("newSession.name")}
+              /* Artboard 3049/3218: "· istersen" eki etiketin içinde ama 400 ağırlık + ink2 —
+                 düz birleştirilmiş dizede zorunlu alan başlığı kadar baskın duruyordu. */
+              labelSuffix={t("newSession.nameOptional")}
               placeholder={t("newSession.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <Overline>{t("newSession.meetWhere")}</Overline>
-            <Segmented
-              value={anchorMode}
-              onChange={(m) => {
-                setAnchorMode(m);
-                // Moddan çıkarken alan da temizlenir: dolu görünen ama store'da karşılığı
-                // olmayan bir adres kullanıcıyı çıkmaza sokuyordu.
-                if (m === "MIDPOINT") setAnchorQuery("");
-              }}
-              ariaLabel={t("newSession.meetWhere")}
-              options={[
-                { value: "MIDPOINT", label: t("newSession.modeMidpoint") },
-                { value: "ANCHOR", label: t("newSession.modeAnchor") },
-              ]}
-            />
-            {anchorMode === "ANCHOR" && (
-              <>
-                <Field
-                  id="session-anchor"
-                  label={t("newSession.anchorLabel")}
-                  placeholder={t("newSession.anchorPlaceholder")}
-                  value={anchorQuery}
-                  onChange={(e) => setAnchorQuery(e.target.value)}
-                  onBlur={() => void resolveAnchor()}
-                />
-                <Note>{anchor ? t("newSession.anchorSet", { label: anchor.label ?? "" }) : t("newSession.anchorHint")}</Note>
-                <button
-                  type="button"
-                  onClick={() => setPicker("anchor")}
-                  className="self-start text-[0.75rem] font-normal text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
-                >
-                  {t("map.pickOnMap")}
-                </button>
-              </>
-            )}
+            {!meetWhereInRight && meetWhere}
             <LocationField
               title={t("newSession.where")}
               state={loc.state}
@@ -226,81 +319,86 @@ export default function NewSessionPage() {
               inputId="session-address"
               busy={loc.busy}
               onPickOnMap={() => setPicker("own")}
+              /* Artboard 3872/3941: çapalı modda host konumu ZORUNLU DEĞİL — bu yüzden
+                 "…ya da adres yaz" bağlantısının yerini bu not alır (create() de aynı
+                 kapıyı uyguluyor). */
+              hint={anchorMode === "ANCHOR" ? t("newSession.ownOptional") : undefined}
             />
-            <TravelModeField value={travelMode} onChange={setTravelMode} />
-            {picker && (
-              <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
-                <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
-                  <MapPicker
-                    center={anchor ?? own ?? DEFAULT_MAP_CENTER}
-                    onPick={(picked) => {
-                      if (picker === "anchor") {
-                        anchorReq.current += 1; // uçuştaki geocode cevabını geçersiz kıl
-                        setAnchor(picked);
-                        resolvedQuery.current = picked.label ?? "";
-                        setAnchorQuery(picked.label ?? "");
-                      } else {
-                        loc.setPicked(picked);
-                      }
-                      setPicker(null);
-                    }}
-                    onCancel={() => setPicker(null)}
-                  />
-                </Suspense>
-              </LazyBoundary>
-            )}
-            {type === "GROUP" ? (
-              <Button onClick={create} disabled={busy || submitting}>
-                {t("newSession.createGroup")}
-              </Button>
-            ) : (
-              <>
-                <Button onClick={create} disabled={busy || submitting || (anchorMode !== "ANCHOR" && count < 2)}>
-                  {t("newSession.findVenues")}
-                </Button>
-                {/* Not, düğmeyle AYNI kapıya bağlı: çapalı modda iki nokta şartı düştüğü için
-                    "En az 2 konum gerekir." açık bir düğmenin altında yalan olurdu. */}
-                {anchorMode !== "ANCHOR" && (
-                  <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
-                )}
-              </>
-            )}
+            {/* SOLO 1280'de host'un ulaşım türü Konumlar kartının "Sen" satırındadır
+                (artboard 910); 390'da sağ bölge yok, bu yüzden ray burada kalır. */}
+            <div className={type === "SOLO" ? "lg:hidden" : undefined}>
+              <TravelModeField value={travelMode} onChange={setTravelMode} />
+            </div>
             {errorMessage && <ErrorText>{errorMessage}</ErrorText>}
+            {/* Artboard 951: SOLO 1280'de sağ bölge HARİTAYLA biter — el yazısı not orada yok.
+                Not silinmedi, 390'a alındı: sağ bölge zaten `lg`'ye özgü, dolayısıyla `lg:hidden`
+                onu yalnız dar ekranda, formun sonunda bırakır. */}
+            {type === "SOLO" && (
+              <div className="lg:hidden">
+                <HandNote>{t("newSession.soloHand")}</HandNote>
+              </div>
+            )}
+            <DesktopOnly>
+              <div className="flex flex-wrap items-center gap-3.5">
+                {ctaButton("fit")}
+                {ctaNote}
+              </div>
+            </DesktopOnly>
           </>
         }
         right={
-          type === "SOLO" ? (
-            <>
-              <PointsEditor
-                own={own}
-                points={points}
-                onAdd={addLocalPoint}
-                onRemove={removeLocalPoint}
-                onModeChange={setLocalPointTravelMode}
-              />
-              {desktop && (
-                <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
-                  <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
-                    <MapView
-                      participants={previewList}
-                      venues={[]}
-                      midpoint={mid}
-                      radiusKm={null}
-                      pinLabels={labels}
-                      caption={mid ? t("map.midpointOnly") : undefined}
-                      lgOnly
-                    />
-                  </Suspense>
-                </LazyBoundary>
-              )}
-              <HandNote>{t("newSession.soloHand")}</HandNote>
-            </>
-          ) : (
-            <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activities={activities} />
-          )
+          <>
+            {meetWhereInRight && meetWhere}
+            {desktop && pickerNode ? (
+              /* Artboard 3878–3897: çapa seçilirken sağ bölge SEÇİCİ olur; form solda kalır. */
+              pickerNode
+            ) : type === "SOLO" ? (
+              <>
+                <PointsEditor
+                  own={own}
+                  points={points}
+                  onAdd={addLocalPoint}
+                  onRemove={removeLocalPoint}
+                  onModeChange={setLocalPointTravelMode}
+                  travelMode={travelMode}
+                  onTravelModeChange={setTravelMode}
+                />
+                {desktop && (
+                  <LazyBoundary fallback={<Note center>{t("map.notConfigured")}</Note>}>
+                    <Suspense fallback={<Note center>{t("map.loading")}</Note>}>
+                      <MapView
+                        participants={previewList}
+                        venues={[]}
+                        midpoint={mid}
+                        radiusKm={null}
+                        pinLabels={labels}
+                        caption={mid ? t("map.midpointOnly") : undefined}
+                        /* Artboard 930: `.gmap` 330px — MapFrame'in 320px varsayılanı değil. */
+                        heightClass="h-[20.625rem]"
+                        lgOnly
+                      />
+                    </Suspense>
+                  </LazyBoundary>
+                )}
+              </>
+            ) : (
+              <InvitePreview hostName={me?.displayName ?? ""} sessionName={name} activities={activities} />
+            )}
+          </>
         }
-        rightLgOnly={type === "SOLO"}
+        rightLgOnly
       />
+      <MobileCta>
+        {ctaButton("md")}
+        {ctaNote}
+      </MobileCta>
+      {/* Artboard 3949–3972: 390'da seçici bir ALT SAYFA — scrim arkadaki formu kilitler.
+          ≥lg'de sağ bölgeye açıldığı için burada basılmaz. */}
+      {!desktop && pickerNode && (
+        <Sheet title={t("map.pickOnMap")} onClose={() => setPicker(null)}>
+          {pickerNode}
+        </Sheet>
+      )}
     </Page>
   );
 }

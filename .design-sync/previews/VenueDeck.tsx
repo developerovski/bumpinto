@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { VenueDeck } from "@bumpinto/web";
 
-// travelMinutes katılımcı UUID'siyle anahtarlı — etiketler aynı anahtarlarla eşleşmeli.
+// travel[] katılımcı UUID'sini participantId olarak taşır — etiketler aynı anahtarlarla eşleşmeli.
 const SELF = "8f2c1a44-3d5e-4b17-9c0a-2e6b7d4f1a90";
 const ELIF = "b31d9e70-6a42-4f8c-8d55-1c07a9be3d21";
 
@@ -14,7 +14,10 @@ const MODA = {
   name: "Moda Sahil",
   rating: 4.6,
   deckOrder: 0,
-  travelMinutes: { [SELF]: 22, [ELIF]: 31 },
+  travel: [
+    { participantId: SELF, minutes: 22 },
+    { participantId: ELIF, minutes: 31 },
+  ],
 };
 const KARAKOY = {
   id: "c6a83b51-2e94-4f70-8d2b-61c9f4a0e7d3",
@@ -22,7 +25,10 @@ const KARAKOY = {
   rating: 4.5,
   priceLevel: 3,
   deckOrder: 1,
-  travelMinutes: { [SELF]: 28, [ELIF]: 19 },
+  travel: [
+    { participantId: SELF, minutes: 28 },
+    { participantId: ELIF, minutes: 19 },
+  ],
 };
 const BEBEK = {
   id: "17e5d9c8-4b30-42a6-b5f1-8c02d6e93a15",
@@ -30,7 +36,10 @@ const BEBEK = {
   rating: 4.4,
   priceLevel: 2,
   deckOrder: 2,
-  travelMinutes: { [SELF]: 34, [ELIF]: 26 },
+  travel: [
+    { participantId: SELF, minutes: 34 },
+    { participantId: ELIF, minutes: 26 },
+  ],
 };
 const BALAT = {
   id: "e0b72f46-8a15-4c93-9d7e-3f61a8c05b29",
@@ -38,15 +47,17 @@ const BALAT = {
   rating: 4.7,
   priceLevel: 2,
   deckOrder: 3,
-  travelMinutes: { [SELF]: 41, [ELIF]: 23 },
+  travel: [
+    { participantId: SELF, minutes: 41 },
+    { participantId: ELIF, minutes: 23 },
+  ],
 };
 
-/* ÜRÜN GERÇEĞİ (senkron kusuru DEĞİL): deste yuvası sabit `h-[27.5rem] flex-none`,
-   ön kart ise mutlak konumlu ve doğal yüksekliğinde. Yol rozetleri + uyum satırı
-   render olunca kart bu yuvayı aşıyor ve ALTINDAKİ DeckActions düğmelerinin üstüne
-   biniyor. DeckScreen.tsx:153 aynı propları geçiyor — üründe de böyle.
-   İlk senkronda görünmüyordu çünkü `travelLabels` o zaman geçersiz bir proptu ve
-   rozetler hiç çizilmiyordu; kart kısa kalıyordu. */
+/* DÜZELTİLDİ (2026-09-07): bu hücre eskiden "deste yuvası sabit h-[27.5rem], ön kart onu aşıp
+   DeckActions'ın üstüne biniyor" diyordu. Artık doğru değil — organisms/VenueDeck.tsx'teki
+   `DECK` sınıfı sabit yüksekliği bıraktı (`"relative flex-none"`; yalnız arka d2/d3 katmanları
+   `!absolute`), kap yüksekliği ön karttan geliyor. FullStack/LastTwo/FinalCard bunu kanıtlıyor:
+   TravelBars satırı render olsa da DeckActions'ın üstüne binmiyor. */
 
 /** W3 sayfa sütunu — Page(variant="deck") ölçüleri: 480px kolon, aralıksız yığın. */
 function DeckColumn({ children }: { children: ReactNode }) {
@@ -85,8 +96,8 @@ export function FinalCard() {
   );
 }
 
-/** W3 · yol süreleri henüz hesaplanmadan gelen deste — rozet satırı düşer,
-    kart yalnız ad + puan/fiyat ile daha kısa durur. */
+/** W3 · yol süreleri henüz hesaplanmadan gelen deste — `TravelBars` satırı hiç basılmaz
+    (`fairnessOf` boş `travel[]`de `null` döner), kart yalnız ad + puan/fiyat ile daha kısa durur. */
 export function WithoutTravelBadges() {
   return (
     <DeckColumn>

@@ -23,9 +23,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,8 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "bumpinto.security.google-client-id=test-client-id",
         "bumpinto.security.token-secret=test-only-secret-not-a-real-key-0123456789",
         "bumpinto.security.token-ttl=12h",
-        "bumpinto.providers.foursquare-key=test-only-fsq-key",
-        "bumpinto.providers.google-key=test-only-google-key",
+        "bumpinto.venues.sources.foursquare.key=test-only-fsq-key",
         "bumpinto.cors.allowed-origins=http://localhost:5173",
         "bumpinto.cookies.secure=false",
         "bumpinto.cookies.domain="
@@ -81,12 +82,20 @@ class AccountApiTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertThat(list.get("open").size()).isEqualTo(2);
         assertThat(list.get("past").size()).isZero();
+        // Gecmis bos: kesilecek bir sey yok -> bayrak false, alan cevapta MEVCUT.
+        assertThat(list.get("pastTruncated").asBoolean()).isFalse();
         JsonNode newest = list.get("open").get(0);
         assertThat(newest.get("name").asString()).isEqualTo("SOLO kahve"); // en yeni once
         assertThat(newest.get("participantCount").asInt()).isEqualTo(1);
         assertThat(newest.get("readyCount").asInt()).isEqualTo(1);
         assertThat(newest.get("doneCount").asInt()).isZero();
         assertThat(newest.get("decidedVenueName").isNull()).isTrue();
+        // Avatar yigini: tek koltuk, konumunu vermis host.
+        assertThat(newest.get("participants").size()).isEqualTo(1);
+        assertThat(newest.get("participants").get(0).get("displayName").asString())
+                .isEqualTo("Mehmet");
+        assertThat(newest.get("participants").get(0).get("ready").asBoolean()).isTrue();
+        assertThat(newest.get("participants").get(0).get("host").asBoolean()).isTrue();
 
         JsonNode me = json.readTree(mvc.perform(get("/api/me").cookie(at))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -138,6 +147,46 @@ class AccountApiTest {
                         .header("X-Client", "web")
                         .contentType(JSON).content("{\"idToken\":\"gid3\"}"))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * Liste karti ust uste binen avatar yiginini cizer: her koltuk icin bas harf + kesik cizgili
+     * "henuz hazir degil" halkasi. {@code ready} = konumunu verdi mi — {@code readyCount} ile
+     * ayni kural. Sira katilma sirasi, yani host once.
+     */
+    @Test
+    void sessionListCarriesAvatarStack() throws Exception {
+        when(google.verify("gid9"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("stack9@bumpinto.test", "Mehmet"));
+        Cookie at = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid9\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        String slug = json.readTree(mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"sessionType\":\"GROUP\","
+                                + "\"name\":\"Yigin\",\"lat\":51.69,\"lng\":5.30,"
+                                + "\"displayName\":\"Mehmet\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("slug").asString();
+        // Konumsuz katilim: sayilir ama HAZIR degil -> kesik cizgili halka.
+        mvc.perform(post("/api/sessions/" + slug + "/participants").contentType(JSON)
+                        .content("{\"displayName\":\"Ayşe\"}"))
+                .andExpect(status().isCreated());
+
+        JsonNode card = json.readTree(mvc.perform(get("/api/sessions").cookie(at))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("open").get(0);
+        assertThat(card.get("participantCount").asInt()).isEqualTo(2);
+        assertThat(card.get("readyCount").asInt()).isEqualTo(1);
+        JsonNode people = card.get("participants");
+        assertThat(people.size()).isEqualTo(2);
+        assertThat(people.get(0).get("displayName").asString()).isEqualTo("Mehmet");
+        assertThat(people.get(0).get("host").asBoolean()).isTrue();
+        assertThat(people.get(0).get("ready").asBoolean()).isTrue();
+        assertThat(people.get(1).get("displayName").asString()).isEqualTo("Ayşe");
+        assertThat(people.get(1).get("host").asBoolean()).isFalse();
+        assertThat(people.get(1).get("ready").asBoolean()).isFalse();
+        // Yigin ad/hazirlik disinda hicbir sey tasimaz: koltuk id'si de yaklasik konum da yok.
+        assertThat(people.get(1).size()).isEqualTo(3);
     }
 
     @Test
@@ -475,5 +524,87 @@ class AccountApiTest {
                 .filteredOn(c -> ("bumpinto_pt_" + slug).equals(c.getName()))
                 .extracting(Cookie::getPath)
                 .containsExactlyInAnyOrder("/api", "/api/sessions/" + slug);
+    }
+
+    /**
+     * R-B2 + R-B3 ucdan uca: onay jetonu OLMADAN silinmez; silindikten sonra erisim ANINDA
+     * kapanir ve host oldugu oturum ortadan kalkar.
+     */
+    @Test
+    void deleteMeClosesAccessImmediatelyAndClearsCookies() throws Exception {
+        when(google.verify("gid-del"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("del@bumpinto.test", "Silinecek"));
+        MvcResult login = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-del\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Cookie at = login.getResponse().getCookie("bumpinto_at");
+
+        MvcResult created = mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Silinecek kahve\","
+                                + "\"lat\":51.69,\"lng\":5.30,\"displayName\":\"Silinecek\"}"))
+                .andExpect(status().isCreated()).andReturn();
+        String slug = json.readTree(created.getResponse().getContentAsString())
+                .get("slug").asString();
+
+        // Onay jetonu OLMADAN silme 400 (R-B3 kabul kriteri b).
+        mvc.perform(delete("/api/me").cookie(at).contentType(JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+
+        String confirm = json.readTree(mvc.perform(post("/api/me/delete-token").cookie(at))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("deleteConfirmToken").asString();
+
+        mvc.perform(delete("/api/me").cookie(at).header("X-Client", "web").contentType(JSON)
+                        .content("{\"deleteConfirmToken\":\"" + confirm + "\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("bumpinto_at", 0));
+
+        // (a) erisim aninda kapanir  (b) host oldugu oturum ortadan kalkar.
+        // Oturum kontrolu PUBLIC preview ucundan: /api/sessions/{slug} kimlik ister (401),
+        // preview ise davetiye linkinin gordugu yuzeydir — disaridan gercekten yok oldugunu
+        // kanitlayan tek uc odur.
+        mvc.perform(get("/api/me").cookie(at)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/sessions/" + slug + "/preview")).andExpect(status().isNotFound());
+    }
+
+    /**
+     * R-B6 ucdan uca. JPQL dis aktarma sorgusu GERCEK semaya karsi kosar — alan adi hatasi
+     * yalnizca burada yakalanir, birim test sahte portla gecerdi. Konum YUVARLANMIS gelir
+     * ve ikinci istek saatlik kovaya takilir.
+     */
+    @Test
+    void exportReturnsMyOwnSeatsRoundedAndIsRateLimitedHourly() throws Exception {
+        when(google.verify("gid-exp"))
+                .thenReturn(new GoogleIdVerifier.GoogleUser("exp@bumpinto.test", "Ayşe"));
+        Cookie at = mvc.perform(post("/api/auth/google").header("X-Client", "web")
+                        .contentType(JSON).content("{\"idToken\":\"gid-exp\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+        mvc.perform(post("/api/sessions").cookie(at).contentType(JSON)
+                        .content("{\"activityTypes\":[\"COFFEE\"],\"name\":\"Disa aktarma\","
+                                + "\"lat\":51.441642,\"lng\":5.469722,\"displayName\":\"Ayşe\"}"))
+                .andExpect(status().isCreated());
+
+        MvcResult exported = mvc.perform(get("/api/me/export").cookie(at))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(exported.getResponse().getHeader("Content-Disposition"))
+                .contains("attachment", "bumpinto-export-");
+        JsonNode out = json.readTree(exported.getResponse().getContentAsString());
+        assertThat(out.get("exportedAt").asString()).isNotBlank();
+        assertThat(out.get("profile").get("email").asString()).isEqualTo("exp@bumpinto.test");
+        JsonNode seat = out.get("participations").get(0);
+        assertThat(seat.get("sessionName").asString()).isEqualTo("Disa aktarma");
+        assertThat(seat.get("sessionSlug").asString()).isNotBlank();
+        assertThat(seat.get("host").asBoolean()).isTrue();
+        assertThat(seat.get("lat").asDouble()).isEqualTo(51.44); // ~1.1 km'ye YUVARLANMIS
+        assertThat(seat.get("lng").asDouble()).isEqualTo(5.47);
+        assertThat(seat.get("travelMode").asString()).isEqualTo("CAR");
+        assertThat(seat.get("likes").asLong()).isZero();
+        assertThat(seat.get("passes").asLong()).isZero();
+        assertThat(seat.get("voted").asBoolean()).isFalse();
+
+        // 1/saat: ikinci istek 429 ve Retry-After penceredendir (60 degil).
+        MvcResult blocked = mvc.perform(get("/api/me/export").cookie(at))
+                .andExpect(status().isTooManyRequests()).andReturn();
+        assertThat(blocked.getResponse().getHeader("Retry-After")).isEqualTo("3600");
     }
 }

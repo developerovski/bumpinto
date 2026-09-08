@@ -54,8 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "bumpinto.security.google-client-id=test-client-id",
         "bumpinto.security.token-secret=test-only-secret-not-a-real-key-0123456789",
         "bumpinto.security.token-ttl=12h",
-        "bumpinto.providers.foursquare-key=test-only-fsq-key",
-        "bumpinto.providers.google-key=test-only-google-key",
+        "bumpinto.venues.sources.foursquare.key=test-only-fsq-key",
         "bumpinto.cors.allowed-origins=http://localhost:5173",
         "bumpinto.cookies.secure=false",
         "bumpinto.cookies.domain="
@@ -75,6 +74,8 @@ class ApiHappyPathTest {
     // Mockito varsayilan yaniti Optional donen metotlarda Optional.empty() — gercek Nominatim
     // adapteri baglamda kalsaydi find-venues her cagrida aga cikardi (yasak: gercek ag cagrisi).
     @MockitoBean ReverseGeocodePort geocoder;
+    // NominatimGeocoder artik GeocodePort'u da uygular; GeocodeController'in ikinci bagimliligi.
+    @MockitoBean com.bumpinto.domain.port.GeocodePort forwardGeocoder;
 
     private static final String JSON = "application/json";
 
@@ -92,7 +93,7 @@ class ApiHappyPathTest {
         when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(
                 IntStream.range(0, 6).mapToObj(i -> new VenueCandidate("foursquare", "f" + i,
                         "Mekan " + i, new GeoPoint(51.54 + i * 0.001, 5.5),
-                        4.9 - i * 0.1, 2, null, "https://maps/" + i)).toList());
+                        4.9 - i * 0.1, 2, null)).toList());
 
         // 0 — mobil giriş: Google id_token → backend access token (body'de)
         String loginBody = mvc.perform(post("/api/auth/google")
@@ -230,7 +231,7 @@ class ApiHappyPathTest {
         when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(
                 IntStream.range(0, 6).mapToObj(i -> new VenueCandidate("foursquare", "n" + i,
                         "Mekan " + i, new GeoPoint(51.54 + i * 0.001, 5.5),
-                        4.9 - i * 0.1, 2, null, "https://maps/n" + i)).toList());
+                        4.9 - i * 0.1, 2, null)).toList());
 
         String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
                         .contentType(JSON).content("{\"idToken\":\"gid3\"}"))
@@ -316,7 +317,7 @@ class ApiHappyPathTest {
                 .thenReturn(new GoogleIdVerifier.GoogleUser("solo@bumpinto.test", "Mehmet"));
         when(provider.search(any(), anyDouble(), any(), anyInt())).thenReturn(List.of(
                 new VenueCandidate("foursquare", "f1", "Café Berlage", new GeoPoint(51.44, 5.47),
-                        4.6, 2, null, "https://maps/1")));
+                        4.6, 2, null)));
         String accessToken = json.readTree(mvc.perform(post("/api/auth/google")
                         .contentType(JSON).content("{\"idToken\":\"gid2\"}"))
                 .andReturn().getResponse().getContentAsString()).get("accessToken").asString();

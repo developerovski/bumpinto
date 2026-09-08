@@ -19,6 +19,10 @@
 # .sh uzantısını YAKALAMAZ; ayrı satır şart.
 env.sh
 
+# Spring Boot calisma dizinindeki ./config/ klasorunu otomatik yukler ve classpath'i ezer:
+# gercek yerel degerler backend/config/application-local.yml'de durur, depoya girmez.
+backend/config/
+
 # Vite build profilleri — sır değil, yalnız public API/WS URL'leri taşır (Plan 3):
 !frontend/web/.env.development
 !frontend/web/.env.preprod

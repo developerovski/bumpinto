@@ -47,7 +47,7 @@ class SessionQueriesTest {
 
     void venueIn(Session session) {
         deck.saveVenues(List.of(new Venue(UUID.randomUUID(), session.id(), "fsq", "e1", "Kafe",
-                new GeoPoint(51.7, 5.3), 4.5, 2, null, null, 0)));
+                new GeoPoint(51.7, 5.3), 4.5, 2, null, 0)));
     }
 
     Session session;
@@ -91,7 +91,7 @@ class SessionQueriesTest {
         ayse = sessions.saveParticipant(participantIn(session, false).doneAt(NOW));
         nonFinisher = manualPointIn(session);
         Venue venue = new Venue(UUID.randomUUID(), session.id(), "fsq", "e1", "Kafe",
-                new GeoPoint(51.7, 5.3), 4.5, 2, null, null, 0);
+                new GeoPoint(51.7, 5.3), 4.5, 2, null, 0);
         deck.saveVenues(List.of(venue));
         likedVenueId = venue.id();
         deck.saveSwipe(session.id(), likedVenueId, host.id(), true);

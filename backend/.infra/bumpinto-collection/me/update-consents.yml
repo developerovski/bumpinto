@@ -1,0 +1,49 @@
+info:
+  name: Update Consents
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/me/consents"
+  auth:
+    mode: bearer
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "location": true,
+        "microphone": false,
+        "analytics": false
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("updatedAt damgalanir", function() {
+          expect(res.body.updatedAt).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    KVKK m.5/1 acik riza + Play Data safety. **Varsayilan HEPSI false** — hicbir riza
+    ornek olarak isaretli gelmez.
+
+    Uc anahtar da ZORUNLU: eksik alan "degistirme" degil, BELIRSIZ rizadir (400).
+
+    Riza yazma neden `PUT /api/me`'de degil: o uc tam-yerine-koymadir; riza alani
+    oraya konsaydi yalnizca adini guncelleyen bir istemci uc rizayi da sessizce
+    false'a cekerdi.
+
+    `analytics=false` iken sunucu hicbir analitik olayi iletmez.
+
+    `version` riza METNININ surumudur; metin degisip surum artinca istemci riza
+    ekranini yeniden gosterir (kullanicinin kaydettigi surum eskidir).

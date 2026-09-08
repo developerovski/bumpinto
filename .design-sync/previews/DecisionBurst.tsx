@@ -1,6 +1,8 @@
 import { DecisionBurst, VenueCard } from "@bumpinto/web";
 import { KARAKOY, MODA, TRAVEL } from "./_fixtures";
 
+// ŞEKİL DEĞİŞTİ: `KARAKOY`/`MODA`/`TRAVEL` artık `travel[]` taşıyor, arkadaki `VenueCard`
+// gövdesi eski çip+rozet yerine `TravelBars` basıyor — patlama animasyonu AYNI.
 // VenueDeck.tsx'in kendi literal'leri (deste yuvası + ön kart eğimi) — yeni arbitrary değer yok.
 const DECK_WRAP = "relative h-[27.5rem] flex-none [&>*]:!absolute [&>*]:inset-x-0 [&>*]:mx-auto";
 const D1 = "transform-[rotate(-1.6deg)] shadow-sh2";

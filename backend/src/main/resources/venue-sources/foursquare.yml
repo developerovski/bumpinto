@@ -1,0 +1,24 @@
+id: foursquare
+# FSQ 24 HANELI kimlik ister; 5 haneli eski taksonomi kodu HTTP 400 "invalid id" verir
+# (2026-09-06 olcumu). Bu desen o hatayi acilista yakalar.
+idPattern: "^[0-9a-f]{24}$"
+categories:
+  # --- Gercek istekle DOGRULANMIS bes kimlik (2026-09-06, ll=51.8,4.85 r=25km) ---
+  COFFEE: [4bf58dd8d48988d1e0931735]      # Coffee Shop (Cafe DEGIL: NL'de cafe = bruin kafe/bar)
+  FOOD: [4d4b7105d754a06374d81259]        # Food (ust duzey; "Restaurant" kimligi bos donuyor)
+  BAR: [4bf58dd8d48988d116941735]         # Bar
+  WALK: [4bf58dd8d48988d163941735]        # Park
+  ACTIVITY: [4bf58dd8d48988d1e4931735]    # Bowling Alley
+  # --- Asagidaki 10 kimlik v2 taksonomisinden okundu, HENUZ CANLI ISTEKLE DOGRULANMADI ---
+  # FoursquarePremiumContractTest (gercek anahtar) uymayan kimligi KIRMIZI yapar; yorumdaki ad
+  # yanittaki categories[].name ile eslesmeli.
+  NIGHTLIFE: [4d4b7105d754a06376d81259]   # Nightlife Spot (ust duzey)
+  MUSEUM: [4bf58dd8d48988d181941735]      # Museum
+  ART: [4bf58dd8d48988d1e2931735]         # Art Gallery
+  CINEMA: [4bf58dd8d48988d17f941735]      # Movie Theater
+  FITNESS: [4bf58dd8d48988d175941735]     # Gym / Fitness Center
+  SWIM: [4bf58dd8d48988d105941735]        # Pool
+  HIKE: [4bf58dd8d48988d159941735]        # Trail
+  THEME_PARK: [4bf58dd8d48988d182941735]  # Theme Park
+  GAMES: [4bf58dd8d48988d1e1931735]       # Arcade
+  ADVENTURE: [4f4528bc4b90abdf24c9de85]   # Athletics & Sports

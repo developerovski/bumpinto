@@ -14,7 +14,7 @@ function Col({ children }: { children: ReactNode }) {
   return <div style={COL}>{children}</div>;
 }
 
-// travelMinutes katılımcı UUID'siyle anahtarlı; etiketler DeckScreen'deki eşlemenin aynısı.
+// travel[] katılımcı UUID'sini participantId olarak taşır; etiketler DeckScreen'deki eşlemenin aynısı.
 const SELF = "5b0e2a4c-3f77-4a19-9d21-0f6c8a1e5d33";
 const ELIF = "c41d9b6e-2a08-4f5b-8e72-1b93d4a7c610";
 const LABELS = { [SELF]: "Sana", [ELIF]: "Elif" };
@@ -30,7 +30,10 @@ const MODA = {
   priceLevel: 2,
   mapsUrl: "https://maps.google.com/?q=Moda+Sahil",
   deckOrder: 0,
-  travelMinutes: { [SELF]: 28, [ELIF]: 34 },
+  travel: [
+    { participantId: SELF, minutes: 28 },
+    { participantId: ELIF, minutes: 34 },
+  ],
 };
 
 const KARAKOY = {
@@ -42,7 +45,10 @@ const KARAKOY = {
   priceLevel: 3,
   mapsUrl: "https://maps.google.com/?q=Karak%C3%B6y+Lokantas%C4%B1",
   deckOrder: 1,
-  travelMinutes: { [SELF]: 19, [ELIF]: 22 },
+  travel: [
+    { participantId: SELF, minutes: 19 },
+    { participantId: ELIF, minutes: 22 },
+  ],
 };
 
 const BEBEK = {
@@ -53,11 +59,14 @@ const BEBEK = {
   rating: 4.4,
   priceLevel: 2,
   deckOrder: 2,
-  travelMinutes: { [SELF]: 41, [ELIF]: 26 },
+  travel: [
+    { participantId: SELF, minutes: 41 },
+    { participantId: ELIF, minutes: 26 },
+  ],
 };
 
 /** W3 · destenin ön kartı: fotoğraf yoksa ambient gradyan + monogram,
-    altında ★ / € satırı ve katılımcı başına yol süresi rozetleri. */
+    altında ★ / € satırı ve katılımcı başına yol çubuğu. */
 export function Polaroid() {
   return (
     <Col>

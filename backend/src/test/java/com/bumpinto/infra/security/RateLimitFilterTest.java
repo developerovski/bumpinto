@@ -1,12 +1,14 @@
 package com.bumpinto.infra.security;
 
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -19,16 +21,7 @@ class RateLimitFilterTest {
 
     /** Uretim yolu: filtre AppProps'tan kurulur — varsayilan GUVENLI olmali. */
     static AppProps props(boolean trustForwardedFor) {
-        return new AppProps(
-                new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
-                        Duration.ofHours(12)),
-                new AppProps.Providers("", ""),
-                new AppProps.Cors(List.of()),
-                new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(trustForwardedFor),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+        return TestProps.of(new AppProps.RateLimit(trustForwardedFor));
     }
 
     static MockHttpServletRequest post(String ip) {
@@ -149,6 +142,84 @@ class RateLimitFilterTest {
         assertCapacity(filter, 3, "POST", FIND_VENUES);
         assertCapacity(filter, 10, "POST", "/api/sessions");
         assertCapacity(filter, 120, "GET", "/api/sessions/x7k2m"); // catch-all
+        assertCapacity(filter, 30, "POST", "/api/geocode");
+        // R-B9: kod ucu KENDI kovasinda; catch-all'a duserse kaba kuvvet 10 degil 120/dk olurdu.
+        assertCapacity(filter, 10, "GET", "/api/sessions/by-code/X7K2M");
+        // R-B10: OG karti /api ALTINDA DEGIL — kendi politikasi olmasa 240'lik FALLBACK'te kalirdi.
+        assertCapacity(filter, 60, "GET", "/og/x7k2m.png");
+    }
+
+    /**
+     * Dışa aktarma kovası SAATLİKTİR (R-B6): dakikalık bir pencere 60 dosya/saat demekti.
+     * Pencere yalnızca politikada değil, kova ANAHTARINDA da taşınmalı — yoksa kovayı
+     * kuran {@code newBucket} onu göremez ve sessizce 1 dakikaya düşer.
+     */
+    @Test
+    void exportBucketRefillsHourlyNotEveryMinute() throws Exception {
+        RateLimitFilter.Policy export = RateLimitFilter.defaultPolicies().stream()
+                .filter(p -> p.id().equals("export")).findFirst().orElseThrow();
+        assertThat(export.capacity()).isEqualTo(1);
+        assertThat(export.window()).isEqualTo(Duration.ofHours(1));
+
+        RateLimitFilter filter = new RateLimitFilter(List.of(export), false);
+        assertCapacity(filter, 1, "GET", "/api/me/export");
+        // Retry-After penceredendir: saatlik kovaya "60 sn sonra dene" yeniden deneme fırtınasıdır.
+        MockHttpServletResponse blocked = new MockHttpServletResponse();
+        filter.doFilter(request("GET", "/api/me/export"), blocked, new MockFilterChain());
+        assertThat(blocked.getHeader("Retry-After")).isEqualTo("3600");
+    }
+
+    /**
+     * Kova ÖNBELLEĞİ penceresinden uzun yaşamalı. Caffeine girdiyi erken atarsa bir sonraki
+     * istek kovayı DOLU olarak yeniden kurar: tahliye bedava bir sıfırlamadır. Eski sabit
+     * 10 dk'lık TTL, 1 saatlik export kovasını 1/saat değil ~6/saat yapıyordu.
+     */
+    @Test
+    void bucketCacheOutlivesTheLongestPolicyWindow() {
+        Duration longest = RateLimitFilter.defaultPolicies().stream()
+                .map(RateLimitFilter.Policy::window).max(Comparator.naturalOrder()).orElseThrow();
+        assertThat(longest).isEqualTo(Duration.ofHours(1)); // export
+        assertThat(RateLimitFilter.bucketTtl(RateLimitFilter.defaultPolicies()))
+                .isGreaterThan(longest)
+                .isGreaterThan(Duration.ofMinutes(10)); // eski sabit TTL
+    }
+
+    /** TTL TÜRETİLİR: yarın 1 günlük bir politika eklenirse aynı hata sessizce geri gelmemeli. */
+    @Test
+    void bucketTtlFollowsAPolicyLongerThanAnyShippedToday() {
+        RateLimitFilter.Policy daily = new RateLimitFilter.Policy("daily", "GET",
+                Pattern.compile("^/api/x$"), 1, Duration.ofDays(1));
+        assertThat(RateLimitFilter.bucketTtl(List.of(daily))).isGreaterThan(Duration.ofDays(1));
+        // Politika listesi kısa olsa da FALLBACK'in penceresi hep hesaba katılır.
+        assertThat(RateLimitFilter.bucketTtl(List.of()))
+                .isGreaterThanOrEqualTo(RateLimitFilter.FALLBACK.window());
+    }
+
+    /**
+     * Dikiş testi: türetme doğru olsa bile Caffeine builder'ına BAĞLANMAMIŞ olabilir.
+     * İki farklı politika seti iki farklı TTL vermeli — builder'a sabit bir sayı yazılırsa
+     * (eski `Duration.ofMinutes(10)`) ikisi eşitlenir ve bu test kırılır.
+     */
+    @Test
+    void cacheIsBuiltWithTheDerivedTtlNotAHardcodedOne() {
+        List<RateLimitFilter.Policy> shipped = RateLimitFilter.defaultPolicies();
+        assertThat(new RateLimitFilter(shipped, false).configuredBucketTtl())
+                .isEqualTo(RateLimitFilter.bucketTtl(shipped));
+
+        List<RateLimitFilter.Policy> daily = List.of(new RateLimitFilter.Policy("daily", "GET",
+                Pattern.compile("^/api/x$"), 1, Duration.ofDays(1)));
+        assertThat(new RateLimitFilter(daily, false).configuredBucketTtl())
+                .isEqualTo(RateLimitFilter.bucketTtl(daily))
+                .isGreaterThan(Duration.ofDays(1));
+    }
+
+    /** Pencere alanı EKLENDİ; eski 4'lü ctor'un anlamı (1 dk) değişmemeli. */
+    @Test
+    void existingPoliciesKeepTheOneMinuteWindow() {
+        assertThat(TINY.window()).isEqualTo(Duration.ofMinutes(1));
+        assertThat(RateLimitFilter.FALLBACK.window()).isEqualTo(Duration.ofMinutes(1));
+        assertThat(RateLimitFilter.defaultPolicies()).filteredOn(p -> !p.id().equals("export"))
+                .allSatisfy(p -> assertThat(p.window()).isEqualTo(Duration.ofMinutes(1)));
     }
 
     /**

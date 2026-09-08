@@ -21,7 +21,7 @@ export default function TopBar() {
       </Link>
       <nav className="flex items-center gap-2.5">
         {status === "signed" && (
-          <NavLink to="/sessions" className={({ isActive }) => `${NAV_LINK} ${isActive ? "bg-sand text-ink" : "text-ink2"}`}>
+          <NavLink to="/sessions" className={({ isActive }) => `hidden lg:block ${NAV_LINK} ${isActive ? "bg-sand text-ink" : "text-ink2"}`}>
             {t("shell.sessions")}
           </NavLink>
         )}

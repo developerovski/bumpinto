@@ -1,0 +1,27 @@
+info:
+  name: Export My Data
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/me/export"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 ve attachment", function() {
+          expect(res.status).to.equal(200);
+          expect(res.headers["content-disposition"]).to.include("attachment");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    GDPR tasinabilirligi (R-B6). Tek istek, `Content-Disposition: attachment`.
+    Hiz siniri **1/saat/IP** — ikinci cagri 429 (`Retry-After: 3600`). Konumlar 2 ondalik
+    YUVARLANMISTIR (~1.1 km); baskasinin verisi govdede YOKTUR.

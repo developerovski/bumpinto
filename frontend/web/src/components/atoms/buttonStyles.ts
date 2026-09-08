@@ -18,8 +18,11 @@ export const buttonKinds = {
     "shadow-[0_10px_26px_rgba(222,36,86,0.35)]",
   /** DS .b-dg — tehlikeli aksiyon (çıkış yap). */
   danger: "bg-transparent text-[#c0392b] border-[#efc9c2]",
+  /** Artboard W18 `.danger` — hesabı sil: DOLU koyu kırmızı, gölgesiz. `danger` (saydam) çıkış
+      düğmesinin tonudur; ikisi ayrı eylem sınıfıdır. */
+  dangerSolid: "bg-danger text-white border-transparent shadow-none",
   /** Artboard `.b-gh` — Karar 1280 "Google Maps'te aç": inline ghost bağlantı. */
-  ghost: "bg-transparent text-ink border-line2",
+  ghost: "bg-transparent text-flame-deep border-transparent",
 };
 
 export const buttonAligns = {

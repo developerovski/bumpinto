@@ -1,17 +1,32 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import type { AppConfig } from "@bumpinto/shared";
+import { resetConfig, useConfigStore } from "../../store/configStore";
 import VenueCard from "./VenueCard";
+
+// Spec §11 — atıf artık config'ten gelir; testler kendi kaynak listesini seed eder.
+const CONFIG: AppConfig = {
+  mapEngine: "google",
+  tiles: { styleUrl: "https://example/style" },
+  sources: [
+    { id: "google", attributionKey: "attribution.google", attributionUrl: null, ratingScale: 5 },
+    { id: "foursquare", attributionKey: "attribution.foursquare", attributionUrl: null, ratingScale: 10 },
+  ],
+};
 
 // Tasarım denetimi bulgusu (2026-09-01): foto üstü rozet yerine artık kart altında gerçek atıf var.
 describe("VenueCard", () => {
-  it("fotoğrafsız kartta ambient gradyan + monogram var, gerçek atıf kart altında", () => {
+  afterEach(() => resetConfig());
+
+  it("fotoğrafsız kartta ambient gradyan + monogram var, sağlayıcı yoksa atıf basılmaz", () => {
     render(<VenueCard venue={{ id: "v1", name: "Café Berlage" }} />);
     expect(screen.getByText("cb")).toBeInTheDocument();
-    expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("provider verilince atıf yalnız o sağlayıcıya ait metni gösterir", () => {
+    useConfigStore.setState({ config: CONFIG });
     render(
       <VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "/p.jpg", provider: "FOURSQUARE" }} />,
     );
@@ -19,8 +34,9 @@ describe("VenueCard", () => {
     expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
   });
 
-  it("boş photoUrl fotoğrafsız sayılır — monogram var, atıf yine gösterilir", () => {
-    render(<VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "" }} />);
+  it("boş photoUrl fotoğrafsız sayılır — monogram var, provider'lı atıf yine gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
+    render(<VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "", provider: "GOOGLE" }} />);
     expect(screen.getByText("cb")).toBeInTheDocument();
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
   });
@@ -57,7 +73,16 @@ describe("VenueCard", () => {
   it("row varyantı meta satırında adalet rozetini gösterir (Liste modu 390)", () => {
     render(
       <VenueCard
-        venue={{ id: "v1", name: "Café Berlage", rating: 4.6, travelMinutes: { p1: 30, p2: 25, p3: 35 } }}
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          rating: 4.6,
+          travel: [
+            { participantId: "p1", minutes: 30 },
+            { participantId: "p2", minutes: 25 },
+            { participantId: "p3", minutes: 35 },
+          ],
+        }}
         variant="row"
         travel={{ labels: { p1: "Sen", p2: "Ayşe", p3: "Kerem" }, selfId: "p1" }}
       />,
@@ -65,14 +90,22 @@ describe("VenueCard", () => {
     expect(screen.getByText("Herkese ~aynı")).toBeInTheDocument();
   });
 
-  // Kod kalitesi incelemesi: rozet null iken sarmalayıcı div boş kalıp flex-col gap'ini
-  // yiyordu (SOLO / travelMinutes yok). Artık FairnessBadge doğrudan render edilir.
-  it("adalet rozeti yokken boş sarmalayıcı bırakmaz (SOLO / travelMinutes yok)", () => {
-    const { container } = render(<VenueCard venue={{ id: "v1", name: "Café Berlage" }} />);
-    expect(container.querySelector(".flex.flex-wrap.items-center.gap-2")).toBeNull();
+  // Kod incelemesi: bu test container.querySelector(".flex.flex-wrap.items-center.gap-2") arıyordu
+  // ama varsayılan (polaroid) dalını render ediyordu — o seçici YALNIZ "row" dalında var, test
+  // T6'dan ÖNCE de boşa geçiyordu. row dalına çevrilip RangeBar'ın gerçekten bastığı doğrulanır.
+  it("row varyantı meta satırında RangeBar'ı gerçekten basar", () => {
+    render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage", travel: [{ participantId: "p1", minutes: 20 }] }}
+        variant="row"
+        travel={{ labels: { p1: "Sen" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getByTestId("range-dot-p1")).toBeInTheDocument();
+    expect(screen.getByText("~20 dk")).toBeInTheDocument();
   });
 
-  // Kart anatomisi §4.9: foto/monogram → ad → FitLine → ★ · fiyat · semt → rozet → çipler → atıf.
+  // Kart anatomisi §4.9: foto/monogram → ad → FitLine → ★ · fiyat · semt → saat → tagline → TravelBars → atıf.
   it("activity + categories verilince uyum satırını başlıktan hemen sonra gösterir", () => {
     render(
       <VenueCard
@@ -135,6 +168,7 @@ describe("VenueCard", () => {
 
   // Kart anatomisi §4.9: DOM sırası foto → ad → FitLine → meta → saat → atıf'tır (tek geçişte).
   it("kart anatomisi DOM sırası §4.9'a birebir uyar", () => {
+    useConfigStore.setState({ config: CONFIG });
     const { container } = render(
       <VenueCard
         venue={{
@@ -221,5 +255,99 @@ describe("VenueCard", () => {
       />,
     );
     expect(screen.queryByText("Doğa yürüyüşü")).not.toBeInTheDocument();
+  });
+
+  // Artboard 2015: saat AYRI satır değil, TEK `.mi` satırının parçası.
+  it("saat bilgisi puan/fiyat/semt ile AYNI meta satırında yaşar", () => {
+    const { container } = render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage", rating: 4.6, priceLevel: 2, hoursToday: "08:00–18:00" }}
+      />,
+    );
+    const meta = [...container.querySelectorAll("div")].find((d) =>
+      (d.textContent ?? "").startsWith("★ 4,6") && d.className.includes("flex-wrap"),
+    );
+    expect(meta?.textContent).toContain("Bugün 08:00–18:00");
+    expect(meta?.className).toContain("text-[0.75rem]");
+  });
+
+  // Artboard 2013 + 2023: rozet başlık satırında, alt satır lead'i TEKRAR ETMEZ.
+  it("fairnessBadge ile adalet rozeti başlık satırında basılır ve yol satırında tekrar etmez", () => {
+    render(
+      <VenueCard
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+          ],
+        }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+        fairnessBadge
+      />,
+    );
+    expect(screen.getAllByText("Herkese ~aynı")).toHaveLength(1);
+    expect(screen.getByText(/fark 5 dk/)).toBeInTheDocument();
+  });
+
+  it("fairnessBadge geçilmezse rozet basılmaz, lead eskisi gibi yol satırında kalır", () => {
+    render(
+      <VenueCard
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          travel: [
+            { participantId: "p1", minutes: 25 },
+            { participantId: "p2", minutes: 30 },
+          ],
+        }}
+        travel={{ labels: { p1: "Sen", p2: "Ayşe" }, selfId: "p1" }}
+      />,
+    );
+    expect(screen.getAllByText("Herkese ~aynı")).toHaveLength(1);
+  });
+
+  // Artboard 2111 / 2005 — ön kart fotoğrafı 390'da 210px, 1280'de 240px; satır-içi ölçü BASILMAZ.
+  it("photoClassName verilince yükseklik sınıfla gelir, style ile değil", () => {
+    const { container } = render(
+      <VenueCard venue={{ id: "v1", name: "Café Berlage" }} photoClassName="h-[13.125rem] lg:h-[15rem]" />,
+    );
+    const photo = container.querySelector(".h-\\[13\\.125rem\\]") as HTMLElement | null;
+    expect(photo).toBeTruthy();
+    expect(photo?.style.height).toBe("");
+  });
+
+  /**
+   * Artboard 4368/4383: oylama bitince başlık satırındaki seçim dairesi "N oy" rozetine döner —
+   * daire artık bir şey ifade etmiyor. `footer` ise `.f-trail`'in kartın İÇİNDE yaşamasını
+   * sağlar (eskiden kartın altında kardeş bir öğeydi).
+   */
+  it("voteCount verilince seçim dairesinin yerini 'N oy' rozeti alır ve footer kart içinde basılır", () => {
+    const { container } = render(
+      <VenueCard
+        venue={{ id: "v1", name: "Café Berlage" }}
+        variant="row"
+        selected
+        voteCount={1}
+        footer={<span>toplam ~90 dk</span>}
+      />,
+    );
+    expect(screen.getByText("1 oy")).toBeInTheDocument();
+    // Seçim dairesi (PICK_BASE 26px) artık basılmaz.
+    expect(container.innerHTML).not.toContain("w-[1.625rem]");
+    // footer kartın kendi kutusunun içindedir, kardeşi değil.
+    expect(container.firstElementChild?.textContent).toContain("toplam ~90 dk");
+  });
+
+  // Artboard `.pol` (24/10) ve `.card` (22/12) AYNI bileşenin iki yüzeyi — tek prop, çünkü
+  // `className` ile eklenirse hangi `rounded-*`/`p-*` kazanacağını Tailwind çıktı sırası belirler.
+  it("surface='card' yarıçap + iç boşluğu artboard `.card` değerine çevirir", () => {
+    const { container } = render(
+      <VenueCard venue={{ id: "v1", name: "Café Berlage" }} surface="card" />,
+    );
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.className).toContain("rounded-card");
+    expect(card.className).not.toContain("rounded-3xl");
   });
 });

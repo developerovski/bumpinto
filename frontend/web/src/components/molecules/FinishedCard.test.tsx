@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FinishedCard from "./FinishedCard";
+import { useSessionStore } from "../../store/sessionStore";
+import { useSocialStore } from "../../store/socialStore";
 
 const people = [
   { id: "me", displayName: "Mehmet", host: true, hasLocation: true, deckDone: true, manual: false },
@@ -23,7 +25,9 @@ describe("FinishedCard", () => {
 
   it("gönderilmeden önce başlık beğeni sayısını söyler, gönder butonu var", () => {
     render(<FinishedCard {...base} />);
-    expect(screen.getByText("4 mekan beğendin")).toBeInTheDocument();
+    // `Trans` başlığı iki düğüme böler ("… <Highlight>beğendin</Highlight>") — metin
+    // parçalanmış olduğu için başlığın erişilebilir adına bakıyoruz.
+    expect(screen.getByRole("heading", { name: "4 mekan beğendin" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Beğenilerimi gönder" })).toBeInTheDocument();
   });
 
@@ -35,15 +39,38 @@ describe("FinishedCard", () => {
 
   it("gönderdikten sonra kişi satırları: bitiren story-ring, kaydıran rozetli", () => {
     render(<FinishedCard {...base} sent />);
-    expect(screen.getByText("Kerem")).toBeInTheDocument();
-    expect(screen.getByText("Kaydırıyor")).toBeInTheDocument();
+    // "Kerem" başlıkta da (fosforlu kalem) geçiyor — burada aranan ROSTER satırı.
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.some((r) => r.textContent?.includes("Kerem"))).toBe(true);
+    // Artboard 3455/3462: rozet metinleri küçük harf ("bitti" / "kaydırıyor").
+    expect(screen.getByText("kaydırıyor")).toBeInTheDocument();
   });
 
   it("gönderdikten sonra onay rozeti ve 'kaydırıyor' başlığı görünür", () => {
     render(<FinishedCard {...base} sent />);
     expect(screen.getByText("Beğenilerin gönderildi")).toBeInTheDocument();
-    expect(screen.getByText("Şimdi bekliyoruz · Kerem kaydırıyor")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bekleyenleri dürt" })).toBeInTheDocument();
+    // Artboard 3437: bekleyenin adı fosforlu kalemle — başlık artık iki eleman parçasına bölünür.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Şimdi bekliyoruz · Kerem kaydırıyor");
+    // Fosforlu kalem (Highlight atomu) başlığın İÇİNDE — roster satırındaki "Kerem" ile karışmasın.
+    expect(screen.getByRole("heading", { level: 1 }).querySelector(".inline-block")).toHaveTextContent("Kerem");
+  });
+
+  /* Artboard 3442-3445: roster kartının tepesinde "Kim nerede" + "N / M bitti" sayacı. */
+  it("roster başlığı ve bitiren sayacı basılır", () => {
+    render(<FinishedCard {...base} sent />);
+    expect(screen.getByText("Kim nerede")).toBeInTheDocument();
+    expect(screen.getByText("2 / 3 bitti")).toBeInTheDocument();
+  });
+
+  /* Dürtme paylaş-linki DEĞİL: gerçek uç nokta (`socialStore.nudge`), adla etiketli. */
+  it("dürtme butonu gerçek dürtme uç noktasını çağırır", () => {
+    const nudge = vi.fn();
+    useSocialStore.setState({ nudge, nudgedAt: {} });
+    useSessionStore.setState({ slug: "x7k2m" });
+    render(<FinishedCard {...base} sent />);
+    expect(screen.queryByRole("button", { name: "Bekleyenleri dürt" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Kerem'i dürt" }));
+    expect(nudge).toHaveBeenCalledWith("x7k2m", "k", "Kerem");
   });
 
   it("herkes bitirince başlık 'diğerleri bekliyor' değil, 'herkes bitirdi' der", () => {

@@ -1,10 +1,28 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AppConfig } from "@bumpinto/shared";
+import { resetConfig, useConfigStore } from "../../store/configStore";
 import VenueBrowser from "./VenueBrowser";
 
+// Spec §11 — atıf config'ten gelir.
+const CONFIG: AppConfig = {
+  mapEngine: "google",
+  tiles: { styleUrl: "https://example/style" },
+  sources: [
+    { id: "google", attributionKey: "attribution.google", attributionUrl: null, ratingScale: 5 },
+    { id: "foursquare", attributionKey: "attribution.foursquare", attributionUrl: null, ratingScale: 10 },
+  ],
+};
+
 const venues = [
-  { id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0, travelMinutes: { h: 30, a: 28 } },
-  { id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1, travelMinutes: { h: 45, a: 40 } },
+  {
+    id: "v1", name: "Adil Kahve", rating: 4.0, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0,
+    travel: [{ participantId: "h", minutes: 30 }, { participantId: "a", minutes: 28 }],
+  },
+  {
+    id: "v2", name: "Puanlı Kahve", rating: 4.8, priceLevel: 1, lat: 51.5, lng: 5.4, deckOrder: 1,
+    travel: [{ participantId: "h", minutes: 45 }, { participantId: "a", minutes: 40 }],
+  },
 ];
 const people = [
   { id: "h", displayName: "Mehmet", host: true, hasLocation: true, deckDone: false, manual: false, approxLocation: { lat: 51.7, lng: 5.3 } },
@@ -22,11 +40,26 @@ const base = {
 };
 
 describe("VenueBrowser", () => {
+  afterEach(() => resetConfig());
+
   it("390: harita SEKME AÇILANA KADAR mount edilmez; ghost 'Haritada gör' açar", async () => {
     render(<VenueBrowser {...base} mode="host" />);
     expect(screen.queryByTestId("mapview")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Haritada gör" }));
     expect(await screen.findByTestId("mapview")).toBeInTheDocument();
+  });
+
+  /* Düğme İKİ YÖNLÜ olmalı: tek yönlü olduğu sürece 390'da harita açıldıktan sonra listeye
+     dönmenin hiçbir yolu yoktu (kullanıcı bulgusu 2026-09-08). */
+  it("390: 'Listede gör' haritadan listeye GERİ döndürür", async () => {
+    render(<VenueBrowser {...base} mode="host" />);
+    fireEvent.click(screen.getByRole("button", { name: "Haritada gör" }));
+    await screen.findByTestId("mapview");
+    /* Görünürlük CSS ile (jsdom stil uygulamaz) — sözleşme etiketin GİDİŞ-DÖNÜŞ yapmasıdır:
+       harita açıkken "Listede gör", tıklayınca yeniden "Haritada gör". */
+    fireEvent.click(screen.getByRole("button", { name: "Listede gör" }));
+    expect(screen.getByRole("button", { name: "Haritada gör" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Listede gör" })).not.toBeInTheDocument();
   });
 
   it("grup modunda seçim aksiyonu yok; SOLO'da seçili satırın altında onay kartı var", () => {
@@ -138,20 +171,65 @@ describe("VenueBrowser", () => {
     expect(screen.getAllByText(/önce herkese en adil olanlar/)).toHaveLength(1);
   });
 
-  it("sağlayıcı atfı listede görünür (provider bilinmiyorsa iki metin)", () => {
+  /** Artboard W3c 1693: SOLO'da kaydırılacak deste YOK — grup kopyası oraya uymuyordu. */
+  it("SOLO'da el yazısı not seçime çağırır, adalet kopyası basılmaz", () => {
+    render(<VenueBrowser {...base} mode="solo" />);
+    expect(screen.getByText("kaydırmak yok, beğendiğini seç →")).toBeInTheDocument();
+    expect(screen.queryByText(/önce herkese en adil olanlar/)).not.toBeInTheDocument();
+  });
+
+  /** Artboard W3c 1645+: SOLO satırının sonunda "Bunu seç"; grupta satır aksiyonu YOK. */
+  it("SOLO: her satırda 'Bunu seç' düğmesi var ve onay kartını açar; grupta hiç yok", () => {
+    const { rerender } = render(<VenueBrowser {...base} mode="host" />);
+    expect(screen.queryAllByRole("button", { name: "Bunu seç" })).toHaveLength(0);
+    rerender(<VenueBrowser {...base} mode="solo" />);
+    const buttons = screen.getAllByRole("button", { name: "Bunu seç" });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[1]);
+    expect(screen.getByText("Seçimin")).toBeInTheDocument();
+    // Ad iki kez: satır başlığı + onay kartı — kart DOĞRU satırın altında açıldı.
+    expect(screen.getAllByText("Puanlı Kahve")).toHaveLength(2);
+  });
+
+  /** §4.6 çeşitlilik kapısı: uyum satırı ancak listede ≥2 FARKLI kategori varsa basılır. */
+  it("satırda uyum cümlesi — tek kategorili listede hiç basılmaz", () => {
+    const same = venues.map((v) => ({ ...v, category: "Café", activityType: "COFFEE" as const }));
+    const { rerender } = render(<VenueBrowser {...base} venues={same} mode="host" />);
+    expect(screen.queryByText(/Kahve için/)).not.toBeInTheDocument();
+
+    const mixed = [
+      { ...venues[0], category: "Café", activityType: "COFFEE" as const },
+      { ...venues[1], category: "Bakery", activityType: "COFFEE" as const },
+    ];
+    rerender(<VenueBrowser {...base} venues={mixed} mode="host" />);
+    expect(screen.getByText("Kahve için: café")).toBeInTheDocument();
+    expect(screen.getByText("Kahve değil: bakery")).toBeInTheDocument();
+  });
+
+  /** Kategori artık ÜSTLÜK olarak da basılmaz — aynı bilgi `.f-fit` cümlesinde. */
+  it("satırda kategori üstlüğü yok", () => {
+    const withCategory = venues.map((v) => ({ ...v, category: "Café" }));
+    render(<VenueBrowser {...base} venues={withCategory} mode="host" />);
+    expect(screen.queryByText("Café")).not.toBeInTheDocument();
+  });
+
+  it("sağlayıcı bilinmiyorsa listede atıf hiç basılmaz", () => {
+    useConfigStore.setState({ config: CONFIG });
     render(<VenueBrowser {...base} mode="host" />);
-    expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("tüm mekanlar TEK sağlayıcıdaysa listede yalnız o sağlayıcının atfı gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const single = venues.map((v) => ({ ...v, provider: "GOOGLE" }));
     render(<VenueBrowser {...base} venues={single} mode="host" />);
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
     expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
-  it("karışık sağlayıcılı listede union — ikisi de gösterilir", () => {
+  it("karışık sağlayıcılı listede kümenin HER üyesi gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const mixed = [
       { ...venues[0], provider: "GOOGLE" },
       { ...venues[1], provider: "FOURSQUARE" },
@@ -161,12 +239,13 @@ describe("VenueBrowser", () => {
     expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
   });
 
-  // reviewer bulgusu: bir mekanın provider'ı eksikse "bilinmiyor" tek sağlayıcı SAYILMAZ.
-  it("bir mekanın sağlayıcısı bilinmiyorsa tek sağlayıcı varsayılmaz — ikisi de gösterilir", () => {
+  // Spec §11 — kümeye YALNIZ bilinen sağlayıcılar girer; eksik olan hiçbir satır eklemez.
+  it("bir mekanın sağlayıcısı bilinmiyorsa yalnız bilinenin atfı gösterilir", () => {
+    useConfigStore.setState({ config: CONFIG });
     const partial = [{ ...venues[0], provider: "GOOGLE" }, venues[1]];
     render(<VenueBrowser {...base} venues={partial} mode="host" />);
     expect(screen.getByText("Google Maps")).toBeInTheDocument();
-    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+    expect(screen.queryByText("Powered by Foursquare")).not.toBeInTheDocument();
   });
 
   it("satır meta çizgisinde semt orta nokta etiketiyle AYNIYSA tekrar edilmez", () => {
@@ -175,8 +254,31 @@ describe("VenueBrowser", () => {
       { ...venues[1], locality: "Helmond" },
     ];
     render(<VenueBrowser {...base} venues={withLocality} mode="host" midpointLabel="Eindhoven" />);
-    expect(screen.queryByText("Eindhoven")).not.toBeInTheDocument();
-    expect(screen.getByText("Helmond")).toBeInTheDocument();
+    // VenueMeta artık ★/fiyat/saat/semt'i TEK span'de birleştiriyor (R-W8) — tam eşleşme
+    // ("Eindhoven") artık hiçbir düğümü bulamaz (satır "★ 4,0 · €€ · Eindhoven" yazar), bastırma
+    // bozulsa bile bu iddia sessizce yeşil kalırdı; regex ile alt dize aranır.
+    expect(screen.queryByText(/Eindhoven/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Helmond/)).toBeInTheDocument();
+  });
+
+  it("satırda bugünün saati basılır", () => {
+    const withHours = [{ ...venues[0], hoursToday: "08:00 – 18:00" }, venues[1]];
+    render(<VenueBrowser {...base} venues={withHours} mode="host" />);
+    expect(screen.getByText(/Bugün 08:00 – 18:00/)).toBeInTheDocument();
+  });
+
+  it("tagline alanı yoksa o satır hiç çizilmez", () => {
+    render(<VenueBrowser {...base} mode="host" />);
+    expect(screen.queryByText(/Sakin, oturmalı/)).not.toBeInTheDocument();
+  });
+
+  // tagline (B-15/R-B7) openapi'de HENÜZ yok — cast şart. Yukarıdaki "yoksa yok" testi tek
+  // başına hiçbir şey kanıtlamıyordu (fixture'da zaten olmayan bir dizeydi); bu test alan
+  // GELİNCE gerçekten basıldığını gösterir.
+  it("tagline alanı VARSA basılır", () => {
+    const withTagline = [{ ...venues[0], tagline: "Sakin, oturmalı" } as never, venues[1]];
+    render(<VenueBrowser {...base} venues={withTagline} mode="host" />);
+    expect(screen.getByText("Sakin, oturmalı")).toBeInTheDocument();
   });
 
   it("konumu henüz gelmemiş TEK katılımcı: adlı pozitif not (§5.C)", () => {

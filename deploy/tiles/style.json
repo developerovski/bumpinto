@@ -1,0 +1,30 @@
+{
+  "version": 8,
+  "name": "BumpInto Protomaps",
+  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+  "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+  "sources": {
+    "protomaps": {
+      "type": "vector",
+      "url": "pmtiles://https://tiles.bumpinto.app/netherlands.pmtiles",
+      "attribution": "© <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a> · Protomaps"
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f6f4f0" } },
+    { "id": "earth", "type": "fill", "source": "protomaps", "source-layer": "earth",
+      "paint": { "fill-color": "#f6f4f0" } },
+    { "id": "landuse", "type": "fill", "source": "protomaps", "source-layer": "landuse",
+      "paint": { "fill-color": "#e9eee3" } },
+    { "id": "water", "type": "fill", "source": "protomaps", "source-layer": "water",
+      "paint": { "fill-color": "#c6d8e2" } },
+    { "id": "roads", "type": "line", "source": "protomaps", "source-layer": "roads",
+      "paint": { "line-color": "#e3ded6", "line-width": 1.2 } },
+    { "id": "buildings", "type": "fill", "source": "protomaps", "source-layer": "buildings",
+      "paint": { "fill-color": "#ece8e1" } },
+    { "id": "places", "type": "symbol", "source": "protomaps", "source-layer": "places",
+      "layout": { "text-field": ["get", "name"], "text-size": 12,
+                  "text-font": ["Noto Sans Regular"] },
+      "paint": { "text-color": "#5b5750", "text-halo-color": "#ffffff", "text-halo-width": 1 } }
+  ]
+}

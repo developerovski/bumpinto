@@ -10,7 +10,10 @@ const base = { slug: "x", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessi
   participants: [
     { id: "h", displayName: "Mehmet", host: true, hasLocation: true, deckDone: false, manual: false, locationLabel: "Den Bosch", approxLocation: { lat: 51.7, lng: 5.3 } },
     { id: "a", displayName: "Ayşe", host: false, hasLocation: true, deckDone: false, manual: false, locationLabel: "Someren", approxLocation: { lat: 51.39, lng: 5.71 } },
-  ], venues: [{ id: "v1", name: "Café Berlage", rating: 4.6, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0, travelMinutes: { h: 34, a: 28 } }],
+  ], venues: [{
+    id: "v1", name: "Café Berlage", rating: 4.6, priceLevel: 2, lat: 51.44, lng: 5.47, deckOrder: 0,
+    travel: [{ participantId: "h", minutes: 34 }, { participantId: "a", minutes: 28 }],
+  }],
   runoffVenueIds: [], voteTally: {}, midpoint: { lat: 51.5, lng: 5.5 }, radiusKm: 4 };
 
 function at(view: object) {
@@ -42,7 +45,8 @@ describe("SessionPage yönlendirme", () => {
   });
   it("BROWSING + host → Mekanlar (Karıştır)", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "h", host: true } });
-    expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeInTheDocument();
+    // İki kopya: 1280 başlığı (`DesktopOnly`) + 390 `.cta` (`MobileCta`) — bkz. VenuesPage.
+    expect(screen.getAllByRole("button", { name: "Karıştır ve kaydır" }).length).toBeGreaterThan(0);
   });
   it("BROWSING + davetli → salt okunur rozet", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "a", host: false } });
@@ -85,7 +89,8 @@ describe("SessionPage — ses dock'u", () => {
   });
   it("BROWSING + host → dock hâlâ görünür (aşama geçişi switch'i değiştirir, dock'u değil)", () => {
     at({ ...base, status: "BROWSING", viewer: { participantId: "h", host: true } });
-    expect(screen.getByRole("button", { name: "Karıştır ve kaydır" })).toBeInTheDocument();
+    // İki kopya: 1280 başlığı (`DesktopOnly`) + 390 `.cta` (`MobileCta`) — bkz. VenuesPage.
+    expect(screen.getAllByRole("button", { name: "Karıştır ve kaydır" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Sesli sohbeti başlat/ })).toBeInTheDocument();
   });
 

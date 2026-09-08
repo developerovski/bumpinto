@@ -1,9 +1,9 @@
 /* Ortak preview verisi — 67 bileşenin hepsi buradan besleniyor ki kartlar arasında
    aynı insanlar, aynı mekânlar, aynı UUID'ler görünsün.
 
-   NEDEN AYRI DOSYA: `travelMinutes` katılımcı UUID'siyle anahtarlı ve TravelInfo.labels
-   AYNI anahtarları kullanmak zorunda; ikisi ayrı ayrı yazıldığında rozet sessizce
-   "Yol" fallback'ine düşüyordu (ilk senkron dersi, NOTES).
+   NEDEN AYRI DOSYA: `travel[]`in her bacağındaki `participantId` ve TravelInfo.labels
+   AYNI anahtarları kullanmak zorunda; ikisi ayrı ayrı yazıldığında satır etiketi/nokta harfi
+   sessizce `t("travel.friend")` ("Arkadaşın") fallback'ine düşüyordu (ilk senkron dersi, NOTES).
 
    DİKKAT: converter preview'ı YALNIZ `previews/<BileşenAdı>.tsx` olarak arar
    (lib/emit.mjs:443), bu yüzden bu dosya bir bileşen sanılmaz. Ama `sourceKeyFor`
@@ -76,7 +76,8 @@ export const TRAVEL = {
   selfId: SELF,
 };
 
-/** Çapalı oturum: FairnessBadge çizilmez (mekânları kıyaslamak anlamsız). */
+/** Çapalı oturum: `fairnessLine`in baş cümlesi (`RangeBar`/`TravelBars`'ın `.rg-g` satırı)
+    çizilmez, olgu (aralık + fark) kalır — mekânları kıyaslamak anlamsız. */
 export const TRAVEL_ANCHORED = { ...TRAVEL, anchored: true };
 
 /* ---- mekânlar -------------------------------------------------------- */
@@ -96,7 +97,12 @@ export const MODA = {
   category: "Sahil",
   locality: "Kadıköy",
   activityType: "WALK" as const,
-  travelMinutes: { [SELF]: 28, [ELIF]: 34, [DENIZ]: 21 },
+  hoursToday: "08:00 – 18:00",
+  travel: [
+    { participantId: SELF, minutes: 28 },
+    { participantId: ELIF, minutes: 34 },
+    { participantId: DENIZ, minutes: 21 },
+  ],
 };
 
 export const KARAKOY = {
@@ -113,7 +119,12 @@ export const KARAKOY = {
   locality: "Karaköy",
   hoursToday: "12:00 – 23:00",
   activityType: "FOOD" as const,
-  travelMinutes: { [SELF]: 19, [ELIF]: 22, [DENIZ]: 26 },
+  tagline: "Sakin, oturmalı, iyi filtre kahve",
+  travel: [
+    { participantId: SELF, minutes: 19 },
+    { participantId: ELIF, minutes: 22 },
+    { participantId: DENIZ, minutes: 26 },
+  ],
 };
 
 export const BEBEK = {
@@ -128,7 +139,11 @@ export const BEBEK = {
   category: "Kahveci",
   locality: "Bebek",
   activityType: "COFFEE" as const,
-  travelMinutes: { [SELF]: 41, [ELIF]: 26, [DENIZ]: 33 },
+  travel: [
+    { participantId: SELF, minutes: 41 },
+    { participantId: ELIF, minutes: 26 },
+    { participantId: DENIZ, minutes: 33 },
+  ],
 };
 
 export const BALAT = {
@@ -143,7 +158,11 @@ export const BALAT = {
   category: "Kahveci",
   locality: "Balat",
   activityType: "COFFEE" as const,
-  travelMinutes: { [SELF]: 35, [ELIF]: 31, [DENIZ]: 17 },
+  travel: [
+    { participantId: SELF, minutes: 35 },
+    { participantId: ELIF, minutes: 31 },
+    { participantId: DENIZ, minutes: 17 },
+  ],
 };
 
 export const DECK = [MODA, KARAKOY, BEBEK, BALAT];

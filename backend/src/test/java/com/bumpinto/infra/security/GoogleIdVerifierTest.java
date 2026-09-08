@@ -2,6 +2,7 @@ package com.bumpinto.infra.security;
 
 import com.bumpinto.infra.config.AppConfig;
 import com.bumpinto.infra.config.AppProps;
+import com.bumpinto.support.TestProps;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -46,16 +47,8 @@ class GoogleIdVerifierTest {
     }
 
     static AppProps props(String googleClientId) {
-        return new AppProps(
-                new AppProps.Security(googleClientId, "0123456789abcdef0123456789abcdef",
-                        Duration.ofHours(12)),
-                new AppProps.Providers("", ""),
-                new AppProps.Cors(List.of()),
-                new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+        return TestProps.of(new AppProps.Security(googleClientId,
+                "0123456789abcdef0123456789abcdef", Duration.ofHours(12)));
     }
 
     static GoogleIdVerifier verifier() {

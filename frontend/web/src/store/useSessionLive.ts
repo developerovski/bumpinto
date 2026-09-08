@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { liveChannel, sessionTopic } from "./liveChannel";
 import { useSessionStore } from "./sessionStore";
+import { useToastStore } from "./toastStore";
 import { useVoiceStore, type EndReason } from "./voiceStore";
 
 /** Emniyet ağı — canlı kanalın YEDEĞİ, birincil yol değil. Olaylar STOMP'tan geliyor; 3 sn'lik
@@ -20,6 +21,17 @@ function endedReasonOf(body: string): EndReason | null {
   }
 }
 
+/** WS `nudged{fromParticipantId,toParticipantId}` (§2) — yalnız HEDEF kişide bildirim. */
+function nudgedMe(body: string, selfId: string | null): boolean {
+  if (!selfId) return false;
+  try {
+    const event = JSON.parse(body) as { type?: string; payload?: { toParticipantId?: string } };
+    return event.type === "nudged" && event.payload?.toParticipantId === selfId;
+  } catch {
+    return false;
+  }
+}
+
 export function useSessionLive(slug: string) {
   const bind = useSessionStore((s) => s.bind);
   const refresh = useSessionStore((s) => s.refresh);
@@ -33,6 +45,8 @@ export function useSessionLive(slug: string) {
       void refresh();
       const reason = endedReasonOf(body);
       if (reason) useVoiceStore.getState().ended(reason);
+      const selfId = useSessionStore.getState().view?.viewer?.participantId ?? null;
+      if (nudgedMe(body, selfId)) useToastStore.getState().push("presence.nudged", undefined, "flame");
     });
     // Abonelik zaten bağlanmadan ÖNCE kaydedildi ve kuruluş sırası "onConnect'te attach, sonra
     // onConnect callback'i" olduğu için buradaki tazeleme "abone olana kadarki boşluğu" değil,

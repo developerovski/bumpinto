@@ -4,9 +4,12 @@ import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
+import com.bumpinto.application.user.AccountIdentity;
+import com.bumpinto.infra.security.AppleIdVerifier;
 import com.bumpinto.infra.security.GoogleIdVerifier;
 import com.bumpinto.infra.security.SecurityConfig;
 import com.bumpinto.infra.security.TokenService;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -19,10 +22,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -47,16 +48,7 @@ class AuthControllerTest {
 
         @Bean
         AppProps appProps() {
-            return new AppProps(
-                    new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
-                            Duration.ofHours(12)),
-                    new AppProps.Providers("", ""),
-                    new AppProps.Cors(List.of("http://localhost:5173")),
-                    new AppProps.Cookies(false, ""),
-                    new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+            return TestProps.defaults();
         }
 
         @Bean
@@ -69,9 +61,22 @@ class AuthControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean GoogleIdVerifier google;
+    @MockitoBean AppleIdVerifier apple;
+    @MockitoBean AccountIdentity identity;
     @MockitoBean UserStorePort users;
     /** SecurityConfig.apiChain'in katilimci filtresi icin istedigi depo — bu testte kullanilmaz. */
     @MockitoBean SessionStorePort store;
+
+    /** Apple ayarli degilse uc VAR ama 503 doner: istemci "Apple ile devam et"i gizleyebilsin. */
+    @Test
+    void unconfiguredAppleIs503() throws Exception {
+        when(apple.configured()).thenReturn(false);
+
+        mvc.perform(post("/api/auth/apple").contentType("application/json")
+                        .content("{\"identityToken\":\"whatever\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("apple_not_configured"));
+    }
 
     /**
      * Suresi dolmus/baska audience'a basilmis id_token 500 dondurUyordu: JwtException hicbir

@@ -1,14 +1,20 @@
 package com.bumpinto.infra.config;
 
+import com.bumpinto.domain.session.ActivityType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 @ConfigurationProperties(prefix = "bumpinto")
-public record AppProps(Security security, Providers providers, Cors cors, Cookies cookies,
-                       RateLimit rateLimit, Quota quota, Geocode geocode,
-                       Voice voice, Turn turn) {
+public record AppProps(Security security, Apple apple, Cors cors, Cookies cookies, RateLimit rateLimit,
+                       Geocode geocode, Voice voice, Turn turn,
+                       Venues venues, MapProps map, Routing routing, Retention retention,
+                       Og og) {
 
     /** Sir tasiyan alanlar toString'de bu degerle degistirilir. */
     private static final String MASK = "***";
@@ -35,11 +41,35 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
         }
     }
 
-    public record Providers(String foursquareKey, String googleKey) {
+    /**
+     * Sign in with Apple. Bos birakilabilir: uygulama ayaga kalkar, /api/auth/apple 503 doner
+     * (Turn ile ayni fail-open dusuncesi) — Apple girisi yerelde anahtar ister, Google girisi
+     * istemez; acilis kapisi tum yerel gelistirmeyi kirardi. Prod'da ZORUNLU (App Store 4.8).
+     *
+     * @param servicesId web akisinin audience'i (Services ID), token uclarinda client_id
+     * @param bundleId   native iOS akisinin audience'i — Apple orada bundle id basar
+     * @param privateKey AuthKey_*.p8 icerigi (PEM); ES256 client secret bununla imzalanir
+     */
+    public record Apple(String servicesId, String bundleId, String teamId, String keyId,
+                        String privateKey) {
+
+        public boolean configured() {
+            return set(servicesId) && set(teamId) && set(keyId) && set(privateKey);
+        }
+
+        /** Kabul edilen audience'lar; ikisi de tanimliysa ikisi de gecerlidir. */
+        public List<String> audiences() {
+            return Stream.of(servicesId, bundleId).filter(Apple::set).toList();
+        }
+
+        private static boolean set(String value) {
+            return value != null && !value.isBlank() && !value.startsWith("${");
+        }
 
         @Override
         public String toString() {
-            return "Providers[foursquareKey=" + MASK + ", googleKey=" + MASK + "]";
+            return "Apple[servicesId=" + servicesId + ", bundleId=" + bundleId + ", teamId="
+                    + teamId + ", keyId=" + keyId + ", privateKey=" + MASK + "]";
         }
     }
 
@@ -58,35 +88,13 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
     }
 
     /**
-     * Saglayici kota takibi.
-     *
-     * @param refresh                  scheduler araligi; cache bundan tazeyse prob atilmaz
-     * @param googleMonthlyBudget      Nearby Search icin SERT aylik tavan. Google'in kota
-     *                                 telemetrisi yok (header yok, Cloud Monitoring gecikmeli
-     *                                 ve servis hesabi ister); kota = bu butce − yerel sayac.
-     *                                 Acilis modeli (spec §5.A.5): 1.000/ay = ucretsiz katman,
-     *                                 sonrasi $35/1000 (maske Enterprise). Asilirsa arama
-     *                                 yapilmaz, orkestrator Foursquare'e duser.
-     * @param googlePhotoMonthlyBudget Place Photo medya cagrilari icin AYRI sert tavan
-     *                                 (farkli SKU: 1.000 ucretsiz/ay, sonrasi $7/1000 —
-     *                                 oturum basina en buyuk kalem). Bitince foto cozulmez,
-     *                                 photoUrl null gelir ve kart monograma duser.
-     */
-    /**
-     * {@code refresh} YOK: periyodik kota olcumu (ProviderQuotaScheduler) kaldirildi, kota
-     * yalniz gercek aramalarin yanitindan ogreniliyor. Ayar kalsaydi hicbir seyi ayarlamayan
-     * bir dugme olurdu.
-     */
-    public record Quota(int googleMonthlyBudget, int googlePhotoMonthlyBudget) {
-    }
-
-    /**
      * Nominatim kullanim politikasi (operations.osmfoundation.org/policies/nominatim):
      * uygulamayi ve ILETISIM ADRESINI tasiyan bir User-Agent ZORUNLU, saniyede en fazla 1
      * istek, sonuclar onbelleklenir. Ucu de burada: {@code contact} User-Agent'a girer,
      * {@code minInterval} throttle'i besler, onbellek adapterdedir.
+     * {@code baseUrl}: kendi kumemizdeki Nominatim'e gecis tek env ile olur.
      */
-    public record Geocode(String contact, Duration minInterval) {
+    public record Geocode(String contact, Duration minInterval, String baseUrl) {
     }
 
     /** maxDuration: ses odasinin sert omru (spec K7). TURN kimligi de bu sureye baglanir. */
@@ -109,5 +117,90 @@ public record AppProps(Security security, Providers providers, Cors cors, Cookie
         public String toString() {
             return "Turn[keyId=" + keyId + ", apiToken=" + MASK + "]";
         }
+    }
+
+    /**
+     * Kaynak basina ayar. {@code budget} 0 = sinirsiz (yerel kaynaklar). {@code key} yalniz
+     * {@code requiresKey} kaynaklarda zorunlu — kontrol VenueSourceConfigValidator'da.
+     */
+    public record VenueSourceProps(boolean enabled, String key, int budget, String tier) {
+
+        /** Iki ctor var: Spring baglamayi kanonik olana yonlendirmek icin isaret sart. */
+        @ConstructorBinding
+        public VenueSourceProps {
+        }
+
+        /** Testler ve eski cagiranlar: tier verilmezse premium. */
+        public VenueSourceProps(boolean enabled, String key, int budget) {
+            this(enabled, key, budget, null);
+        }
+
+        /**
+         * {@code tier}: yalniz Foursquare okur. {@code premium} (varsayilan) foto/puan/saat ister ve
+         * cagri Premium faturalanir ($18,75/1k, ucretsiz payi YOK); {@code pro} yalniz temel alanlari
+         * ister, Sandbox'in aylik 500 ucretsiz Pro cagrisi icinde kalir — foto ve puan gelmez.
+         */
+        public boolean premium() {
+            return tier == null || !"pro".equalsIgnoreCase(tier.trim());
+        }
+
+        @Override
+        public String toString() {
+            return "VenueSourceProps[enabled=" + enabled + ", key=" + MASK
+                    + ", budget=" + budget + ", tier=" + tier + "]";
+        }
+    }
+
+    /**
+     * @param sources kaynak id -> ayar
+     * @param route   ActivityType -> virgullu kaynak id listesi; sira SABITTIR (spec §4)
+     */
+    public record Venues(Map<String, VenueSourceProps> sources,
+                         Map<ActivityType, String> route) {
+
+        /** "foursquare,open" -> [foursquare, open]; tanimsiz tur = bos liste. */
+        public List<String> routeFor(ActivityType type) {
+            String raw = route.get(type);
+            if (raw == null || raw.isBlank()) {
+                return List.of();
+            }
+            return Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty())
+                    .toList();
+        }
+
+        /** Kaynagin anahtari; kaynak tanimsizsa null (required() bunu reddeder). */
+        public String keyOf(String sourceId) {
+            VenueSourceProps p = sources.get(sourceId);
+            return p == null ? null : p.key();
+        }
+    }
+
+    /**
+     * Adi {@code MapProps}, yapilandirma yolu {@code bumpinto.map} (baglama BILESEN ADINDAN
+     * gelir, tip adindan degil). {@code Map} adi ayni dosyadaki {@code java.util.Map}'i golgelerdi.
+     */
+    public record MapProps(String engine, Tiles tiles) {
+
+        public record Tiles(String styleUrl) {
+        }
+    }
+
+    /** Profil basina OSRM base URL; bos dize = o profil kapali. */
+    public record Routing(Osrm osrm) {
+
+        public record Osrm(String car, String bicycle, String foot) {
+        }
+    }
+
+    public record Retention(boolean enabled) {
+    }
+
+    /**
+     * OG karti. {@code cache}: hem HTTP {@code max-age} hem surec ici onbellek TTL'i; varsayilan
+     * gereksinim dokumanindaki degerdir (24 s) ve daha uzunu TEK env ile acilir.
+     * {@code appBaseUrl}: davet linkinin ({@code /j/{slug}}) yasadigi kaynak.
+     * {@code publicBaseUrl}: bu API'nin dis adresi — PNG mutlak URL'i oradan kurulur.
+     */
+    public record Og(Duration cache, String appBaseUrl, String publicBaseUrl) {
     }
 }

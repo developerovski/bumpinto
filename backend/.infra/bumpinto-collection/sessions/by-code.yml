@@ -1,0 +1,26 @@
+info:
+  name: Session By Join Code
+  type: http
+  seq: 12
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/sessions/by-code/{{joinCode}}"
+  auth:
+    type: none
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 ya da 404", function() {
+          expect([200, 404]).to.include(res.status);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Kimlik GEREKMEZ: kod elle yazilir, yazan kisi henuz uye degildir. Yanit `SessionPreview`
+    (koordinat, katilimci id'si, mekan YOK) ve icinde `joinCode` **yoktur**.
+    Kucuk harf, bosluk ve tire kabul edilir; alfabe disi karakter (I, O, 0, 1) 404.
+    Hiz siniri **10/dk/IP**. `slug` sozlesmesi degismedi — davet linki hala `/j/{slug}`.

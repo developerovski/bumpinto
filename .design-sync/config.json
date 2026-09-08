@@ -19,7 +19,7 @@
   },
   "dtsPropsFor": {
     "JoinedCard": "  /** Katılan kişi (ParticipantDto); henüz katılmadıysa `null` — kart o zaman alt satırı basmaz.\n      Alt satır `locationLabel · displayName` olarak birleşir; etiket yoksa yalnız ad. */\n  self: {\n    id?: string;\n    displayName?: string;\n    locationLabel?: string;\n    host?: boolean;\n    hasLocation?: boolean;\n  } | null;",
-    "JoinFormFields": "  name: string;\n  address: string;\n  /** Konum bloğunun dalı — `granted` yeşil onay kartı, `denied` elle adres girişi. */\n  locationState: \"idle\" | \"granted\" | \"denied\";\n  /** Konum alındıysa etiketi (ör. \"Moda\"); yoksa `null`. */\n  locationLabel: string | null;\n  /** Yalnız konum bloğunu meşgul eder — formun geri kalanı açık kalır. */\n  locationBusy?: boolean;\n  /** Ulaşım türü — orta nokta ve yol süresi bununla hesaplanır. */\n  travelMode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\";\n  /** Hata metni; yoksa `null`. */\n  error: string | null;\n  /** Gönderim sürerken — submit butonu devre dışı. */\n  busy: boolean;\n  onNameChange: (value: string) => void;\n  onAddressChange: (value: string) => void;\n  onUseLocation: () => void;\n  onOtherAddress: () => void;\n  /** Verilirse \"haritadan seç\" düğmesi çıkar (harita AÇILINCA mount edilir). */\n  onPickOnMap?: () => void;\n  onTravelModeChange: (mode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\") => void;\n  onSubmit: (e: React.FormEvent) => void;"
+    "JoinFormFields": "  name: string;\n  address: string;\n  /** Konum bloğunun dalı — `granted` yeşil onay kartı, `denied` elle adres girişi. */\n  locationState: \"idle\" | \"granted\" | \"denied\";\n  /** Konum alındıysa etiketi (ör. \"Moda\"); yoksa `null`. */\n  locationLabel: string | null;\n  /** Yalnız konum bloğunu meşgul eder — formun geri kalanı açık kalır. */\n  locationBusy?: boolean;\n  /** Ulaşım türü — orta nokta ve yol süresi bununla hesaplanır. */\n  travelMode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\";\n  /** Hatanın KİMLİĞİ, metni değil — `kind` hatayı nereye koyacağını belirler:\n      `geocode` adres alanının hemen altında, `tooFar` (409) CTA'nın ÜSTÜNDE kendi\n      flame-wash kartında, `join` Katıl düğmesinin ALTINDA ortalanmış. Yoksa `null`. */\n  error: { kind: \"geocode\" | \"tooFar\" | \"join\"; message: string } | null;\n  /** Gönderim sürerken — submit butonu devre dışı. */\n  busy: boolean;\n  onNameChange: (value: string) => void;\n  onAddressChange: (value: string) => void;\n  onUseLocation: () => void;\n  onOtherAddress: () => void;\n  /** Verilirse \"haritadan seç\" düğmesi çıkar (harita AÇILINCA mount edilir). */\n  onPickOnMap?: () => void;\n  onTravelModeChange: (mode: \"WALK\" | \"BIKE\" | \"EBIKE\" | \"TRANSIT\" | \"CAR\") => void;\n  onSubmit: (e: React.FormEvent) => void;"
   },
   "overrides": {
     "ParticipantRow": {
@@ -100,10 +100,48 @@
     "PastSessionList": {
       "cardMode": "column"
     },
+    "LegalBlocks": {
+      "cardMode": "column"
+    },
+    "SettingsCard": {
+      "cardMode": "column"
+    },
+    "VoiceDock": {
+      "cardMode": "single",
+      "primaryStory": "AcikDisarida"
+    },
     "ProfilePrefs": {
       "cardMode": "column"
     },
     "MobileCta": {
+      "cardMode": "column"
+    },
+    "RangeBar": {
+      "cardMode": "column"
+    },
+    "TravelBars": {
+      "cardMode": "column"
+    },
+    "OfflineBanner": {
+      "cardMode": "column",
+      "viewport": "1280x700"
+    },
+    "VenuesLoading": {
+      "cardMode": "column"
+    },
+    "VenueRowSkeleton": {
+      "cardMode": "column"
+    },
+    "Toggle": {
+      "cardMode": "column"
+    },
+    "SettingRow": {
+      "cardMode": "column"
+    },
+    "SourceRow": {
+      "cardMode": "column"
+    },
+    "FaqItem": {
       "cardMode": "column"
     }
   },

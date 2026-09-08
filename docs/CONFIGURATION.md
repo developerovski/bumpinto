@@ -3,8 +3,9 @@
 Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe için
 [`backend/ARCHITECTURE.md`](../backend/ARCHITECTURE.md) §12.
 
-> **Bu dosyaya asla gerçek değer yazılmaz.** Değer taşıyan tek yerel dosya `backend/.env.local`'dir
-> ve `.gitignore` onu yoksayar. Prod değerleri yalnızca K8s Secret'ında yaşar.
+> **Bu dosyaya asla gerçek değer yazılmaz.** Backend `.env` dosyası okumaz; yapılandırma yalnız
+> `application*.yml`'den gelir. Değer taşıyan tek yerel dosya `backend/config/application-local.yml`'dir
+> (`.gitignore`'da). Prod değerleri yalnızca K8s Secret'ında yaşar ve ortam değişkeni olarak gelir.
 
 ---
 
@@ -13,48 +14,97 @@ Her anahtarın **nereye** ve **nasıl** konduğu, ortam ortam. Mimari gerekçe i
 | Değişken | Nedir | Nereden alınır | Sır mı? |
 |---|---|---|---|
 | `GOOGLE_CLIENT_ID` | OAuth **Web** client id | Google Cloud → Credentials → OAuth client ID → Web application | Hayır (herkese açık), ama yanlışı girişi kırar |
+| `APPLE_SERVICES_ID` | Sign in with Apple **Services ID** — web akışının `aud`'u, Apple token uçlarında `client_id` | Apple Developer → Identifiers → Services IDs | Hayır |
+| `APPLE_BUNDLE_ID` | Native iOS akışının `aud`'u — Apple orada Services ID değil **bundle id** basar | Apple Developer → Identifiers → App IDs | Hayır |
+| `APPLE_TEAM_ID` | Client secret JWT'sinin `iss`'i | Apple Developer → Membership | Hayır |
+| `APPLE_KEY_ID` | `AuthKey_*.p8` anahtarının kimliği (JWT `kid`) | Apple Developer → Keys | Hayır |
+| `APPLE_PRIVATE_KEY` | `AuthKey_*.p8` dosyasının PEM içeriği; ES256 client secret bununla imzalanır. **Boşsa Apple girişi kapalıdır** (`POST /api/auth/apple` → 503), uygulama yine açılır | Apple Developer → Keys → indirilen `.p8` | **Evet** |
 | `TOKEN_SECRET` | Kendi JWT'lerimizin HMAC anahtarı | **Siz üretirsiniz** — `openssl rand -base64 48` | **Evet** |
-| `FOURSQUARE_API_KEY` | Places Service Key | FSQ Developer Console → proje → Settings → Service API Keys | **Evet** |
-| `GOOGLE_PLACES_API_KEY` | Places API (New) sunucu anahtarı | Google Cloud → Keys & Credentials → API key | **Evet** |
+| `FOURSQUARE_API_KEY` | Places Service Key — **zorunlu**, Premium katman | FSQ Developer Console → proje → Settings → Service API Keys | **Evet** |
+| `FSQ_PREMIUM_MONTHLY_BUDGET` | Foursquare Premium aylık çağrı bütçesi (varsayılan `5000`); dolunca `open` katmanına düşülür, uygulama çökmez | Bütçe planınıza göre siz belirlersiniz | Hayır |
+| `GOOGLE_PLACES_API_KEY` | Places API (New) sunucu anahtarı — **opsiyonel**; `bumpinto.venues.sources.google.enabled=true` ise zorunlu, o durumda `MAP_ENGINE=google` da şart | Google Cloud → Keys & Credentials → API key | **Evet** |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Postgres | — | Parola **evet** |
 | `TRUST_FORWARDED_FOR` | XFF'e güven bayrağı | — | Hayır |
-| `GOOGLE_MONTHLY_BUDGET` | Nearby Search için **sert** aylık tavan (varsayılan `1000` — açılış maliyet modeli §5.A.5: Google'ın ücretsiz aylık katmanı, sonrası $35/1000). Google kota telemetrisi vermediği için kota = bütçe − yerel sayaç; aşılırsa istek atılmaz, orkestratör Foursquare'e düşer | Cloud Console → Maps Platform → Quotas'taki ücretsiz hakkına ya da harcamak istediğine göre | Hayır |
-| `GOOGLE_PHOTO_MONTHLY_BUDGET` | Place Photo medya çağrıları için **ayrı SKU**'lu sert tavan (varsayılan `1000` — 1.000 ücretsiz/ay, sonrası $7/1000). Bitince foto çözülmez, `photoUrl` null gelir, kart monograma düşer; arama etkilenmez | Cloud Console → Maps Platform → Quotas | Hayır |
+| `MAP_ENGINE` | Harita motoru seçimi: `maplibre` (açık, ücretsiz) veya `google` | — | Hayır |
+| `MAP_TILES_STYLE_URL` | MapLibre tile stil URL'i (`MAP_ENGINE=maplibre` iken kullanılır) | Tile sağlayıcınızdan | Hayır |
+| `GEOCODE_BASE_URL` | Geocode motorunun taban URL'i (kendi Nominatim-uyumlu sunucunuz olabilir) | — | Hayır |
+| `OSRM_CAR_URL` / `OSRM_BICYCLE_URL` / `OSRM_FOOT_URL` | Profil başına OSRM `/table` taban URL'i; **boş = haversine tahminine düşülür** | Kendi OSRM sunucunuz | Hayır |
 | `NOMINATIM_CONTACT` | Nominatim politikası gereği User-Agent'ta zorunlu iletişim adresi (varsayılan `dev@bumpinto.test`) | Preprod/prod'da gerçek bir adres verin | Hayır |
 | `NOMINATIM_MIN_INTERVAL` | Nominatim'e en fazla 1 istek/saniye (ISO süre, varsayılan `PT1S`) | — | Hayır |
+| `OVERTURE_RELEASE` | İthal işinin okuduğu Overture sürümü (örn. `2026-08-19.0`); yalnız `venues-open-import` CronJob'ında | https://docs.overturemaps.org/release/ | Hayır |
+| `PBF_URL` | Geofabrik NL extract adresi; OSM ithali ve OSRM hazırlığı bunu kullanır | — | Hayır |
 | `VOICE_MAX_DURATION` | Ses odasının azami süresi (ISO süre, varsayılan `PT2H`); `endsAt = min(şimdi + bu süre, oturumun bitişi)` | — | Hayır |
 | `CLOUDFLARE_TURN_KEY_ID` | Cloudflare Realtime TURN anahtar kimliği | Cloudflare Dashboard → Realtime → TURN keys | Hayır |
 | `CLOUDFLARE_TURN_API_TOKEN` | Cloudflare Realtime TURN API token'ı; boşsa/erişilemezse yalnız STUN ile devam edilir (`relay=false`) | Cloudflare Dashboard → Realtime → TURN keys | **Evet** |
+| `RETENTION_ENABLED` | **İki** saklama işini birden açar/kapatır (varsayılan `true`): saatlik `VenueContentRetention` (sağlayıcı metadata'sını indirger) ve günlük `RetentionJob` (spec §6 GDPR — süresi dolalı 30 günü geçen oturumları **ve** silinmeli 30 günü geçen hesapları kalıcı siler). Prod'da kapatmak GDPR yükümlülüğünü askıya alır | — | Hayır |
+| `SESSION_PURGE_CRON` | Oturum purge'ünün Spring cron ifadesi (6 alan: `saniye dakika saat gün ay haftagünü`, saat dilimi **UTC**); varsayılan `0 30 3 * * *` = her gece 03:30 UTC | — | Hayır |
+| `OG_CACHE` | OG kartı önbellek süresi (ISO süre, varsayılan `PT24S`); hem HTTP `max-age` başlığına hem süreç içi önbellek TTL'ine gider | — | Hayır |
+| `APP_BASE_URL` | Web uygulamasının kök adresi; `/j/{slug}` davet linkinin yaşadığı yer | — | Hayır |
+| `PUBLIC_API_BASE_URL` | Bu API'nin dışa dönük adresi; `/og/{slug}.png` mutlak URL'ini kurmak için kullanılır | — | Hayır |
 
 **`TOKEN_SECRET` en az 32 bayt olmalı** ([TokenService.java:33](../backend/src/main/java/com/bumpinto/infra/security/TokenService.java#L33)) —
 kısa olursa uygulama açılışta patlar. Ortam başına farklı üretin: local ≠ preprod ≠ prod.
 
-### Frontend hiçbir anahtar taşımaz
+`NOMINATIM_CONTACT` artık iki yerde kullanılıyor: Nominatim User-Agent'ı **ve** Wikidata/Commons
+toplu sorguları (`tools/venues-open/wikidata_photos.py`). Boş bırakılırsa ithal işi açılışta
+patlar — Wikimedia politikası gerçek bir iletişim adresi ister.
 
-`frontend/web/.env.*` dosyaları **depoda takip edilir** çünkü içlerinde yalnız public URL var:
+> **OG kartı ve yazı tipleri.** `GET /og/{slug}.png` `java.awt` ile çizer ve mantıksal
+> `SansSerif` yazı tipini kullanır. Backend imajı `fontconfig` + en az bir TrueType aile
+> içermelidir (Debian tabanlı imajda `apt-get install -y fontconfig fonts-dejavu-core`);
+> yoksa uç 500 verir. `java.awt.headless=true` Spring Boot varsayılanıdır, ezilmemelidir.
+
+### Frontend sır taşımaz
+
+`frontend/web/.env.*` dosyaları **depoda takip edilir** çünkü içlerinde yalnız herkese açık değerler var:
 
 ```
-VITE_API_URL / VITE_WS_URL     ← sadece bunlar, sır değil
+VITE_API_URL / VITE_WS_URL     ← ortamın backend adresi; dev'de boş (vite proxy, same-origin)
+VITE_GOOGLE_CLIENT_ID          ← OAuth Web client id; sır değil, her giriş sayfasına gömülür.
+                                  Ortamın alan adı Google Cloud'da "Authorized JavaScript origins"da olmalı.
 ```
 
-`.gitignore` bu üç dosya için özel negasyon taşır. Web'e anahtar eklemeniz gereken **hiçbir**
-durum yok — web katılım tarafıdır, giriş yapmaz, token'lar HttpOnly cookie'de yaşar.
+Harita motoru `/api/config`'ten gelir; varsayılan `maplibre` anahtarsızdır. `VITE_GOOGLE_MAPS_KEY` ve
+`VITE_GOOGLE_MAPS_MAP_ID` **yalnız** `MAP_ENGINE=google` provasında okunur ve gitignore'daki
+`.env.development.local` dosyasında durur. Web'e başka anahtar eklemeniz gereken durum yok; token'lar
+HttpOnly cookie'de yaşar.
+
+Harita motoru istemciye SUNUCUDAN gelir: `GET /api/config` (`mapEngine` `maplibre`|`google`,
+`tiles.styleUrl`, `sources[]` — spec §7). `maplibre` motorunda Google anahtarı hiç okunmaz ve
+Maps JS paketi hiç indirilmez; `google` motorunda anahtar + Map ID çifti gerekir. Uç
+ulaşılamazsa istemci MapLibre + OpenFreeMap positron yedeğine düşer (harita yine render olur,
+yalnız sağlayıcı atıf satırları boş kalır). Backend tarafında karşılığı `MAP_ENGINE` /
+`MAP_TILES_STYLE_URL`. Geocode artık sunucu tarafında (`POST /api/geocode`, `/reverse`) —
+istemci Nominatim'e doğrudan gitmez. `.env.*` dosyalarını yalnız KULLANICI düzenler.
 
 ---
 
 ## 2. Yerel geliştirme
 
-### 2.1 Şablonu kopyalayın
+### 2.1 Yerel değerleri yazın
+
+Spring Boot çalışma dizinindeki `./config/` klasörünü kendiliğinden yükler ve classpath'taki
+`application-local.yml`'i ezer. Gerçek değerler oraya yazılır, depodaki dosyaya değil:
 
 ```bash
-cp backend/.env.example backend/.env.local
-$EDITOR backend/.env.local          # değerleri doldurun
+mkdir -p backend/config
+$EDITOR backend/config/application-local.yml
 ```
 
-`.env.local` `.gitignore` tarafından yakalanır (`.env.*` deseni). Doğrulayın:
+```yaml
+bumpinto:
+  security:
+    google-client-id: <web-client-id>
+    token-secret: <rastgele >= 32 bayt; openssl rand -base64 48>
+  venues:
+    sources:
+      foursquare: { key: <Foursquare Service Key> }
+```
+
+`backend/config/` `.gitignore`'dadır. Doğrulayın:
 
 ```bash
-git check-ignore -v backend/.env.local     # bir satır dönmeli
+git check-ignore -v backend/config/application-local.yml     # bir satır dönmeli
 ```
 
 ### 2.2 Postgres
@@ -63,25 +113,24 @@ git check-ignore -v backend/.env.local     # bir satır dönmeli
 docker compose up -d postgres              # 5432
 ```
 
-**5432 başka bir projede doluysa** alternatif porta alın ve `.env.local`'e `DB_URL` ekleyin:
+**5432 başka bir projede doluysa** alternatif porta alın ve `backend/config/application-local.yml`'e yazın:
 
 ```bash
 docker run -d --name bumpinto-postgres-alt -p 5434:5432 \
   -e POSTGRES_DB=bumpinto -e POSTGRES_USER=bumpinto -e POSTGRES_PASSWORD=bumpinto \
   -v bumpinto_pgdata:/var/lib/postgresql/data postgres:16-alpine
-# .env.local: DB_URL=jdbc:postgresql://localhost:5434/bumpinto
+# config/application-local.yml:  spring.datasource.url: jdbc:postgresql://localhost:5434/bumpinto
 ```
 
 ### 2.3 Çalıştırın
 
 ```bash
-set -a && source backend/.env.local && set +a
 cd backend && JAVA_HOME=$(/usr/libexec/java_home -v 25) JENV_VERSION=25 mvn -o spring-boot:run
 ```
 
-`set -a` kabuk değişkenlerini otomatik **export** eder — Spring yalnız gerçek ortam
-değişkenlerini görür, `.env` dosyalarını kendiliğinden okumaz. Bu satır olmadan değerler
-uygulamaya ulaşmaz.
+Spring `.env` dosyası okumaz. Öncelik sırası: gerçek ortam değişkeni > `./config/application-local.yml`
+> classpath `application-local.yml` > `application.yml`. Kabukta eski bir `FOURSQUARE_API_KEY` export
+edilmişse dosyadaki değeri ezer; `env | grep -E 'GOOGLE_|TOKEN_|FOURSQUARE'` boş olmalı.
 
 > **Sırsız da açılır.** `local` profilinde `application-local.yml` sahte default'lar veriyor;
 > uygulama ayağa kalkar ama **sağlayıcı çağrıları 401 alır** ve Google girişi çalışmaz.
@@ -93,6 +142,41 @@ uygulamaya ulaşmaz.
 ```bash
 pnpm dev:web        # .env.development boş VITE_API_URL kullanır → Vite proxy backend'e gider
 ```
+
+### 2.5 Açık veri servisleri (isteğe bağlı)
+
+Varsayılan `docker compose up -d postgres` yalnız PostGIS'i kaldırır; backend geocode ve rota
+env'leri boşken public Nominatim'e ve haversine tahminine düşer. Gerçek servisleri istersen:
+
+```bash
+# OSRM verisini bir kez hazirla (~20-40 dk, ~6 GB disk)
+docker compose --profile geo-prepare run --rm osrm-prepare
+
+# Servisleri kaldir
+docker compose --profile geo up -d
+```
+
+| Servis | Yerel adres | İlk açılış |
+|---|---|---|
+| Nominatim NL | `http://localhost:8070` | **1–3 saat** ithal (konteyner log'unda `Import finished`) |
+| OSRM car / bicycle / foot | `http://localhost:5001` / `:5002` / `:5003` | hazırlık bitmişse saniyeler |
+
+`backend/config/application-local.yml`'e:
+
+```yaml
+bumpinto:
+  geocode:
+    base-url: http://localhost:8070
+  routing:
+    osrm:
+      car: http://localhost:5001
+      bicycle: http://localhost:5002
+      foot: http://localhost:5003
+```
+
+> **Uyarı:** `postgres` imajı `postgis/postgis:16-3.4`'e geçti. Düz `postgres:16-alpine` ile
+> yaratılmış eski `pgdata` hacmi PostGIS taşımaz; `docker compose down -v` ile **yerel veriyi
+> silerek** yeniden yaratman gerekir.
 
 ---
 
@@ -173,30 +257,38 @@ Prod'a çıkmadan:
 
 ## 7. Maliyet
 
-Google Places faturalandırma hesabı ister (ücretsiz kotada kalsanız bile).
+Deste başına maliyet **~1,9¢**: `findVenues` deste kurarken tek bir Foursquare Premium
+çağrısı yapar, sonrasını (shuffle, poll, runoff) onbellek ve yerel hesap karşılar. Açık
+(open) katmana düşüldüğünde taban maliyet **$0**'dır — yalnız Premium çağrılar ücretlidir.
 
-Kodumuza özel riskler:
+Kaba aylık tahmin (deste = ziyaret): **10k ziyaret ≈ $33–47/ay**, **100k ziyaret ≈
+$250–470/ay**. Kaynak ve hesap detayı:
+`docs/superpowers/specs/2026-09-06-google-maps-cost-plan.md` §7.3.
 
-- `find-venues` yeterli mekan bulamazsa yarıçapı 3 kez ikiye katlıyor → **tek çağrı en fazla
-  4 Nearby Search isteği**. Yeni 10 aktivite türünde Foursquare devre dışı olduğu için her
-  seferinde Google'a gidiliyor.
-- Google yedeğinde her Nearby Search sonucu için **mekan başına bir Places Photo isteği**
-  yapılıyor (foto adresi arama anında çözülüyor). 20 mekan = 20 foto isteği.
-- Sağlayıcı sırası **sabittir** (`ProviderOrchestrator`): önce Foursquare, sonra Google.
-  Kota yalnız elemeye yarar — 429 dönen sağlayıcı yenilenme anına kadar dışarıda (FSQ
-  kredi-429'u: 24 saat; saatlik: `x-ratelimit-reset`).
-- **Boşta duran süreç artık para harcamıyor.** Eskiden `ProviderQuotaScheduler` 5 dk'da bir
-  kota ölçüyordu; FSQ probu **ücretli bir Pro çağrısıdır** ve trafiksiz ortamda saatte 12 prob
-  = ayda ~8.600 çağrı → ücretsiz 500'ü kat kat aşıyordu. 2026-09-06'da kaldırıldı; kota yalnız
-  gerçek aramaların yanıt başlıklarından okunuyor.
-- **Google sayacı yalnız faturalanan çağrıyı sayar** (2xx ve 429). Yetki hatası (401/403)
-  bütçeden düşmez — sayaç eskiden istekten önce artıyordu ve anahtar 403 verirken bile aylık
-  bütçe eriyordu.
+`FSQ_PREMIUM_MONTHLY_BUDGET` bir **güvenlik tavanıdır**, sert kesme değil: dolunca
+`BudgetGate` sağlayıcıyı `open` katmana düşürür, uygulama çökmez ve arama boş dönmez —
+yalnız sonuç kalitesi düşer. Google şu an **inaktif** (`bumpinto.venues.sources.google.enabled=false`
+varsayılan); açılırsa `GOOGLE_PLACES_API_KEY` ve `MAP_ENGINE=google` şart olur.
 
-Frenler: rate limit 3/dk ve 30 dakikalık sonuç cache'i (foto adresleri sonuçla birlikte
-saklandığı için onları da kapsar).
+W-12'den sonra harita motoru MapLibre + OpenFreeMap → Dynamic Maps örnek maliyeti **sıfır**;
+Maps JS anahtarları tamamen kapatılabilir (Sign-In istemci kimliği kalır).
 
-Yine de **bütçe uyarısı kurun** ve anahtarı yalnız Places API (New) ile kısıtlayın.
+Frenler (dördü birlikte harcamayı sınırlar):
+
+- `find-venues` uç noktasında **3/dk** rate limit.
+- Arama sonuçları **30 dakika** onbelleklenir (aynı yarıçap kovası + aktivite türü).
+- Boş sonuç **10 dakika** ayrı ve kısa ömürlü işaretlenir (seyrek bölgede kalıcı "mekan yok"
+  olmaz).
+- Aylık harcama `provider_usage` tablosunda tutulur; `BudgetGate` her çağrıdan önce bunu
+  okur.
+
+### 7.1 Açık taban (I-2 sonrası)
+
+`venues_open` tablosu aylık `venues-open-import` CronJob'ıyla Overture Places NL + OSM NL'den
+yeniden üretilir; sorgusu ücretsizdir ve kotası yoktur (`sources.open.budget = 0`). Ücretli
+sağlayıcı yalnız Foursquare Premium'dur (`FSQ_PREMIUM_MONTHLY_BUDGET`). Sabit maliyet: küme
+diskinde ~30 GB (bkz. `deploy/k8s/README.md`). Ayrıntılı maliyet:
+`docs/superpowers/specs/2026-09-06-open-hybrid-venue-stack-design.md` §17.
 
 ---
 
@@ -205,19 +297,10 @@ Yine de **bütçe uyarısı kurun** ve anahtarı yalnız Places API (New) ile k�
 Anahtarları koyduktan sonra bir kez koşun — ikisi de kapatılmamış borç:
 
 - [ ] **Uygulama gerçek sırlarla açılıyor**
-      `set -a && source backend/.env.local && set +a && mvn -o spring-boot:run`
-- [ ] **Foursquare kategori ID'leri doğru.** 5 ID ölü v3 taksonomisinden geldi; yanlışsa
-      **hata vermez, yanlış mekan listeler.** Ters yönden doğrulayın:
-
-      ```bash
-      curl -s -H "Authorization: Bearer $FOURSQUARE_API_KEY" \
-        -H "X-Places-Api-Version: 2025-06-17" \
-        "https://places-api.foursquare.com/places/search?ll=41.0082,28.9784&radius=800&limit=50&fields=name,categories" \
-      | jq -r '.results[].categories[] | "\(.fsq_category_id)  \(.name)"' | sort | uniq -c | sort -rn
-      ```
-
-      Beklenen: **13032** kahve · **13065** yemek · **13003** bar · **16032** park · **10027** bowling.
-      Listede yoksa ID yanlıştır → `FoursquareVenueProvider.CATEGORIES` düzeltilmeli.
+      `cd backend && mvn -o spring-boot:run` (değerler `backend/config/application-local.yml`'de)
+- [ ] **Foursquare kategori ID'leri doğru.** `FoursquarePremiumContractTest`'i **gerçek
+      anahtarla** koşun (`@EnabledIfEnvironmentVariable`) — yaklaşık 17 Premium çağrı, **~$0,32**
+      maliyet. Yanlış ID hata vermez, yalnızca yanlış mekan listeler; testin yakaladığı budur.
 
 - [ ] **Google çok-türlü `includedTypes` OR davranışı.** Yanlışsa sonuç **boş** döner:
 

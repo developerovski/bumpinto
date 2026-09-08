@@ -1,6 +1,7 @@
 package com.bumpinto.application.session;
 
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.text.Ids;
 import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.Participant;
@@ -81,6 +82,19 @@ public class SessionQueries {
                 : Map.of();
 
         return new SessionSnapshot(session, participants, venues, tally, runoffVotes, likeCounts);
+    }
+
+    /**
+     * Koda karsilik gelen anlik goruntu. Bicimsiz kod DB'ye HIC gitmez: boyle bir sorgu, kod
+     * uzayini tarayan bir istemciye "bu bicim gecerli" ipucu verirdi.
+     */
+    public SessionSnapshot snapshotByJoinCode(String rawCode) {
+        String code = Ids.normalizeJoinCode(rawCode);
+        Session stored = code == null ? null : store.sessionByJoinCode(code).orElse(null);
+        if (stored == null) {
+            throw new NotFoundException("session not found");
+        }
+        return snapshot(stored.slug());
     }
 
     /** Mekan -> desteyi bitirmis kac oy popülasyonu uyesi begendi. */

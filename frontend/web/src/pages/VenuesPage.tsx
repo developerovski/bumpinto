@@ -1,13 +1,18 @@
+import { useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
 import ActivityBadges from "../components/molecules/ActivityBadges";
 import AvatarRow from "../components/molecules/AvatarRow";
+import MobileCta from "../components/molecules/MobileCta";
 import SessionHeader from "../components/molecules/SessionHeader";
 import ShareButton from "../components/molecules/ShareButton";
+import VenueSort, { type SortKey } from "../components/molecules/VenueSort";
 import VenueBrowser from "../components/organisms/VenueBrowser";
 import { activityListLabel, GROUP_TINT, groupOf, sessionActivities } from "../lib/activity";
 import { track } from "../lib/analytics";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useTravelLabels } from "../lib/useTravelLabels";
 import { isHost, mapProps, useSessionStore } from "../store/sessionStore";
 import { useSessionAction } from "../store/useSessionAction";
@@ -32,39 +37,60 @@ export default function VenuesPage({ view }: { view: SessionView }) {
   const venues = view.venues ?? [];
   const participants = view.participants ?? [];
 
+  // Artboard W3c 1280: SOLO'da sıralama rayı BAŞLIĞIN sağ yuvasında, "Bireysel · N konum" çipi
+  // ise rozet satırında. Ray iki yerde birden basılmasın diye kırılma noktası burada ölçülür
+  // (Landing.tsx ile aynı gerekçe: `DesktopOnly`/`MobileCta` çifti bloğu İKİ KEZ basardı, bir
+  // radiogroup'un iki kopyası ekran okuyucuda iki ayrı denetim olurdu).
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const [sort, setSort] = useState<SortKey>("fair");
+  const soloSortInHeader = solo && desktop;
+
   // Sunucu kapisinin (409) AYNISI: konumu olan, elle eklenmemis ve odada olan katilimci >= 2.
   // `online` alani yoksa cevrimici sayilir — bilgi gelmeden host'un onune duvar cikmaz.
   const inRoom = participants.filter((p) => !p.manual && p.hasLocation && p.online !== false).length;
 
+  const inviteUrl = `${location.origin}/j/${view.slug ?? ""}`;
+  const shuffleDisabled = busy || inRoom < 2;
+  const doShuffle = () =>
+    void run(shuffle, "venues.errShuffle", { "participants present": "venues.errAlone" });
+
+  // Katilim BROWSING'de hala acik (SessionCommands.CLOSED_TO_NEW_SEATS) — link de burada
+  // olmali, yoksa kural izin verirken arayuz araci vermiyor. SOLO'da yok: o oturumun
+  // davet linki hic calismaz.
+  const invite = (kind: "white", size: "fit" | "md") => (
+    <ShareButton
+      text={t("venues.inviteText", { name: view.name })}
+      url={inviteUrl}
+      label={t("venues.invite")}
+      copiedLabel={t("lobby.copied")}
+      kind={kind}
+      size={size}
+      copyOnly
+    />
+  );
+
   const action =
-    host && !solo ? (
-      <AvatarRow people={participants}>
-        {/* Katilim BROWSING'de hala acik (SessionCommands.CLOSED_TO_NEW_SEATS) — link de burada
-            olmali, yoksa kural izin verirken arayuz araci vermiyor. SOLO'da yok: o oturumun
-            davet linki hic calismaz. */}
-        <ShareButton
-          text={t("venues.inviteText", { name: view.name })}
-          url={`${location.origin}/j/${view.slug ?? ""}`}
-          label={t("venues.invite")}
-          copiedLabel={t("lobby.copied")}
-          kind="white"
-          size="fit"
-          copyOnly
-        />
-        <Button
-          type="button"
-          size="fit"
-          disabled={busy || inRoom < 2}
-          onClick={() => void run(shuffle, "venues.errShuffle", { "participants present": "venues.errAlone" })}
-        >
-          {t("venues.shuffle")}
-        </Button>
+    !solo ? (
+      /* Artboard W3b: avatarlar + davet/karıştır YALNIZ 1280 başlığında; 390 host panosunda
+         ikisi de alttaki `.cta` bloğunda. Avatarlar HOST'A ÖZEL DEĞİL — "oturumda kim var"
+         kimlik bilgisidir (davet + karıştır host'ta kalır).
+         Ses denetimi bu kuralın DIŞINDA: 390'da da başlıkta durur (kullanıcı kararı
+         2026-09-08), çünkü alt şeritteki "Sesli sohbet" çubuğu oradan kaldırıldı. Denetim TEK
+         kez basılır — CSS ile gizlenen ikinci bir kopya odak yönetimini bozardı. */
+      <AvatarRow people={participants} peopleLgOnly>
+        <VoiceDock view={view} placement={host ? "header-lg" : "header"} />
+        {host && (
+          <span className="hidden lg:contents">
+            {invite("white", "fit")}
+            <Button type="button" size="fit" disabled={shuffleDisabled} onClick={doShuffle}>
+              {t("venues.shuffle")}
+            </Button>
+          </span>
+        )}
       </AvatarRow>
-    ) : solo ? (
-      <Badge>{t("venues.soloBadge", { count: participants.length })}</Badge>
-    ) : (
-      <Badge tone="amber">{t("venues.guestWait")}</Badge>
-    );
+    ) : soloSortInHeader ? (
+      <VenueSort value={sort} onChange={setSort} />
+    ) : undefined;
 
   return (
     <Page wide>
@@ -72,10 +98,26 @@ export default function VenuesPage({ view }: { view: SessionView }) {
         title={view.name}
         meta={
           view.radiusKm != null
-            ? t("venues.meta", { count: venues.length, km: Math.round(view.radiusKm) })
+            ? // Artboard W3b/W3c: "12 mekan · Eindhoven civarı · ≤ 9 km" — orta noktanın ADI
+              // meta'nın parçası; yalnızca etiket gelmediğinde yersiz kısa biçime düşülür.
+              view.midpointLabel
+              ? t("venues.metaWithPlace", {
+                  count: venues.length,
+                  place: view.midpointLabel,
+                  km: Math.round(view.radiusKm),
+                })
+              : t("venues.meta", { count: venues.length, km: Math.round(view.radiusKm) })
             : t("venues.metaNoRadius", { count: venues.length })
         }
-        badges={<ActivityBadges activities={activities} />}
+        badges={
+          // Durum çipi rozet satırında: 390'da başlığın SAĞINDA durunca oturum adını eziyordu
+          // (artboard W3b 390 davetli panosunda çip kendi satırında).
+          <>
+            <ActivityBadges activities={activities} />
+            {solo && <Badge>{t("venues.soloBadge", { count: participants.length })}</Badge>}
+            {!solo && !host && <Badge tone="amber">{t("venues.guestWait")}</Badge>}
+          </>
+        }
         action={action}
       />
       {/* Backend telafi çağrısı yapmıyor (Places bütçesi) — boş kalan alan sessiz bir
@@ -103,7 +145,21 @@ export default function VenuesPage({ view }: { view: SessionView }) {
         pinLabels={mp.pinLabels}
         midpointLabel={view.midpointLabel}
         onMapOpen={() => track("map_open", { screen: "venues" })}
+        hideSort={soloSortInHeader}
+        sort={sort}
+        onSortChange={setSort}
       />
+      {host && !solo && (
+        // Artboard W3b 390 host `.cta`: tam genişlik "Karıştır ve kaydır" + ortalı not.
+        // Davet linki de buraya iner — 390 başlığında üç denetim yarışıyordu.
+        <MobileCta fade voice={<VoiceDock view={view} placement="strip" />}>
+          {invite("white", "md")}
+          <Button type="button" disabled={shuffleDisabled} onClick={doShuffle}>
+            {t("venues.shuffle")}
+          </Button>
+          <Note center>{t("venues.everyoneSeesShort")}</Note>
+        </MobileCta>
+      )}
     </Page>
   );
 }

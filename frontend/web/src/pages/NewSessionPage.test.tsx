@@ -8,17 +8,23 @@ vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }))
 import { api } from "../lib/api";
 import { geocode } from "../lib/geocode";
 import { useAuthStore } from "../store/authStore";
+import { resetConfig, useConfigStore } from "../store/configStore";
 import { useNewSessionStore } from "../store/newSessionStore";
 import NewSessionPage from "./NewSessionPage";
+
+/** CTA artık İKİ yerleşimde birden basılıyor (artboard 888–890 masaüstü satırı + 1044–1047
+    yapışkan `.cta`); biri `hidden lg:flex`, diğeri `lg:hidden`. jsdom CSS uygulamadığından
+    ikisi de DOM'da — sorgular ikisini de görür ve durum iddiaları HER İKİSİ için doğrulanır. */
+const ctas = (name: string) => screen.getAllByRole("button", { name });
 
 describe("NewSessionPage", () => {
   it("Grup varsayılan; Bireysel'e geçince Konumlar ve kapalı 'Mekanları bul'", () => {
     useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
     render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
-    expect(screen.getByRole("button", { name: "Buluşmayı kur" })).toBeInTheDocument();
+    expect(ctas("Buluşmayı kur")).toHaveLength(2);
     fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
     expect(screen.getByText("Konumlar")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeDisabled();
+    ctas("Mekanları bul").forEach((b) => expect(b).toBeDisabled());
   });
 
   it("Bireysel'de 390'da harita hiç mount edilmez (§4.7)", () => {
@@ -41,10 +47,14 @@ describe("NewSessionPage", () => {
       removeListener: () => {},
       dispatchEvent: () => false,
     })) as typeof window.matchMedia;
+    // MapView artik motoru config'ten okuyor — bu testte "api" mock'u getConfig tanimiyor,
+    // config seed edilmezse load() cokuyordu. Motor secimi burada onemsiz.
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
     render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
     fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
     expect(await screen.findByTestId("mapview")).toBeInTheDocument();
     window.matchMedia = original;
+    resetConfig();
   });
 
   it("varsayılan orta nokta modu — çapa alanı görünmez", () => {
@@ -66,7 +76,7 @@ describe("NewSessionPage", () => {
     render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
     fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
-    expect(screen.getByRole("button", { name: "Mekanları bul" })).toBeEnabled();
+    ctas("Mekanları bul").forEach((b) => expect(b).toBeEnabled());
     // Düğmeyle notun kapısı AYNI: açık düğmenin altında "En az 2 konum gerekir." yazamaz.
     expect(screen.queryByText("En az 2 konum gerekir.")).not.toBeInTheDocument();
   });
@@ -82,6 +92,9 @@ describe("NewSessionPage", () => {
     fireEvent.change(field, { target: { value: "Amsterdam" } });
     fireEvent.blur(field);
     expect(await screen.findByText("Amsterdam çevresinde aranacak")).toBeInTheDocument();
+    // Artboard 3860: yarıçap sözü onayla birlikte KALIR — onay ipucunun yerine geçseydi
+    // "2 km" tam gerektiği anda ekrandan silinirdi.
+    expect(screen.getByText("Mekanlar bu noktanın 2 km çevresinde aranır.")).toBeInTheDocument();
   });
 
   // create()'in gevşetilmiş konum kapısı: host konum vermeden kurabilmeli ve istek çapayı taşımalı.
@@ -95,7 +108,7 @@ describe("NewSessionPage", () => {
     fireEvent.change(field, { target: { value: "Amsterdam" } });
     fireEvent.blur(field);
     await screen.findByText("Amsterdam çevresinde aranacak");
-    fireEvent.click(screen.getByRole("button", { name: "Buluşmayı kur" }));
+    fireEvent.click(ctas("Buluşmayı kur")[0]);
     await waitFor(() =>
       expect(api.createSession).toHaveBeenCalledWith(
         expect.objectContaining({ anchor: { lat: 52.3676, lng: 4.9041, label: "Amsterdam" }, lat: undefined }),
@@ -119,13 +132,66 @@ describe("NewSessionPage", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
     fireEvent.change(screen.getByLabelText("Buluşma yeri"), { target: { value: "Amsterdam" } });
-    fireEvent.click(screen.getByRole("button", { name: "Buluşmayı kur" }));
+    fireEvent.click(ctas("Buluşmayı kur")[0]);
 
     await waitFor(() =>
       expect(api.createSession).toHaveBeenCalledWith(
         expect.objectContaining({ anchor: { lat: 52.3676, lng: 4.9041, label: "Amsterdam" } }),
       ),
     );
+  });
+
+  /** Artboard 897/1018: orta nokta modunun kendi açıklaması var — segment tek başına
+      "adil orta nokta" vaadini söylemiyordu. */
+  it("orta nokta modunda adil orta nokta notu basılır", () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    expect(screen.getByText("Herkesin konumundan adil orta nokta")).toBeInTheDocument();
+  });
+
+  /** Artboard 3872/3941: çapalı modda host konumu zorunlu DEĞİL (create() de öyle davranıyor),
+      bu yüzden "…ya da adres yaz" bağlantısının yerini bunu söyleyen not alır. */
+  it("çapalı modda 'Sen neredesin?' altındaki bağlantının yerini 'zorunlu değil' notu alır", () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({
+      status: "signed",
+      me: { displayName: "Mehmet", defaultLocation: { lat: 51.44, lng: 5.47, label: "Eindhoven" } },
+    });
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    expect(screen.getByText("…ya da adres yaz")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+    expect(screen.getByText("İstersen; çapalı buluşmada zorunlu değil")).toBeInTheDocument();
+    expect(screen.queryByText("…ya da adres yaz")).not.toBeInTheDocument();
+  });
+
+  /** Artboard 910: host'un ulaşım türü Konumlar kartının "Sen" SATIRINDA (`.f-mp`) — sol
+      bölgedeki tam boy ray 390 için kalır, masaüstünde satır içi hâli devralır. */
+  it("Bireysel: host'un ulaşım rayı Konumlar satırında da vardır", () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
+    expect(screen.getByRole("radiogroup", { name: "Sen nasıl geliyor?" })).toBeInTheDocument();
+  });
+
+  /** Artboard 3949–3972: 390'da seçici bir ALT SAYFA — scrim arkadaki formu kilitler,
+      Esc kapatır. Sayfa inline render ederken form seçicinin ardında düzenlenebilir kalıyordu. */
+  it("390: 'Haritadan seç' alt sayfa açar, Esc kapatır", async () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    // MapPicker motoru config'ten okur — seed edilmezse load() çöker (bkz. harita testi).
+    useConfigStore.setState({ config: { mapEngine: "google", tiles: { styleUrl: "https://x" }, sources: [] } });
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Haritadan seç" })[0]);
+    // MapPicker tembel chunk: alt sayfanın kendisi eşzamanlı basılsa da tam koşuda
+    // Suspense çözümü yavaşlayabiliyor — çözüme pay ver (JoinForm testindeki not).
+    const sheet = await screen.findByRole("dialog", { name: "Haritadan seç" }, { timeout: 5000 });
+    expect(sheet).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 5000 });
+    resetConfig();
   });
 
   /** Adres DEGISTIRILIRSE eski capa gonderilmez: kullanici sectiginden baska bir yerde
@@ -148,7 +214,7 @@ describe("NewSessionPage", () => {
     await screen.findByText("Amsterdam çevresinde aranacak");
 
     fireEvent.change(field, { target: { value: "Eindhoven" } });
-    fireEvent.click(screen.getByRole("button", { name: "Buluşmayı kur" }));
+    fireEvent.click(ctas("Buluşmayı kur")[0]);
 
     await waitFor(() =>
       expect(api.createSession).toHaveBeenCalledWith(

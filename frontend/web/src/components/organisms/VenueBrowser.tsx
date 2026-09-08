@@ -1,9 +1,10 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ListBullets, MapTrifold } from "@phosphor-icons/react";
 import { byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { unionProvider } from "../../lib/provider";
+import { providerIds } from "../../lib/provider";
 import { Button, HandNote, Note } from "../atoms";
 import Attribution from "../molecules/Attribution";
 import LazyBoundary from "../molecules/LazyBoundary";
@@ -36,6 +37,12 @@ export default function VenueBrowser(props: {
   midpointLabel?: string;
   /** Analitik: "Haritada gör" dokunuşu (Task 8). */
   onMapOpen?: () => void;
+  /** SOLO 1280 (artboard W3c): sıralama denetimi sayfa BAŞLIĞINDA duruyor — burada tekrar
+      basılmaz. Durum yine burada yaşar; sayfa `sort`/`onSortChange` ile denetimi devralır. */
+  hideSort?: boolean;
+  /** Denetimli sıralama (SOLO başlığı) — verilmezse bileşen kendi durumunu tutar. */
+  sort?: SortKey;
+  onSortChange?: (v: SortKey) => void;
 }) {
   const { t } = useTranslation();
   // `sel` — yalnız ODAK (hover/focus/tık/pin): haritayı ve pop kartı yönlendirir.
@@ -43,7 +50,9 @@ export default function VenueBrowser(props: {
   // İkisi ayrı tutulur; aksi halde salt hover bile onay kartını açardı (kod-review bulgusu).
   const [sel, setSel] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("fair");
+  const [ownSort, setOwnSort] = useState<SortKey>("fair");
+  const sort = props.sort ?? ownSort;
+  const setSort = props.onSortChange ?? setOwnSort;
   /** 390'da harita YALNIZ bu bayrakla mount edilir; gerçek lg tarayıcıda useMediaQuery devralır. */
   const [mapOpen, setMapOpen] = useState(false);
   const tint = props.tint ?? 0;
@@ -58,9 +67,14 @@ export default function VenueBrowser(props: {
   // (mobil) ile; hiçbir şey hover'lanmıyorsa harita nötr kalır (UI review 2026-09-03).
   const selected = sel ?? picked ?? null;
   const selectedVenue = venues.find((v) => v.id === selected);
-  // Sağlayıcı atfı (§4.9, §5.B.9) — listede TEK sağlayıcı varsa ona özgü metin, karışık
-  // (ya da bilinmeyen) sağlayıcılı listede politika gereği ikisi de basılır (union — Attribution.tsx).
-  const listProvider = unionProvider(venues);
+  // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
+  const listProviders = providerIds(venues);
+  // `.f-fit` çeşitlilik kapısı (§4.6): satır uyum cümlesini ancak listede ≥2 FARKLI kategori
+  // varsa basar — 12 kahvecinin hepsine "Kahve için: kafe" yazmak bilgi taşımaz.
+  const categories = useMemo(
+    () => venues.map((v) => v.category).filter((c): c is string => !!c),
+    [venues],
+  );
 
   // §5.C "Konumsuz katılımcı notu" — elle nokta ekleyenler (manual) hariç, konumu henüz
   // gelmemiş katılımcılar. TEK, ADLI, POZİTİF not (tekil); sayaç/"geç" etiketi/suçluluk yok.
@@ -73,8 +87,8 @@ export default function VenueBrowser(props: {
         ? t("venues.noLocationOne", { name: soleWithoutName })
         : t("venues.noLocationMany");
 
-  // Grup modunda seçim aksiyonu YOK (karar dokümanı §5.B.1): karar deste + runoff'tan çıkar.
-  // SOLO'da satırda buton yok — seçili satırın ALTINA `.f-selcard` onay kartı eklenir.
+  // Grup modunda satır aksiyonu YOK (karar dokümanı §5.B.1): karar deste + runoff'tan çıkar.
+  // SOLO'da artboard W3c her satıra "Bunu seç" koyar; onay `.f-selcard` ile satırın altında.
   const solo = props.mode === "solo";
   const confirming = solo && picked != null;
 
@@ -158,19 +172,41 @@ export default function VenueBrowser(props: {
   return (
     // lg: Page'in kalan yüksekliğini doldurur; sayfa kaymaz, yalnız sol liste kayar (UI review).
     <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <VenueSort value={sort} onChange={setSort} />
-        {/* 390: sekme anahtarı yerine tek ghost — harita ancak basılınca yüklenir. */}
-        {!mapOpen && (
+      {/* `.f-sortrow` — space-between: solda ray, sağda el yazısı not (1280) ya da harita
+          ghost'u (390). SOLO 1280'de ray başlığa taşındığı için satırın tamamı düşer. */}
+      {!props.hideSort && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <VenueSort value={sort} onChange={setSort} />
+          {/* Grup 1280: not sıralama satırında (artboard W3b). 390'da hiçbir artboard'da yok. */}
+          {!solo && (
+            <div className="hidden lg:block">
+              <HandNote>{t("venues.fairHand")}</HandNote>
+            </div>
+          )}
+          {/* 390: sekme anahtarı yerine tek ghost — harita ancak basılınca yüklenir. Düğme İKİ
+              YÖNLÜ: haritadayken listeye döndürür. Tek yönlü olduğu sürece 390'da harita
+              açıldıktan sonra listeye dönmenin HİÇBİR yolu yoktu (kullanıcı bulgusu
+              2026-09-08) — sayfayı yenilemek gerekiyordu. */}
           <div className="lg:hidden">
-            <Button type="button" kind="white" size="sm" onClick={openMap}>
-              {t("venues.showOnMap")}
+            <Button
+              type="button"
+              kind="ghost"
+              size="sm"
+              /* `aria-pressed` YOK: düğmenin ETİKETİ zaten değişiyor ("Haritada gör" ↔
+                 "Listede gör"). İkisi birlikte "Listede gör, basılı" gibi çelişkili okunur —
+                 etiketi değişen bir düğme aç/kapa anahtarı değil, eylem düğmesidir. */
+              onClick={mapOpen ? () => setMapOpen(false) : openMap}
+            >
+              {mapOpen ? <ListBullets size={16} /> : <MapTrifold size={16} />}
+              {t(mapOpen ? "venues.showList" : "venues.showOnMap")}
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(26rem,32rem)_1fr] lg:gap-10">
-        <div className={`${mapOpen ? "hidden lg:flex" : "flex"} flex-col gap-1.5 lg:min-h-0 lg:overflow-y-auto lg:pr-2`}>
+        <div
+          className={`${mapOpen ? "hidden lg:flex" : "flex"} flex-col gap-1.5 lg:min-h-0 lg:overflow-y-auto lg:pr-2`}
+        >
           {venues.map((v, i) => (
             <Fragment key={v.id ?? `row-${i}`}>
               <VenueRow
@@ -183,28 +219,44 @@ export default function VenueBrowser(props: {
                 selected={v.id === selected}
                 tint={tint}
                 mixedDeck={props.mixedDeck}
+                categories={categories}
                 travel={props.travel}
                 midpointLabel={props.midpointLabel}
+                selectLabel={solo ? t("venues.choose") : undefined}
                 onHover={() => setSel(v.id ?? null)}
                 onLeave={() => setSel((cur) => (cur === v.id ? null : cur))}
                 onSelect={() => pick(v.id ?? null)}
               />
-              {/* Artboard `.f-selcard` — SOLO'da seçili satırın ALTINDA satır-içi onay. */}
+              {/* Artboard `.f-selcard` — SOLO'da seçili satırın ALTINDA satır-içi onay.
+                  `lg`de gizli: orada onay harita pop kartında sürer (aksi halde aynı kart
+                  masaüstünde iki kez basılırdı). */}
               {confirming && v.id === picked && v.id && (
-                <SelectionCard
-                  venue={v}
-                  travel={props.travel}
-                  onConfirm={() => props.onPick(v.id!)}
-                  onCancel={() => cancelPick(v.id)}
-                />
+                <div className="lg:hidden">
+                  <SelectionCard
+                    venue={v}
+                    travel={props.travel}
+                    onConfirm={() => props.onPick(v.id!)}
+                    onCancel={() => cancelPick(v.id)}
+                  />
+                </div>
               )}
             </Fragment>
           ))}
-          {/* TEK el yazısı not — "önce herkese en adil olanlar →" (§4.5). */}
-          <HandNote>{t("venues.fairHand")}</HandNote>
-          {props.mode !== "solo" && <Note>{t("venues.everyoneSees")}</Note>}
+          {/* SOLO 1280: el yazısı not listenin DİBİNDE (artboard W3c) — grupta sıralama
+              satırında. 390'da iki artboard'da da yok. */}
+          {solo && (
+            <div className="hidden lg:block">
+              <HandNote>{t("venues.soloHand")}</HandNote>
+            </div>
+          )}
+          {/* 390'da bu cümle alt `.cta` notunda (bkz. VenuesPage) — listede tekrar edilmez. */}
+          {!solo && (
+            <div className="hidden lg:block">
+              <Note>{t("venues.everyoneSees")}</Note>
+            </div>
+          )}
           {noLocationNote && <Note>{noLocationNote}</Note>}
-          <Attribution provider={listProvider} />
+          <Attribution providers={listProviders} row />
         </div>
         <div className={`relative ${mapOpen ? "" : "hidden"} lg:block lg:min-h-0`}>
           {/* lg'de sağ kolon CSS ile her zaman görünür; Maps JS yine yalnız gerçekten

@@ -24,7 +24,7 @@ export default function FitLine(props: {
   // açardı; ActivityStrip.tsx ile AYNI desen).
   const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
   return (
-    <span className={`text-[0.8125rem] ${ok ? "text-ink2" : "font-semibold text-amber"}`}>
+    <span className={`text-[0.75rem] lg:text-[0.875rem] ${ok ? "text-ink2" : "font-semibold text-amber"}`}>
       {ok
         ? t("venue.fitOk", { activity, category: c.toLocaleLowerCase(locale) })
         : t("venue.fitOff", { activity, category: c.toLocaleLowerCase(locale) })}

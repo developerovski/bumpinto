@@ -1,0 +1,39 @@
+info:
+  name: Reverse Geocode
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/geocode/reverse"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "lat": 51.4416,
+        "lng": 5.4697
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("label dize ya da null", function() {
+          expect(res.body.label === null || typeof res.body.label === "string").to.be.true;
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Auth: hesap JWT'si YA DA katilimci token'i yeter.
+
+    `lat`/`lng` zorunlu, aralik disi 400. Etiket bulunamamasi HATA DEGIL: yanit
+    `{"label": null}` doner, cagiran orta nokta satirini gizler.
+
+    Rate limit: `geocode` kovasi, 10/dk (Nominatim politikasi: 1 istek/sn).

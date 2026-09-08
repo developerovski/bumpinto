@@ -8,12 +8,12 @@ const base =
 
 export default function Sticker(props: {
   children: ReactNode;
-  /** Artboard .stk.w — beyaz çıkartma (W4 viral blok). */
+  /** Artboard `.stk.w` (183) — beyaz çıkartma; eğimi sarı kardeşinin TERSİ yönde (+1.8°). */
   white?: boolean;
 }) {
   return (
     <span
-      className={`${base} ${props.white ? "bg-white -rotate-[1.5deg]" : "bg-sun -rotate-[2.5deg]"}`}
+      className={`${base} ${props.white ? "bg-white rotate-[1.8deg]" : "bg-sun -rotate-[2.5deg]"}`}
     >
       {props.children}
     </span>

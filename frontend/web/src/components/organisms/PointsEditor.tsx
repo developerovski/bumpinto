@@ -18,6 +18,10 @@ export default function PointsEditor(props: {
   onAdd: (p: LocalPoint) => void | Promise<void>;
   onRemove: (index: number) => void | Promise<void>;
   onModeChange?: (index: number, mode: TravelMode) => void;
+  /** Host'un kendi ulaşım türü — artboard 910: `.f-mp` "Sen" SATIRINDA durur, konumun
+      yanında. İkisi birlikte verilmezse satır salt-bilgi kalır (SoloSetupPage). */
+  travelMode?: TravelMode;
+  onTravelModeChange?: (mode: TravelMode) => void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
@@ -69,6 +73,14 @@ export default function PointsEditor(props: {
               {props.own ? `${props.own.label ?? ""} · ${t("newSession.ownHint")}` : t("newSession.ownMissing")}
             </span>
           </div>
+          {props.travelMode && props.onTravelModeChange && (
+            <TravelModeField
+              value={props.travelMode}
+              onChange={props.onTravelModeChange}
+              label={t("travelMode.forName", { name: t("deck.travelSelf") })}
+              compact
+            />
+          )}
           {props.own && <Badge tone="grass">{t("join.locOk")}</Badge>}
         </div>
         {props.points.map((p, i) => (
@@ -80,6 +92,16 @@ export default function PointsEditor(props: {
                 <span className="text-[0.875rem] font-bold">{p.displayName}</span>
                 <span className="text-[0.8125rem] text-ink2">{p.locationLabel}</span>
               </div>
+              {/* Artboard 920: seçici satırın İÇİNDE, ad bloğu ile "elle" rozeti arasında —
+                  ayrı bir alt satır satır yüksekliğini iki katına çıkarıyordu. */}
+              {props.onModeChange && (
+                <TravelModeField
+                  value={p.travelMode ?? DEFAULT_TRAVEL_MODE}
+                  onChange={(mode) => props.onModeChange?.(i, mode)}
+                  label={t("travelMode.forName", { name: p.displayName })}
+                  compact
+                />
+              )}
               <Badge>{t("newSession.manual")}</Badge>
               <button
                 type="button"
@@ -89,22 +111,14 @@ export default function PointsEditor(props: {
                 <X size={16} aria-hidden />
               </button>
             </div>
-            {props.onModeChange && (
-              <div className="px-4 pb-[0.6875rem]">
-                <TravelModeField
-                  value={p.travelMode ?? DEFAULT_TRAVEL_MODE}
-                  onChange={(mode) => props.onModeChange?.(i, mode)}
-                  label={t("travelMode.forName", { name: p.displayName })}
-                  hideLabel
-                />
-              </div>
-            )}
           </div>
         ))}
         <div className="mx-4 h-px bg-line" />
         <form onSubmit={add} className="flex flex-col gap-2.5 px-3 py-2.5">
           <div className="flex items-center gap-2">
+            {/* Artboard 926 `.inp.phd`: 44px / 14px. */}
             <TextInput
+              inputSize="sm"
               aria-label={t("newSession.pointPlaceholder")}
               placeholder={t("newSession.pointPlaceholder")}
               value={draft}

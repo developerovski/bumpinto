@@ -4,6 +4,14 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        // MapLibre ~800 kB — kendi paketi, Google motoru yüklerken hiç indirilmez.
+        manualChunks: (id) => (id.includes("maplibre-gl") ? "maplibre" : undefined),
+      },
+    },
+  },
   server: {
     // LAN'a acik: ayni agdaki telefondan http://<mac-ip>:5173 ile test edilir.
     host: true,
@@ -24,5 +32,9 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     // Adalet modülü paylaşımlı pakette (M-3 aynı kodu tüketir); testi burada koşar.
     include: ["src/**/*.test.{ts,tsx}", "../shared/src/**/*.test.ts"],
+    // Yerel saat dilimine dokunan testler (ör. MeetTimeDialog) makineden makineye farklı sonuç
+    // vermesin diye çalıştırıcı UTC'ye sabitlenir — üretim kodu (`MeetTimeDialog.tsx`) kullanıcının
+    // GERÇEK yerel saatini kullanmaya devam eder, yalnız testin kendi determinizmi sabitlenir.
+    env: { TZ: "UTC" },
   },
 });

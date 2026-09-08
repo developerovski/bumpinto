@@ -1,6 +1,7 @@
 package com.bumpinto.support;
 
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -26,7 +27,16 @@ public final class PostgresContainer {
 
     public static synchronized PostgreSQLContainer<?> shared() {
         if (instance == null) {
-            PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:16-alpine");
+            PostgreSQLContainer<?> container = new PostgreSQLContainer<>(
+                    DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"));
+            // Tek container'i ONLARCA Spring context paylasir ve her birinin Hikari havuzu
+            // varsayilan 10 baglanti tutar. Postgres'in varsayilan 100'luk tavani ~10. context'te
+            // dolar; suite'in EN SON ayaga kalkan baglami "sorry, too many clients already" ile
+            // patlar — testin kendisiyle ilgisi olmayan, yeni bir test sinifi eklenince sira
+            // degistigi icin yer degistiren bir hata. fsync=off Testcontainers'in VARSAYILAN
+            // komutundan gelir; komutu ezdigimiz icin burada TEKRAR edilmeli, yoksa her test
+            // diske senkron yazar.
+            container.withCommand("postgres", "-c", "fsync=off", "-c", "max_connections=300");
             container.start();
             awaitStableHostPort(container);
             instance = container;

@@ -12,6 +12,7 @@ import com.bumpinto.domain.voice.IceConfig;
 import com.bumpinto.domain.voice.VoiceRoom;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.FakeStores;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -55,13 +56,7 @@ class VoiceCommandsTest {
     }
 
     static AppProps props() {
-        return new AppProps(new AppProps.Security("cid", "secret", Duration.ofHours(12)),
-                new AppProps.Providers("fsq-key", "g-key"),
-                new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(1000, 1000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+        return TestProps.defaults();
     }
 
     MutableClock clock;
@@ -263,13 +258,7 @@ class VoiceCommandsTest {
 
     @Test
     void maxDurationMustBePositive() {
-        AppProps zeroVoice = new AppProps(new AppProps.Security("cid", "secret", Duration.ofHours(12)),
-                new AppProps.Providers("fsq-key", "g-key"),
-                new AppProps.Cors(List.of()), new AppProps.Cookies(false, ""),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(1000, 1000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ZERO), new AppProps.Turn("", ""));
+        AppProps zeroVoice = TestProps.withVoice(new AppProps.Voice(Duration.ZERO));
 
         assertThatThrownBy(() -> new VoiceCommands(store, rooms,
                 ttl -> IceConfig.stunOnly(), events, clock, zeroVoice, presence))

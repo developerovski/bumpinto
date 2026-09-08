@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: venues-open-work
+  namespace: bumpinto
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: venues-open-import
+  namespace: bumpinto
+spec:
+  # Ayin 1'i 03:00 — Overture aylik yayin, Geofabrik gunluk (spec §5.2)
+  schedule: "0 3 1 * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      # 6 saat: Nominatim disi tum hat ~30-60 dk, agir gunde pay birakiyoruz
+      activeDeadlineSeconds: 21600
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          # GHCR paketi private ise ac (README: "GHCR paketi private ise ghcr-pull Secret'ı oluşturun")
+          # imagePullSecrets: [{name: ghcr-pull}]
+          containers:
+            - name: import
+              image: ghcr.io/DEGISTIR_KULLANICI/bumpinto/venues-open:main
+              envFrom:
+                - secretRef: { name: bumpinto-backend }
+                - configMapRef: { name: bumpinto-geo }
+              env:
+                - name: OVERTURE_RELEASE
+                  value: "2026-08-19.0"
+                - name: PBF_URL
+                  value: https://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+                - name: OSM2PGSQL_CACHE_MB
+                  value: "2000"
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              resources:
+                requests: { cpu: "1", memory: 3Gi }
+                limits: { memory: 6Gi }
+          volumes:
+            - name: work
+              persistentVolumeClaim:
+                claimName: venues-open-work

@@ -27,11 +27,15 @@ const MIN_SAMPLE_MS = 4;
 // Son hareketten bu kadar süre sonra bırakılırsa parmak durmuştur — fırlatma sayılmaz.
 const STALE_VELOCITY_MS = 80;
 
+// Artboard `.stamp` (v3, 492-494): 22px üstten, 3px kenarlık, 10px köşe, 26px/1 başlık puntosu,
+// .06em harf aralığı, %70 beyaz zemin. Renk KENARLIK + METİN'dir, dolgu değil: gradyan dolgulu
+// eski damga karttaki fotoğrafı yutuyordu. z-4 — `.stamp` kart içeriğinin ve `.pdots`in üstünde.
 const STAMP =
-  "pointer-events-none absolute top-6 z-1 rounded-xl border-[3px] px-3 py-0.5 " +
-  "font-head text-[1.5rem] font-extrabold uppercase tracking-[0.08em] opacity-0";
-const STAMP_LIKE = `${STAMP} left-5 -rotate-12 border-transparent bg-[image:var(--grad)] text-white shadow-sh2`;
-const STAMP_PASS = `${STAMP} right-5 rotate-12 border-ink2 bg-white/90 text-ink2`;
+  "pointer-events-none absolute top-[1.375rem] z-4 rounded-[0.625rem] border-[3px] px-3.5 py-1.5 " +
+  "font-head text-[1.625rem] font-extrabold uppercase leading-none tracking-[0.06em] " +
+  "bg-white/70 opacity-0";
+const STAMP_LIKE = `${STAMP} left-[1.125rem] -rotate-[14deg] border-grass text-grass`;
+const STAMP_PASS = `${STAMP} right-[1.125rem] rotate-12 border-flame-deep text-flame-deep`;
 
 type Drag = { id: number; x0: number; y0: number; lastX: number; lastT: number; vx: number; active: boolean };
 

@@ -1,24 +1,40 @@
-/* Kaynak: artboard Deste bitti 1280 sağ kart "Beğendiklerin" */
+/* Kaynak: artboard Deste bitti 1280 sağ kart "Beğendiklerin" (2050-2075 / 2216-2266) */
 import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
-import { byFairness } from "@bumpinto/shared";
+import { byFairness, fairnessOf } from "@bumpinto/shared";
 import { formatRating } from "../../lib/format";
+import { fairnessLine } from "../../lib/travelText";
 import type { TravelInfo } from "../../lib/useTravelLabels";
-import { Overline } from "../atoms";
-import FairnessBadge from "./FairnessBadge";
-import TravelChips from "./TravelChips";
+import { Badge, Overline } from "../atoms";
+import { CHECK_ON } from "./checkStyles";
+import FitLine from "./FitLine";
+import RangeBar from "./RangeBar";
 import VenueThumb from "./VenueThumb";
 
 export default function LikedList(props: {
   venues: VenueDto[];
   liked: Record<string, boolean>;
   travel?: TravelInfo;
+  /** Destedeki TÜM kategoriler — `FitLine`'ın "12 aynı kart" çeşitlilik denetimine geçer (§4.6). */
+  categories?: string[];
+  /** Deste bitti/gönderildi — artboard 2266 kartın altına notun YERİNE "En uzak: X · N dk"
+      satırını koyar; deste sürerken (2074) not kalır. */
+  finished?: boolean;
 }) {
   const { t } = useTranslation();
   // Minimax sıra (§4.9) — en adil (en kısa en-uzun-yol) önce, VenueBrowser'la aynı sıralayıcı.
   const liked = props.venues.filter((v) => props.liked[v.id!]).sort(byFairness);
   const travel = props.travel ?? { labels: {} };
+  // Artboard 2266: en adil beğeninin EN UZAK yolcusu. `entries` en uzundan sıralı gelir
+  // (`fairnessOf`), ad `names`ten okunur — "Sen" etiketi değil gerçek ad basılır. Ad yoksa
+  // satır UYDURULMAZ, not olduğu gibi kalır.
+  const farthest = props.finished ? fairnessOf(liked[0] ?? ({} as VenueDto))?.entries[0] : null;
+  const farthestName = farthest ? (travel.names?.[farthest.id] ?? travel.labels[farthest.id]) : null;
+  const footer =
+    farthest && farthestName
+      ? t("deck.farthest", { name: farthestName, min: farthest.minutes })
+      : t("deck.likedNote");
 
   return (
     <div className="rounded-card border border-line bg-card py-1 shadow-sh1">
@@ -28,32 +44,51 @@ export default function LikedList(props: {
           {t("deck.likedN", { count: liked.length })}
         </span>
       </div>
-      {liked.map((v, i) => (
-        <div key={v.id}>
-          {i > 0 && <div className="mx-4 h-px bg-line" />}
-          <div className="flex items-center gap-3 px-4 py-[0.8125rem]">
-            {/* VenueCard photoOnly yüksekliği %100'dür (deste yığını için); yüksekliği
-                olmayan bir satırda 0px'e çökerdi — küçük görselin doğru bileşeni bu. */}
-            <VenueThumb venue={v} tint={0} size={48} />
-            <div className="flex flex-1 flex-col gap-0.5">
-              <h3>{v.name}</h3>
-              {v.rating != null && (
-                <span className="text-[0.75rem] text-ink2">★ {formatRating(v.rating)}</span>
-              )}
-              <FairnessBadge venue={v} travel={travel} />
-              <TravelChips venue={v} travel={travel} size="sm" />
+      {liked.map((v, i) => {
+        const hasPrice = v.priceLevel != null && v.priceLevel > 0;
+        const f = fairnessOf(v);
+        const line = f ? fairnessLine(f, travel, t) : null;
+        return (
+          <div key={v.id}>
+            {i > 0 && <div className="mx-4 h-px bg-line" />}
+            {/* Artboard `.f-lk` (372-373): gap 11px, padding 11px 16px, üstten hizalı; gövde gap 5px. */}
+            <div className="flex items-start gap-[0.6875rem] px-4 py-[0.6875rem]">
+              {/* VenueCard photoOnly yüksekliği %100'dür (deste yığını için); yüksekliği
+                  olmayan bir satırda 0px'e çökerdi — küçük görselin doğru bileşeni bu. */}
+              <VenueThumb venue={v} tint={0} size={44} />
+              <div className="flex min-w-0 flex-1 flex-col gap-[0.3125rem]">
+                <h3>{v.name}</h3>
+                <FitLine venue={v} categories={props.categories ?? []} />
+                {/* Artboard 2053: "★ 4.4 · €" — puan ve fiyat TEK satırda. */}
+                {(v.rating != null || hasPrice) && (
+                  <span className="text-[0.75rem] text-ink2 tabular-nums">
+                    {v.rating != null && `★ ${formatRating(v.rating, v.ratingScale)}`}
+                    {v.rating != null && hasPrice && " · "}
+                    {hasPrice && "€".repeat(v.priceLevel!)}
+                  </span>
+                )}
+                {/* Artboard 2054/2067: adalet rozeti `.rg` bandının ÜSTÜNDE, sola yaslı. `.rg-g`
+                    alt satırı burada lead'i TEKRAR EDER (artboard da öyle yapıyor) — dar satırda
+                    rozet göz taraması, alt satır ise sayıyı taşır. */}
+                {line?.lead && (
+                  <span className="self-start">
+                    <Badge tone={line.leadTone === "amber" ? "amber" : "grass"}>{line.lead}</Badge>
+                  </span>
+                )}
+                <RangeBar venue={v} travel={travel} />
+              </div>
+              <span className={CHECK_ON} aria-hidden>
+                <Check size={14} />
+              </span>
             </div>
-            <span
-              className="flex h-[1.625rem] w-[1.625rem] flex-none items-center justify-center rounded-full bg-[image:var(--grad)] text-white"
-              aria-hidden
-            >
-              <Check size={14} />
-            </span>
           </div>
-        </div>
-      ))}
-      {liked.length > 0 && <div className="mx-4 h-px bg-line" />}
-      <div className="px-4 py-3 text-[0.75rem] text-ink2">{t("deck.likedNote")}</div>
+        );
+      })}
+      {/* Artboard 390 (Deste bitti 3413) bu notu GÖSTERMEZ — kart son satırda kapanır; 1280'de
+          (2074) var. Bilgi mobilde başlıktaki "· N beğeni" ile zaten veriliyor. Ayraç da notla
+          birlikte düşer, yoksa mobilde kartın dibinde sahipsiz bir çizgi kalırdı. */}
+      {liked.length > 0 && <div className="mx-4 hidden h-px bg-line lg:block" />}
+      <div className="hidden px-4 py-3 text-[0.75rem] text-ink2 lg:block">{footer}</div>
     </div>
   );
 }

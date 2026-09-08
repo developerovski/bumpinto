@@ -1,13 +1,21 @@
 /* Kaynak: ui.css .row / .field / .label / .a-m2 / .muted + W2 satır ölçüleri */
-import { Microphone } from "@phosphor-icons/react";
+import { DotsThree, Microphone } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
 import { MODE_ICON, MODE_LABEL_KEY } from "../../lib/travelMode";
 import { useVoiceStore } from "../../store/voiceStore";
 import { Avatar, Badge } from "../atoms";
 
-/** Artboard W2 · .srow — avatar + ad/alt satır + tek rozet.
-    Rozet önceliği artboard'dan: kuran satırında "Kuran", diğerlerinde hazır/bekliyor.
+/** WinnerCard'daki kuralla aynı — geçersiz ISO'da satır hiç çizilmez. */
+function hhmm(iso: string, locale: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+/** Artboard W2 · .srow — avatar + ad/alt satır + rozet(ler).
+    Artboard v3 (W3 1107–1108): kuran satırında "Kuran" rozeti durum rozetini GİZLEMEZ, ikisi
+    birlikte basılır — "Kuran" bir rol, "Hazır/Bekliyor" bir durum.
     Alt satır: "{{şehir}} · <ikon> ~{{dk}} dk" — ikon ve dakika `travelMode`/`midpointMinutes`
     alanları ZATEN katılımcı nesnesinin üstünde (B-7:T1, üretilmiş tipte), ayrı prop olarak
     THREAD edilmez. Geliş animasyonu: `animate-appear` (reduced-motion `@layer base`'te kapalı).
@@ -18,33 +26,65 @@ export default function ParticipantRow(props: {
   participant: ParticipantDto;
   index: number;
   isSelf?: boolean;
+  onOptions?: (participant: ParticipantDto) => void;
+  /** `SessionView.anchored` — çapalı oturumda merkez host'un seçtiği sabit noktadır, kimsenin
+      konumu GEREKMEZ. Bu yüzden konumsuz katılımcı "bekleyen" değil HAZIR sayılır
+      (artboard W3d 4020/4113). */
+  anchored?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const p = props.participant;
   const mode = p.hasLocation ? p.travelMode : undefined;
+  // Çapalıda konum vermemek bir eksiklik değil: satır hazır görünür (halka + yeşil rozet),
+  // nabız/kesikli avatar YOK — kimse bu kişiyi beklemiyor.
+  const noLocationNeeded = props.anchored === true && !p.hasLocation;
+  const ready = p.hasLocation || noLocationNeeded;
   const icons = mode ? MODE_ICON[mode] : [];
   // `online` sunucudan gelir; istemci canlilik TURETMEZ. undefined = bilgi yok, cevrimici say
   // (yeni alan gelmeden once render edilen gorunumler kisiyi haksiz yere solutmasin).
   // Elle eklenen noktalar (SOLO) soket acamaz, onlarda gosterilmez.
   const away = p.online === false && !p.manual;
+  const online = p.online !== false && !p.manual;
+  const blocked = p.blocked === true;
+  // Alan yoksa metin UYDURULMAZ: linkOpenedAt yoksa mevcut "Konum bekleniyor…" kalır.
+  const waitingLine = p.hasLocation
+    ? p.locationLabel
+    : noLocationNeeded
+      ? t(props.isSelf ? "waiting.noLocationNeededSelf" : "waiting.noLocationNeeded")
+      : p.linkOpenedAt
+        ? t("presence.linkOpened")
+        : t("waiting.waitingLocation");
+  const seen = away && p.lastSeenAt ? hhmm(p.lastSeenAt, i18n.resolvedLanguage ?? i18n.language) : null;
   // K12: konuşma bilgisi ses deposundan (istemcide ölçülür); üyelik görünümden (`inVoice`).
   const speaking = useVoiceStore((s) =>
     props.isSelf ? s.selfSpeaking : !!(p.id && s.peers[p.id]?.speaking),
   );
   const inVoice = !!p.inVoice;
+  // Artboard satır dolgusu: 390'da 11/14px (1933/1942/1951), 1280'de 13/16px.
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[0.8125rem] animate-appear${away ? " opacity-55" : ""}`}
+      className={`flex items-center gap-3 px-[0.875rem] py-[0.6875rem] lg:px-4 lg:py-[0.8125rem] animate-appear${away || blocked ? " opacity-55" : ""}`}
     >
       <span
-        className={`inline-flex flex-none rounded-full${speaking ? " ring-[3px] ring-grass ring-offset-2 ring-offset-card" : ""}`}
+        className={`relative inline-flex flex-none rounded-full${!ready ? " c-pulse" : ""}`}
       >
         <Avatar
           name={p.displayName ?? "?"}
           index={props.index}
-          ring={p.hasLocation}
-          waiting={!p.hasLocation}
+          ring={ready}
+          waiting={!ready}
         />
+        {online && (
+          <i
+            data-testid="online-dot"
+            aria-hidden
+            /* Artboard 438-439: nokta `right:-1px;bottom:-1px`; konuşma halkası (`.od.spk`)
+               AVATARIN değil NOKTANIN üstünde ve %25 opak — tam opak halka satırı bağırıyordu. */
+            className={`absolute -right-px -bottom-px h-3 w-3 rounded-full border-2 border-card bg-grass${
+              speaking ? " shadow-[0_0_0_3px_rgba(11,122,68,0.25)]" : ""
+            }`}
+          />
+        )}
       </span>
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-[0.875rem] font-bold">
@@ -58,13 +98,16 @@ export default function ParticipantRow(props: {
           )}
           {speaking && <span className="sr-only">{t("voice.speaking")}</span>}
         </span>
-        <span className="flex items-center gap-1.5 text-[0.8125rem] text-ink2">
-          {p.hasLocation ? p.locationLabel : t("waiting.waitingLocation")}
+        <span className="flex items-center gap-1.5 text-[0.75rem] text-ink2">
+          {waitingLine}
           {icons.length > 0 && (
             <>
               <span aria-hidden>·</span>
+              {/* Artboard 1115: e-bisiklette şimşek bisikletin YANINDA değil, 9px'lik bir
+                  rozet ölçüsünde durur — `MODE_ICON` dizisinde ilk glif rozettir
+                  (`WinnerCard.tsx:216` ile aynı kural). */}
               {icons.map((Icon, i) => (
-                <Icon key={i} size={14} aria-hidden />
+                <Icon key={i} size={icons.length > 1 && i === 0 ? 9 : 14} aria-hidden />
               ))}
               {mode && <span className="sr-only">{t(MODE_LABEL_KEY[mode].name)}</span>}
               {p.midpointMinutes != null && (
@@ -75,18 +118,31 @@ export default function ParticipantRow(props: {
           {away && (
             <>
               <span aria-hidden>·</span>
-              <span>{t("waiting.offline")}</span>
+              <span>{seen ? t("presence.lastSeen", { time: seen }) : t("waiting.offline")}</span>
+            </>
+          )}
+          {blocked && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="font-bold text-flame-deep">{t("social.blockedRow")}</span>
             </>
           )}
         </span>
       </div>
-      {p.host ? (
-        <Badge tone="neutral">{t("waiting.host")}</Badge>
-      ) : (
-        <Badge tone={p.hasLocation ? "grass" : "amber"}>
-          {p.hasLocation ? t("waiting.ready") : t("waiting.waitingBadge")}
-        </Badge>
+      {props.onOptions && !props.isSelf && !blocked && (
+        <button
+          type="button"
+          aria-label={t("social.options", { name: p.displayName ?? "?" })}
+          className="flex-none rounded-full p-1.5 text-ink2 hover:text-ink"
+          onClick={() => props.onOptions?.(p)}
+        >
+          <DotsThree size={20} weight="bold" aria-hidden />
+        </button>
       )}
+      {p.host && <Badge tone="neutral">{t("waiting.host")}</Badge>}
+      <Badge tone={ready ? "grass" : "amber"}>
+        {ready ? t("waiting.ready") : t("waiting.waitingBadge")}
+      </Badge>
     </div>
   );
 }

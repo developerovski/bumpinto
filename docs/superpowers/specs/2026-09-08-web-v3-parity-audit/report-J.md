@@ -1,0 +1,50 @@
+# W9 Profil / W10 Hata / W10b Çevrimdışı / W12 Ses dock'u — parity findings (P1: 6, P2: 13)
+
+Token check: app.css:8-47 maps 1:1 to the design :root incl. v3 a11y overrides. No token findings.
+
+## W9 · Profil 1280 (design 2668-2756) — inventory, order and all profile.* copy match.
+- P2 travel-mode aside — design (2731) `.f-mode`: bare 12px ink2 car glyph, no chip; app (ProfilePrefs.tsx:132-141) filled flame chip repeating "Arabayla". fix: icon-only <span className="inline-flex items-center gap-1 text-[0.75rem] text-ink2">.
+- P2 language row — design (2735-2747): beige (#FBF5EC) always-open card footer, radius 0 0 22px 22px, caret-DOWN, options as `.pop-r` rows with ph-check, current = flame-wash/flame-deep; app (ProfilePrefs.tsx:155-192, PrefRow.tsx:23) ordinary white row, collapsed, native radios, caret-right rotated. fix: render the language block outside PrefRow as bg-[#fbf5ec] rounded-b-card footer, always expanded, CaretDown, Check glyph on the selected row (keep role="radiogroup" + sr-only inputs).
+- P3 activity chip: design (2722) min-height 36, padding 0 12, 13px; app (ProfilePrefs.tsx:108) px-3 py-1.5 text-[0.875rem].
+- P3 pref label weight 700 vs app font-semibold (PrefRow.tsx:19).
+- P3 name heading: design 21px (no .dk .h2 override); app --text-h2-lg bumps <h2> to 24px at lg.
+- P3 retention note radius: design .card 22px; app Note.tsx:8 rounded-2xl. fix: rounded-card.
+- P3 left zone gap 18px; app leftGap unused → 16px.
+
+## W9 · Profil 390 (design 2757-2839)
+- P1 "Hesap" section absent — design (2815-2828): .ov "Hesap" + card with two .srow.st rows: /account "Hesap ve veriler" hint "Gizlilik · KVKK · atıflar · hesabı sil" (2818-2822) and "Destek" (2824-2827); app (ProfilePage.tsx:36-59) has none at any width — /account is only reachable from the desktop AvatarMenu.tsx:53, so on a phone the account/legal/delete surface is unreachable. fix: lg:hidden block after ProfilePrefs with <Overline>{t("profile.account")}</Overline> + <SettingsCard> + two <SettingRow> (ShieldCheck → /account, Lifebuoy → /support); add tr keys profile.account / profile.accountHint.
+- P1 identity block layout — design (2768-2779) at 390 is a centred column: 64px avatar in a 3px ring, name (.h2 17px) + ph-pencil-simple on one row, e-mail as .mi, then .bg.g-ne badge with ph-google-logo "Google ile giriş"; app (IdentityCard.tsx:36-74) one horizontal card at every width, 80px avatar, provider concatenated into the e-mail line (:61), CaretRight instead of a pencil. fix: stacked mobile branch (flex-col items-center gap-1.5 border-0 bg-transparent p-0 shadow-none lg:flex-row lg:gap-5 lg:rounded-card lg:border), PencilSimple below lg, provider as <Badge tone="neutral"><GoogleLogo size={14}/>…</Badge>, e-mail on its own Note line.
+- P2 pref rows have no 32px icon tiles — design (2792-2814) .srow.st with 32x32 radius-10 #F4EEE6 tiles (ph-map-pin, ph-coffee, ph-car, ph-globe, 17px ink2); app PrefRow.tsx:18-24 has no icon slot. fix: optional icon prop rendering <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[0.625rem] bg-sand text-ink2 lg:hidden">.
+- P2 retention note position/format — design (2830) plain .mi 12px, LAST item after the Hesap card; app (ProfilePage.tsx:43) <Note card> in the left zone → appears before "Tercihler" at 390. fix: lg:hidden trailer after the Hesap block, keep <Note card> under DesktopOnly in the left zone.
+- P2 top bar at 390 — design (2762-2766, same at 4495-4499) .bar.m nav holds only the lang pill + avatar; app (TopBar.tsx:23-27) renders the "Oturumlar" NavLink at every width. fix: wrap in hidden lg:block.
+- P3 stat card 390: design padding 10, value 24px, gap 10; app StatCard.tsx:7-11 fixed 18/32/14.
+- P3 avatar xl: design 64px at 390 in a 3px ring; app Avatar.tsx:17 h-20 w-20 always.
+- P3 page title 390: design 20px .h2; app PageHeader h1 = 34px.
+- P3 390 activity value: design "Kahve" only; app always activity · group.
+
+## W10 · Hata (2840-2914) — structure, muted mark and all copy match.
+- P2 body/hint hierarchy — design lead .bd.m2 16px (17px at 1280), hint .mi 12px; app (ErrorPage.tsx:30-31) both via <Note center> = 13px. fix: body as <p className="max-w-[28ch] text-center text-base leading-normal text-ink2 lg:max-w-[36ch] lg:text-[1.0625rem]">, keep Note for the hint.
+- P2 390 CTA — design (2884-2886, 2908-2910) full-width .btn.b-wh pinned in .cta; app (ErrorPage.tsx:32) size="fit" at every width. fix: <MobileCta> + DesktopOnly fit copy.
+- P3 1280 zone gap 18px (OneZone.tsx:4 is 14px at all widths); P3 per-paragraph max-width (36ch/28ch); P3 .mk-dot offsets (design left:0/top:18px, right:0/bottom:14px vs app.css:337-345 12px/10px).
+
+## W10b · Çevrimdışı 390 (4490-4537) / 1280 (4620-4716) — strip placement, icon, copy and real retry all correct.
+- P1 stale content neither dimmed nor disabled — design 1280: .wrap opacity .6 (4639), "Yeni buluşma kur" disabled (4642), "Desteye git" disabled (4661), "Lobiye git" disabled (4676); 390: card opacity .6 (4512), both CTAs disabled (4525, 4532). This is the whole point of the board. app: online never leaves AppShell.tsx:11,25 → SessionsPage renders full opacity with live CTAs. fix: lift useOnline() into a small context in AppShell (or call it in SessionsPage), wrap the body in opacity-60 when offline, pass disabled={!online} to SessionsPage.tsx:24,40 and to the SessionCard actions.
+- P2 second strip line vanishes on a cold offline load — app (OfflineBanner.tsx:18-21,31) gates the line on lastOnlineAt, and useOnline.ts:11-15 initialises it to null, setting it only from the offline EVENT. fix: seed lastOnlineAt: navigator.onLine === false ? Date.now() : null. No API field missing (ParticipantDto.lastSeenAt is per-participant presence, unrelated).
+- P2 strip border colour — design (4500, 4631) 1px #F3DDB0; app (OfflineBanner.tsx:27) border-line2 #e4d9cd. fix: add --color-amber-line:#f3ddb0 to app.css and use border-amber-line.
+- P3 strip metrics not responsive: design 1280 padding 12/18, icon 21, retry 40px; 390 padding 10/14, icon 19, retry 36px; app px-4 py-2.5 / size 21 / Button sm (42px) everywhere. P3 top margin mt-3 → lg:mt-4.
+
+## W12 · Sesli sohbet dock'u — 390, 7 states (4538-4619 + CSS 446-462, 564)
+- P1 dock shell is a different component — design .dock: DARK pill #27203B, white text, radius 999px, padding 8/8/8/14, gap 10, shadow 0 14px 34px rgba(39,32,59,.32), floating left:14 right:14 bottom:104 at 390 (96 via .mb .dock) and right:48 bottom:28 width:420 at 1280; app (VoiceDock.tsx:47-61) light full-bleed sticky bar below lg and a light fixed rounded-card max-w-[32rem] at lg. fix: rebuild Bar as mx-3.5 mb-[6.5rem] flex items-center gap-2.5 rounded-full bg-ink px-2 py-2 pl-3.5 text-white shadow-[0_14px_34px_rgba(39,32,59,0.32)] lg:fixed lg:right-12 lg:bottom-7 lg:mx-0 lg:mb-0 lg:w-[26.25rem], keeping the invisible lg spacer twin (:67).
+- P1 the .t title/subtitle block is missing in 5 of 7 states — design: every state has <div class="t"><b>…</b><span>…</span></div> (title 700 14px/1.2 head, subtitle 500 12px/1.2 rgba(255,255,255,.72)) at 4551, 4559, 4567, 4578, 4590, 4599, 4607; app (VoiceDock.tsx:115-215) only state 2 has a title and state 7 body text; states 1,3,4,5,6 render no title. Missing tr copy: voice.title "Sesli sohbet", voice.startHint "Herkes gelmeden konuşmaya başla", voice.inCall "Sesli sohbette", voice.speakingBy "{{name}} konuşuyor", voice.mutedHint "Mikrofonun kapalı", voice.connectFailedTitle "Bağlanılamadı".
+- P1 error state has no visual variant — design (4597-4601 + CSS 458-459) .dock.err: light pink #FFF1F4, 1.5px #F6C6D2, sh1, ink text, 20px ph-warning-circle in flame-deep, title "Bağlanılamadı", subtitle = voice.connectFailed (already matches verbatim), plain white "Tekrar dene"; app (VoiceDock.tsx:157-158) a bare red ErrorText inside the normal bar. fix: add an err variant to Bar; keep voice.micDenied (an extra app state) reusing the same variant.
+- P2 states 1 and 7 need the .dock.warm variant — design (4549-4552, 4605-4608): flame-wash ground, 1.5px #F6C6D2, ink text, white .ic circle with a flame-deep ph-microphone, RED .btn.rd reading "Başlat"/"Yeniden başlat"; app (VoiceDock.tsx:130-140) standard bar + kind="white" button labelled voice.start = "Sesli sohbeti başlat". fix: warm variant + mic circle, kind="flame", shorten voice.start to "Başlat" (keep the long form as aria-label).
+- P2 states 2 and 3 lost the avatar stack and the join button's mic icon — design (4558, 4560, 4566) .avs 28px avatars, -8px overlap, 2px solid #27203B edge; app renders avatars only in the phase === "in" branch (:172-194) and the join button (:160-162) is text-only. fix: hoist the avatar block above the early return, add <Microphone size={18}/>.
+- P2 remaining time format — design (4559) "24 dk kaldı"; app (VoiceDock.tsx:23-31,146,155) m:ss → "24:00 kaldı". fix: floor to minutes for the dock (voice.remainingMin), keep seconds for the aria-live announcement.
+- P2 "Bağlanıyor…" placement — design (4567-4568) it is the SUBTITLE, the button keeps "Katıl" disabled at opacity .5; app (VoiceDock.tsx:149-150,160) puts it on the button.
+- P2 leave button shape — design (4579-4580, 4591-4592) two 40px round .ic buttons (mic + ph-phone-x), icon-only with aria-label; app (VoiceDock.tsx:197-210) 48px round-sm mic + a ghost pill with visible "Ayrıl" text, which widens the dock past 420px.
+- P3 speaking indicator: design .od.spk presence dot with halo; app ring-[3px] ring-grass ring-offset-2 around the avatar.
+- P3 "Herkes için bitir" is on no artboard state; app renders it in states 2-5 — it is what pushes the in-call row past the pill width.
+
+## Shared components (not exercised by these artboards)
+- P3 Toggle — design .tog 50x30, 24px knob at right:3, ON var(--grad), OFF #E4D9CD, no border; app (Toggle.tsx:18,21,27-28) 46x28, 20px knob, ON flat bg-flame-deep, OFF bg-sand + border-line2 ring.
+- P2/P3 SettingRow — design .srow.st padding 12/16, gap 12, icon tile 32x32 radius 10, label weight 700; app (SettingRow.tsx:7-8,18) px-[1.125rem] py-3.5, gap-3.5, icon h-9 w-9 rounded-xl, label font-semibold.

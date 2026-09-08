@@ -1,0 +1,4 @@
+id: broken-fixture
+idPattern: "^[0-9a-f]{24}$"
+categories:
+  COFFEE: [13032]

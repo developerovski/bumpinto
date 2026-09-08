@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: osrm-data
+  namespace: bumpinto
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm-car
+  namespace: bumpinto
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: osrm-car }
+  template:
+    metadata:
+      labels: { app: osrm-car, app.kubernetes.io/part-of: osrm }
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels: { app.kubernetes.io/part-of: osrm }
+      containers:
+        - name: osrm
+          image: osrm/osrm-backend:v5.27.1
+          args: ["osrm-routed", "--algorithm", "mld", "/data/car/netherlands-latest.osrm"]
+          ports: [{ containerPort: 5000 }]
+          volumeMounts:
+            - { name: data, mountPath: /data, readOnly: true }
+          readinessProbe:
+            httpGet: { path: "/route/v1/car/5.47,51.44;5.48,51.45", port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 1Gi }
+            limits: { memory: 3Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: osrm-data, readOnly: true }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm-car
+  namespace: bumpinto
+spec:
+  selector: { app: osrm-car }
+  ports: [{ port: 5000, targetPort: 5000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm-bicycle
+  namespace: bumpinto
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: osrm-bicycle }
+  template:
+    metadata:
+      labels: { app: osrm-bicycle, app.kubernetes.io/part-of: osrm }
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels: { app.kubernetes.io/part-of: osrm }
+      containers:
+        - name: osrm
+          image: osrm/osrm-backend:v5.27.1
+          args: ["osrm-routed", "--algorithm", "mld", "/data/bicycle/netherlands-latest.osrm"]
+          ports: [{ containerPort: 5000 }]
+          volumeMounts:
+            - { name: data, mountPath: /data, readOnly: true }
+          readinessProbe:
+            httpGet: { path: "/route/v1/bicycle/5.47,51.44;5.48,51.45", port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 1Gi }
+            limits: { memory: 3Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: osrm-data, readOnly: true }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm-bicycle
+  namespace: bumpinto
+spec:
+  selector: { app: osrm-bicycle }
+  ports: [{ port: 5000, targetPort: 5000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm-foot
+  namespace: bumpinto
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: osrm-foot }
+  template:
+    metadata:
+      labels: { app: osrm-foot, app.kubernetes.io/part-of: osrm }
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels: { app.kubernetes.io/part-of: osrm }
+      containers:
+        - name: osrm
+          image: osrm/osrm-backend:v5.27.1
+          args: ["osrm-routed", "--algorithm", "mld", "/data/foot/netherlands-latest.osrm"]
+          ports: [{ containerPort: 5000 }]
+          volumeMounts:
+            - { name: data, mountPath: /data, readOnly: true }
+          readinessProbe:
+            httpGet: { path: "/route/v1/foot/5.47,51.44;5.48,51.45", port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 1Gi }
+            limits: { memory: 3Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: osrm-data, readOnly: true }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm-foot
+  namespace: bumpinto
+spec:
+  selector: { app: osrm-foot }
+  ports: [{ port: 5000, targetPort: 5000 }]

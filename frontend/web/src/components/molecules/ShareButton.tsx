@@ -1,40 +1,12 @@
 /* Kaynak: artboard Karar 1280 "Gruba paylaş" — Web Share API, yoksa panoya kopyala.
    Deste bitti bekleme lobisi "Bekleyenleri dürt" için etiket/görünüm prop'larıyla genişledi. */
-import { Copy, ShareNetwork } from "@phosphor-icons/react";
+import { Copy, Image as ImageIcon, PaperPlaneTilt, ShareNetwork } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { copyToClipboard } from "../../lib/clipboard";
+import { shareOrDownload } from "../../lib/shareCard";
 import { Button } from "../atoms";
 
-/**
- * Pano yazımı iki yollu: `navigator.clipboard` yalnız GÜVENLİ bağlamda (https ya da localhost)
- * vardır. Bu proje telefondan LAN adresiyle de test ediliyor (`vite.config.ts` → `host: true`),
- * orada bağlam güvensizdir ve API tanımsızdır — eski `execCommand` yolu olmadan buton sessizce
- * hiçbir şey yapmaz ve kullanıcı linke ulaşamaz.
- */
-async function copyToClipboard(value: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // güvensiz bağlam ya da izin reddi — aşağıdaki yola düş
-  }
-  try {
-    const field = document.createElement("textarea");
-    field.value = value;
-    field.setAttribute("readonly", "");
-    field.style.position = "fixed";
-    field.style.opacity = "0";
-    document.body.appendChild(field);
-    field.select();
-    const copied = document.execCommand("copy");
-    document.body.removeChild(field);
-    return copied;
-  } catch {
-    return false;
-  }
-}
 
 export default function ShareButton(props: {
   text: string;
@@ -50,9 +22,19 @@ export default function ShareButton(props: {
    * Metin değil yalnız URL kopyalanır — butonun adı ne söz veriyorsa o.
    */
   copyOnly?: boolean;
+  /** "file": `getFile` ile üretilen PNG'yi Web Share dosya modunda paylaşır, olmazsa/çökerse
+      metin paylaşımına düşer. Varsayılan "text" — mevcut linkli davranış değişmez. */
+  mode?: "text" | "file";
+  getFile?: () => Promise<{ blob: Blob; fileName: string } | null>;
+  /** Çağıranın yerleşim ekleri (ör. Karar şeridinde `flex-1`) — `Button` className'i EZMEZ, ekler. */
+  className?: string;
+  /** Artboard 2510/3728 — "Hatırlatma gönder" uçak ikonu taşır; paylaş/kopyala ikonları
+      eylemin ne olduğunu yanlış söylüyordu (bu düğme hatırlatma yollar, kart paylaşmaz). */
+  icon?: "remind";
 }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -63,7 +45,7 @@ export default function ShareButton(props: {
     timer.current = setTimeout(() => setCopied(false), 2000);
   }
 
-  function share() {
+  function shareText() {
     if (!props.copyOnly && navigator.share) {
       navigator.share({ text: props.text, url: props.url }).catch(() => undefined);
       return;
@@ -73,13 +55,48 @@ export default function ShareButton(props: {
     });
   }
 
-  const Icon = props.copyOnly ? Copy : ShareNetwork;
+  function share() {
+    if (props.mode !== "file" || !props.getFile) return shareText();
+    setBusy(true);
+    // `Promise.resolve().then(...)` yerine doğrudan `props.getFile()` çağrılsaydı, senkron bir
+    // throw `.finally` bağlanmadan önce zincirin dışına kaçardı — buton kalıcı "hazırlanıyor"da
+    // kilitli kalırdı. Zincire almak hem senkron throw'u hem async reject'i aynı `.catch` yoluna
+    // (metin paylaşımına düşüş) sokar (coordinator düzeltmesi).
+    Promise.resolve()
+      .then(() => props.getFile!())
+      .then(async (file) => {
+        if (file && (await shareOrDownload(file.blob, file.fileName, props.text)) !== "failed") return;
+        shareText();
+      })
+      .catch(() => shareText())
+      .finally(() => setBusy(false));
+  }
+
+  const Icon =
+    props.icon === "remind"
+      ? PaperPlaneTilt
+      : props.mode === "file"
+        ? ImageIcon
+        : props.copyOnly
+          ? Copy
+          : ShareNetwork;
   return (
-    <Button type="button" kind={props.kind ?? "white"} size={props.size} onClick={share}>
+    <Button
+      type="button"
+      kind={props.kind ?? "white"}
+      size={props.size}
+      className={props.className}
+      onClick={share}
+      disabled={busy}
+    >
       <Icon size={18} aria-hidden />
       {/* Kopyalandı geçişi ekran okuyucuya duyurulur (coordinator düzeltmesi). */}
       <span aria-live="polite">
-        {copied ? (props.copiedLabel ?? t("result.copied")) : (props.label ?? t("result.share"))}
+        {busy
+          ? t("share.preparing")
+          : copied
+            ? (props.copiedLabel ?? t("result.copied"))
+            : (props.label ?? t("result.share"))}
       </span>
     </Button>
   );

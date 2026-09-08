@@ -4,6 +4,7 @@ import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionSummary;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,9 +23,43 @@ public interface SessionStorePort {
     Optional<Participant> participantOf(UUID sessionId, UUID userId);
     void deleteParticipant(UUID participantId);
 
-    /** Hostu verilen kullanici olan oturumlar, en yeniden eskiye, en fazla limit. */
-    List<SessionSummary> summariesOfHost(UUID hostId, int limit);
+    /**
+     * Hostun ACIK oturumlari, en yeniden eskiye. LIMIT YOK ve bu bilincli: acik oturum TTL ile
+     * 24 saatte kapanir, kume dogal olarak kucuktur. Tavan konsaydi cok sayida YENI oturum acan
+     * host'un eski ama hala acik oturumu listeden SESSIZCE duserdi — ulasilacak baska yolu da yok.
+     */
+    List<SessionSummary> openSummariesOfHost(UUID hostId, Instant now);
+
+    /**
+     * Hostun GECMIS oturumlari, en yeniden eskiye, en fazla limit. Tavan BURAYA aittir: gecmis
+     * sinirsiz birikir.
+     *
+     * <p>Bolme SQL'de tembel expiry ile AYNI kurali kullanmak ZORUNDADIR (bkz. SessionExpiry):
+     * TTL'i gecmis oturum EXPIRED raporlanir ama DB'ye yazilmaz, yani kayitli statusu hala
+     * COLLECTING olan satir gecmise aittir. Kural yalniz {@code status} bakarak kurulsaydi
+     * suresi dolmus oturum acik kutuda "devam ediyor" gibi gorunurdu.
+     */
+    List<SessionSummary> pastSummariesOfHost(UUID hostId, Instant now, int limit);
+
     long hostedSessionCount(UUID hostId);
     /** Host'un oturumlarina katilmis, host ve elle konum OLMAYAN farkli kisi sayisi (ad bazli). */
     long distinctGuestsOfHost(UUID hostId);
+
+    /** Hostu verilen hesap olan TUM oturum kimlikleri (limitsiz — silme icin). */
+    List<UUID> sessionIdsOfHost(UUID hostId);
+
+    /** Oturum ve ona bagli her sey (FK cascade: katilimci/mekan/kaydirma/oy). */
+    void deleteSession(UUID sessionId);
+
+    /** Hesabin BASKALARININ oturumlarindaki koltuklari. */
+    List<Participant> participantsOfUser(UUID userId);
+
+    /** Koltuk kalir, kimlik gider: ad degisir, user_id ve konum null olur, damga yazilir. */
+    void anonymizeParticipant(UUID participantId, String displayName, Instant when);
+
+    /** Kullanilmamis bir davet kodu; carpisma nadirdir ama sessiz kalamaz — unique index atar. */
+    String freshJoinCode();
+
+    /** Kod kanonik — buyuk harf, 5 hane — gelmelidir; normalizasyon sorgu katmaninda yapilir. */
+    Optional<Session> sessionByJoinCode(String joinCode);
 }

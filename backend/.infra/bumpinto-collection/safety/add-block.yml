@@ -1,0 +1,48 @@
+info:
+  name: Add Block
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/me/blocks"
+  headers:
+    - name: content-type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "participantId": "{{participantId}}",
+        "sessionSlug": "{{slug}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("blockId", res.body.id);
+        }
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+        test("engel kimligi doner", function() {
+          expect(res.body.id).to.be.a("string");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    `userId` VEYA `participantId` — tam biri (ikisi birden ya da hicbiri `400`).
+    `participantId` ile engelde `sessionSlug` ZORUNLUDUR.
+
+    **Iki kural ayridir:**
+    - **Roster'da TEK YONLU**: `ParticipantDto.blocked` yalniz engelleyene `true`
+      gelir; engellenen hicbir isaret gormez — engel bir mesaj degildir.
+    - **Ses odasinda CIFT YONLU**: engelli cift ayni odaya alinmaz, hangi taraf
+      engellemis olursa olsun.
+
+    Anonim koltuk engeli `blocked` olayini yayinlar: roster ve ses uyeligi tazelenir.

@@ -28,6 +28,17 @@ describe("TravelModeField", () => {
     expect(screen.getByText("Bisikletle seçili")).toBeInTheDocument();
   });
 
+  /** DS `.f-mp` (artboard 910/920): Konumlar satırının İÇİNDE duran 22px ikon şeridi —
+      görünür etiket ve altyazı yok, satır yüksekliği büyümüyor; erişilebilir ad kalıyor. */
+  it("compact: satır içi ikon şeridi — görünür metin yok, radiogroup adı korunur", () => {
+    render(<TravelModeField value="CAR" onChange={vi.fn()} label="Ayşe nasıl geliyor?" compact />);
+    expect(screen.getByRole("radiogroup", { name: "Ayşe nasıl geliyor?" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(5);
+    expect(screen.getByRole("radio", { name: "Arabayla" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByText("Arabayla")).not.toBeInTheDocument();
+    expect(screen.queryByText("Arabayla seçili")).not.toBeInTheDocument();
+  });
+
   it("hideLabel'de altyazı tekrar basılmaz (satır zaten adı taşır)", () => {
     render(<TravelModeField value="BIKE" onChange={vi.fn()} label="Ayşe nasıl geliyor?" hideLabel />);
     expect(screen.queryByText("Bisikletle seçili")).not.toBeInTheDocument();

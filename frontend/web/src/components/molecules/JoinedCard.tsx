@@ -7,9 +7,11 @@ import { Note } from "../atoms";
 export default function JoinedCard({ self }: { self: ParticipantDto | null }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-card border border-[#bfe5cf] bg-grass-wash px-4 py-[0.9375rem] shadow-sh1">
+    // Artboard W5: iç boşluk 390'da 11/14px (1903-1905), 1280'de 16/18px (1812) — tek ölçü
+    // kullanınca dar ekranda kart gereğinden şişkin duruyordu (rapor F/A-P3-12, B-P3-10).
+    <div className="rounded-card border border-[#bfe5cf] bg-grass-wash px-[0.875rem] py-[0.6875rem] shadow-sh1 lg:px-[1.125rem] lg:py-4">
       <div className="flex items-center gap-[0.6875rem]">
-        <span className="c-check" aria-hidden>
+        <span className="c-check c-check--joined" aria-hidden>
           <i />
         </span>
         <div className="flex flex-col gap-0.5">

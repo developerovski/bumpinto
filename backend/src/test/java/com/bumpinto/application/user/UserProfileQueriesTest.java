@@ -8,7 +8,6 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
-import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.support.FakeStores;
 import java.time.Clock;
@@ -68,13 +67,60 @@ class UserProfileQueriesTest {
 
     @Test
     void mySessionsReturnsNewestFirstAndAppliesLazyExpiryWithoutWriting() {
-        List<SessionSummary> summaries = queries.mySessions(host);
+        UserProfileQueries.MySessions mine = queries.mySessions(host);
 
-        assertThat(summaries).hasSize(3);
-        assertThat(summaries).extracting(s -> s.session().id())
-                .containsExactly(s3.id(), s2.id(), s1.id());
-        assertThat(summaries.get(2).session().status()).isEqualTo(SessionStatus.EXPIRED);
+        assertThat(mine.open()).extracting(s -> s.session().id()).containsExactly(s3.id());
+        // s1'in KAYITLI statusu hala COLLECTING ama TTL'i gecmis: gecmise duser, acik kutuya
+        // degil — yoksa suresi dolmus oturum "devam ediyor" gibi gorunurdu.
+        assertThat(mine.past()).extracting(s -> s.session().id())
+                .containsExactly(s2.id(), s1.id());
+        assertThat(mine.past().get(1).session().status()).isEqualTo(SessionStatus.EXPIRED);
         assertThat(sessions.sessions.get(s1.id()).status()).isEqualTo(SessionStatus.COLLECTING);
+        assertThat(mine.pastTruncated()).isFalse();
+    }
+
+    /**
+     * Tavan GECMISI korur, aciklari degil. Eskiden tek sorgu once en yeni 20 satiri cekip
+     * kutulara SONRA ayirdigi icin, cok sayida yeni oturum acan host'un eski ama hala acik
+     * oturumu listeden sessizce dusuyordu — ulasilacak baska yol da yoktu.
+     */
+    @Test
+    void oldOpenSessionSurvivesAFullPastList() {
+        Session oldButOpen = newSession("oldopen", SessionStatus.COLLECTING, NOW.plusSeconds(3600));
+        sessions.createdAt.put(oldButOpen.id(), NOW.minusSeconds(10_000)); // hepsinden ESKI
+        for (int i = 0; i < UserProfileQueries.LIST_LIMIT + 5; i++) {
+            Session past = newSession("old" + i, SessionStatus.DECIDED, NOW.plusSeconds(3600));
+            sessions.createdAt.put(past.id(), NOW.minusSeconds(50 - i)); // hepsi daha YENI
+        }
+
+        UserProfileQueries.MySessions mine = queries.mySessions(host);
+
+        assertThat(mine.open()).extracting(s -> s.session().id())
+                .containsExactly(s3.id(), oldButOpen.id());
+        assertThat(mine.past()).hasSize(UserProfileQueries.LIST_LIMIT);
+        assertThat(mine.pastTruncated()).isTrue();
+    }
+
+    /** Kesilme bayragi TAVANA degil GERCEKTEN kesilmeye bakar: tam 20 gecmis "daha var" demez. */
+    @Test
+    void pastTruncatedOnlyWhenThePastListActuallyGotCut() {
+        // setUp'tan iki gecmis var (s1 suresi dolmus, s2 karar verilmis); tam tavana tamamla.
+        for (int i = 0; i < UserProfileQueries.LIST_LIMIT - 2; i++) {
+            Session past = newSession("full" + i, SessionStatus.DECIDED, NOW.plusSeconds(3600));
+            sessions.createdAt.put(past.id(), NOW.minusSeconds(50 - i));
+        }
+
+        UserProfileQueries.MySessions exactlyFull = queries.mySessions(host);
+        assertThat(exactlyFull.past()).hasSize(UserProfileQueries.LIST_LIMIT);
+        assertThat(exactlyFull.pastTruncated()).isFalse();
+
+        Session oneMore = newSession("overflow", SessionStatus.DECIDED, NOW.plusSeconds(3600));
+        sessions.createdAt.put(oneMore.id(), NOW.minusSeconds(10));
+
+        UserProfileQueries.MySessions overflowing = queries.mySessions(host);
+        assertThat(overflowing.past()).hasSize(UserProfileQueries.LIST_LIMIT);
+        assertThat(overflowing.past()).extracting(s -> s.session().id()).contains(oneMore.id());
+        assertThat(overflowing.pastTruncated()).isTrue();
     }
 
     @Test

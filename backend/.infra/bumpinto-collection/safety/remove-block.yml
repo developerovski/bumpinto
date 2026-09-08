@@ -1,0 +1,22 @@
+info:
+  name: Remove Block
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/me/blocks/{{blockId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    Yalniz KENDI engelini kaldirabilirsin. Baskasinin engeli icin `404` degil `403`
+    doner: baskasinin engelinin VARLIGI da sizmamali.

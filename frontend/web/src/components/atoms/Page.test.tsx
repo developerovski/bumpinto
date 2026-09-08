@@ -41,7 +41,7 @@ describe("Page yerleşim sözleşmesi", () => {
     expect(main).not.toHaveAttribute("data-wide");
     expect(main.className).toContain("fit:min-h-0");
     expect(main.className).toContain("fit:overflow-hidden");
-    expect(main.className).toContain("lg:max-w-[80rem]");
+    expect(main.className).toContain("lg:max-w-[70rem]");
   });
 
   it("fit işareti yalnız istendiğinde basılır", () => {

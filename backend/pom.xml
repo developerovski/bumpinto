@@ -153,6 +153,19 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <!-- Rancher Desktop'ta Ryuk container'ı başlatma güvenilmez şekilde zaman aşımına
+                 uğrayıp PostgresContainer'ı paylaşan TÜM Testcontainers testlerini
+                 ExceptionInInitializerError ile düşürüyor. ~/.testcontainers.properties'teki
+                 "ryuk.disabled" anahtarı TC 1.21.3'te etkisiz (yalnızca bu env var okunuyor). -->
+            <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+          </environmentVariables>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

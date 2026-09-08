@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,10 +37,16 @@ const realActions = {
   end: useVoiceStore.getState().end,
 };
 
-function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getState>> = {}) {
+function dock(
+  view: object,
+  voice: Partial<ReturnType<typeof useVoiceStore.getState>> = {},
+  /** Varsayılan: alt aksiyon şeridi OLMAYAN sayfaların yerleşimi — her genişlikte basılır. */
+  placement: "header" | "header-lg" | "strip" = "header",
+) {
   useSessionStore.setState({ slug: "x", view: view as never, error: null });
   useVoiceStore.setState({
     phase: "idle", muted: false, peers: {}, selfSpeaking: false, endedReason: null, micDenied: false, connectFailed: false,
+    limitMinutes: null,
     join: vi.fn(realActions.join),
     leave: vi.fn(realActions.leave),
     toggleMute: vi.fn(realActions.toggleMute),
@@ -48,7 +54,7 @@ function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getSt
     end: vi.fn(realActions.end),
     ...voice,
   });
-  return render(<VoiceDock view={view as never} />);
+  return render(<VoiceDock view={view as never} placement={placement} />);
 }
 
 describe("VoiceDock", () => {
@@ -92,11 +98,16 @@ describe("VoiceDock", () => {
     const join = vi.fn();
     dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "b", host: false } }, { join });
     expect(screen.getByText("Sesli sohbet açık")).toBeInTheDocument();
-    expect(screen.getByText(/2 kişi/)).toBeInTheDocument();
+    // Artboard 4559: alt satır "2 kişi · 24 dk kaldı" — TAM dakika, saniye sayacı değil.
+    expect(screen.getByText(/2 kişi · (9|10) dk kaldı/)).toBeInTheDocument();
+    // Saniyeli tam süre yalnız ekran okuyucu için kalır.
     expect(screen.getByText(/9:5\d kaldı|10:00 kaldı/)).toBeInTheDocument();
+    // Artboard 4558: katılmadan ÖNCE de içerdekilerin avatarları görünür.
+    expect(screen.getByText("Ayşe · sesli sohbette")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
     expect(join).toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Herkes için bitir" })).not.toBeInTheDocument();
+    // Davetlide oda eylemi yok: taşma menüsü düğmesi de basılmaz.
+    expect(screen.queryByRole("button", { name: "Sesli sohbet seçenekleri" })).not.toBeInTheDocument();
   });
 
   it("süresi geçmiş endsAt → geri sayım 0'da kalır", () => {
@@ -105,13 +116,24 @@ describe("VoiceDock", () => {
     expect(screen.getByText(/0:00 kaldı/)).toBeInTheDocument();
   });
 
-  it("host 'Herkes için bitir'e tıklayınca api.voiceEnd çağrılır", async () => {
+  it("host: taşma menüsünden 'Herkes için bitir' api.voiceEnd çağırır ve menü kapanır", async () => {
     vi.mocked(api.voiceEnd).mockResolvedValue(undefined as never);
     vi.mocked(api.getSession).mockResolvedValue({ ...base, voice: null } as never);
     dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "h", host: true } });
-    fireEvent.click(screen.getByRole("button", { name: "Herkes için bitir" }));
-    await screen.findByRole("button", { name: "Herkes için bitir" });
-    expect(api.voiceEnd).toHaveBeenCalledWith("x");
+    // Artboard 4557-4560: pill TEK eylem taşır — bitirme, dock'un `.ic` taşma menüsünde.
+    expect(screen.queryByRole("menuitem", { name: "Herkes için bitir" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sesli sohbet seçenekleri" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Herkes için bitir" }));
+    await waitFor(() => expect(api.voiceEnd).toHaveBeenCalledWith("x"));
+    expect(screen.queryByRole("menuitem", { name: "Herkes için bitir" })).not.toBeInTheDocument();
+  });
+
+  it("taşma menüsü Esc ile kapanır", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "h", host: true } });
+    fireEvent.click(screen.getByRole("button", { name: "Sesli sohbet seçenekleri" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("içeride → avatarlar durumlarıyla, sustur, ayrıl; host'a bitir", () => {
@@ -123,11 +145,18 @@ describe("VoiceDock", () => {
     );
     expect(screen.getByText("Ayşe · konuşuyor")).toBeInTheDocument();
     expect(screen.getByText("Mehmet · sesli sohbette")).toBeInTheDocument();
+    // Artboard 4578: başlık "Sesli sohbette", alt satır konuşanı söyler.
+    expect(screen.getByText("Sesli sohbette")).toBeInTheDocument();
+    expect(screen.getByText("Ayşe konuşuyor")).toBeInTheDocument();
+    // Ayrılma düğmesi ikon-only (4579-4580): görünür metin YOK, ad aria-label'den gelir.
+    expect(screen.getByRole("button", { name: "Ayrıl" })).toHaveTextContent("");
     fireEvent.click(screen.getByRole("button", { name: "Mikrofonu kapat" }));
     expect(toggleMute).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /Ayrıl/ }));
     expect(leave).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Herkes için bitir" })).toBeInTheDocument();
+    // Host içerideyken de bitirme yalnız taşma menüsünde (pill: avatarlar + metin + mic + ayrıl).
+    expect(screen.getByRole("button", { name: "Sesli sohbet seçenekleri" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
   it("bağlanamayan peer yazıyla söylenir; sessizken düğme 'Mikrofonu aç'", () => {
@@ -136,6 +165,8 @@ describe("VoiceDock", () => {
       { phase: "in", muted: true, peers: { a: { state: "failed", speaking: false } } },
     );
     expect(screen.getByText("Ayşe · sesi gelmiyor")).toBeInTheDocument();
+    // Artboard 4590: mikrofon kapalıyken alt satır bunu söyler.
+    expect(screen.getByText("Mikrofonun kapalı")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mikrofonu aç" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -168,6 +199,12 @@ describe("VoiceDock", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("bağlanılamadı");
     expect(screen.getByRole("button", { name: "Tekrar dene" })).toBeInTheDocument();
+    /* Artboard 4597-4601 `.dock.err` durumu açık pembe PILL zeminiyle anlatıyordu; kısa
+       denetimde pill yok — durum uyarı ikonlu "Tekrar dene" düğmesi, `role="alert"` duyurusu
+       ve ipucuyla anlatılır (2026-09-08). */
+    expect(screen.getByText("Bağlanılamadı")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Bağlanılamadı");
+    expect(screen.getByRole("button", { name: /Tekrar dene/ })).toBeInTheDocument();
   });
 
   it("mikrofon reddi → açıklama ve Tekrar dene", () => {
@@ -194,5 +231,90 @@ describe("VoiceDock", () => {
       useVoiceStore.setState({ phase: "in" });
     });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mikrofonu kapat" }));
+  });
+
+  it("süre dolunca uzunluk biliniyorsa ipucu basılır, bilinmiyorsa satır çizilmez", () => {
+    const view = { ...base, voice: null, viewer: { participantId: "a", host: false } };
+    const { unmount } = dock(view, { endedReason: "TIME_LIMIT", limitMinutes: 30 });
+    expect(screen.getByText("Süre doldu")).toBeInTheDocument();
+    expect(screen.getByText("30 dk sesli sohbet bitti")).toBeInTheDocument();
+    unmount();
+    dock(view, { endedReason: "TIME_LIMIT", limitMinutes: null });
+    expect(screen.queryByText(/sesli sohbet bitti/)).not.toBeInTheDocument();
+  });
+
+  it("durum 1 (kapalı · host): tek kısa düğme; davet cümlesi YAZILMAZ, sr-only'de durur", () => {
+    dock({ ...base, voice: null, viewer: { participantId: "h", host: true } });
+    /* Artboard 4549-4552 bunu flame-wash zeminli bir pill + iki satır metin olarak çiziyor.
+       Kısa denetimde pill ve alt satır yok (kullanıcı kararı 2026-09-08): düğmenin KENDİSİ
+       "Sesli sohbet" yazar, davet cümlesi ipucu + `sr-only` olarak kalır. */
+    const region = screen.getByRole("region", { name: "Sesli sohbet" });
+    expect(region.className).not.toContain("bg-flame-wash");
+    expect(screen.getByText("Herkes gelmeden konuşmaya başla")).toBeInTheDocument();
+    expect(region.getAttribute("title")).toContain("Herkes gelmeden konuşmaya başla");
+    // Düğme metni kısa, erişilebilir ad uzun kalır.
+    expect(screen.getByRole("button", { name: "Sesli sohbeti başlat" })).toHaveTextContent("Sesli sohbet");
+  });
+
+  it("durum 3 (bağlanıyor): ALT SATIRDA yazar, düğme 'Katıl' olarak kilitlenir", () => {
+    dock(
+      { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "b", host: false } },
+      { phase: "joining" },
+    );
+    // Artboard 4567-4568: "Bağlanıyor…" düğmenin değil alt satırın metnidir.
+    expect(screen.getByText("Bağlanıyor…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Katıl" })).toBeDisabled();
+  });
+
+  /* Yerleşim sözleşmesi (kullanıcı kararı 2026-09-08): denetim sayfanın aksiyonlarıyla AYNI
+     yerde durur. Alt şeridi OLAN sayfada başlık kopyası yalnız ≥1024'te (`header-lg`), şerit
+     kopyası yalnız altında (`strip`) basılır — ikisi asla birlikte DOM'a girmez. Yüzen pill ve
+     onun akışta ayırdığı yedek bant tümüyle kalktı. */
+  it("alt şeridi olan sayfada `header-lg` 1024 ALTINDA basılmaz, `strip` basılır", () => {
+    const view = { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } };
+    expect(dock(view, {}, "header-lg").container).toBeEmptyDOMElement();
+    dock(view, {}, "strip");
+    expect(screen.getByRole("button", { name: /Katıl/ })).toBeInTheDocument();
+  });
+
+  /* Şeritteki diğer düğmeler (Davet linki, Karıştır) tam genişlik 52px pill; 40px/otomatik
+     genişlikte bir ses düğmesi aralarında yamalı duruyordu (kullanıcı düzeltmesi 2026-09-08). */
+  it("`strip` düğmesi şeritteki diğer pill'lerle AYNI ölçüde, `header` kısa kalır", () => {
+    const view = { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } };
+    dock(view, {}, "strip");
+    const inStrip = screen.getByRole("button", { name: /Katıl/ });
+    expect(inStrip.className).toContain("w-full");
+    expect(inStrip.className).toContain("min-h-[3.25rem]");
+    expect(inStrip.className).not.toContain("min-h-10");
+
+    cleanup();
+    dock(view, {}, "header");
+    const inHeader = screen.getByRole("button", { name: /Katıl/ });
+    expect(inHeader.className).toContain("min-h-10");
+    expect(inHeader.className).not.toContain("w-full");
+  });
+
+  it("alt şeridi OLMAYAN sayfada `header` her genişlikte basılır", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
+    expect(screen.getByRole("button", { name: /Katıl/ })).toBeInTheDocument();
+  });
+
+  it("kısa denetim alt satır METNİNİ yazmaz; durum ipucunda ve ekran okuyucuda durur", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
+    const region = screen.getByRole("region", { name: "Sesli sohbet" });
+    // Yüzen pill'in ne zemini ne de sabit konumu kaldı.
+    expect(region.className).not.toContain("sticky");
+    expect(region.className).not.toContain("lg:fixed");
+    // Bilgi kaybolmadı: tek cümle ipucunda, parçaları ekran okuyucuda ayrı düğümlerde.
+    expect(region.getAttribute("title")).toContain("Sesli sohbet açık");
+  });
+
+  it("HOST bitirdiğinde limitMinutes dolu olsa bile süre ipucu basılmaz (yalnız TIME_LIMIT basar)", () => {
+    dock(
+      { ...base, voice: null, viewer: { participantId: "b", host: false } },
+      { endedReason: "HOST", limitMinutes: 30 },
+    );
+    expect(screen.getByText("Sesli sohbet bitirildi")).toBeInTheDocument();
+    expect(screen.queryByText(/sesli sohbet bitti/)).not.toBeInTheDocument();
   });
 });

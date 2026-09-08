@@ -1,16 +1,19 @@
 /* Kaynak: ui.css .page / .page--deck / .page--result / DS v2 §07 Yerleşim — içerik max 1120px,
-   yatay boşluk 24/48px. UI review: masaüstü ekranlar dar sütuna hapsolmasın — lg/xl'de kapak
-   genişler (`wide` harita ekranlarında kapağı tamamen kaldırır). */
+   yatay boşluk 18/48px (artboard `.wrap`, CSS 93). 2026-09-03 UI review kapağı 80rem/96rem'e
+   açmıştı; v3 senkronunda artboard'a geri döndük (2026-09-07): 1280'de tasarım 1120px'lik bir
+   sütun gösteriyor, geniş kapak her ekranı tasarımdan belirgin biçimde farklı kılıyordu.
+   `wide` (harita ekranları) kapağı tamamen kaldırmaya devam eder. */
 import type { ReactNode } from "react";
 
 /* Alt boşluk (`pb-*`) BİLEREK bu haritanın dışında: `wide` dalıyla aynı sınıf listesine iki
    `lg:pb-*` girerse kazananı dizi sırası değil Tailwind'in çıktı sırası belirler. Ölçüldü:
    `lg:pb-4` + `lg:pb-11` birlikteyken 44px kazanıyor, haritanın altında ölü alan bırakıyordu. */
 const variants = {
-  default: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
-  deck: "gap-0 px-[1.125rem] pt-4 lg:gap-4 lg:px-8 xl:px-12 lg:pt-[2.125rem]",
-  result: "gap-3.5 px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
-  landing: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-8 xl:px-12 lg:pt-[2.125rem]",
+  default: "gap-[0.9375rem] px-[1.125rem] pt-5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
+  deck: "gap-0 px-[1.125rem] pt-4 lg:gap-4 lg:px-12 lg:pt-[2.125rem]",
+  // Karar 390 (2610): `.scroll` gap 10px / üst dolgu 10px — kart ekranın tepesine yakın durur.
+  result: "gap-2.5 px-[1.125rem] pt-2.5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
+  landing: "gap-[0.9375rem] px-[1.625rem] pt-5 lg:gap-[1.375rem] lg:px-12 lg:pt-[2.125rem]",
 };
 
 /** Mobil alt boşluk — Deste ekranı kartı ekranın dibine yaslar, diğerleri nefes alır. */
@@ -53,7 +56,7 @@ export default function Page(props: {
         "relative mx-auto flex w-full max-w-[30rem] flex-1 flex-col",
         // wide: `min-h-0` içeriğin kabı büyütmesini keser — sayfa kaymaz, yalnız sol liste kayar
         // (VenueBrowser), harita sağ sütunu tam boy doldurur.
-        props.wide ? "lg:max-w-none lg:min-h-0 lg:overflow-hidden" : "lg:max-w-[80rem] xl:max-w-[96rem]",
+        props.wide ? "lg:max-w-none lg:min-h-0 lg:overflow-hidden" : "lg:max-w-[70rem]",
         // fit: yükseklik `flex-1`den gelir, içerik kabı büyütemez — kaydırma bölgelerin içinde kalır.
         props.fit ? "fit:min-h-0 fit:overflow-hidden" : "",
         variants[variant],

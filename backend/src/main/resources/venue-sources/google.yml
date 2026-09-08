@@ -1,0 +1,19 @@
+id: google
+# Places API (New) Table A tur adlari; 24 haneli degil, desen farkli.
+idPattern: "^[a-z_]+$"
+categories:
+  COFFEE: [cafe]
+  FOOD: [restaurant]
+  BAR: [bar]
+  WALK: [park]
+  ACTIVITY: [bowling_alley]
+  SWIM: [swimming_pool, water_park]
+  HIKE: [hiking_area, national_park, state_park]
+  FITNESS: [gym, fitness_center]
+  CINEMA: [movie_theater]
+  MUSEUM: [museum, art_museum, history_museum]
+  ART: [art_gallery, performing_arts_theater, cultural_landmark]
+  NIGHTLIFE: [night_club, karaoke, live_music_venue]
+  THEME_PARK: [amusement_park, zoo, aquarium]
+  ADVENTURE: [adventure_sports_center, paintball_center, go_karting_venue]
+  GAMES: [video_arcade, amusement_center, miniature_golf_course]

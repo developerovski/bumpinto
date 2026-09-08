@@ -8,6 +8,66 @@ uygulamasının içindeki bileşen kitaplığı. Aşağıdakiler bu gerçeğin s
 - 2026-09-01 · 1. tur: 32 bileşen, 32 preview.
 - 2026-09-06 · 2. tur: DS **67 bileşene** çıktı. 13 eski preview API sürüklenmesinden
   bayatlamıştı (aşağıdaki "sourceKey kör noktası"), onarıldı; 29 yeni preview yazıldı.
+- 2026-09-07 · 3. tur: DS **79 bileşene** çıktı (12 yeni: AppleSignIn, FaqItem,
+  LegalBlocks, SettingRow, SettingsCard, SourceRow, Toggle, VoiceDock + 4'ü zaten
+  floor card'dan authored'a geçmiş olabilir). Build/validate/capture/grade turu
+  tamamlandı, tüm grade'ler `good`. **Upload YAPILAMADI**: bu oturumda `DesignSync`
+  aracı "needs design-system authorization" hatası verdi (headless/non-interactive
+  ortam, `/design-login` çalıştırılamıyor). Kullanıcı interaktif bir oturumda
+  `/design-login` çalıştırıp yetkilendirdikten sonra tekrar dene — build tarafı
+  hazır ve temiz, yalnız §5 upload adımı kaldı.
+- 2026-09-07 · 4. tur (aynı gün, /design-sync ile devam): `DesignSync` bu turda
+  yetkiliydi (get_project/list_files/read_file/finalize_plan hepsi çalıştı) — 3. turun
+  yetkilendirme bloke edicisi ORTADAN KALKTI. pnpm workspace catalog geçişi (react
+  ^19.2.8 → tam sabit 19.2.3) + ShareCard tip düzeltmesi dışında kaynakta değişiklik
+  yoktu; resync sürücüsü 15 changed + 13 added + 1 removed (TravelList → TravelBars)
+  buldu, hepsi bu oturumda derecelendirildi (`good`), render check 79/79 temiz,
+  `conventions.md` doğrulandı ve iki bayat iddia düzeltildi (bileşen sayısı 67→79,
+  `Page` varyantları `default/deck/result/landing` + ayrı `center` prop — eski metin
+  yanlışlıkla `center`'ı varyant sanıyordu, `landing`'i hiç saymıyordu).
+  **Upload YİNE YAPILAMADI — ama bu kez FARKLI ve DAHA KALICI bir engelden**:
+  `write_files` yalnızca satır içi (`data`) metin kabul ediyor, `local_path` alanı
+  şemada var ama sunucu tarafında "not yet implemented" — yani sync script'in
+  `finalize_plan`/`write_files` sıralı akışı çalışıyor, ama BÜYÜK dosyalar (`_ds_bundle.js`
+  ~1MB / ~250K token, `_vendor/react.js` ~1.1MB / ~280K token) bu ajanın tek bir tool
+  çağrısında üretebileceği çıktının çok üzerinde. Küçük dosyaların (bileşenler,
+  preview'lar, README, `_ds_bundle.css` 64KB, `_ds_sync.json` 23KB) hepsi güvenle
+  yazılabilir ama BUNU TEK BAŞINA YAPMAK PROJEYİ BOZAR: yeni 79 bileşenin `.html`
+  kartları `window.BumpInto.<Ad>`'a `_ds_bundle.js` üzerinden erişiyor — bundle eski
+  (66 bileşenlik) kalırsa 13 yeni kart sessizce boş/undefined render eder. Bu yüzden
+  BU TURDA HİÇBİR ŞEY YÜKLENMEDİ (sıfır `write_files`/`delete_files` çağrısı yapıldı) —
+  yarım/tutarsız bir proje durumuna sokmaktansa hiç dokunmamak tercih edildi.
+  **Bir sonraki turun ilk işi**: bu blokeri çözmeden §5'e girme. Olası çözümler —
+  (a) kullanıcı `ds-bundle/` klasörünü claude.ai/design arayüzünden elle sürükleyip
+  bıraksın (tarayıcıdan disk→sunucu, model çıktısından geçmiyor); (b) `DesignSync`
+  aracına gerçek `local_path` desteği eklenmesini bekle; (c) `_ds_bundle.js`'i
+  küçültecek bir bölme stratejisi (per-component bundle?) — bu `package-build.mjs`'in
+  emit sözleşmesini değiştirir, kullanıcı onayı olmadan denenmedi.
+
+- 2026-09-08 · 5. tur: **UPLOAD YAPILDI — 3. ve 4. turun blokeri ORTADAN KALKTI.**
+  `DesignSync.write_files` artık `localPath` kabul ediyor (araç şeması onu ÖNERİLEN yol olarak
+  belgeliyor: "the tool reads from disk, encodes, and uploads; contents never enter your context").
+  4. turdaki "local_path not yet implemented" engeli GEÇERSİZ — büyük dosyalar (`_ds_bundle.js`
+  990KB, `_vendor/react.js` 1.1MB) model çıktısından geçmeden yüklendi. **Bir dahaki tur bu
+  konuda tereddüt etmesin**; sıralama şu şekilde çalıştı: sentinel → root(4) → vendor(1+1) →
+  components(200+120) → _preview(76) → delete(5) → sentinel → `_ds_sync.json`.
+  Proje 67 bileşenlik 2. tur durumundan **80 bileşene** güncellendi (14 eklendi, 17 değişti,
+  TravelList silindi). Render check 80/80 temiz, 77 bileşen / 224 hücre `good`, 3 floor card.
+  `_preview/TravelList.css` uzakta hiç yoktu → silme 6 yerine 5 döndü (tolere edilen tek hata).
+
+**`[RENDER]` sahte alarmı (3. turda görüldü, ürün/preview kusuru DEĞİL)**
+İlk `package-validate.mjs` koşusunda `Progress`, `RangeBar`, `PastSessionList`
+`rootEmpty: true` ile `bad` işaretlendi. Ekran görüntüleri (`_screenshots/`) her
+üçünün de İÇERİKLE dolu render edildiğini gösterdi — sahte alarm. Kök sebep:
+`package-validate.mjs`'nin `rootEmpty` hesaplaması yalnız `roots[0]`'ı kontrol
+ediyor (satır ~641) ve bu değer `page.evaluate()` içinde, `page.screenshot()`'tan
+ÖNCE okunuyor; `page.goto(..., {waitUntil:'networkidle'})` ağ isteklerinin
+bitmesini bekliyor ama React'in senkron mount'unun (990 KB'lık `_ds_bundle.js`
+parse+exec) bitmesini GARANTİ ETMİYOR — nadir bir yarış durumu. **Değişiklik
+yapmadan `package-validate.mjs`'i yeniden çalıştırmak** sorunu giderdi (79/79
+temiz). Bir dahaki turda aynı `bad`/`[RENDER]` sahte alarmı görürsen: önce
+`_screenshots/<group>__<Name>.png`'ye bak — doluysa değişiklik yapmadan validate'i
+tekrar çalıştır, gerçek bir düzeltme arama.
 
 ---
 
@@ -33,6 +93,12 @@ Preview'ları GERÇEK bileşen tipleriyle denetler; temiz çıktı = sıfır hat
 10 bayat dosyayı ortaya çıkardı (regex tabanlı bir tarama 3'ünü kaçırmıştı — `onChange={() => {}}`
 içindeki `=>` öznitelik yakalamayı bozuyor; tipler bu işi doğru yapan tek araç).
 
+**5. tur: TypeScript 6.0.3 kapıyı KIRDI.** `baseUrl` artık deprecated ve HATA veriyor
+(`TS5101`), yani kapı hiç çalışmadan düşüyordu — sessiz değil, ama gürültüyü "kapı temiz" sanmak
+kolay. Susturmak (`ignoreDeprecations`) yerine ileri uyumlu düzeltme yapıldı: `baseUrl` KALDIRILDI
+ve `paths` girdileri `../` ile yazıldı (TS 6'da `paths` tsconfig'in KENDİ dizinine göre çözülür).
+TS 7'de de çalışır. Kapı bozulmuşsa önce bunu kontrol et.
+
 Kapının iki ince ayarı (ikisi de dosyada yorumlu):
 - `paths.react` → `node_modules/@types/react`. Yoksa `.design-sync/node_modules`
   sembolik bağı @types/react **19**'u getiriyor (uygulama **18**'de) ve
@@ -41,6 +107,15 @@ Kapının iki ince ayarı (ikisi de dosyada yorumlu):
 
 Yalnız `.design-sync/previews/` altındaki hatalar seni ilgilendirir; kapı bugün başka
 hiçbir şey basmıyor.
+
+**Kapı 5. turda YİNE iş gördü (üst üste üçüncü tur).** Sürücü 2 bileşeni `pendingGrade` saydı ve
+ikisi de tam olarak kapının bulduğu bileşenlerdi:
+- `JoinIntro`: `hostOnline` prop'u KALDIRILMIŞ, yerine `compact` gelmiş (409 kartı girince
+  giriş bloğunu sıkıştıran dal). Eski `HostAway` hücresi derlenmiyordu → `Compact` ile değişti.
+- `JoinFormFields`: `error` artık `string` DEĞİL, `{ kind: "geocode"|"tooFar"|"join"; message }`
+  ayrık birleşimi — ve `kind` hatayı ÜÇ FARKLI YERE koyuyor. Tek `WithError` hücresi üçe bölündü.
+  **`cfg.dtsPropsFor.JoinFormFields.error` de bayattı** (`string | null` diyordu) → düzeltildi.
+  §11'deki "elle bakımlı gövde" riski somut olarak gerçekleşti; bu alanı her tur gözden geçir.
 
 ---
 
@@ -127,6 +202,10 @@ kapatılanlar; yeniden çıkarlarsa "yeni bulgu" sanma:
 - `[DTS] parsed 0 .d.ts files` — beklenen: tip girişi `.d.ts` ağacı değil, TS kaynağı.
 - `docs: 0/67` — repoda bileşen başına doküman yok; `.prompt.md`'ler `.d.ts` + JSDoc +
   preview'lardan sentezleniyor.
+- **5. turun tam warn kümesi (bu ikisi dışında hiçbir şey çıkmadı):** `[FONT_REMOTE]`,
+  `[OVERRIDE]` (dts.mjs forku — beklenen), `[SPOT_CHECK]` (canary), `[DTS]`/`[CAPTURE]`/`[DETECT]`
+  (bilgilendirme). `[GRID_OVERFLOW]` HİÇ çıkmadı — `cfg.overrides` kapsamı güncel demektir.
+  Bu listede olmayan bir warn görürsen YENİdir.
 
 # 7. Converter sınırı: `unknown` proplar
 
@@ -184,6 +263,14 @@ doğrulanacağını düşünsün.
   0'a çöküyordu. `PastSessionRow`'daki `VenueCard` çağrısına `className="h-full"` eklendi.
   336 testin tamamı geçiyor.
 
+- **`JoinFormFields` geocode hatasının yeri: KAYNAK YORUMU KODU YALANLIYOR.** Bileşenin kendi
+  yorumu "Adres alanına bağlı hata alanın hemen altında kalır (artboard 1391–1393)" diyor, ama
+  kod `ErrorText`i `TravelModeField`ten SONRA basıyor — render bunu doğruluyor (hata, ulaşım
+  türü satırının altında, CTA bloğunun üstünde). Preview JSDoc'u önce yorumu tekrar ediyordu;
+  `.prompt.md` bu JSDoc'tan sentezlendiği ve tasarım ajanına gittiği için gerçek render'a göre
+  düzeltildi. **Ders: bir yerleşim iddiasını kaynak yorumundan değil, ekran görüntüsünden yaz.**
+  (Ürün tarafında ya yorum ya da yerleşim yanlış — kullanıcı kararı bekliyor, senkron kusuru değil.)
+
 # 9. Preview yazım teknikleri (çalıştığı doğrulanmış)
 
 - **Çekim ortamı**: 900×700, `fullPage: false` — uzun hücreler **kırpılır**. Hücre başına
@@ -206,8 +293,9 @@ doğrulanacağını düşünsün.
   doğal bitişte sahne TAMAMEN boşalır. Çözüm: `ref` callback'inde (ilk boyamadan önce)
   `animationPlayState:"paused"` + negatif `animationDelay`. **Tek bir gecikme değeri tüm
   parçacık türlerine uymaz** — `confetti`/`pop` `-0.3s`, `poof` `-0.12s` istedi.
-- **`travelMinutes` anahtarları ile `TRAVEL.labels` anahtarları AYNI olmalı**, yoksa rozet
-  sessizce "Yol" fallback'ine düşer.
+- **`travel[]`in her bacağındaki `participantId` ile `TRAVEL.labels` anahtarları AYNI olmalı**
+  (K-B26: eski dakika-haritası alanı W-13'te düştü, `VenueDto.travel[]` tek kaynak oldu),
+  yoksa satır etiketi/nokta harfi sessizce `t("travel.friend")` ("Arkadaşın") fallback'ine düşer.
 - **Fixture nit**: `BEBEK` ("Bebek Kahve") ve `BALAT` ("Balat Kahvesi") aynı monogramı
   ("bk") üretiyor — iki mekânı yan yana basan kartlarda (`LikedList`) ikisi tıpatıp aynı
   görünüyor. Render kusuru değil, veri seçimi. Düzeltmek isteyen `_fixtures.ts`'te BALAT'ı
@@ -252,6 +340,9 @@ yoksa gerçek bulgularla yanlış alarmlar aynı kutuda gelir.
 - Hover / focus-visible / basılı hâller.
 - `WhoIsHere`'ın `children`'ı (lazy `MapView`) — ağ bağımlı.
 - `AvatarMenu` ve `RequireAuth` — §8'deki barrel boşluğu.
+- **`LegalMeta` (5. turda eklendi) — floor card, HENÜZ YAZILMADI (bilinçli bir karar değil,
+  sadece sıra gelmedi).** `general` grubunun üçüncü üyesi. Bir dahaki tur preview yazmak isterse
+  ilk aday budur; 80 bileşenin geri kalanının hepsinin authored preview'ı var.
 
 # 11. Re-sync riskleri
 
@@ -264,6 +355,20 @@ yoksa gerçek bulgularla yanlış alarmlar aynı kutuda gelir.
   config'i güncelle (2. turda ikisi de bayattı ve YANLIŞ sözleşme yayınlıyordu).
 - `.ds-sync/` gitignore'da ama **geniş bir `git add` onu index'e sokabiliyor**.
   Commit öncesi `git diff --cached --name-only` ile bak.
+- **Araç sürümü sürprizleri iki turdur BLOKER oldu** (4. tur: `write_files` `local_path`;
+  5. tur: TypeScript 6 `baseUrl`). İkisi de "geçen tur çalışıyordu" varsayımıyla vakit kaybettirdi.
+  Tur başında iki şeyi ölç: `node node_modules/typescript/bin/tsc -v` ve `DesignSync` şemasında
+  `write_files.localPath` alanının açıklaması. Bir engel notta "kalıcı" yazsa bile ÖNCE test et —
+  4. turun "kalıcı" dediği engel bir sonraki turda yoktu.
+- **`cfg.dtsPropsFor` elle bakımlı ve 5. turda YİNE bayattı** (`JoinFormFields.error`).
+  Bu iki gövde (`JoinFormFields`, `JoinedCard`) tip kapısının denetlemediği TEK yüzey:
+  kapı preview'ları bileşen tipine karşı denetler, config gövdesini DENETLEMEZ. Her tur ilgili
+  bileşenin kaynak proplarıyla gözle karşılaştır.
+- **`conventions.md` ölçü iddiaları en tehlikeli türden.** 5. turda "480px sütun, asla geniş
+  düzen yok" yazıyordu; gerçek `max-w-[30rem]` + **`lg:max-w-[70rem]` (1120px)**. Tasarım ajanı
+  buna güvenip masaüstü ekranları yanlış genişlikte kurardı ve hiçbir kontrol yakalamazdı.
+  Sınıf/token adları grep'lenebilir, ÖLÇÜLER grep'lenemez — `Page.tsx`'in gerçek sınıf listesini
+  her tur oku.
 - **Bu repoda paralel çalışma oluyor.** 2. tur sırasında kullanıcı aynı ağaçta
   backend/docs (voice-chat) değişiklikleri yapıyordu. Commit ederken YALNIZ
   `.design-sync/` (+ onaylanmışsa ilgili `frontend/web` düzeltmesi) sahnele.

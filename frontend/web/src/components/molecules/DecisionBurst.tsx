@@ -22,7 +22,8 @@ const POOF = Array.from({ length: 8 }, (_, i) => ({
   ty: -30 - (i % 3) * 14,
 }));
 
-const WRAP = "inset-0 z-4 pointer-events-none animate-burst-life";
+// `absolute` burada: kap artık çocuklarını mutlak konuma zorlamıyor (VenueDeck 2026-09-06).
+const WRAP = "absolute inset-0 z-4 pointer-events-none animate-burst-life";
 const PARTICLE = "absolute left-1/2 top-[42%]";
 const BADGE =
   "absolute left-1/2 top-[42%] flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full animate-pop";

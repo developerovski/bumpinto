@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.out.persistence;
 
+import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.support.PostgresContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,7 @@ class PersistenceSliceTest {
 
     @Test
     void sessionAndParticipantRoundTrip() {
-        UserEntity u = UserEntity.of(UUID.randomUUID(), "m@x.dev", "Mehmet", "google");
+        UserEntity u = UserEntity.of(UUID.randomUUID(), "m@x.dev", "Mehmet", AuthProvider.GOOGLE);
         users.save(u);
 
         SessionEntity s = new SessionEntity();

@@ -1,5 +1,30 @@
 allowBuilds:
+  # 2026-09-07 mobil (Expo SDK 57): Metro dosya izleyicisi yerel derleme ister
+  '@parcel/watcher': true
   esbuild: true
+  # eslint cozucusu (expo lint)
+  unrs-resolver: true
 nodeLinker: hoisted
 packages:
   - frontend/*
+
+# Tek React ornegi (2026-09-07): mobil Expo SDK 57 react'i 19.2.3'e sabitler.
+# Web farkli bir yama surumu isterse pnpm iki kopya yuvalar ve
+# "Invalid hook call" ile web testleri toptan duser. Surumu tek yerde kilitle.
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
+
+# Ortak saf-JS paketleri tek yerden surumle (2026-09-07).
+# Kural: BURAYA yalnizca web+mobil+shared'in paylastigi, Expo'nun YONETMEDIGI paketler girer.
+# Expo'nun yonettigi yerel moduller (expo-*, react-native-*) catalog'a KONMAZ -> `expo install` serbest kalir.
+# react/react-dom da buraya girmez: onlar `overrides`ta, cunku @testing-library/react gibi
+# ucuncu taraf paketler `catalog:` yazmaz ve yalnizca overrides onlari ayni kopyaya zorlar.
+# typescript: Expo SDK 57 ~6.0.3 pinliyor. npm latest 7.0.2 (yeni motor) -- bilincli olarak ALINMADI.
+catalog:
+  zustand: ^5.0.15
+  i18next: ^26.4.2
+  react-i18next: ^17.0.13
+  axios: ^1.20.0
+  "@stomp/stompjs": ^7.3.0
+  typescript: ~6.0.3

@@ -1,0 +1,9 @@
+info:
+  name: Güvenlik (bildir · engelle)
+  type: folder
+  seq: 8
+
+http:
+  auth:
+    type: bearer
+    token: "{{accessToken}}"

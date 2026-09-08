@@ -9,6 +9,7 @@ import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.adapter.in.web.WebSocketConfig;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.support.FakeStores;
+import com.bumpinto.support.TestProps;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,15 +59,9 @@ import static org.mockito.Mockito.when;
 class SecurityPolicyTest {
 
     static AppProps props(boolean secureCookies, String domain, List<String> origins) {
-        return new AppProps(
-                new AppProps.Security("cid", "0123456789abcdef0123456789abcdef", Duration.ofHours(12)),
-                new AppProps.Providers("", ""),
-                new AppProps.Cors(origins),
-                new AppProps.Cookies(secureCookies, domain),
-                new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)), new AppProps.Turn("", ""));
+        return TestProps.of(TestProps.security(), new AppProps.Cors(origins),
+                new AppProps.Cookies(secureCookies, domain), new AppProps.RateLimit(false),
+                new AppProps.Turn("", ""), TestProps.venues());
     }
 
     /**
@@ -74,17 +70,18 @@ class SecurityPolicyTest {
      */
     @Test
     void appPropsToStringMasksSecretsButKeepsDiagnostics() {
-        AppProps props = new AppProps(
-                new AppProps.Security("cid", "super-secret-token-0123456789abcd",
-                        Duration.ofHours(12)),
-                new AppProps.Providers("fsq-secret-key", "gplaces-secret-key"),
+        Map<String, AppProps.VenueSourceProps> sources = new LinkedHashMap<>(TestProps.venues().sources());
+        sources.put("foursquare", new AppProps.VenueSourceProps(true, "fsq-secret-key", 5000));
+        sources.put("google", new AppProps.VenueSourceProps(false, "gplaces-secret-key", 1000));
+        AppProps.Venues venues = new AppProps.Venues(sources, TestProps.venues().route());
+
+        AppProps props = TestProps.of(
+                new AppProps.Security("cid", "super-secret-token-0123456789abcd", Duration.ofHours(12)),
                 new AppProps.Cors(List.of("https://bumpinto.app")),
                 new AppProps.Cookies(true, ""),
                 new AppProps.RateLimit(false),
-                new AppProps.Quota(5000, 5000),
-                new AppProps.Geocode("ops@bumpinto.test", Duration.ZERO),
-                new AppProps.Voice(Duration.ofHours(2)),
-                new AppProps.Turn("cf-key-id", "turn-secret-token"));
+                new AppProps.Turn("cf-key-id", "turn-secret-token"),
+                venues);
 
         String printed = props.toString();
 
@@ -94,8 +91,9 @@ class SecurityPolicyTest {
                 .doesNotContain("gplaces-secret-key")
                 .doesNotContain("turn-secret-token");
         assertThat(props.security().toString()).doesNotContain("super-secret-token-0123456789abcd");
-        assertThat(props.providers().toString())
-                .doesNotContain("fsq-secret-key")
+        assertThat(props.venues().sources().get("foursquare").toString())
+                .doesNotContain("fsq-secret-key");
+        assertThat(props.venues().sources().get("google").toString())
                 .doesNotContain("gplaces-secret-key");
         // Teshis degeri kaybolmaz: TTL, origin listesi, client-id ve XFF karari okunur.
         assertThat(printed).contains("PT12H", "https://bumpinto.app", "cid",

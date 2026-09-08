@@ -1,5 +1,6 @@
 package com.bumpinto.adapter.out.persistence;
 
+import com.bumpinto.application.text.Ids;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionStorePort;
@@ -12,8 +13,11 @@ import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
 import com.bumpinto.domain.session.SessionType;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +61,7 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.midpointLabel = s.midpointLabel();
         e.anchorLat = s.anchor() == null ? null : s.anchor().lat();
         e.anchorLng = s.anchor() == null ? null : s.anchor().lng();
+        e.joinCode = s.joinCode();
         sessions.save(e);
         return s;
     }
@@ -97,11 +102,19 @@ public class SessionStoreAdapter implements SessionStorePort {
         participants.deleteById(participantId);
     }
 
-    @Override public List<SessionSummary> summariesOfHost(UUID hostId, int limit) {
-        List<SessionEntity> rows = sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId,
-                PageRequest.of(0, limit));
+    @Override public List<SessionSummary> openSummariesOfHost(UUID hostId, Instant now) {
+        return summariesOf(sessions.findOpenByHost(hostId, now));
+    }
+
+    @Override public List<SessionSummary> pastSummariesOfHost(UUID hostId, Instant now, int limit) {
+        return summariesOf(sessions.findPastByHost(hostId, now, PageRequest.of(0, limit)));
+    }
+
+    /** Satirlar ne olursa olsun TOPLU yuklenir: katilimcilar tek sorgu, mekanlar tek sorgu. */
+    private List<SessionSummary> summariesOf(List<SessionEntity> rows) {
         List<UUID> sessionIds = rows.stream().map(e -> e.id).toList();
-        Map<UUID, List<ParticipantEntity>> bySession = participants.findBySessionIdIn(sessionIds)
+        Map<UUID, List<ParticipantEntity>> bySession = participants
+                .findBySessionIdInOrderByJoinedAtAscIdAsc(sessionIds)
                 .stream().collect(Collectors.groupingBy(p -> p.sessionId));
         Set<UUID> decidedVenueIds = rows.stream().map(e -> e.decidedVenueId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
@@ -120,20 +133,70 @@ public class SessionStoreAdapter implements SessionStorePort {
         return participants.countDistinctGuestsOfHost(hostId);
     }
 
+    @Override public List<UUID> sessionIdsOfHost(UUID hostId) {
+        return sessions.findByHostIdOrderByCreatedAtDescIdDesc(hostId, Pageable.unpaged()).stream()
+                .map(e -> e.id).toList();
+    }
+
+    /** Alt tablolar sema cascade'i ile gider (SessionCascadeDeleteTest). */
+    @Override public void deleteSession(UUID sessionId) {
+        sessions.deleteById(sessionId);
+    }
+
+    @Override public List<Participant> participantsOfUser(UUID userId) {
+        return participants.findByUserId(userId).stream()
+                .map(SessionStoreAdapter::toParticipant).toList();
+    }
+
+    /**
+     * Koltuk KALIR, kimlik gider: satir silinseydi o oturumun orta noktasi, deste geometrisi ve
+     * oy populasyonu geriye donuk degisir, katilan herkesin ekranindaki sayilar bozulurdu.
+     */
+    @Override public void anonymizeParticipant(UUID participantId, String displayName, Instant when) {
+        participants.findById(participantId).ifPresent(p -> {
+            p.displayName = displayName;
+            p.userId = null;
+            p.lat = null;
+            p.lng = null;
+            p.locationLabel = null;
+            p.anonymizedAt = when;
+            participants.save(p);
+        });
+    }
+
+    /** Denemeler tukenirse ISTISNA atilir: kodsuz oturum acmak "kod ozelligi yok" demektir. */
+    @Override public String freshJoinCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String candidate = Ids.joinCode();
+            if (!sessions.existsByJoinCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("could not allocate a unique join code");
+    }
+
+    @Override public Optional<Session> sessionByJoinCode(String joinCode) {
+        return sessions.findByJoinCode(joinCode).map(SessionStoreAdapter::toSession);
+    }
+
     private static SessionSummary toSummary(SessionEntity e, List<ParticipantEntity> ps,
                                             Map<UUID, VenueEntity> venueById) {
         int ready = 0;
         int done = 0;
+        // Avatar yigini AYNI dongude kurulur: satirlar zaten elimizde, ikinci sorgu yok.
+        List<SessionSummary.ParticipantSummary> people = new ArrayList<>(ps.size());
         for (ParticipantEntity p : ps) {
-            if (p.lat != null && p.lng != null) {
+            boolean located = p.lat != null && p.lng != null;
+            if (located) {
                 ready++;
             }
             if (p.deckDoneAt != null) {
                 done++;
             }
+            people.add(new SessionSummary.ParticipantSummary(p.displayName, located, p.isHost));
         }
         VenueEntity decided = e.decidedVenueId == null ? null : venueById.get(e.decidedVenueId);
-        return new SessionSummary(toSession(e), e.createdAt, ps.size(), ready, done,
+        return new SessionSummary(toSession(e), e.createdAt, ps.size(), ready, done, people,
                 decided == null ? null : decided.name, decided == null ? null : decided.photoUrl);
     }
 
@@ -150,7 +213,7 @@ public class SessionStoreAdapter implements SessionStorePort {
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
                 e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
-                e.midpointLabel, anchor);
+                e.midpointLabel, anchor, e.joinCode);
     }
 
     static Participant toParticipant(ParticipantEntity e) {

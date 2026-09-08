@@ -14,10 +14,12 @@ import com.bumpinto.domain.geo.Fairness;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SearchRadius;
 import com.bumpinto.domain.geo.SessionCenter;
+import com.bumpinto.domain.geo.TravelLeg;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.port.DeckStorePort;
 import com.bumpinto.domain.port.PresencePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
+import com.bumpinto.domain.port.RoutingPort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
@@ -58,10 +60,11 @@ public class DeckFlow {
     private final Clock clock;
     private final ReverseGeocodePort geocoder;
     private final PresencePort presence;
+    private final RoutingPort routing;
 
     public DeckFlow(SessionStorePort store, DeckStorePort deck, VenueProviderPort provider,
                     SessionEventsPort events, DecisionEngine engine, Clock clock,
-                    ReverseGeocodePort geocoder, PresencePort presence) {
+                    ReverseGeocodePort geocoder, PresencePort presence, RoutingPort routing) {
         this.store = store;
         this.deck = deck;
         this.provider = provider;
@@ -70,6 +73,7 @@ public class DeckFlow {
         this.clock = clock;
         this.geocoder = geocoder;
         this.presence = presence;
+        this.routing = routing;
     }
 
     @Transactional
@@ -102,10 +106,10 @@ public class DeckFlow {
         }
 
         Map<String, VenueCandidate> unique = new LinkedHashMap<>();
-        found.forEach(c -> unique.putIfAbsent(c.externalId(), c));
-        // Puan = kalite kapisi (hangi DECK_MAX mekan destede olacak).
+        found.forEach(c -> unique.putIfAbsent(c.provider() + ":" + c.externalId(), c));
+        // Kalite kapisi: kapali mekan kaynakta elendi; burada yalniz NORMALIZE puan, esik YOK (spec §4.6).
         List<VenueCandidate> shortlist = unique.values().stream()
-                .sorted(canonicalOrder(VenueCandidate::rating, VenueCandidate::externalId))
+                .sorted(canonicalOrder(VenueCandidate::normalizedRating, VenueCandidate::externalId))
                 .limit(DECK_MAX)
                 .toList();
         // Sira = adalet (spec §4.5) ya da capalida puan — tek karar noktasi deckOrder.
@@ -117,8 +121,10 @@ public class DeckFlow {
             VenueCandidate c = ordered.get(i);
             venues.add(new Venue(UUID.randomUUID(), session.id(), c.provider(), c.externalId(),
                     c.name(), c.location(), c.rating(), c.priceLevel(), c.photoUrl(),
-                    c.mapsUrl(), i, c.category(), c.address(), c.locality(), c.ratingCount(),
-                    c.hoursToday(), c.placeLink(), c.activityType()));
+                    i, c.category(), c.address(), c.locality(), c.ratingCount(),
+                    c.hoursToday(), c.placeLink(), c.activityType(),
+                    c.popularity(), c.ratingScale(), c.photoRef(), c.tagline(),
+                    c.taglineSource()));
         }
         List<Venue> saved = deck.saveVenues(venues);
         // Etiket capasiz oturumda BIR KEZ burada cozulur: orta nokta bundan sonra degismez
@@ -143,6 +149,10 @@ public class DeckFlow {
      * <p>UI fiili DEGISMEDI: dugme hala "Karistir ve kaydir" der ve ucun adi hala
      * {@code POST /{slug}/shuffle}'dir — degisen yalnizca siranin nereden geldigidir.
      * Yeniden adlandirma W-6 kapsamina girmez.
+     *
+     * <p>Idempotentlik SARTLIDIR: OSRM matrisi iki cagri arasinda ayni cevabi verirse sira
+     * degismez, ama zaman asimi/hata durumunda haversine tahminine dusulurse (veya onbellek
+     * suresi dolup OSRM farkli bir yanit dondururse) sira da degisebilir.
      */
     @Transactional
     public void shuffle(String slug, UUID hostParticipantId) {
@@ -169,7 +179,7 @@ public class DeckFlow {
         // deckOrder'dan (onceki karisimin SONUCU) degil, ayni kalite kapisindan (puan, sonra
         // sabit kimlik) yeniden kurulur; yoksa her cagri kendi cikisini girdi alip surukler.
         List<Venue> canonical = deck.venuesOf(session.id()).stream()
-                .sorted(canonicalOrder(Venue::rating, Venue::externalId))
+                .sorted(canonicalOrder(Venue::normalizedRating, Venue::externalId))
                 .toList();
         List<UUID> ids = deckOrder(session, canonical, Venue::location, located)
                 .stream().map(Venue::id).toList();
@@ -286,7 +296,7 @@ public class DeckFlow {
         }
         Map<UUID, Double> ratings = new HashMap<>();
         deck.venuesOf(session.id())
-                .forEach(v -> ratings.put(v.id(), v.rating() == null ? 0.0 : v.rating()));
+                .forEach(v -> ratings.put(v.id(), v.normalizedRating() == null ? 0.0 : v.normalizedRating()));
 
         DeckOutcome outcome = engine.decide(participantLikes, ratings);
         switch (outcome) {
@@ -343,9 +353,23 @@ public class DeckFlow {
         return Voters.of(session, store.participantsOf(session.id()));
     }
 
-    /** Mekan basina adalet: assembler ile AYNI dakika kodunu kullanir (tek kaynak). */
-    private static Fairness fairnessOf(List<Participant> located, GeoPoint venue) {
-        return Fairness.of(TravelMinutes.byParticipant(located, venue));
+    /**
+     * TUM mekanlarin adaleti TEK matris cagrisiyla: OSRM'e mekan basina degil, MOD basina
+     * bir kez sorulur (assembler ile ayni kod yolu, TravelMinutes.byParticipant).
+     */
+    private <T> Map<T, Fairness> fairnessByItem(List<T> canonical, Function<T, GeoPoint> location,
+                                                List<Participant> located) {
+        List<GeoPoint> points = canonical.stream().map(location).toList();
+        List<Map<UUID, TravelLeg>> legs = located.isEmpty() || points.isEmpty() ? List.of()
+                : TravelMinutes.byParticipant(located, points, routing);
+        Map<T, Fairness> out = new LinkedHashMap<>();
+        for (int i = 0; i < canonical.size(); i++) {
+            Map<UUID, TravelLeg> leg = legs.isEmpty() ? Map.of() : legs.get(i);
+            Map<UUID, Integer> minutes = new LinkedHashMap<>();
+            leg.forEach((id, l) -> minutes.put(id, l.minutes()));
+            out.put(canonical.get(i), Fairness.of(minutes));
+        }
+        return out;
     }
 
     /**
@@ -374,8 +398,8 @@ public class DeckFlow {
         if (session.anchor() != null) {
             return canonical;
         }
-        return DeckOrdering.fairnessFirst(canonical,
-                t -> fairnessOf(located, location.apply(t)), seedOf(session));
+        Map<T, Fairness> fairnessByItem = fairnessByItem(canonical, location, located);
+        return DeckOrdering.fairnessFirst(canonical, fairnessByItem::get, seedOf(session));
     }
 
     /**
