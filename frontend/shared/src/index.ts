@@ -31,3 +31,36 @@ export {
   type TravelEntry,
   type TravelLeg,
 } from "./fairness";
+export {
+  PERSON_TINTS,
+  personIndexMap,
+  personIndexOf,
+  personTint,
+} from "./personColor";
+export {
+  DEFAULT_TRAVEL_MODE,
+  MODE_LABEL_KEY,
+  TRAVEL_MODES,
+  type TravelMode,
+} from "./travelMode";
+export type { DecisionKind, RunoffReason } from "./serverEnums";
+export { venueLink, websiteLink } from "./venueLink";
+export { formatRating, providerMark } from "./format";
+export { monogram } from "./monogram";
+export {
+  DRAG_START_PX,
+  FLING_VELOCITY,
+  MAX_ROTATE_DEG,
+  SWIPE_THRESHOLD_PX,
+  VERTICAL_DAMP,
+  dragProgress,
+  dragRotation,
+  releaseDecision,
+  swipeThreshold,
+  type SwipeDir,
+} from "./swipeMath";
+export { allVoted, votersOf } from "./voters";
+export { backupOf } from "./backupPlan";
+export { DECIDING_MINUTES, DECIDING_RATING, isDeciding } from "./runoffTrailer";
+export { LANGUAGES, type LanguageCode } from "./languages";
+export { sessionCtaKey } from "./sessionCta";

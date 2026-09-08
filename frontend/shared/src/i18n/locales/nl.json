@@ -265,6 +265,7 @@
     "emptyTitle": "Nog geen afspraken",
     "emptyCopy": "Maak er een, stuur de link — de stapel vult zich zodra locaties binnen zijn.",
     "emptyHand": "kost 30 seconden, beloofd",
+    "pastePlaceholder": "Plak een code of link",
     "status": {
       "BROWSING": "plekken klaar",
       "RUNOFF": "laatste ronde"
@@ -554,7 +555,24 @@
   },
   "offline": {
     "title": "Geen verbinding",
-    "hint": "Je ziet de laatst geladen versie · {{time}}"
+    "hint": "Je ziet de laatst geladen versie · {{time}}",
+    "retry": "Opnieuw proberen"
+  },
+  "permission": {
+    "locTitle": "Je locatie, alleen om het midden te vinden",
+    "locBody": "BumpInto gebruikt je locatie alleen als de app open is, om een middelpunt te berekenen dat voor iedereen eerlijk is en om plekken in de buurt te vinden.",
+    "locWhyApprox": "Vrienden zien het bij benadering",
+    "locWhyApproxCopy": "Afgerond op ~1 km; je precieze adres deelt niemand.",
+    "locWhyTtl": "Wordt met de afspraak verwijderd",
+    "locWhyTtlCopy": "Een sessie sluit na 24 uur en wordt na 30 dagen verwijderd.",
+    "locWhyType": "Of typ zelf een adres",
+    "locWhyTypeCopy": "Je kunt ook meedoen zonder locatietoegang.",
+    "locNext": "Je telefoon vraagt in de volgende stap om toestemming.",
+    "locContinue": "Doorgaan",
+    "locTypeInstead": "Ik typ een adres",
+    "deniedTitle": "Locatietoegang staat uit",
+    "deniedCopy": "Je kunt verder door een adres te typen, of zet de toestemming aan in Instellingen.",
+    "openSettings": "Naar Instellingen"
   },
   "legal": {
     "privacy": "Privacybeleid",

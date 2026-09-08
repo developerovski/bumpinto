@@ -8,7 +8,7 @@
    soyup taban anahtara indirgeriz. */
 import { readFileSync } from "node:fs";
 
-const dir = "frontend/web/src/i18n/locales";
+const dir = "frontend/shared/src/i18n/locales";
 const load = (l) => JSON.parse(readFileSync(`${dir}/${l}.json`, "utf8"));
 const flat = (o, p = "") =>
   Object.entries(o).flatMap(([k, v]) =>

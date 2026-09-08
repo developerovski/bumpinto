@@ -34,7 +34,12 @@ jest.mock("expo-constants", () => ({
   __esModule: true,
   default: {
     expoConfig: {
-      extra: { apiUrl: "http://localhost:8060", webBase: "https://bumpinto.app" },
+      extra: {
+        apiUrl: "http://localhost:8060",
+        webBase: "https://bumpinto.app",
+        googleWebClientId: "web",
+        googleIosClientId: "ios",
+      },
     },
   },
 }));
@@ -47,3 +52,29 @@ jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(async () => true),
   getStringAsync: jest.fn(async () => ""),
 }));
+
+jest.mock("expo-router", () => ({
+  router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() },
+  useLocalSearchParams: () => ({ slug: "x7k2m" }),
+  Stack: Object.assign(({ children }: { children?: unknown }) => children ?? null, {
+    Screen: () => null,
+  }),
+  Link: ({ children }: { children?: unknown }) => children ?? null,
+}));
+
+/* Google girişi yerel modüldür: `authStore` modül düzeyinde `configure` çağırır, o yüzden
+   ikizi burada kurulur. Gerçek akış M-8:T5 Maestro koşusunda doğrulanır. */
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(async () => true),
+    signIn: jest.fn(async () => ({ data: { idToken: "ID_TOKEN" } })),
+    signOut: jest.fn(async () => undefined),
+  },
+}));
+
+/* Güvenli alan bağlamı: ekranlar `useSafeAreaInsets` çağırır ve testte sağlayıcı yoktur.
+   Paketin kendi ikizi kullanılır (sabit kenar boşlukları döner). */
+jest.mock("react-native-safe-area-context", () =>
+  require("react-native-safe-area-context/jest/mock").default,
+);

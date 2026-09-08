@@ -1,19 +1,10 @@
-/* Puan biçimi tek atomda yaşar — VenueMeta, VenueCard ve LikedList bunu okur. Ölçek DÖNÜŞTÜRÜLMEZ
-   (spec §11): 10'luk puan 10'luk yazılır, yanına sağlayıcı işareti gelir. */
+/* Shim: biçimleme `@bumpinto/shared`'ta, dil bağı web tarafında kurulur (shared bir i18next
+   örneğine bağlanamaz — mobil kendi örneğini kurar). */
+import { formatRating as fmt } from "@bumpinto/shared";
 import i18n from "../i18n";
 
-export function formatRating(rating: number, scale?: number | null): string {
-  const value = new Intl.NumberFormat(i18n.resolvedLanguage, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(rating);
-  return scale ? `${value} / ${scale}` : value;
-}
+export { providerMark } from "@bumpinto/shared";
 
-/** Puanın yanındaki sağlayıcı işareti. Kimlik `/api/config.sources[].id` ile aynı sözcük; marka adı
-    çevrilmez. `open` (kendi tabanımız) işaret basmaz. */
-export function providerMark(provider?: string | null): string | null {
-  const id = (provider ?? "").trim().toLowerCase();
-  if (!id || id === "open") return null;
-  return id[0].toUpperCase() + id.slice(1);
+export function formatRating(rating: number, scale?: number | null): string {
+  return fmt(i18n.resolvedLanguage, rating, scale);
 }

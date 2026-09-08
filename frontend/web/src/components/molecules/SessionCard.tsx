@@ -1,17 +1,8 @@
 /* Kaynak: artboard Oturumlar_1280.html .card (açık liste) / DS v2 */
 import { useTranslation } from "react-i18next";
-import type { SessionSummaryDto } from "@bumpinto/shared";
+import { sessionCtaKey, type SessionSummaryDto } from "@bumpinto/shared";
 import { Avatar, Button, LinkButton, Progress, Sticker } from "../atoms";
 import { activityListLabel } from "../../lib/activity";
-
-/** Durum → hedef sayfa CTA metni (i18n anahtarı). Backend DECIDED/EXPIRED'ı past'e koyar — burada gelmez. */
-function cta(status: SessionSummaryDto["status"]): string {
-  switch (status) {
-    case "SWIPING": return "sessions.goDeck";
-    case "BROWSING": case "RUNOFF": return "sessions.goVenues";
-    default: return "sessions.goLobby";
-  }
-}
 
 /** Artboard W1 · açık buluşma kartı — durum, ilerleme, katılımcı sayısı, CTA. */
 export default function SessionCard({ row, disabled }: { row: SessionSummaryDto; disabled?: boolean }) {
@@ -98,18 +89,18 @@ export default function SessionCard({ row, disabled }: { row: SessionSummaryDto;
             kind="white"
             size="sm"
             disabled
-            aria-label={`${t(cta(row.status))} · ${row.name ?? label}`}
+            aria-label={`${t(sessionCtaKey(row.status))} · ${row.name ?? label}`}
           >
-            {t(cta(row.status))}
+            {t(sessionCtaKey(row.status))}
           </Button>
         ) : (
           <LinkButton
             href={`/j/${row.slug ?? ""}`}
             kind="white"
             size="fit-sm"
-            aria-label={`${t(cta(row.status))} · ${row.name ?? label}`}
+            aria-label={`${t(sessionCtaKey(row.status))} · ${row.name ?? label}`}
           >
-            {t(cta(row.status))}
+            {t(sessionCtaKey(row.status))}
           </LinkButton>
         )}
       </div>

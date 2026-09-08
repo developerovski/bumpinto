@@ -1,9 +1,9 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
-import en from "./locales/en.json";
-import nl from "./locales/nl.json";
-import tr from "./locales/tr.json";
+import en from "@bumpinto/shared/src/i18n/locales/en.json";
+import nl from "@bumpinto/shared/src/i18n/locales/nl.json";
+import tr from "@bumpinto/shared/src/i18n/locales/tr.json";
 
 // init() eşzamanlı emit eder (gömülü resources) — dinleyici init'ten ÖNCE kayıtlı olmalı,
 // yoksa ilk dil değişimi kaçırılır ve <html lang>/title hiç ayarlanmaz.

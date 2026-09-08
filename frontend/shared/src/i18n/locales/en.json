@@ -265,6 +265,7 @@
     "emptyTitle": "No meetups yet",
     "emptyCopy": "Start one, send the link — the deck fills in once locations are in.",
     "emptyHand": "takes 30 seconds, promise",
+    "pastePlaceholder": "Paste a code or link",
     "status": {
       "BROWSING": "venues ready",
       "RUNOFF": "final round"
@@ -554,7 +555,24 @@
   },
   "offline": {
     "title": "No connection",
-    "hint": "Showing the last version you saw · {{time}}"
+    "hint": "Showing the last version you saw · {{time}}",
+    "retry": "Try again"
+  },
+  "permission": {
+    "locTitle": "Your location, just to find the middle",
+    "locBody": "BumpInto uses your location only while the app is open, to work out a middle point that is fair to everyone and to find places around it.",
+    "locWhyApprox": "Friends see it roughly",
+    "locWhyApproxCopy": "Rounded to ~1 km; your exact address never leaves your phone.",
+    "locWhyTtl": "Deleted with the meetup",
+    "locWhyTtlCopy": "A session closes in 24 hours and is deleted in 30 days.",
+    "locWhyType": "Or type an address instead",
+    "locWhyTypeCopy": "You can join without giving location access.",
+    "locNext": "Your phone will ask for permission on the next step.",
+    "locContinue": "Continue",
+    "locTypeInstead": "I'll type an address",
+    "deniedTitle": "Location access is off",
+    "deniedCopy": "You can carry on by typing an address, or turn the permission on in Settings.",
+    "openSettings": "Open Settings"
   },
   "legal": {
     "privacy": "Privacy policy",

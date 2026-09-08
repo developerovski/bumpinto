@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { VenueDto } from "@bumpinto/shared";
+import type { VenueDto } from "./api";
 import { venueLink, websiteLink } from "./venueLink";
 
 // Sözleşme koruması: plan30 `travel[].estimated`'ı üretti; tip kaybolursa derleme BURADA kırılır.

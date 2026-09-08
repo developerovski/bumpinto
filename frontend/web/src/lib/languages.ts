@@ -1,7 +1,3 @@
-/* LangMenu ve ProfilePrefs (dil radyo grubu) paylaşır. Bileşen dosyasından değer export
-   etmek Fast Refresh sınırını bozduğu için ayrı modül. */
-export const LANGUAGES = [
-  { code: "tr", label: "Türkçe" },
-  { code: "en", label: "English" },
-  { code: "nl", label: "Nederlands" },
-] as const;
+/* Shim: dil listesi `@bumpinto/shared`'ta (mobil de aynı listeyi okur). Bileşen dosyasından
+   değer export etmek Fast Refresh sınırını bozduğu için burada ayrı modül kalır. */
+export { LANGUAGES, type LanguageCode } from "@bumpinto/shared";

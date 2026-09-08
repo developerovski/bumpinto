@@ -255,6 +255,7 @@
     "emptyTitle": "Henüz buluşma yok",
     "emptyCopy": "İlkini kur, linki at — konumlar toplanınca deste kendiliğinden gelir.",
     "emptyHand": "30 saniye sürer, söz",
+    "pastePlaceholder": "Kod ya da link yapıştır",
     "status": {
       "BROWSING": "mekanlar hazır",
       "RUNOFF": "son düzlük"
@@ -543,7 +544,24 @@
   },
   "offline": {
     "title": "Bağlantı yok",
-    "hint": "Son görülen hali gösteriliyor · {{time}}"
+    "hint": "Son görülen hali gösteriliyor · {{time}}",
+    "retry": "Tekrar dene"
+  },
+  "permission": {
+    "locTitle": "Konumun, orta noktayı bulmak için",
+    "locBody": "BumpInto konumunu yalnız uygulama açıkken, herkese adil orta noktayı hesaplamak ve çevresindeki mekanları bulmak için kullanır.",
+    "locWhyApprox": "Arkadaşlarına yaklaşık gösterilir",
+    "locWhyApproxCopy": "~1 km yuvarlanır; tam adres kimseye gitmez.",
+    "locWhyTtl": "Buluşmayla birlikte silinir",
+    "locWhyTtlCopy": "Oturum 24 saatte kapanır, 30 günde silinir.",
+    "locWhyType": "İstemezsen adres yaz",
+    "locWhyTypeCopy": "Konum izni vermeden de katılabilirsin.",
+    "locNext": "Sonraki adımda telefonun izin soracak.",
+    "locContinue": "Devam et",
+    "locTypeInstead": "Adres yazacağım",
+    "deniedTitle": "Konum izni kapalı",
+    "deniedCopy": "Adres yazarak devam edebilirsin ya da Ayarlar'dan izni açabilirsin.",
+    "openSettings": "Ayarlar'a git"
   },
   "legal": {
     "privacy": "Gizlilik politikası",
