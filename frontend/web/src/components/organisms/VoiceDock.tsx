@@ -62,6 +62,10 @@ function useNow(active: boolean) {
 
 function Bar(props: {
   label: string;
+  /** Alt şerit sunumu: satır TAM GENİŞLİK olur, çünkü şeritteki diğer düğmeler (Davet linki,
+      Karıştır) tam genişlik 52px pill'ler — 40px'lik otomatik genişlikte bir düğme aralarında
+      yamalı duruyordu (kullanıcı düzeltmesi 2026-09-08). */
+  strip?: boolean;
   /** Yazılmayan durum satırları: ipucu (`title`) + `sr-only` olarak buradan verilir. */
   statusTitle?: string;
   statusSub?: ReactNode;
@@ -78,7 +82,9 @@ function Bar(props: {
          birleştirilmiş tek dize, "Bağlanılamadı" gibi tek başına anlamlı bir olguyu
          aranamaz hâle getiriyordu. */
       title={props.statusTitle && sub ? `${props.statusTitle} · ${sub}` : (props.statusTitle ?? undefined)}
-      className="flex flex-none items-center justify-end gap-2"
+      className={
+        props.strip ? "flex w-full items-center gap-2" : "flex flex-none items-center justify-end gap-2"
+      }
     >
       {props.children}
       {/* Durum ANLIK değişir (biri konuşmaya başladı, süre doldu) — tek canlı bölge. */}
@@ -97,16 +103,18 @@ function Bar(props: {
 /** `.dock .ic` (CSS 456-457) — 40px yuvarlak ikon düğmesi; `on` beyaz zeminli açık hâl. */
 const IconButton = forwardRef<
   HTMLButtonElement,
-  ButtonHTMLAttributes<HTMLButtonElement> & { on?: boolean; tone?: "dark" | "light" }
+  ButtonHTMLAttributes<HTMLButtonElement> & { on?: boolean; tone?: "dark" | "light"; big?: boolean }
 >(
-  function IconButton({ on, tone = "dark", className, children, ...rest }, ref) {
+  function IconButton({ on, tone = "dark", big, className, children, ...rest }, ref) {
     return (
       <button
         ref={ref}
         type="button"
         {...rest}
         className={
-          "flex h-10 w-10 flex-none items-center justify-center rounded-full text-lg " +
+          // 40px başlık satırının ölçüsü; alt şeritte 48px (52px'lik pill bandıyla aynı ağırlık).
+          (big ? "flex h-12 w-12 " : "flex h-10 w-10 ") +
+          "flex-none items-center justify-center rounded-full text-lg " +
           "focus-visible:outline-[2.5px] focus-visible:outline-flame-deep focus-visible:outline-offset-[3px] " +
           (on
             ? "bg-white text-ink "
@@ -281,13 +289,13 @@ export default function VoiceDock(props: {
     const title = voice.endedReason ? t(`voice.ended.${voice.endedReason}`) : t("voice.title");
     const sub = error ?? (voice.endedReason ? hint : t("voice.startHint"));
     return (
-      <Bar label={t("voice.region")} statusTitle={title} statusSub={sub} statusAlert={!!error}>
+      <Bar label={t("voice.region")} strip={strip} statusTitle={title} statusSub={sub} statusAlert={!!error}>
         {host && (
           <Button
             ref={joinRef}
             kind="flame"
-            size="sm"
-            className="min-h-10"
+            size={strip ? "md" : "sm"}
+            className={strip ? undefined : "min-h-10"}
             disabled={busy}
             /* Artboard düğmesi kısa: "Başlat" (4552). Uzun hâli erişilebilir ad olarak kalır —
                bağlamsız okunan bir "Başlat" neyi başlattığını söylemez. */
@@ -295,9 +303,8 @@ export default function VoiceDock(props: {
             onClick={() => void run(() => voice.start(), "voice.errStart", START_ERROR_BY_SERVER)}
           >
             <Microphone size={18} aria-hidden />
-            {/* Kısa denetim başlık satırında YALNIZ başına durur: "Başlat" neyi başlattığını
-                söylemez, o yüzden orada oda adı ("Sesli sohbet") yazılır. Alt çubukta bağlam
-                zaten yanındaki başlık bloğundan geliyor. */}
+            {/* Denetim tek başına durur (başlık satırı ya da alt şerit): artboard'ın "Başlat"ı
+                neyi başlattığını söylemez, o yüzden düğme oda adını yazar. */}
             {timeLimit ? t("voice.restart") : t("voice.title")}
           </Button>
         )}
@@ -317,11 +324,12 @@ export default function VoiceDock(props: {
     return (
       <Bar
         label={t("voice.region")}
+        strip={strip}
         statusTitle={t("voice.connectFailedTitle")}
         statusSub={sub}
         statusAlert
       >
-        <Button ref={joinRef} kind="white" size="sm" className="min-h-10" onClick={() => void voice.join()}>
+        <Button ref={joinRef} kind="white" size={strip ? "md" : "sm"} className={strip ? undefined : "min-h-10"} onClick={() => void voice.join()}>
           <WarningCircle size={18} className="text-flame-deep" aria-hidden />
           {t("voice.retry")}
         </Button>
@@ -379,10 +387,10 @@ export default function VoiceDock(props: {
     // yalnız kilitlenir.
     const sub = error ?? (joining ? t("voice.joining") : `${t("voice.members", { count: members.length })} · ${minutes}`);
     return (
-      <Bar label={t("voice.region")} statusTitle={title} statusSub={sub} statusAlert={!!error}>
+      <Bar label={t("voice.region")} strip={strip} statusTitle={title} statusSub={sub} statusAlert={!!error}>
         {avatars}
         {srRemaining}
-        <Button ref={joinRef} kind="flame" size="sm" className="min-h-10" disabled={joining} onClick={() => void voice.join()}>
+        <Button ref={joinRef} kind="flame" size={strip ? "md" : "sm"} className={strip ? undefined : "min-h-10"} disabled={joining} onClick={() => void voice.join()}>
           <Microphone size={18} aria-hidden />
           {t("voice.join")}
         </Button>
@@ -398,12 +406,16 @@ export default function VoiceDock(props: {
       ? t("voice.speakingBy", { name: speaker.displayName ?? "?" })
       : minutes;
   return (
-    <Bar label={t("voice.region")} statusTitle={t("voice.inCall")} statusSub={error ?? subtitle} statusAlert={!!error}>
+    <Bar label={t("voice.region")} strip={strip} statusTitle={t("voice.inCall")} statusSub={error ?? subtitle} statusAlert={!!error}>
       {avatars}
       {srRemaining}
       <IconButton
         ref={muteRef}
         tone="light"
+        big={strip}
+        /* Şerit satırı tam genişlik: avatarlar solda kalır, denetimler sağa yaslanır — tek
+           düğmeli durumlarda düğme zaten `w-full`, ikisi aynı hizada okunur. */
+        className={strip ? "ml-auto" : undefined}
         on={!voice.muted}
         onClick={voice.toggleMute}
         aria-label={t(voice.muted ? "voice.unmute" : "voice.mute")}
@@ -413,7 +425,7 @@ export default function VoiceDock(props: {
       </IconButton>
       {/* Artboard 4579-4580: ayrılma düğmesi ikon-only (yazılı "Ayrıl" pill'i dock'u 420px'in
           ötesine itiyordu); ad `aria-label`de. */}
-      <IconButton tone="light" aria-label={t("voice.leave")} onClick={voice.leave}>
+      <IconButton tone="light" big={strip} aria-label={t("voice.leave")} onClick={voice.leave}>
         <PhoneX size={18} aria-hidden />
       </IconButton>
       {menu}

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -275,6 +275,23 @@ describe("VoiceDock", () => {
     expect(dock(view, {}, "header-lg").container).toBeEmptyDOMElement();
     dock(view, {}, "strip");
     expect(screen.getByRole("button", { name: /Katıl/ })).toBeInTheDocument();
+  });
+
+  /* Şeritteki diğer düğmeler (Davet linki, Karıştır) tam genişlik 52px pill; 40px/otomatik
+     genişlikte bir ses düğmesi aralarında yamalı duruyordu (kullanıcı düzeltmesi 2026-09-08). */
+  it("`strip` düğmesi şeritteki diğer pill'lerle AYNI ölçüde, `header` kısa kalır", () => {
+    const view = { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } };
+    dock(view, {}, "strip");
+    const inStrip = screen.getByRole("button", { name: /Katıl/ });
+    expect(inStrip.className).toContain("w-full");
+    expect(inStrip.className).toContain("min-h-[3.25rem]");
+    expect(inStrip.className).not.toContain("min-h-10");
+
+    cleanup();
+    dock(view, {}, "header");
+    const inHeader = screen.getByRole("button", { name: /Katıl/ });
+    expect(inHeader.className).toContain("min-h-10");
+    expect(inHeader.className).not.toContain("w-full");
   });
 
   it("alt şeridi OLMAYAN sayfada `header` her genişlikte basılır", () => {

@@ -1,6 +1,6 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapTrifold } from "@phosphor-icons/react";
+import { ListBullets, MapTrifold } from "@phosphor-icons/react";
 import { byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -183,15 +183,24 @@ export default function VenueBrowser(props: {
               <HandNote>{t("venues.fairHand")}</HandNote>
             </div>
           )}
-          {/* 390: sekme anahtarı yerine tek ghost — harita ancak basılınca yüklenir. */}
-          {!mapOpen && (
-            <div className="lg:hidden">
-              <Button type="button" kind="ghost" size="sm" onClick={openMap}>
-                <MapTrifold size={16} />
-                {t("venues.showOnMap")}
-              </Button>
-            </div>
-          )}
+          {/* 390: sekme anahtarı yerine tek ghost — harita ancak basılınca yüklenir. Düğme İKİ
+              YÖNLÜ: haritadayken listeye döndürür. Tek yönlü olduğu sürece 390'da harita
+              açıldıktan sonra listeye dönmenin HİÇBİR yolu yoktu (kullanıcı bulgusu
+              2026-09-08) — sayfayı yenilemek gerekiyordu. */}
+          <div className="lg:hidden">
+            <Button
+              type="button"
+              kind="ghost"
+              size="sm"
+              /* `aria-pressed` YOK: düğmenin ETİKETİ zaten değişiyor ("Haritada gör" ↔
+                 "Listede gör"). İkisi birlikte "Listede gör, basılı" gibi çelişkili okunur —
+                 etiketi değişen bir düğme aç/kapa anahtarı değil, eylem düğmesidir. */
+              onClick={mapOpen ? () => setMapOpen(false) : openMap}
+            >
+              {mapOpen ? <ListBullets size={16} /> : <MapTrifold size={16} />}
+              {t(mapOpen ? "venues.showList" : "venues.showOnMap")}
+            </Button>
+          </div>
         </div>
       )}
       <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(26rem,32rem)_1fr] lg:gap-10">

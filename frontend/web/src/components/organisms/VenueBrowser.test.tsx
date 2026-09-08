@@ -49,6 +49,19 @@ describe("VenueBrowser", () => {
     expect(await screen.findByTestId("mapview")).toBeInTheDocument();
   });
 
+  /* Düğme İKİ YÖNLÜ olmalı: tek yönlü olduğu sürece 390'da harita açıldıktan sonra listeye
+     dönmenin hiçbir yolu yoktu (kullanıcı bulgusu 2026-09-08). */
+  it("390: 'Listede gör' haritadan listeye GERİ döndürür", async () => {
+    render(<VenueBrowser {...base} mode="host" />);
+    fireEvent.click(screen.getByRole("button", { name: "Haritada gör" }));
+    await screen.findByTestId("mapview");
+    /* Görünürlük CSS ile (jsdom stil uygulamaz) — sözleşme etiketin GİDİŞ-DÖNÜŞ yapmasıdır:
+       harita açıkken "Listede gör", tıklayınca yeniden "Haritada gör". */
+    fireEvent.click(screen.getByRole("button", { name: "Listede gör" }));
+    expect(screen.getByRole("button", { name: "Haritada gör" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Listede gör" })).not.toBeInTheDocument();
+  });
+
   it("grup modunda seçim aksiyonu yok; SOLO'da seçili satırın altında onay kartı var", () => {
     const { rerender } = render(<VenueBrowser {...base} mode="host" />);
     expect(screen.queryByText("Seçimin")).not.toBeInTheDocument();
