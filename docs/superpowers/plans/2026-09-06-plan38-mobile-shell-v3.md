@@ -31,7 +31,7 @@ dosyaları shim olarak re-export eder — web bozulmaz.
 react-native-safe-area-context 5 (edge-to-edge), `@react-native-google-signin/google-signin` 16,
 expo-secure-store, expo-location (foreground), expo-haptics, expo-clipboard, expo-localization,
 expo-font + `@expo-google-fonts/{bricolage-grotesque,figtree,caveat}`, `phosphor-react-native` 3 +
-react-native-svg 15, `react-native-maps` 1.27 (kurulur; tembel kullanımı M-7),
+react-native-svg 15, ~~`react-native-maps` 1.27~~ — 2026-09-08'de kaldırıldı; harita M-7'de MapLibre ile gelir,
 `@react-native-community/netinfo` 12, react-native-gesture-handler **2.32** + **react-native-reanimated 4**
 (+ zorunlu eş paket `react-native-worklets`), zustand 5, i18next 26 / react-i18next 17,
 axios (shared), jest-expo 57 + @testing-library/react-native 14.

@@ -3,7 +3,7 @@ import { privacy } from "./privacy";
 import { terms } from "./terms";
 import type { LegalBody } from "./types";
 
-export type { LegalBody, LegalLang } from "./types";
+export type { LegalBlock, LegalBody, LegalLang } from "./types";
 export { bodyFor } from "./types";
 
 /** URL parçası; mağaza meta verisine giren değer — değiştirmek eski linkleri kırar. */

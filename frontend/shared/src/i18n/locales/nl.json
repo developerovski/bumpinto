@@ -5,7 +5,8 @@
     "save": "Opslaan",
     "retry": "Probeer opnieuw",
     "cancel": "Annuleren",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "back": "Terug"
   },
   "shell": {
     "sessions": "Afspraken",
@@ -238,7 +239,8 @@
     "cardCity": "Eindhoven",
     "apple": "Doorgaan met Apple",
     "noAppleClientId": "Apple-inloggen is niet ingesteld in deze omgeving.",
-    "errApple": "Inloggen met Apple is mislukt — probeer opnieuw."
+    "errApple": "Inloggen met Apple is mislukt — probeer opnieuw.",
+    "legal": "Als je doorgaat ga je akkoord met de <0>Gebruiksvoorwaarden</0>. <1>Privacybeleid</1>"
   },
   "sessions": {
     "title": "Waar gaan<0/>we heen?",
@@ -572,14 +574,27 @@
     "locTypeInstead": "Ik typ een adres",
     "deniedTitle": "Locatietoegang staat uit",
     "deniedCopy": "Je kunt verder door een adres te typen, of zet de toestemming aan in Instellingen.",
-    "openSettings": "Naar Instellingen"
+    "openSettings": "Naar Instellingen",
+    "retry": "Opnieuw proberen",
+    "notNow": "Niet nu",
+    "micTitle": "Microfoon voor spraakchat",
+    "micSub": "Gaat alleen aan als jij op \"Meedoen\" tikt",
+    "micBody": "Je hebt een microfoon nodig om met je vrienden in de afspraak te praten. Audio wordt niet opgenomen en gaat niet naar onze servers; het stroomt rechtstreeks tussen jullie (WebRTC).",
+    "micWhyOff": "Zet hem uit wanneer je wilt",
+    "micWhyOffCopy": "Eén tik dempt je microfoon.",
+    "micWhyEnd": "Stopt vanzelf na 30 minuten",
+    "micWhyEndCopy": "De spraakchat sluit als de tijd om is.",
+    "micWhyBg": "Valt stil als de app op de achtergrond staat",
+    "micWhyBgCopy": "Verlaat je het scherm, dan gaat de microfoon uit.",
+    "micNext": "Je telefoon vraagt in de volgende stap om toestemming."
   },
   "legal": {
     "privacy": "Privacybeleid",
     "terms": "Gebruiksvoorwaarden",
     "dataRights": "Jouw gegevensrechten",
     "support": "Ondersteuning",
-    "updated": "Laatst bijgewerkt: {{date}} · Versie {{version}}"
+    "updated": "Laatst bijgewerkt: {{date}} · Versie {{version}}",
+    "openInBrowser": "Openen in browser"
   },
   "account": {
     "title": "Account en gegevens",
@@ -642,7 +657,8 @@
     "doneCopy": "Je gegevens zijn binnen 30 dagen volledig gewist. Wil je ooit weer in het midden afspreken, dan staat de deur open.",
     "doneHand": "tot ziens →",
     "mobileSubmit": "Mijn account verwijderen",
-    "sheetTitle": "We vragen het nog één keer"
+    "sheetTitle": "We vragen het nog één keer",
+    "confirmText": "Bevestigingstekst"
   },
   "support": {
     "cardTitle": "Werkt er iets niet?",
@@ -658,7 +674,13 @@
     "a4": "Account en gegevens → Account verwijderen. Het kan ook via bumpinto.app/account/delete, zonder de app te installeren.",
     "contact": "Contact",
     "mEmail": "E-mail",
-    "deleteLink": "Voor een verwijderverzoek: bumpinto.app/account/delete"
+    "deleteLink": "Voor een verwijderverzoek: bumpinto.app/account/delete",
+    "trader": "Handelaarsgegevens",
+    "mName": "Naam",
+    "mPhone": "Telefoon",
+    "mAddress": "Adres",
+    "mWeb": "Web",
+    "dsa": "Gepubliceerd op grond van artikel 30 van de EU Digital Services Act (DSA)."
   },
   "presence": {
     "linkOpened": "Link geopend · wacht op locatie…",
@@ -690,7 +712,9 @@
     "reported": "Gemeld · {{name}} geblokkeerd",
     "blocked": "{{name}} geblokkeerd",
     "error": "Versturen is niet gelukt — probeer opnieuw.",
-    "blockedRow": "geblokkeerd"
+    "blockedRow": "geblokkeerd",
+    "blockedName": "Geblokkeerde persoon",
+    "longPressHint": "Houd ingedrukt voor opties"
   },
   "share": {
     "card": "Kaart delen",

@@ -55,11 +55,23 @@ jest.mock("expo-clipboard", () => ({
 
 jest.mock("expo-router", () => ({
   router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() },
-  useLocalSearchParams: () => ({ slug: "x7k2m" }),
+  /* `jest.fn` (sabit nesne DEĞİL): parametreli rotaları test eden ekranlar bunu
+     `mockReturnValue` ile değiştirir. Varsayılan, oturum rotalarının beklediği slug. */
+  useLocalSearchParams: jest.fn(() => ({ slug: "x7k2m" })),
+  /* Muhafız/yönlendirme dalları render edilebilsin diye görünür bir işaret çizer. */
+  Redirect: ({ href }: { href?: unknown }) =>
+    require("react").createElement(require("react-native").Text, null, `redirect:${String(href)}`),
   Stack: Object.assign(({ children }: { children?: unknown }) => children ?? null, {
     Screen: () => null,
   }),
-  Link: ({ children }: { children?: unknown }) => children ?? null,
+  /* Gerçek `Link` yerel tarafta KENDİ <Text>'ini çizer; ikiz de öyle yapmalı, aksi hâlde
+     `getByText` bağlantı metnini üst <Text>'in parçası sanır ve eşleşmez (M-5:T5). */
+  Link: ({ children, style }: { children?: unknown; style?: unknown }) =>
+    require("react").createElement(
+      require("react-native").Text,
+      { style, accessibilityRole: "link" },
+      children,
+    ),
 }));
 
 /* Google girişi yerel modüldür: `authStore` modül düzeyinde `configure` çağırır, o yüzden
@@ -78,3 +90,32 @@ jest.mock("@react-native-google-signin/google-signin", () => ({
 jest.mock("react-native-safe-area-context", () =>
   require("react-native-safe-area-context/jest/mock").default,
 );
+
+/* İzin modülleri (M-5). `expo-audio` jest-expo altında İÇE AKTARILAMAZ: yerel modül sınıfı
+   yoksa `ExpoAudio.ts` açılışta `prototype` okur ve patlar — bu yüzden ikizi burada kurulur.
+   Gerçek yüzey (fonksiyon adları) `src/lib/__tests__/native-contract.test.ts` ile
+   paketin TİP BİLDİRİMİ üzerinden doğrulanır; akış Maestro'da (T12) koşar. */
+jest.mock("expo-audio", () => ({
+  getRecordingPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+}));
+
+jest.mock("expo-apple-authentication", () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  signInAsync: jest.fn(),
+  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+  AppleAuthenticationButton: () => null,
+}));
+
+jest.mock("expo-crypto", () => ({
+  randomUUID: jest.fn(() => "raw-nonce"),
+  digestStringAsync: jest.fn(async () => "hashed-nonce"),
+  CryptoDigestAlgorithm: { SHA256: "SHA-256" },
+}));
+
+jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn(async () => ({ type: "opened" })) }));
+
+/* i18n'i AÇIKÇA kur. Aksi hâlde çeviriler yalnız test edilen ekran dolaylı olarak bir store
+   (→ `src/i18n`) içe aktardığında hazır olur; store'suz ekranlar ham anahtar çizer ve test
+   sebepsiz kırılır. Kurulum mock'lardan SONRA gelir (expo-localization ikizi hazır olsun). */
+require("./src/i18n");

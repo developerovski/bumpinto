@@ -5,7 +5,8 @@
     "save": "Save",
     "retry": "Try again",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "back": "Back"
   },
   "shell": {
     "sessions": "Meetups",
@@ -238,7 +239,8 @@
     "cardCity": "Eindhoven",
     "apple": "Continue with Apple",
     "noAppleClientId": "Apple sign-in isn't configured in this environment.",
-    "errApple": "Couldn't sign in with Apple — try again."
+    "errApple": "Couldn't sign in with Apple — try again.",
+    "legal": "By continuing you accept the <0>Terms of use</0>. <1>Privacy policy</1>"
   },
   "sessions": {
     "title": "Where to<0/>next?",
@@ -572,14 +574,27 @@
     "locTypeInstead": "I'll type an address",
     "deniedTitle": "Location access is off",
     "deniedCopy": "You can carry on by typing an address, or turn the permission on in Settings.",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "retry": "Try again",
+    "notNow": "Not now",
+    "micTitle": "Microphone for voice chat",
+    "micSub": "It only opens when you tap \"Join\"",
+    "micBody": "You need a microphone to talk with your friends in the meetup. Audio is not recorded and never reaches our servers; it flows directly between you (WebRTC).",
+    "micWhyOff": "Mute whenever you want",
+    "micWhyOffCopy": "One tap silences your microphone.",
+    "micWhyEnd": "Ends by itself after 30 minutes",
+    "micWhyEndCopy": "Voice chat closes when the time runs out.",
+    "micWhyBg": "Goes quiet when the app is in the background",
+    "micWhyBgCopy": "Leaving the screen turns the microphone off.",
+    "micNext": "Your phone will ask for permission in the next step."
   },
   "legal": {
     "privacy": "Privacy policy",
     "terms": "Terms of use",
     "dataRights": "Your data rights",
     "support": "Support",
-    "updated": "Last updated: {{date}} · Version {{version}}"
+    "updated": "Last updated: {{date}} · Version {{version}}",
+    "openInBrowser": "Open in browser"
   },
   "account": {
     "title": "Account and data",
@@ -642,7 +657,8 @@
     "doneCopy": "Your data is fully cleared within 30 days. If you ever want to meet in the middle again, the door is open.",
     "doneHand": "see you →",
     "mobileSubmit": "Delete my account",
-    "sheetTitle": "Asking one last time"
+    "sheetTitle": "Asking one last time",
+    "confirmText": "Confirmation text"
   },
   "support": {
     "cardTitle": "Something not working?",
@@ -658,7 +674,13 @@
     "a4": "Account and data → Delete account. You can also do it at bumpinto.app/account/delete without installing the app.",
     "contact": "Contact",
     "mEmail": "Email",
-    "deleteLink": "To request account deletion: bumpinto.app/account/delete"
+    "deleteLink": "To request account deletion: bumpinto.app/account/delete",
+    "trader": "Trader information",
+    "mName": "Name",
+    "mPhone": "Phone",
+    "mAddress": "Address",
+    "mWeb": "Web",
+    "dsa": "Published under Article 30 of the EU Digital Services Act (DSA)."
   },
   "presence": {
     "linkOpened": "Opened the link · waiting for location…",
@@ -690,7 +712,9 @@
     "reported": "Reported · {{name}} blocked",
     "blocked": "{{name}} blocked",
     "error": "Couldn't send — try again.",
-    "blockedRow": "blocked"
+    "blockedRow": "blocked",
+    "blockedName": "Blocked person",
+    "longPressHint": "Press and hold for options"
   },
   "share": {
     "card": "Share the card",

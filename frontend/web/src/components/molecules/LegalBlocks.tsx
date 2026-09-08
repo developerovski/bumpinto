@@ -1,21 +1,11 @@
 /* Artboard W14/W15/W16 okuyucu tipografisi (.lg-h / .lg-p / .lg-ul / .tbl / amber not).
    Metin blok VERİSİ olarak gelir: içerik dosyaları sınıf dizesi taşımaz, tek renderer basar. */
 import { Info } from "@phosphor-icons/react";
+import type { LegalBlock } from "@bumpinto/shared";
 import { Fragment, type ReactNode } from "react";
 
-export type LegalBlock =
-  | { h: string }
-  /** `muted` — artboard `.lg-p.m2`: giriş/uyarı paragrafı ink2'ye iner. Gövde metni (`.lg-p`)
-      ink'tir; ikisi ayrı sınıf olduğu için ayrımı blok verisi taşır, renderer tahmin etmez. */
-  /** `strong` — paragrafın İÇİNDEKİ bir cümlenin birebir kopyası; artboard `<b>` ile
-      vurguladığı yer (5008). Metin tek dize kalır (çeviri parçalanmaz), renderer o cümleyi
-      bulup kalınlaştırır; bulunamazsa paragraf düz basılır. */
-  | { p: string; muted?: boolean; strong?: string }
-  | { ul: string[] }
-  | { table: [string, string][] }
-  | { note: string }
-  /** [önce yazılan metin, bağlantı etiketi, href] — iletişim/başvuru satırları. */
-  | { link: [string, string, string] };
+/* Blok TİPİ `@bumpinto/shared`ta: aynı içeriği mobil `LegalReader` da basar (M-5:T7). */
+export type { LegalBlock } from "@bumpinto/shared";
 
 /** Artboard `.lg-meta` (515) — "Son güncelleme" / "Verildi" damgası: 12.5px, NORMAL ağırlık,
     ink2, cümle düzeni. `Overline` (11.5px/700/BÜYÜK HARF/tracked) bu satır için yanlıştı:

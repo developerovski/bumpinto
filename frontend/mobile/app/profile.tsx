@@ -15,9 +15,8 @@ import { colors, space } from "../src/theme";
 /**
  * Artboard P22 · Profil.
  *
- * "Hesap ve veriler" ve "Destek" satırları KAPALI çizilir — ekranlarını M-5 (mağaza/yasal
- * paketi) getirir. Tasarımdaki satır silinmez, sahte ekran da icat edilmez.
- * Varsayılan KONUM satırı aynı sebeple kapalı: konum seçici (harita + geocode) M-7'ye ait.
+ * "Hesap ve veriler" ve "Destek" satırları M-5'te açıldı (`app/account/*`).
+ * Varsayılan KONUM satırı hâlâ kapalı: konum seçici (harita + geocode) M-7'ye ait.
  */
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -111,9 +110,16 @@ export default function ProfileScreen() {
           {t("profile.account")}
         </AppText>
         <Card padded={false}>
-          {/* Ekranları M-5 getirir; satır kapalı çizilir. */}
-          <Row first label={t("shell.account")} hint={t("profile.accountHint")} disabled />
-          <Row label={t("legal.support")} disabled />
+          <Row
+            first
+            label={t("shell.account")}
+            hint={t("profile.accountHint")}
+            onPress={() => router.push("/account")}
+          />
+          <Row
+            label={t("legal.support")}
+            onPress={() => router.push("/account/legal/support")}
+          />
         </Card>
 
         {error ? (

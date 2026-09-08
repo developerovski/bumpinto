@@ -4,10 +4,12 @@ import { create } from "zustand";
 
 import i18n from "../i18n";
 import { api } from "../lib/api";
+import { signInWithApple } from "../lib/appleAuth";
 import { clearAccessToken, getAccessToken, setAccessToken } from "../lib/tokenStore";
 
 /**
- * Giriş durumu. Apple girişi (R-M1) M-5'te eklenir — burada yalnız Google var.
+ * Giriş durumu. Google ve Apple AYNI yolu kullanır (`finishLogin`): token'ı yaz, profili çek,
+ * dili uygula. İki sağlayıcı için iki ayrı dal açılmaz — biri düzeltilip diğeri unutulmasın.
  *
  * `id_token` yalnız takas için kullanılır ve saklanmaz (`tokenStore` başlığı).
  */
@@ -27,8 +29,22 @@ type AuthState = {
   error: string | null;
   restore: () => Promise<void>;
   signIn: () => Promise<void>;
+  signInApple: () => Promise<void>;
   signOut: () => Promise<void>;
 };
+
+/** Google ve Apple'ın ORTAK son adımı: token → profil → dil. */
+async function finishLogin(
+  login: { accessToken?: string; userId?: string },
+  set: (partial: Partial<AuthState>) => void,
+  errorKey: string,
+): Promise<void> {
+  if (!login.accessToken) return set({ status: "out", error: errorKey });
+  await setAccessToken(login.accessToken);
+  const me = await api.me().catch(() => null);
+  if (me?.language) await i18n.changeLanguage(me.language);
+  set({ status: "in", userId: login.userId ?? null, displayName: me?.displayName ?? null });
+}
 
 export const useAuthStore = create<AuthState>((set) => ({
   status: "unknown",
@@ -49,18 +65,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       await GoogleSignin.hasPlayServices();
       const idToken = (await GoogleSignin.signIn()).data?.idToken;
       if (!idToken) return set({ status: "out" });
-      const login = await api.loginGoogle(idToken);
-      if (!login.accessToken) return set({ status: "out", error: "landing.errLogin" });
-      await setAccessToken(login.accessToken);
-      const me = await api.me().catch(() => null);
-      if (me?.language) await i18n.changeLanguage(me.language);
-      set({
-        status: "in",
-        userId: login.userId ?? null,
-        displayName: me?.displayName ?? null,
-      });
+      await finishLogin(await api.loginGoogle(idToken), set, "landing.errLogin");
     } catch {
       set({ status: "out", error: "landing.errLogin" });
+    }
+  },
+
+  async signInApple() {
+    set({ status: "busy", error: null });
+    try {
+      const login = await signInWithApple();
+      // `null` = kullanıcı vazgeçti: hata gösterme, giriş ekranında kal.
+      if (!login) return set({ status: "out" });
+      await finishLogin(login, set, "landing.errApple");
+    } catch {
+      set({ status: "out", error: "landing.errApple" });
     }
   },
 

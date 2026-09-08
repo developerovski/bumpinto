@@ -5,7 +5,8 @@
     "save": "Kaydet",
     "retry": "Tekrar dene",
     "cancel": "Vazgeç",
-    "close": "Kapat"
+    "close": "Kapat",
+    "back": "Geri"
   },
   "shell": {
     "sessions": "Oturumlar",
@@ -229,7 +230,8 @@
     "cardCity": "Eindhoven",
     "apple": "Apple ile devam et",
     "noAppleClientId": "Apple girişi bu ortamda yapılandırılmadı.",
-    "errApple": "Apple ile giriş yapılamadı — tekrar dene."
+    "errApple": "Apple ile giriş yapılamadı — tekrar dene.",
+    "legal": "Devam edersen <0>Kullanım şartlarını</0> kabul etmiş olursun. <1>Gizlilik politikası</1>"
   },
   "sessions": {
     "title": "Nereye<0/>gidiyoruz?",
@@ -561,14 +563,27 @@
     "locTypeInstead": "Adres yazacağım",
     "deniedTitle": "Konum izni kapalı",
     "deniedCopy": "Adres yazarak devam edebilirsin ya da Ayarlar'dan izni açabilirsin.",
-    "openSettings": "Ayarlar'a git"
+    "openSettings": "Ayarlar'a git",
+    "retry": "Tekrar dene",
+    "notNow": "Şimdi değil",
+    "micTitle": "Sesli sohbet için mikrofon",
+    "micSub": "Yalnız sen \"Katıl\" deyince açılır",
+    "micBody": "Buluşmadaki arkadaşlarınla konuşabilmen için mikrofon gerekir. Ses kaydedilmez, sunucuya gitmez; doğrudan aranızda akar (WebRTC).",
+    "micWhyOff": "İstediğin an kapat",
+    "micWhyOffCopy": "Mikrofonu tek dokunuşla susturursun.",
+    "micWhyEnd": "30 dakika sonra kendiliğinden biter",
+    "micWhyEndCopy": "Sesli sohbet süresi dolunca kapanır.",
+    "micWhyBg": "Uygulama arka plandayken susar",
+    "micWhyBgCopy": "Ekrandan çıkınca mikrofon kapanır.",
+    "micNext": "Sonraki adımda telefonun izin soracak."
   },
   "legal": {
     "privacy": "Gizlilik politikası",
     "terms": "Kullanım şartları",
     "dataRights": "Veri hakların",
     "support": "Destek",
-    "updated": "Son güncelleme: {{date}} · Sürüm {{version}}"
+    "updated": "Son güncelleme: {{date}} · Sürüm {{version}}",
+    "openInBrowser": "Tarayıcıda aç"
   },
   "account": {
     "title": "Hesap ve veriler",
@@ -631,7 +646,8 @@
     "doneCopy": "Verilerin 30 gün içinde tamamen temizlenir. Bir gün ortada buluşmak istersen, kapı açık.",
     "doneHand": "görüşürüz →",
     "mobileSubmit": "Hesabımı sil",
-    "sheetTitle": "Son kez soruyoruz"
+    "sheetTitle": "Son kez soruyoruz",
+    "confirmText": "Onay metni"
   },
   "support": {
     "cardTitle": "Bir şey mi takıldı?",
@@ -647,7 +663,13 @@
     "a4": "Hesap ve veriler → Hesabı sil. Uygulama kurulu olmasa da bumpinto.app/account/delete adresinden yapabilirsin.",
     "contact": "İletişim",
     "mEmail": "E-posta",
-    "deleteLink": "Hesap silme isteği için: bumpinto.app/account/delete"
+    "deleteLink": "Hesap silme isteği için: bumpinto.app/account/delete",
+    "trader": "Tacir bilgileri",
+    "mName": "Ad",
+    "mPhone": "Telefon",
+    "mAddress": "Adres",
+    "mWeb": "Web",
+    "dsa": "AB Dijital Hizmetler Yasası (DSA) m.30 gereği yayımlanır."
   },
   "presence": {
     "linkOpened": "Linki açtı · konum bekleniyor…",
@@ -679,7 +701,9 @@
     "reported": "Bildirildi · {{name}} engellendi",
     "blocked": "{{name}} engellendi",
     "error": "Gönderilemedi — tekrar dene.",
-    "blockedRow": "engellendi"
+    "blockedRow": "engellendi",
+    "blockedName": "Engellenen kişi",
+    "longPressHint": "Seçenekler için basılı tut"
   },
   "share": {
     "card": "Kartı paylaş",

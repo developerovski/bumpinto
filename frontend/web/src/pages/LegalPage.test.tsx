@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import i18n from "../i18n";
-import type { LegalSlug } from "../content/legal";
+import type { LegalSlug } from "@bumpinto/shared";
 import LegalPage from "./LegalPage";
 
 function at(slug: LegalSlug) {

@@ -1,0 +1,41 @@
+# Mağaza uyumluluk akışı (M-5) — CİHAZDA koşar, CI'da değil.
+#
+#   maestro test .maestro/store-compliance.yaml
+#
+# Doğruladığı şey birim testlerin ULAŞAMADIĞI yer: sistem izin diyaloğunun ön-bilgilendirmeden
+# SONRA çıkması ve reddedildiğinde çıkmaz sokak kalmaması. Bu ikisi Play/Apple reddinin
+# en sık iki sebebidir.
+appId: app.bumpinto.mobile
+---
+- launchApp:
+    clearState: true
+    permissions: { all: unset }
+
+# O2 — iki giriş yolu eşit ağırlıkta; AÇILIŞTA izin diyaloğu YOK.
+- assertVisible: "Google ile devam et"
+- assertVisible: "Apple ile devam et"          # yalnız iOS koşusunda
+- assertNotVisible: "konumunuzu kullanmasına izin"
+
+# Yasal okuyucular oturum AÇILMADAN erişilebilir (Apple 5.1.1 / mağaza meta verisi).
+- tapOn: "Kullanım şartlarını"
+- assertVisible: "Kullanım şartları"
+- tapOn: { id: "Geri" }
+- assertVisible: "Google ile devam et"
+
+- tapOn: "Apple ile devam et"
+
+# O3 — konum ön-bilgilendirmesi sistem diyaloğundan ÖNCE.
+- tapOn: "Yeni buluşma"
+- tapOn: "Mevcut konumumu kullan"
+- assertVisible: "Konumun, orta noktayı bulmak için"
+- assertVisible: "Arkadaşlarına yaklaşık gösterilir"
+- assertVisible: "Sonraki adımda telefonun izin soracak."
+
+- tapOn: "Devam et"
+- assertVisible: "İzin Verme"                  # sistem diyaloğu O3'ten SONRA
+- tapOn: "İzin Verme"
+
+# O6 — red kurtarma: çıkmaz sokak yok.
+- assertVisible: "Konum izni kapalı"
+- assertVisible: "Ayarlar'a git"
+- assertVisible: "Tekrar dene"

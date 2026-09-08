@@ -26,7 +26,7 @@ Canlı veri: `useSessionLive` ile 3 sn polling (STOMP köprüsü M-6). Ters geoc
 (axios istemcisi + saf mantık), jest-expo 57 + @testing-library/react-native 14.
 Sürüm politikası: M-4 (plan38) Tech Stack bloğu — Expo modülleri `expo install`, saf JS `@latest`.
 **Not (2026-09-07):** SDK 57 ile Expo'nun kendi `expo-maps` modülü de var; bu plan
-`react-native-maps` 1.27'de **kalır** (harita zaten tembel ve kenarda — churn'e değmez).
+`react-native-maps` **KULLANILMAZ** — 2026-09-08'de bağımlılıktan çıkarıldı (hiç import edilmemişti). Mobil harita motoru **MapLibre**'dir: açık hibrit spec kararı, backend varsayılanı `MAP_ENGINE=maplibre`, web W-12 ile geçti. Harita seçici `@maplibre/maplibre-react-native` ile kurulur ve **anahtarsız** çalışır; `app.config.ts`'te Google Maps anahtarı YOKTUR (anahtar tanımlamak SDK'yı pakete sokar ve `PrivacyInfo.xcprivacy` / Play Data safety beyanlarını yalanlar). Atıf `attribution.open` (OpenStreetMap), `attribution.google` DEĞİL.
 
 **Test kuralı (RNTL 14, 2026-09-07 sahada doğrulandı — BAĞLAYICI):** `@testing-library/react-native` 14'te `render` **Promise döndürür**. Bu plandaki her test parçacığında **`await render(...)`** kullanılır; senkron biçim hem `tsc` hem `jest` hatası verir. `@testing-library/react-native/extend-expect` içe aktarımı **yoktur** (matcher'lar dahili). Ayrıntı: M-4 (plan38) "T1 saha notları".
 

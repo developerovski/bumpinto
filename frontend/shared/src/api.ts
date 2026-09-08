@@ -6,6 +6,9 @@ export type SessionView = Schemas["SessionView"];
 export type VenueDto = Schemas["VenueDto"];
 export type ParticipantDto = Schemas["ParticipantDto"];
 export type MeResponse = Schemas["MeResponse"];
+export type Consents = Schemas["ConsentsDto"];
+export type BlockDto = Schemas["BlockDto"];
+export type ReportReason = NonNullable<Schemas["ReportRequest"]["reason"]>;
 export type SessionSummaryDto = Schemas["SessionSummaryDto"];
 export type SessionPreview = Schemas["SessionPreview"];
 
@@ -84,6 +87,11 @@ export function createBumpintoApi(http: AxiosInstance) {
       http.post("/api/reports", body).then(() => undefined),
     blockParticipant: (body: Schemas["BlockRequest"]) =>
       http.post<Schemas["BlockDto"]>("/api/me/blocks", body).then((r) => r.data),
+    /* Sunucu ZARFSIZ dizi döner (`BlockDto[]`) — sözleşmede `BlockListResponse` yok (M-5:T1). */
+    listBlocks: () =>
+      http.get<Schemas["BlockDto"][]>("/api/me/blocks").then((r) => r.data),
+    removeBlock: (blockId: string) =>
+      http.delete(`/api/me/blocks/${blockId}`).then(() => undefined),
     nudge: (slug: string, participantId: string) =>
       http.post(`/api/sessions/${slug}/nudge/${participantId}`).then(() => undefined),
     loginApple: (body: AppleLoginRequest) =>

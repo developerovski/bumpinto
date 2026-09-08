@@ -13,6 +13,26 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "../src/theme";
 
 /**
+ * ANONİM rotalar — oturum muhafızı (M-7 ekleyecek) bunları ASLA yönlendirmemelidir.
+ *
+ * `/account/legal/*`: giriş ekranındaki (O2) "Kullanım şartları" / "Gizlilik politikası"
+ * bağlantıları buraya gider; mağaza incelemesi bunları hesapsız açabilmeli (Apple 5.1.1).
+ * `/account/deleted`: buraya gelindiğinde token ZATEN silinmiştir; muhafız çalışsaydı
+ * kullanıcı onayı görmeden giriş ekranına düşerdi (O17).
+ * `/j/*`: davet linkiyle gelen misafir (M-7) — hesapsız katılır.
+ *
+ * Muhafız yazılırken bu liste TEK kaynaktır; `src/__tests__/anonymousRoutes.test.ts` korur.
+ */
+export const ANONYMOUS_ROUTES = [
+  "/account/legal/",
+  "/account/deleted",
+  "/j/",
+] as const;
+
+export const isAnonymousRoute = (path: string): boolean =>
+  ANONYMOUS_ROUTES.some((prefix) => path.startsWith(prefix));
+
+/**
  * Kök yerleşim — tek stack (alt sekme yok).
  * Alt sayfalar `app/(sheets)` grubunda modal olarak sunulur (M-7'den itibaren doldurulur).
  * i18n fontlardan ÖNCE içe aktarılır: ilk kare çizilirken çeviriler hazır olsun.

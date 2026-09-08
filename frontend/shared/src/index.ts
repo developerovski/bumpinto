@@ -4,11 +4,14 @@ export {
   type AppConfig,
   type AppConfigSource,
   type AppleLoginRequest,
+  type BlockDto,
   type BumpintoApi,
+  type Consents,
   type ConsentsInput,
   type MapEngine,
   type MeResponse,
   type ParticipantDto,
+  type ReportReason,
   type Schemas,
   type SessionPreview,
   type SessionSummaryDto,
@@ -64,3 +67,12 @@ export { backupOf } from "./backupPlan";
 export { DECIDING_MINUTES, DECIDING_RATING, isDeciding } from "./runoffTrailer";
 export { LANGUAGES, type LanguageCode } from "./languages";
 export { sessionCtaKey } from "./sessionCta";
+export {
+  LEGAL_DOCS,
+  bodyFor,
+  type LegalBlock,
+  type LegalBody,
+  type LegalDocMeta,
+  type LegalLang,
+  type LegalSlug,
+} from "./content/legal";

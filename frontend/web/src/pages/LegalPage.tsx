@@ -7,7 +7,7 @@ import { Page } from "../components/atoms";
 import LegalBlocks, { LegalMeta } from "../components/molecules/LegalBlocks";
 import PageHeader from "../components/molecules/PageHeader";
 import ReaderZone from "../components/molecules/ReaderZone";
-import { LEGAL_DOCS, bodyFor, type LegalSlug } from "../content/legal";
+import { LEGAL_DOCS, bodyFor, type LegalSlug } from "@bumpinto/shared";
 
 export default function LegalPage({ slug }: { slug: LegalSlug }) {
   const { t, i18n } = useTranslation();
