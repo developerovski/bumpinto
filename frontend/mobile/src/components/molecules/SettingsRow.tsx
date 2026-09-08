@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { colors, space } from "../../theme";
 import { AppText } from "../atoms";
+import { useOncePress } from "../../lib/useOncePress";
 
 /**
  * O8 "Hesap ve veriler" satırı. Dokunma hedefi en az 48px (WCAG 2.5.8 / Play erişilebilirlik).
@@ -21,6 +22,7 @@ export default function SettingsRow(p: {
   disabled?: boolean;
 }) {
   const danger = p.tone === "danger";
+  const onPress = useOncePress(p.onPress);
   const body = (
     <>
       <View style={s.icon}>{p.icon}</View>
@@ -50,7 +52,7 @@ export default function SettingsRow(p: {
       accessibilityLabel={p.label}
       accessibilityState={{ disabled: !!p.disabled }}
       disabled={p.disabled}
-      onPress={p.onPress}
+      onPress={onPress}
       style={({ pressed }) => [s.row, p.disabled ? { opacity: 0.45 } : null, pressed ? s.pressed : null]}
     >
       {body}

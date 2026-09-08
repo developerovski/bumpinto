@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "rea
 
 import { colors, radius, shadow, size } from "../../theme";
 import AppText from "./AppText";
+import { useOncePress } from "../../lib/useOncePress";
 
 /** `.btn` b-fl / b-wh / b-gh / b-dg karşılıkları. */
 type Kind = "flame" | "white" | "ghost" | "danger";
@@ -17,12 +18,14 @@ export default function Button(p: {
   style?: StyleProp<ViewStyle>;
 }) {
   const kind = p.kind ?? "flame";
+  // Çift dokunuşta gezinme/yazma İKİ KEZ tetiklenmesin (örnek başına kilit).
+  const onPress = useOncePress(p.onPress);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={p.title}
       accessibilityState={{ disabled: !!p.disabled }}
-      onPress={p.onPress}
+      onPress={onPress}
       disabled={p.disabled}
       style={({ pressed }) => [
         s.base,

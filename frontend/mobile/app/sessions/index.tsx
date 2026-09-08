@@ -20,6 +20,7 @@ import { MapMark, PastSessionRow, SessionCard } from "../../src/components/molec
 import { useAuthStore } from "../../src/store/authStore";
 import { slugFromInvite, useSessionStore } from "../../src/store/sessionStore";
 import { colors, space } from "../../src/theme";
+import { useOncePress } from "../../src/lib/useOncePress";
 
 export default function SessionsScreen() {
   const { t } = useTranslation();
@@ -29,6 +30,8 @@ export default function SessionsScreen() {
   const loading = useSessionStore((s) => s.loading);
   const error = useSessionStore((s) => s.error);
   const loadList = useSessionStore((s) => s.loadList);
+  // Çift dokunuşta profil İKİ KEZ yığına girmesin.
+  const openProfile = useOncePress(() => router.push("/profile"));
 
   useEffect(() => {
     void loadList();
@@ -47,7 +50,7 @@ export default function SessionsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("shell.profile")}
-          onPress={() => router.push("/profile")}
+          onPress={openProfile}
         >
           <Avatar name={displayName ?? ""} tint={0} />
         </Pressable>

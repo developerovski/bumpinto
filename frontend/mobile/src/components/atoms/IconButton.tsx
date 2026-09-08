@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 
 import { colors, radius, shadow, size } from "../../theme";
+import { useOncePress } from "../../lib/useOncePress";
 
 /**
  * 40×40 daire. Görsel 40, dokunma hedefi `hitSlop` ile 52 (GUIDE kural 4:
@@ -16,12 +17,13 @@ export default function IconButton(p: {
   style?: StyleProp<ViewStyle>;
 }) {
   const kind = p.kind ?? "solid";
+  const onPress = useOncePress(p.onPress);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={p.label}
       accessibilityState={{ disabled: !!p.disabled }}
-      onPress={p.onPress}
+      onPress={onPress}
       disabled={p.disabled}
       hitSlop={6}
       style={({ pressed }) => [

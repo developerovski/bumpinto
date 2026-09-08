@@ -91,7 +91,16 @@ const config: ExpoConfig = {
     // `edgeToEdgeEnabled` SDK 57'de KALDIRILDI: Android 16 edge-to-edge'i zorunlu kılıyor,
     // ayar verilirse prebuild uyarı basar. Kenardan kenara düzen artık varsayılan davranış;
     // ekranlar `react-native-safe-area-context` ile güvenli alanı kendisi bırakır (T3/T4).
-    predictiveBackGestureEnabled: true,
+    /* KAPALI — açık bırakmak Android geri tuşunu UYGULAMA GENELİNDE öldürüyor (2026-09-08
+       emülatörde ölçüldü: hem `KEYCODE_BACK` hem gerçek kenar hareketi, her ekrandan
+       uygulamayı kapatıyordu; yığın hiç poplanmıyordu).
+       Sebep: bayrak manifeste `android:enableOnBackInvokedCallback="true"` yazıyor, Android da
+       o zaman eski `Activity.onBackPressed()` yolunu KAPATIYOR ve uygulamanın
+       `OnBackInvokedCallback` kaydetmesini bekliyor. Bu sürümlerde kaydeden YOK — ne
+       `react-native-screens` 4.26 ne de RN 0.86 ReactAndroid (ikisinde de `OnBackInvoked`
+       geçmiyor) — dolayısıyla olay JS'e hiç ulaşmıyor ve sistem varsayılanı activity'yi
+       bitiriyor. Predictive back ancak kütüphaneler geri çağrıyı kaydedince açılabilir. */
+    predictiveBackGestureEnabled: false,
     // KAPALI LİSTE: Play "Data safety" formu tam olarak bu iki izinle doldurulur.
     permissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.RECORD_AUDIO"],
     // Modüllerin manifeste devrettiği fazlalıklar; arka plan konumu istenirse Play reddeder.

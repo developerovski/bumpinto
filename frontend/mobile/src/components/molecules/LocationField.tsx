@@ -7,6 +7,7 @@ import LocationDeniedCard from "../organisms/LocationDeniedCard";
 import { useLocationStore } from "../../store/locationStore";
 import { colors, radius, shadow, size, space } from "../../theme";
 import { AppText, Badge, Button, Input } from "../atoms";
+import { useOncePress } from "../../lib/useOncePress";
 
 /**
  * Artboard P3/P4 (izinli) ve P9 (reddedilmiş) `.loc` alanı — "Sen neredesin?" / "Neredesin?".
@@ -44,8 +45,9 @@ export default function LocationField(p: {
   const refused = phase === "denied" || phase === "blocked";
   const showAddress = typing || refused || phase === "manual";
 
-  const openPrimer = () =>
-    router.push({ pathname: "/(sheets)/location-consent", params: { next: p.next } });
+  const openPrimer = useOncePress(() =>
+    router.push({ pathname: "/(sheets)/location-consent", params: { next: p.next } }),
+  );
 
   async function resolveAddress() {
     if (!address.trim()) return;
