@@ -12,6 +12,7 @@ import { roundedMidpointMeters } from "../../lib/geo";
 import { monogram } from "../../lib/monogram";
 import type { DecisionKind } from "../../lib/serverEnums";
 import { MODE_ICON, MODE_LABEL_KEY } from "../../lib/travelMode";
+import { personIndexOf } from "../../lib/personColor";
 import { fairnessLine } from "../../lib/travelText";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { Avatar, Badge, Heading, Highlight, Note, Overline, Sticker, Wordmark } from "../atoms";
@@ -203,10 +204,10 @@ export default function WinnerCard(props: {
               const icons = mode ? MODE_ICON[mode] : [];
               const label = travel.labels[e.id] ?? t("travel.friend");
               const self = travel.selfId != null && e.id === travel.selfId;
-              const index = participants.findIndex((x) => x.id === e.id);
+              const index = personIndexOf(participants, e.id);
               return (
                 <div key={e.id} className={PERSON_ROW}>
-                  <Avatar name={label} index={index < 0 ? 0 : index} size="xs" />
+                  <Avatar name={label} index={index} size="xs" />
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className={`truncate ${self ? "font-bold text-ink" : "text-ink"}`}>{label}</span>
                     {icons.length > 0 && (

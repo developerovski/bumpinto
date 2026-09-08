@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
+import { personIndexMap } from "./personColor";
 
 /** RangeBar/TravelBars girdisi — TEK nesne. `labels` ve `selfId` iki ayrı prop olarak
     sürüklenirse (Task 1 kapanış incelemesi bulgusu) yüzeyler arasında birbirinden ayrışabilir;
@@ -12,6 +13,9 @@ export type TravelInfo = {
       "Sen"in baş harfi ("S"/"Y") başlıktaki avatarlarla eşleşmediği için oturumda olmayan
       ÜÇÜNCÜ bir kişi gibi okunuyordu. Kendi noktan zaten flame dolgusuyla ayrılıyor. */
   names?: Record<string, string>;
+  /** `id → kanonik dizin` (bkz. `lib/personColor.ts`). Yol çubuğu noktaları rengi buradan alır;
+      `f.entries` DAKİKAYA göre sıralı olduğu için kendi sayacı kimliği taşıyamaz. */
+  colors?: Record<string, number>;
   selfId?: string | null;
   /** Çapalı oturum: adalet notu (`RangeBar`, `TravelBars`) mekanları KIYASLADIĞI için çizilmez —
       2 km'lik daire içinde 20 kartın hepsinde aynı şeyi yazar. Ayrı bir prop olarak tüm render
@@ -37,6 +41,7 @@ export function useTravelLabels(view: SessionView | null): TravelInfo {
     return {
       labels,
       names,
+      colors: personIndexMap(view?.participants),
       selfId: view?.viewer?.participantId ?? null,
       anchored: view?.anchored ?? false,
     };

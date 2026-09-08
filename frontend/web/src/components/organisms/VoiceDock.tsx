@@ -18,6 +18,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isHost, viewerId } from "../../store/sessionStore";
 import { useSessionAction } from "../../store/useSessionAction";
 import { useVoiceStore } from "../../store/voiceStore";
+import { personIndexOf } from "../../lib/personColor";
 import { Avatar, Button } from "../atoms";
 
 /** Sunucunun {error} gövdesindeki metne göre başlatma hatasını eşler (bkz. useSessionAction). */
@@ -374,7 +375,7 @@ export default function VoiceDock(props: { view: SessionView }) {
               failed ? "opacity-55" : "",
             ].join(" ").trim()}
           >
-            <Avatar size="xs" name={p.displayName ?? "?"} index={(view.participants ?? []).indexOf(p)} />
+            <Avatar size="xs" name={p.displayName ?? "?"} index={personIndexOf(view.participants, p.id)} />
             {/* Konuşma göstergesi artboard'da avatarı saran halka DEĞİL, sağ altta duran 12px
                 yeşil varlık noktasıdır (4575 `.od.spk`, CSS 438-439): 2px beyaz kenar + hafif
                 haleli. Halka avatarı büyütüp yığının -8px binişmesini bozuyordu. */}

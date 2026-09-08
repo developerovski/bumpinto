@@ -1,10 +1,5 @@
 /* Kaynak: ui.css .a-avatar / .a-avatar-ring / .a-avatar--waiting / DS v2 */
-const PALETTE = [
-  "linear-gradient(135deg,#fd3e6b,#d91e52)",
-  "linear-gradient(135deg,#18b26b,#0b7a44)",
-  "linear-gradient(135deg,#7c4dff,#5a2fd0)",
-  "linear-gradient(135deg,#ffb020,#e08900)",
-];
+import { personGradient } from "../../lib/personColor";
 
 const base =
   "flex flex-none items-center justify-center rounded-full " +
@@ -56,7 +51,7 @@ export default function Avatar(props: {
   ) : (
     <span
       className={className}
-      style={{ background: PALETTE[(props.index ?? 0) % PALETTE.length] }}
+      style={{ background: personGradient(props.index) }}
       aria-hidden
     >
       {props.name[0]?.toUpperCase()}

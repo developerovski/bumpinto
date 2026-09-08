@@ -9,6 +9,7 @@
 import { CheckCircle, HandWaving } from "@phosphor-icons/react";
 import { Trans, useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
+import { personIndexOf } from "../../lib/personColor";
 import { votersOf } from "../../lib/voters";
 import { useSessionStore } from "../../store/sessionStore";
 import { useSocialStore } from "../../store/socialStore";
@@ -151,11 +152,12 @@ export default function FinishedCard(props: {
                 var: ParticipantDto YALNIZ `deckDone: boolean` taşıyor, kişi başı kaydırılan kart
                 indeksi (örn. `ParticipantDto.deckIndex`) API'de YOK. Uydurulmaz — durum yalnız
                 bitti/kaydırıyor rozetiyle anlatılır; alan eklenirse sayaç + çubuk buraya girer. */}
-            {present.map((p, i) => (
+            {present.map((p) => (
               <PersonRow
                 key={p.id}
                 participant={p}
-                index={i}
+                /* Renk KANONİK sıradan: `present` filtrelenmiş, döngü sayacı kimliği taşımaz. */
+                index={personIndexOf(props.participants, p.id)}
                 isSelf={p.id === props.selfId}
                 ring={p.deckDone}
                 presence

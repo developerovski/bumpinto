@@ -3,6 +3,7 @@
    sarıyor ve rozetle aynı bilgiyi iki kez yazıyordu (v3 notları). */
 import { useTranslation } from "react-i18next";
 import { fairnessOf, type FairnessVenue } from "@bumpinto/shared";
+import { personGradient } from "../../lib/personColor";
 import { fairnessLine, initialOf, type FairnessLine } from "../../lib/travelText";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 
@@ -87,16 +88,16 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
             />
           )}
           {f.entries.map((e) => {
-            // A1: HER utility ailesinden (kenarlık / zemin+metin) TEK sınıf basılır — aynı ailenin
-            // iki adayı birlikte basılırsa kazananı kaynak sırası değil Tailwind v4'ün alfabetik
-            // çıktısı belirler. Aileler artboard'daki gibi AYRI karar verir: `.me` zemin/metni,
-            // `.far` YALNIZ kenarlığı ezer — yani hem kendin hem aykırıysan flame dolgu + amber
-            // halka birlikte görünür (eskiden aykırılık flame işaretini tümüyle yutuyordu).
+            // Noktanın DOLGUSU artık kimliktir: kişinin kanonik rengi (kullanıcı kararı
+            // 2026-09-08 — "Ayşe" ve "Ahmet" ikisi de "A", baş harf ayırt etmiyor). Zemin inline
+            // `style` ile basılır, böylece Tailwind sınıf aileleriyle hiç yarışmaz.
+            // Kalan iki işaret HUE DEĞİL BİÇİM taşır, yani kimlik rengiyle çakışmaz ve üst üste
+            // binebilir: aykırı kişi amber KENARLIK, kendi noktan koyu DIŞ HALKA alır. Artboard
+            // `.me`yi flame dolguyla işaretliyordu (422-425); dolgu kimliğe gittiği için `.me`
+            // halkaya taşındı — bilinçli sapma.
             const self = props.travel.selfId != null && e.id === props.travel.selfId;
-            const border =
-              e.id === f.outlierId ? "border-amber" : self ? "border-flame-deep" : "border-grass";
-            const fill = self ? "bg-flame-deep text-white" : "bg-white text-ink";
-            const tone = `${border} ${fill}`;
+            const border = e.id === f.outlierId ? "border-amber" : "border-white";
+            const tone = `${border} text-white${self ? " ring-2 ring-ink" : ""}`;
             return (
               <span
                 key={e.id}
@@ -104,10 +105,13 @@ export default function RangeBar(props: { venue: FairnessVenue & { name?: string
                 title={`${name(e.id)}${self ? ` ${t("waiting.you")}` : ""} · ${t("travel.min", { min: e.minutes })}`}
                 aria-hidden
                 className={`${DOT} ${tone}`}
-                style={{ left: `${left.get(e.id) ?? pos(e.minutes, f.min, f.max)}%` }}
+                style={{
+                  left: `${left.get(e.id) ?? pos(e.minutes, f.min, f.max)}%`,
+                  background: personGradient(props.travel.colors?.[e.id]),
+                }}
               >
-                {/* Baş harf HAM addan: başlıktaki avatarlarla birebir eşleşsin. Kendi noktan
-                    flame dolgusuyla ayrılır — harf "S"/"Y" olsaydı oturumda olmayan biri sanılırdı. */}
+                {/* Baş harf HAM addan: başlıktaki avatarlarla birebir eşleşsin. Kendi noktan koyu
+                    halkayla ayrılır — harf "S"/"Y" olsaydı oturumda olmayan biri sanılırdı. */}
                 {initialOf(name(e.id), locale)}
               </span>
             );

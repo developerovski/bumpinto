@@ -5,6 +5,7 @@
    §4.8'e uyan tek-isim/"diğerleri" biçimi — coordinator düzeltmesi). */
 import { Trans, useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
+import { personIndexOf } from "../../lib/personColor";
 import { votersOf } from "../../lib/voters";
 import { Avatar, HandNote } from "../atoms";
 
@@ -45,7 +46,8 @@ export default function DeckProgressNote(props: {
         {/* Artboard "M A K" — kendi avatarın da sırada, ad listelerinde değil. */}
         {present.map((p, i) => (
           <span key={p.id} className={i > 0 ? "-ml-[0.5625rem]" : ""}>
-            <Avatar name={p.displayName ?? "?"} index={i} waiting={!p.deckDone} />
+            {/* Renk KANONİK sıradan; `i` yalnız yığın binmesi için. */}
+            <Avatar name={p.displayName ?? "?"} index={personIndexOf(props.participants, p.id)} waiting={!p.deckDone} />
           </span>
         ))}
       </div>

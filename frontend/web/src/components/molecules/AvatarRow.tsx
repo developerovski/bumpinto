@@ -8,6 +8,9 @@ import { Avatar } from "../atoms";
     yazıyla söylenir. Kapsül biçimi harita altındaki `.mcap` etiketiyle aynı ailedendir.
     `online === false` kuralı ParticipantRow ve harita piniyle AYNI; alan yoksa (bilgi henüz
     gelmemiş) kimse haksız yere çevrimdışı gösterilmez. */
+/** `people` KANONİK liste olmalı (`SessionView.participants`) — avatar rengi dizi sırasından
+    çıkar ve harita pini, roster satırı, yol çubuğu noktası aynı sırayı okur
+    (`lib/personColor.ts`). Filtrelenmiş bir liste geçilirse renkler ekranlar arasında kayar. */
 export default function AvatarRow(props: { people: ParticipantDto[]; children?: ReactNode }) {
   const { t } = useTranslation();
   return (

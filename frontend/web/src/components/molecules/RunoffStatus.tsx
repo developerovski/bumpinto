@@ -3,6 +3,7 @@
 import { Check } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
+import { personIndexOf } from "../../lib/personColor";
 import { votersOf } from "../../lib/voters";
 import { Badge, Button, ErrorText, Overline, Progress } from "../atoms";
 import PersonRow from "./PersonRow";
@@ -103,7 +104,8 @@ export default function RunoffStatus(props: {
                     noktası + `.off` soluk satır (3711-3723 / 4476). Veri sunucudan gelir. */}
                 <PersonRow
                   participant={p}
-                  index={i}
+                  /* Renk KANONİK sıradan: `voters` filtrelenmiş liste. */
+                  index={personIndexOf(props.participants, p.id)}
                   isSelf={p.id === props.selfId}
                   ring
                   size="xs"
