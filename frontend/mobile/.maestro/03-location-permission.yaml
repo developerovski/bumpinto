@@ -1,0 +1,38 @@
+# Konum izni akışı — Play "prominent disclosure" ve red kurtarması (O3 → sistem → O6).
+#
+# Üç iddia mağaza uyumluluğunun kendisidir:
+#   1. Uygulama AÇILIŞTA izin İSTEMEZ.
+#   2. Ön-ekran sistem diyaloğundan ÖNCE çıkar ve verinin ne için kullanıldığını söyler.
+#   3. Red ÇIKMAZ değildir: ayarlara gitme ya da adres yazma yolu kalır.
+appId: app.bumpinto.mobile
+---
+- launchApp: { clearState: true, permissions: { location: unset } }
+
+# (1) Açılışta sistem diyaloğu YOK.
+- assertNotVisible: { text: ".*konum.*izin.*|.*Konum.*İzin.*|Allow.*location.*" }
+
+- tapOn: "Google ile devam et"
+- tapOn: { text: ".*@.*", optional: true }
+- assertVisible: { text: ".*Nereye.*", timeout: 20000 }
+
+- tapOn: "Yeni buluşma kur"
+- tapOn: "Mevcut konumumu kullan"
+
+# (2) Ön-ekran ÖNCE.
+- assertVisible: ".*Konumun, orta noktayı bulmak için.*"
+- assertVisible: ".*yalnız uygulama açıkken.*"
+- tapOn: "Devam et"
+
+# Sistemi REDDET.
+- tapOn: { text: "İzin Verme|Don.t allow|Don.t Allow|Reddet" }
+
+# (3) O6 kurtarması.
+- assertVisible: { text: "Konum izni kapalı", timeout: 10000 }
+- assertVisible: "Ayarlar'a git"
+- assertVisible: { text: "Şehir ya da adres yaz" }
+
+# Adres yolu gerçekten çalışıyor mu: yazınca kurma akışı devam edebilmeli.
+- tapOn: { text: "Şehir ya da adres yaz" }
+- inputText: "Eindhoven"
+- tapOn: "Kaydet"
+- assertNotVisible: { text: "Konum izni kapalı", timeout: 20000 }

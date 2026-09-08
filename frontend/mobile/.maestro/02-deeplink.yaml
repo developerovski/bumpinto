@@ -1,0 +1,27 @@
+# Derin link — framework YAPIŞTIRICISI, testsiz bırakılmaz (depo kuralı).
+#
+# Jest'teki `expo-router` ikizi bu yolu DOĞRULAMAZ: orada rota ağacı taklit edilir, gerçek
+# `intentFilters` / `associatedDomains` eşlemesi hiç çalışmaz. Dört durumun dördü de burada
+# sınanır: uygulama KAPALI/AÇIK × `https`/`bumpinto://`.
+appId: app.bumpinto.mobile
+---
+# 1) Uygulama KAPALI + https (App Links / Universal Links)
+- stopApp
+- openLink: "https://bumpinto.app/j/${MAESTRO_SLUG}"
+- assertVisible: { text: ".*seni buluşmaya çağırdı.*", timeout: 30000 }
+
+# 2) Uygulama AÇIK + özel şema
+- stopApp
+- launchApp
+- assertVisible: { text: ".*Ortada.*|.*Nereye.*", timeout: 20000 }
+- openLink: "bumpinto://j/${MAESTRO_SLUG}"
+- assertVisible: { text: ".*seni buluşmaya çağırdı.*", timeout: 20000 }
+
+# 3) Uygulama AÇIK + https (arka plandan öne gelme yolu)
+- openLink: "https://bumpinto.app/j/${MAESTRO_SLUG}"
+- assertVisible: { text: ".*seni buluşmaya çağırdı.*", timeout: 20000 }
+
+# 4) Bilinmeyen slug ÇIKMAZ ekran DEĞİL: hata ekranı ve "Ana sayfa" çıkışı gösterilmeli.
+- openLink: "https://bumpinto.app/j/zzzzz"
+- assertVisible: { text: "Hmm.", timeout: 20000 }
+- assertVisible: "Ana sayfa"

@@ -176,6 +176,7 @@
     "tieDecide": "Kararı ben vereyim",
     "tieFair": "Adil olana bırak",
     "tieHand": "adil olana bırak, kimse üzülmez →",
+    "tieNote": "daha adil",
     "errDecide": "Karar kaydedilemedi — tekrar dene.",
     "errVote": "Seçim gönderilemedi — tekrar dene."
   },

@@ -16,7 +16,8 @@
     "preset": "jest-expo",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
-    ]
+    ],
+    "resolver": "react-native-worklets/jest/resolver.js"
   },
   "dependencies": {
     "@bumpinto/shared": "workspace:*",

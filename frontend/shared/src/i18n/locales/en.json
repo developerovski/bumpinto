@@ -183,6 +183,7 @@
     "tieDecide": "I'll decide",
     "tieFair": "Defer to the fairest",
     "tieHand": "defer to the fairest, nobody loses →",
+    "tieNote": "fairer",
     "errDecide": "Couldn't set the result — try again.",
     "errVote": "Couldn't send your pick — try again."
   },

@@ -1,0 +1,54 @@
+# Ana akış: giriş → katıl → deste → karar.
+#
+# ÖN KOŞUL (bkz. README): `MAESTRO_SLUG` gerçek bir oturumu göstermeli ve o oturumda
+# host'un mekanları bulup desteyi AÇMIŞ olması gerekir. Bu akış davetli tarafını koşar.
+#
+# Metinler `frontend/shared/src/i18n/locales/tr.json`tan; uygulama tr açılır (cihaz dili
+# ne olursa olsun `expo-localization` ikizi yok, gerçek cihazda cihaz dili geçerli —
+# cihazı Türkçe'ye alarak koş).
+appId: app.bumpinto.mobile
+---
+- launchApp: { clearState: true }
+
+# O2 giriş ekranı — `landing.title` "Ortada buluşalım."
+- assertVisible: ".*Ortada.*"
+- tapOn: "Google ile devam et"
+
+# Google hesap seçici cihaz kabuğundan gelir; hesap zaten ekliyse tek dokunuş yeter.
+- tapOn: { text: ".*@.*", optional: true }
+
+# P1/P2 Oturumlar — `sessions.title` "Nereye gidiyoruz?"
+- assertVisible: { text: ".*Nereye.*", timeout: 20000 }
+
+# Derin link: uygulama AÇIKKEN gelen `https` linki Katıl ekranını açmalı.
+- openLink: "https://bumpinto.app/j/${MAESTRO_SLUG}"
+- assertVisible: { text: ".*seni buluşmaya çağırdı.*", timeout: 20000 }
+
+- tapOn: { text: "Arkadaşların sana ne der?" }
+- inputText: "Ayşe"
+
+# O3 ön-ekranı sistem diyaloğundan ÖNCE gelir (Play "prominent disclosure").
+- tapOn: "Mevcut konumumu kullan"
+- assertVisible: ".*Konumun, orta noktayı bulmak için.*"
+- tapOn: "Devam et"
+- tapOn: { text: "İzin Ver.*|Allow.*|Uygulamayı kullanırken.*|While using.*", optional: true }
+
+- tapOn: "Katıl"
+- assertVisible: { text: "Katıldın!", timeout: 20000 }
+
+# P14 deste — başlık "3 / 12 kart · 2 beğeni". Host desteyi açana kadar bekler.
+- assertVisible: { text: ".*kart.*", timeout: 60000 }
+- repeat:
+    times: 12
+    commands:
+      - swipe: { direction: RIGHT, duration: 300 }
+
+# P15 deste bitti → gönder. Hiç beğeni seçilmediyse düğme "Yine de gönder" olur.
+- tapOn: { text: "Beğenilerimi gönder|Yine de gönder" }
+
+# P17 gönderildi — TEK tester için akışın kesin biten yeri burasıdır.
+- assertVisible: { text: "Beğenilerin gönderildi", timeout: 20000 }
+
+# P20 karar — yalnız DİĞER katılımcılar da desteyi bitirdiyse gelir (README'deki curl ile
+# ikinci katılımcıyı kapat). Tek başına koşuluyorsa bu adım beklenerek düşer.
+- assertVisible: { text: ".*Ortak nokta.*", timeout: 120000 }

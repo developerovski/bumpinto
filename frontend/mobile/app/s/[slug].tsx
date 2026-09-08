@@ -46,18 +46,18 @@ function screenFor(view: SessionView) {
       return <VenuesScreen view={view} />;
     case "SWIPING":
       // Desteyi bitiren kişi "gönderildi" ekranında bekler; kalanlar kaydırmaya devam eder.
-      return viewerOf(view)?.deckDone ? <SentScreen /> : <DeckScreen />;
+      return viewerOf(view)?.deckDone ? <SentScreen view={view} /> : <DeckScreen view={view} />;
     case "RUNOFF":
       // Berabere kaldıysa host'a karar ekranı, diğerlerine oylama düşer.
       return (view.runoffVenueIds ?? []).length === 0 && !view.decidedVenueId && host ? (
-        <TieScreen />
+        <TieScreen view={view} />
       ) : (
-        <RunoffScreen />
+        <RunoffScreen view={view} />
       );
     case "DECIDED":
       // Karar verilen mekan destede yoksa sonuç çizilemez — uydurma bir kart basılmaz.
       return (view.venues ?? []).some((v) => v.id === view.decidedVenueId) ? (
-        <ResultScreen />
+        <ResultScreen view={view} />
       ) : (
         <ErrorScreen kind="expired" />
       );

@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "../src/store/authStore";
+import { watchNetwork } from "../src/store/netStore";
 import { colors } from "../src/theme";
 
 export const ANONYMOUS_ROUTES = [
@@ -49,6 +50,10 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  // Ağ aboneliği KÖKTE bir kez: her ekran kendi dinleyicisini kursaydı uçuş modunda N tane
+  // geri çağrı aynı durumu yazardı ve sökülmeyen abonelikler sızardı.
+  useEffect(() => watchNetwork(), []);
+
   const [loaded] = useFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,

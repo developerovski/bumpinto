@@ -16,8 +16,9 @@ import {
   Skeleton,
   Wordmark,
 } from "../../src/components/atoms";
-import { MapMark, PastSessionRow, SessionCard } from "../../src/components/molecules";
+import { MapMark, OfflineBanner, PastSessionRow, SessionCard } from "../../src/components/molecules";
 import { useAuthStore } from "../../src/store/authStore";
+import { useNetStore } from "../../src/store/netStore";
 import { slugFromInvite, useSessionStore } from "../../src/store/sessionStore";
 import { colors, space } from "../../src/theme";
 import { useOncePress } from "../../src/lib/useOncePress";
@@ -30,6 +31,7 @@ export default function SessionsScreen() {
   const loading = useSessionStore((s) => s.loading);
   const error = useSessionStore((s) => s.error);
   const loadList = useSessionStore((s) => s.loadList);
+  const online = useNetStore((s) => s.online);
   // Çift dokunuşta profil İKİ KEZ yığına girmesin.
   const openProfile = useOncePress(() => router.push("/profile"));
 
@@ -56,7 +58,14 @@ export default function SessionsScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
+      <OfflineBanner onRetry={() => void loadList()} />
+
+      {/* P24: liste SON GÖRÜLEN hâliyle okunur kalır, yalnız solar — çevrimdışıyken elindeki
+          bilgiyi de elinden almak kullanıcıyı hiç bilgisiz bırakırdı. */}
+      <ScrollView
+        contentContainerStyle={[s.page, online ? null : s.stale]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Artboard P1/P2 `<h1 class="big">Nereye<br/>gidiyoruz?</h1>` — DOLU ve BOŞ durumun
           ikisinde de ekranın ilk öğesi. Kodda hiç çizilmiyordu; `sessions.title` anahtarı
           vardı ama kullanılmıyordu. */}
@@ -140,6 +149,9 @@ export default function SessionsScreen() {
         <Button
           title={t("sessions.new")}
           icon={<PlusIcon size={18} color="#fff" weight="bold" />}
+          // Çevrimdışıyken kurma akışı SUNUCUYA yazar: düğmeyi açık bırakmak kullanıcıyı
+          // formu doldurup hata almaya gönderirdi (P24: pasif).
+          disabled={!online}
           onPress={() => router.push("/sessions/new")}
         />
       </View>
@@ -192,6 +204,7 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   // Alt boşluk = CTA çubuğunun yüksekliği; son satır sabit düğmenin altında kalmaz.
   page: { flexGrow: 1, paddingHorizontal: space.screenX, paddingBottom: 84 },
+  stale: { opacity: 0.6 },
   fade: { position: "absolute", left: 0, right: 0, height: 64 },
   cta: { paddingHorizontal: space.screenX, paddingTop: 10, backgroundColor: colors.paper },
   bar: {

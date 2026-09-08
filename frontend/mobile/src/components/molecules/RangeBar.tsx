@@ -3,6 +3,7 @@ import {
   fairnessOf,
   initialOf,
   personTint,
+  type FairnessLine,
   type FairnessVenue,
   type TravelInfo,
 } from "@bumpinto/shared";
@@ -125,21 +126,30 @@ export default function RangeBar(p: { venue: FairnessVenue; travel: TravelInfo }
         </AppText>
       </View>
 
-      {line.lead || line.rest.length > 0 ? (
-        <AppText variant="muted" style={s.note}>
-          {line.lead ? (
-            <AppText
-              variant="muted"
-              style={[s.lead, line.leadTone === "amber" ? s.leadFar : null]}
-            >
-              {line.lead}
-            </AppText>
-          ) : null}
-          {line.lead && line.rest.length > 0 ? " · " : ""}
-          {line.rest.join(" · ")}
+      <FairnessNote line={line} />
+    </View>
+  );
+}
+
+/**
+ * Adalet cümlesi (`.rg-g`) — bant ALTINDAKİ tek satır.
+ *
+ * `RangeBar` ve `TravelBars` AYNI cümleyi basar; iki kopya ayrışırsa aynı mekan liste
+ * satırında "Herkese ~aynı", kart yüzeyinde başka bir şey derdi. Hesap `fairnessLine`
+ * (shared), sunum burada — tek yerde.
+ */
+export function FairnessNote({ line }: { line: FairnessLine }) {
+  if (!line.lead && line.rest.length === 0) return null;
+  return (
+    <AppText variant="muted" style={s.note}>
+      {line.lead ? (
+        <AppText variant="muted" style={[s.lead, line.leadTone === "amber" ? s.leadFar : null]}>
+          {line.lead}
         </AppText>
       ) : null}
-    </View>
+      {line.lead && line.rest.length > 0 ? " · " : ""}
+      {line.rest.join(" · ")}
+    </AppText>
   );
 }
 

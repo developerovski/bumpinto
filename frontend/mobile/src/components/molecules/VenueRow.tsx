@@ -1,6 +1,7 @@
 import { fitsActivity, formatRating, type TravelInfo, type VenueDto } from "@bumpinto/shared";
+import { CheckIcon } from "phosphor-react-native";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { colors, space } from "../../theme";
 import { AppText, Button } from "../atoms";
@@ -31,6 +32,11 @@ export default function VenueRow(p: {
   /** SOLO: satır sonundaki düğmenin metni. Verilmezse düğme HİÇ basılmaz. */
   selectLabel?: string;
   onSelect?: () => void;
+  /** Liste kipi (P16) ve "Beğendiklerin" (P15/P17): satır sonundaki beğeni işareti.
+      `onToggle` verilirse DOKUNULABİLİR kutu, verilmezse salt okunur işaret. Ayrı bir
+      "beğenilen satır" bileşeni çıkarılmadı — aynı satırın iki kopyası ayrışırdı. */
+  checked?: boolean;
+  onToggle?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const v = p.venue;
@@ -84,6 +90,9 @@ export default function VenueRow(p: {
         ) : null}
         <RangeBar venue={v} travel={p.travel} />
       </View>
+      {p.checked != null ? (
+        <CheckMark name={v.name ?? ""} checked={p.checked} onToggle={p.onToggle} />
+      ) : null}
       {p.selectLabel && p.onSelect ? (
         <Button
           small
@@ -94,6 +103,37 @@ export default function VenueRow(p: {
         />
       ) : null}
     </View>
+  );
+}
+
+/** `.chk` — beğeni işareti. Dokunulabilirken ROL checkbox'tır: ekran okuyucu "seçili/seçili
+    değil" der, "düğme" demez. Salt okunur hâlde hiç odaklanmaz, yalnız satırın a11y adına
+    katılır. */
+function CheckMark(p: { name: string; checked: boolean; onToggle?: () => void }) {
+  const { t } = useTranslation();
+  const glyph = (
+    <View style={[s.chk, p.checked ? s.chkOn : null]}>
+      {p.checked ? <CheckIcon size={14} color="#fff" weight="bold" /> : null}
+    </View>
+  );
+  if (!p.onToggle) {
+    return (
+      <View accessibilityLabel={p.checked ? t("deck.like") : undefined} style={s.chkWrap}>
+        {glyph}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={p.name}
+      accessibilityState={{ checked: p.checked }}
+      onPress={p.onToggle}
+      hitSlop={10}
+      style={s.chkWrap}
+    >
+      {glyph}
+    </Pressable>
   );
 }
 
@@ -110,4 +150,15 @@ const s = StyleSheet.create({
   fitOff: { color: colors.amberInk, fontWeight: "600" },
   tagline: { color: colors.ink3 },
   select: { width: "auto", flexShrink: 0, alignSelf: "center" },
+  chkWrap: { alignSelf: "center", minWidth: 24, minHeight: 24, alignItems: "center", justifyContent: "center" },
+  chk: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: colors.line2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chkOn: { backgroundColor: colors.grass, borderColor: colors.grass },
 });
