@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
 import { providerIds } from "../lib/provider";
@@ -70,6 +71,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
           meta={t("deck.cardsDone", { total: venues.length })}
           progress={1}
           onSeeAll={() => setListMode(true)}
+          voice={<VoiceDock view={props.view} placement="header-lg" />}
         />
         <TwoZone
           left={
@@ -101,7 +103,12 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
           titleSize="auto"
           title={t("deck.listTitle")}
           meta={`${t("deck.likedN", { count: venues.length })} · ${t("deck.likesN", { count: likedCount })}`}
-          action={<HeaderButton onClick={() => setListMode(false)}>{t("deck.backToDeck")}</HeaderButton>}
+          action={
+            <div className="flex items-center gap-2">
+              <VoiceDock view={props.view} placement="header-lg" />
+              <HeaderButton onClick={() => setListMode(false)}>{t("deck.backToDeck")}</HeaderButton>
+            </div>
+          }
         />
         <TwoZone
           rightLgOnly
@@ -139,7 +146,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
                 className="pointer-events-none sticky bottom-[4.875rem] -mt-4 -mb-[4.5rem] h-14 bg-gradient-to-b from-transparent to-paper lg:hidden"
               />
               {/* Artboard 2352: gönder butonu `.scroll` DIŞINDA, çerçevenin dibinde tam genişlik. */}
-              <MobileCta>
+              <MobileCta voice={<VoiceDock view={props.view} placement="strip" />}>
                 <Button type="button" onClick={() => void run(finish, "deck.errSend")} disabled={busy}>
                   {t("deck.send")}
                 </Button>
@@ -170,6 +177,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
         likesMeta={t("deck.likesN", { count: likedCount })}
         progress={venues.length ? Math.min(index + 1, venues.length) / venues.length : 0}
         onSeeAll={() => setListMode(true)}
+        voice={<VoiceDock view={props.view} placement="header-lg" />}
       />
       {/* Artboard 2097-2141: 390'da deste ekranı yalnız başlık + ilerleme + deste + aksiyonlar +
           el yazısı nottur. "Beğendiklerin" ve ilerleme kartı mobilde destenin ALTINA yığılıyordu;

@@ -9,8 +9,14 @@ import type { ReactNode } from "react";
 export default function MobileCta({
   children,
   fade,
+  voice,
 }: {
   children: ReactNode;
+  /** Ses denetimi (`<VoiceDock placement="strip" />`). Mobilde sayfanın aksiyonları BURADA
+      yaşadığı için denetim de burada durur — masaüstünde başlık satırındaki ikizi basılır
+      (kullanıcı kararı 2026-09-08: davet/karıştır nerede duruyorsa ses de orada dursun).
+      Şeridin en ÜSTÜNDE: birincil eylem (Karıştır) parmağa en yakın yerde kalmalı. */
+  voice?: ReactNode;
   /** Artboard `.f-fade` (367) — kaydırma alanının dibinde 56px'lik paper'a solma; listenin
       CTA'nın altında kesilmediğini, DEVAM ettiğini söyler (1601 / 1790 / 3322 / 4334).
       Şeridin kendi yüksekliği değişken olduğu için offset hesaplanmaz: solma CTA'nın
@@ -25,6 +31,7 @@ export default function MobileCta({
           className="pointer-events-none absolute inset-x-0 -top-14 h-14 bg-gradient-to-b from-transparent to-paper"
         />
       )}
+      {voice}
       {children}
     </div>
   );

@@ -37,7 +37,12 @@ const realActions = {
   end: useVoiceStore.getState().end,
 };
 
-function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getState>> = {}) {
+function dock(
+  view: object,
+  voice: Partial<ReturnType<typeof useVoiceStore.getState>> = {},
+  /** Varsayılan: alt aksiyon şeridi OLMAYAN sayfaların yerleşimi — her genişlikte basılır. */
+  placement: "header" | "header-lg" | "strip" = "header",
+) {
   useSessionStore.setState({ slug: "x", view: view as never, error: null });
   useVoiceStore.setState({
     phase: "idle", muted: false, peers: {}, selfSpeaking: false, endedReason: null, micDenied: false, connectFailed: false,
@@ -49,7 +54,7 @@ function dock(view: object, voice: Partial<ReturnType<typeof useVoiceStore.getSt
     end: vi.fn(realActions.end),
     ...voice,
   });
-  return render(<VoiceDock view={view as never} />);
+  return render(<VoiceDock view={view as never} placement={placement} />);
 }
 
 describe("VoiceDock", () => {
@@ -194,9 +199,12 @@ describe("VoiceDock", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent("bağlanılamadı");
     expect(screen.getByRole("button", { name: "Tekrar dene" })).toBeInTheDocument();
-    // Artboard 4597-4601 `.dock.err`: açık pembe zemin + "Bağlanılamadı" başlığı.
+    /* Artboard 4597-4601 `.dock.err` durumu açık pembe PILL zeminiyle anlatıyordu; kısa
+       denetimde pill yok — durum uyarı ikonlu "Tekrar dene" düğmesi, `role="alert"` duyurusu
+       ve ipucuyla anlatılır (2026-09-08). */
     expect(screen.getByText("Bağlanılamadı")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Sesli sohbet" }).className).toContain("bg-[#fff1f4]");
+    expect(screen.getByRole("alert")).toHaveTextContent("Bağlanılamadı");
+    expect(screen.getByRole("button", { name: /Tekrar dene/ })).toBeInTheDocument();
   });
 
   it("mikrofon reddi → açıklama ve Tekrar dene", () => {
@@ -235,14 +243,17 @@ describe("VoiceDock", () => {
     expect(screen.queryByText(/sesli sohbet bitti/)).not.toBeInTheDocument();
   });
 
-  it("durum 1 (kapalı · host): warm varyant, başlık + davet alt satırı", () => {
+  it("durum 1 (kapalı · host): tek kısa düğme; davet cümlesi YAZILMAZ, sr-only'de durur", () => {
     dock({ ...base, voice: null, viewer: { participantId: "h", host: true } });
-    // Artboard 4549-4552: flame-wash zemin, "Sesli sohbet" / "Herkes gelmeden konuşmaya başla".
-    expect(screen.getByRole("region", { name: "Sesli sohbet" }).className).toContain("bg-flame-wash");
-    expect(screen.getByText("Sesli sohbet")).toBeInTheDocument();
+    /* Artboard 4549-4552 bunu flame-wash zeminli bir pill + iki satır metin olarak çiziyor.
+       Kısa denetimde pill ve alt satır yok (kullanıcı kararı 2026-09-08): düğmenin KENDİSİ
+       "Sesli sohbet" yazar, davet cümlesi ipucu + `sr-only` olarak kalır. */
+    const region = screen.getByRole("region", { name: "Sesli sohbet" });
+    expect(region.className).not.toContain("bg-flame-wash");
     expect(screen.getByText("Herkes gelmeden konuşmaya başla")).toBeInTheDocument();
+    expect(region.getAttribute("title")).toContain("Herkes gelmeden konuşmaya başla");
     // Düğme metni kısa, erişilebilir ad uzun kalır.
-    expect(screen.getByRole("button", { name: "Sesli sohbeti başlat" })).toHaveTextContent("Başlat");
+    expect(screen.getByRole("button", { name: "Sesli sohbeti başlat" })).toHaveTextContent("Sesli sohbet");
   });
 
   it("durum 3 (bağlanıyor): ALT SATIRDA yazar, düğme 'Katıl' olarak kilitlenir", () => {
@@ -255,24 +266,30 @@ describe("VoiceDock", () => {
     expect(screen.getByRole("button", { name: "Katıl" })).toBeDisabled();
   });
 
-  it("masaüstünde dock sağ altta yüzer", () => {
-    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
-    const region = screen.getByRole("region", { name: "Sesli sohbet" });
-    expect(region.className).toContain("lg:fixed");
-    // Artboard CSS 565: .dk .dock{right:48px;bottom:28px;width:420px}
-    expect(region.className).toContain("lg:right-12");
-    expect(region.className).toContain("lg:bottom-7");
-    expect(region.className).toContain("lg:w-[26.25rem]");
+  /* Yerleşim sözleşmesi (kullanıcı kararı 2026-09-08): denetim sayfanın aksiyonlarıyla AYNI
+     yerde durur. Alt şeridi OLAN sayfada başlık kopyası yalnız ≥1024'te (`header-lg`), şerit
+     kopyası yalnız altında (`strip`) basılır — ikisi asla birlikte DOM'a girmez. Yüzen pill ve
+     onun akışta ayırdığı yedek bant tümüyle kalktı. */
+  it("alt şeridi olan sayfada `header-lg` 1024 ALTINDA basılmaz, `strip` basılır", () => {
+    const view = { ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } };
+    expect(dock(view, {}, "header-lg").container).toBeEmptyDOMElement();
+    dock(view, {}, "strip");
+    expect(screen.getByRole("button", { name: /Katıl/ })).toBeInTheDocument();
   });
 
-  it("lg'de dock için görünmez yer tutucu bırakılır (son içerik dock altında kalmasın)", () => {
+  it("alt şeridi OLMAYAN sayfada `header` her genişlikte basılır", () => {
+    dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
+    expect(screen.getByRole("button", { name: /Katıl/ })).toBeInTheDocument();
+  });
+
+  it("kısa denetim alt satır METNİNİ yazmaz; durum ipucunda ve ekran okuyucuda durur", () => {
     dock({ ...base, voice: { endsAt: inTenMinutes() }, viewer: { participantId: "a", host: false } });
     const region = screen.getByRole("region", { name: "Sesli sohbet" });
-    const spacer = region.nextElementSibling as HTMLElement | null;
-    expect(spacer).not.toBeNull();
-    expect(spacer?.getAttribute("aria-hidden")).toBe("true");
-    expect(spacer?.className).toContain("hidden");
-    expect(spacer?.className).toContain("lg:block");
+    // Yüzen pill'in ne zemini ne de sabit konumu kaldı.
+    expect(region.className).not.toContain("sticky");
+    expect(region.className).not.toContain("lg:fixed");
+    // Bilgi kaybolmadı: tek cümle ipucunda, parçaları ekran okuyucuda ayrı düğümlerde.
+    expect(region.getAttribute("title")).toContain("Sesli sohbet açık");
   });
 
   it("HOST bitirdiğinde limitMinutes dolu olsa bile süre ipucu basılmaz (yalnız TIME_LIMIT basar)", () => {

@@ -1,6 +1,5 @@
 import type { SessionView } from "@bumpinto/shared";
 import { useParams } from "react-router-dom";
-import VoiceDock from "../components/organisms/VoiceDock";
 import { useSessionLive } from "../store/useSessionLive";
 import { isHost, useSessionStore } from "../store/sessionStore";
 import DeckScreen from "./DeckScreen";
@@ -30,13 +29,11 @@ export default function SessionPage() {
   }
   const solo = view.sessionType === "SOLO";
   const page = pageFor(view, slug, isHost(view), solo);
-  // Dock durum anahtarının DIŞINDA: aşama geçişi sayfayı değiştirir, dock'u değil (spec §7). SOLO'da ses
-  // yok; sayfa bir hata ekranıysa (süresi dolmuş / karar geçersizleşmiş) da dock basılmaz.
-  const dockable =
-    !solo &&
-    view.status !== "EXPIRED" &&
-    !(view.status === "DECIDED" && !(view.venues ?? []).some((v) => v.id === view.decidedVenueId));
-  return dockable ? <>{page}<VoiceDock view={view} /></> : page;
+  /* Ses denetimi artık sayfadan BAĞIMSIZ bir kat değil: her sayfa onu kendi aksiyonlarının
+     yanında basıyor (masaüstünde başlık satırı, mobilde `MobileCta`) — kullanıcı kararı
+     2026-09-08. Görünürlük kuralları (SOLO / süresi dolmuş / geçersiz karar) `VoiceDock`'un
+     kendisinde; burada tekrarlanmaz. */
+  return page;
 }
 
 function pageFor(view: SessionView, slug: string, host: boolean, solo: boolean) {

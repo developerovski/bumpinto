@@ -33,6 +33,9 @@ export default function DeckHeader(props: {
   likesMeta?: string;
   progress: number;
   onSeeAll?: () => void;
+  /** ≥1024 kısa ses denetimi — "Tümünü gör" ile aynı aksiyon satırında (kullanıcı kararı
+      2026-09-08: ses denetimi her oturum ekranının başlık satırında yaşar). */
+  voice?: ReactNode;
 }) {
   const { t } = useTranslation();
   return (
@@ -49,7 +52,12 @@ export default function DeckHeader(props: {
           </>
         }
         action={
-          props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>
+          (props.voice || props.onSeeAll) && (
+            <div className="flex items-center gap-2">
+              {props.voice}
+              {props.onSeeAll && <HeaderButton onClick={props.onSeeAll}>{t("deck.seeAll")}</HeaderButton>}
+            </div>
+          )
         }
       />
       <Progress value={props.progress} />

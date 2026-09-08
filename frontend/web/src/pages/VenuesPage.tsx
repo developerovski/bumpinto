@@ -1,10 +1,11 @@
 import { useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, Note, Page } from "../components/atoms";
 import ActivityBadges from "../components/molecules/ActivityBadges";
 import AvatarRow from "../components/molecules/AvatarRow";
-import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
+import MobileCta from "../components/molecules/MobileCta";
 import SessionHeader from "../components/molecules/SessionHeader";
 import ShareButton from "../components/molecules/ShareButton";
 import VenueSort, { type SortKey } from "../components/molecules/VenueSort";
@@ -70,23 +71,23 @@ export default function VenuesPage({ view }: { view: SessionView }) {
 
   const action =
     !solo ? (
-      // Artboard W3b: avatarlar + tek birincil aksiyon YALNIZ 1280 başlığında; 390 host
-      // panosunda başlıkta hiçbir denetim yok, ikisi de alttaki `.cta` bloğunda.
-      // Avatarlar HOST'A ÖZEL DEĞİL: "oturumda kim var" kimlik bilgisidir, host denetimi değil —
-      // davetli yalnız avatarları görür (davet + karıştır düğmeleri host'ta kalır). Artboard'ın
-      // 1280 davetli panosu yok; 390 davetli panosunda da roster başlıkta duruyor (1531-1610).
-      <DesktopOnly>
-        <AvatarRow people={participants}>
-          {host && (
-            <>
-              {invite("white", "fit")}
-              <Button type="button" size="fit" disabled={shuffleDisabled} onClick={doShuffle}>
-                {t("venues.shuffle")}
-              </Button>
-            </>
-          )}
-        </AvatarRow>
-      </DesktopOnly>
+      /* Artboard W3b: avatarlar + davet/karıştır YALNIZ 1280 başlığında; 390 host panosunda
+         ikisi de alttaki `.cta` bloğunda. Avatarlar HOST'A ÖZEL DEĞİL — "oturumda kim var"
+         kimlik bilgisidir (davet + karıştır host'ta kalır).
+         Ses denetimi bu kuralın DIŞINDA: 390'da da başlıkta durur (kullanıcı kararı
+         2026-09-08), çünkü alt şeritteki "Sesli sohbet" çubuğu oradan kaldırıldı. Denetim TEK
+         kez basılır — CSS ile gizlenen ikinci bir kopya odak yönetimini bozardı. */
+      <AvatarRow people={participants} peopleLgOnly>
+        <VoiceDock view={view} placement={host ? "header-lg" : "header"} />
+        {host && (
+          <span className="hidden lg:contents">
+            {invite("white", "fit")}
+            <Button type="button" size="fit" disabled={shuffleDisabled} onClick={doShuffle}>
+              {t("venues.shuffle")}
+            </Button>
+          </span>
+        )}
+      </AvatarRow>
     ) : soloSortInHeader ? (
       <VenueSort value={sort} onChange={setSort} />
     ) : undefined;
@@ -151,7 +152,7 @@ export default function VenuesPage({ view }: { view: SessionView }) {
       {host && !solo && (
         // Artboard W3b 390 host `.cta`: tam genişlik "Karıştır ve kaydır" + ortalı not.
         // Davet linki de buraya iner — 390 başlığında üç denetim yarışıyordu.
-        <MobileCta fade>
+        <MobileCta fade voice={<VoiceDock view={view} placement="strip" />}>
           {invite("white", "md")}
           <Button type="button" disabled={shuffleDisabled} onClick={doShuffle}>
             {t("venues.shuffle")}

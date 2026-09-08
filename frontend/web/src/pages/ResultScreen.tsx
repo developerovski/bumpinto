@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import { useTranslation } from "react-i18next";
 import { fairnessOf, type SessionView } from "@bumpinto/shared";
 import { HandNote, LinkButton, Page } from "../components/atoms";
@@ -112,6 +113,7 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   return (
     <Page variant="result">
       {reveal && <Confetti />}
+      <VoiceDock view={view} placement="header-lg" />
       {/* Artboard 2611: 390'ın ilk satırı oturum adı + paylaş. 1280'de başlık `h1` olduğu için
           bu satır yok; metin paylaşımı da yalnız burada yaşar (rapor I · P2-B1). */}
       <div className="lg:hidden">
@@ -167,7 +169,7 @@ export default function ResultScreen({ view }: { view: SessionView }) {
         }
       />
       {href && (
-        <MobileCta>
+        <MobileCta voice={<VoiceDock view={view} placement="strip" />}>
           <LinkButton href={href} target="_blank" rel="noreferrer" kind="flame">
             {t("result.directions")}
           </LinkButton>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
 import { fairestOf } from "@bumpinto/shared";
@@ -95,6 +96,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
           Runoff 390 (2453) bu satırı taşımıyor, orada üstlük doğrudan manşetle başlıyor.
           Tasarımın sağdaki `ph-dots-three` düğmesinin bu ekranda karşılığı yok (taşma menüsü
           diye bir yetenek yok) — uydurulmadı, satır aksiyonsuz basılıyor. */}
+      <VoiceDock view={props.view} placement="header-lg" />
       {tie && v.name && (
         <div className="lg:hidden">
           <SessionHeader title={v.name} />
@@ -164,7 +166,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
           çıkışı (4398-4402), kendi seçimin kilitliyken kilit kartı + hatırlatma (2497-2513). */}
       {tie ? (
         host && (
-          <MobileCta>
+          <MobileCta voice={<VoiceDock view={props.view} placement="strip" />}>
             <RunoffTie
               host={host}
               choice={selected}
@@ -176,7 +178,7 @@ export default function RunoffScreen(props: { slug: string; view: SessionView })
           </MobileCta>
         )
       ) : sent ? (
-        <MobileCta>
+        <MobileCta voice={<VoiceDock view={props.view} placement="strip" />}>
           <RunoffLockCard title={t("runoff.lockedTitle")} note={lockedNote} />
           <ShareButton text={shareText} url={shareUrl} label={t("runoff.remind")} kind="white" />
         </MobileCta>

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import { apiErrorCode } from "../lib/apiError";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
@@ -72,6 +73,9 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
 
   return (
     <Page fit>
+      {/* Bu ekranın ≥1024'te başlık aksiyon satırı yok — kısa ses denetimi sayfanın ilk satırı
+          olarak sağa yaslanır. 390'da `VoiceDock` zaten alt çubuk olarak basılıyor, burası null. */}
+      <VoiceDock view={view} placement="header" />
       {/* `mobileFirst` YOK: artboard 390 sırası "Katıldın → orta nokta → Mekanlar geliyor →
           Kimler var → roster" istiyor; iki bölge arasında geçişmeli sıra TwoZone ile mümkün
           değil, bu yüzden 390'da önce sol bölge (Katıldın + roster) akar — "Katıldın!" ve

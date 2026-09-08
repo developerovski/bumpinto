@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from "react";
+import VoiceDock from "../components/organisms/VoiceDock";
 import type { SessionView } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { Button, ErrorText, Note, Page } from "../components/atoms";
@@ -67,6 +68,7 @@ export default function LobbyPage({ view }: { view: SessionView }) {
             </span>
           </>
         }
+        action={<VoiceDock view={view} placement="header" />}
       />
       <TwoZone
         fill

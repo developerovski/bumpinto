@@ -25,12 +25,11 @@ export default function AppShell() {
       <div role="status" aria-live="polite">
         <OfflineBanner online={net.online} lastOnlineAt={net.lastOnlineAt} onRetry={retry} retrying={checking} />
       </div>
-      {/* Ağ durumu sayfalara buradan iner: /sessions bayat içeriği soluklaştırıp eylemlerini
-          kilitler (artboard W10b). Kanca tek yerde çağrılır — bkz. lib/onlineContext.tsx. */}
       <OnlineProvider value={net}>
         <Outlet />
       </OnlineProvider>
-      <footer className="flex flex-col items-center gap-2 px-5 pb-4 text-center text-[0.6875rem] text-ink2">
+
+      <footer className="mt-auto flex flex-col items-center gap-2 border-t border-line bg-paper px-5 pt-4 pb-5 text-center text-[0.6875rem] text-ink2">
         <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <Link to="/privacy" className="text-ink2">{t("legal.privacy")}</Link>
           <Link to="/terms" className="text-ink2">{t("legal.terms")}</Link>

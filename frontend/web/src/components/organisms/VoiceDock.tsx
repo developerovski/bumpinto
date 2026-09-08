@@ -1,13 +1,18 @@
-/* Alt ses çubuğu (artboard W12 · 7 durum, 4538-4619 + CSS 446-465/563-566).
-   Şekil: `.dock` — YÜZEN bir pill. 390'da sticky, spacer YOK: SessionPage onu
-   [data-app-shell]'in direkt flex çocuğu olarak (page ile birlikte) basar, `order-last` atıf
-   altbilgisinin ardına koyar ve akıştaki gerçek yüksekliğini kaplar — altbilgi hep erişilebilir
-   kalır. `sticky bottom-0` + `mb-[6.5rem]`: pill akışta yer tutar ama ekranın dibinden 104px
-   yukarıda durur (artboard .dock bottom:104px). lg+'de (1280 dock) durum farklı: kart `fixed`
-   olup akıştan çıkar, bu yüzden `Bar` kendi görünmez ikizini (spacer) basar ki sayfanın son
-   içeriği dock'un altında kalıcı kapanmasın.
+/* Ses denetimi (artboard W12 · 7 durum, 4538-4619 + CSS 446-465).
 
-   Üç görsel varyant: koyu pill (oda açık), warm (oda kapalı/süre doldu), err (bağlanamadı). */
+   Artboard bunu YÜZEN bir pill olarak çiziyor: 390'da ekranın dibinde (`.dock{bottom:104px}`),
+   1280'de sağ altta 420px'lik kart (`.dk .dock`). Uygulamada iki sorun çıktı: (1) `fixed` kart
+   akışta yedek bant ayırmak zorundaydı ve o bant tek ekranlık sayfalarda kaydırılıp geçilemeyen
+   ölü bir şerit bırakıp altbilgiyi dipten koparıyordu; (2) 390'daki pill, sayfanın alt aksiyon
+   şeridiyle (`MobileCta`) çakışıyordu.
+
+   Kullanıcı kararı (2026-09-08): denetim yüzmez, O SAYFANIN AKSİYONLARIYLA AYNI YERDE durur —
+   masaüstünde başlık aksiyon satırında, mobilde alt aksiyon şeridinde. Kısa bir düğme grubudur;
+   artboard'ın başlık/alt satır metinleri ("Herkes gelmeden konuşmaya başla", hata sebepleri,
+   kalan süre) YAZILMAZ, ipucu (`title`) ve `sr-only` olarak durur — bilgi kaybolmaz.
+
+   Sayfa iki slotu da doldurur (`placement="header"` ve `"strip"`); kırılım hangisinin DOM'a
+   gireceğine karar verir, diğeri `null` döner. */
 import {
   DotsThreeVertical, Microphone, MicrophoneSlash, PhoneX, WarningCircle,
 } from "@phosphor-icons/react";
@@ -19,6 +24,7 @@ import { isHost, viewerId } from "../../store/sessionStore";
 import { useSessionAction } from "../../store/useSessionAction";
 import { useVoiceStore } from "../../store/voiceStore";
 import { personIndexOf } from "../../lib/personColor";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { Avatar, Button } from "../atoms";
 
 /** Sunucunun {error} gövdesindeki metne göre başlatma hatasını eşler (bkz. useSessionAction). */
@@ -26,30 +32,6 @@ const START_ERROR_BY_SERVER: Record<string, string> = {
   "only for group": "voice.errSolo",
   "about to expire": "voice.errExpiring",
   "session is closed": "voice.errClosed",
-};
-
-type Variant = "dark" | "warm" | "err";
-
-/* CSS 446/458-461. #F6C6D2 (warm/err kenarı) ve #FFF1F4 (err zemini) artboard'a özel, tema
-   sözlüğünde karşılığı olmayan iki renk — yeni token AÇILMADAN birebir yazılıyor. */
-const VARIANTS: Record<Variant, string> = {
-  dark: "bg-ink text-white shadow-[0_14px_34px_rgba(39,32,59,0.32)]",
-  warm: "bg-flame-wash text-ink border-[1.5px] border-[#f6c6d2] shadow-sh1",
-  err: "bg-[#fff1f4] text-ink border-[1.5px] border-[#f6c6d2] shadow-sh1",
-};
-
-/** Alt satır rengi: koyu pill'de beyazın %72'si (CSS 450), açık varyantlarda ink2 (459/461). */
-const SUBTITLE: Record<Variant, string> = {
-  dark: "text-white/72",
-  warm: "text-ink2",
-  err: "text-ink2",
-};
-
-/** Hata metni koyu zeminde flame-deep okunmaz (3:1 altı) — orada beyaz kalın satır kullanılır. */
-const ALERT: Record<Variant, string> = {
-  dark: "text-white",
-  warm: "text-flame-deep",
-  err: "text-flame-deep",
 };
 
 function remainingLabel(endsAt: string, now: number) {
@@ -78,59 +60,36 @@ function useNow(active: boolean) {
   return now;
 }
 
-function Bar(props: { label: string; variant?: Variant; children: ReactNode }) {
-  return (
-    <>
-      <div
-        role="region"
-        aria-label={props.label}
-        className={
-          "relative order-last sticky bottom-0 z-40 mx-3.5 mb-[6.5rem] flex items-center gap-2.5 " +
-          "rounded-full py-2 pr-2 pl-3.5 " +
-          // lg+: akıştan çıkar, sağ altta 420px genişliğinde yüzer kart olur (CSS 565).
-          "lg:fixed lg:right-12 lg:bottom-7 lg:z-50 lg:mx-0 lg:mb-0 lg:w-[26.25rem] " +
-          VARIANTS[props.variant ?? "dark"]
-        }
-      >
-        {props.children}
-      </div>
-      {/* lg+'de kart `fixed` olup akıştan çıkıyor; yer açılmazsa sayfanın son içeriği (liste sonu,
-          eylem düğmesi) dock'un altında KALICI kapanır — ortaya çıkarmanın yolu olmaz. Bu görünmez
-          ikiz `order-last` ile dock'un gerçek konumuna (atıf altbilgisinin ardına) taşınır ve akışta
-          onun yerine boşluk bırakır. Yükseklik dock'un iki satırlık içeriğine (pill + alt boşluk)
-          göre cömert sabit değer. */}
-      <div aria-hidden="true" className="order-last hidden lg:block lg:h-28" />
-    </>
-  );
-}
-
-/** `.dock .t` (CSS 448-450) — her durumda başlık + alt satır. */
-function Titles(props: {
-  variant?: Variant;
-  title: string;
-  subtitle?: ReactNode;
-  /** Alt satır bir HATA metni: role="alert" ile duyurulur ve sarmalanabilir (kırpılmaz). */
-  alert?: boolean;
-  /** Bitiş sebebi gibi ANLIK değişen içerik: blok tek canlı bölge olur. */
-  live?: boolean;
+function Bar(props: {
+  label: string;
+  /** Yazılmayan durum satırları: ipucu (`title`) + `sr-only` olarak buradan verilir. */
+  statusTitle?: string;
+  statusSub?: ReactNode;
+  /** Alt satır bir HATA: `role="alert"` ile duyurulur — sunum kısaldı diye duyuru düşmemeli. */
+  statusAlert?: boolean;
+  children: ReactNode;
 }) {
-  const variant = props.variant ?? "dark";
+  const sub = typeof props.statusSub === "string" ? props.statusSub : null;
   return (
     <div
-      className="flex min-w-0 flex-1 flex-col gap-px"
-      aria-live={props.live ? "polite" : undefined}
+      role="region"
+      aria-label={props.label}
+      /* İpucu tek cümle: başlık + alt satır. Ekran okuyucuya ise İKİ AYRI düğüm verilir —
+         birleştirilmiş tek dize, "Bağlanılamadı" gibi tek başına anlamlı bir olguyu
+         aranamaz hâle getiriyordu. */
+      title={props.statusTitle && sub ? `${props.statusTitle} · ${sub}` : (props.statusTitle ?? undefined)}
+      className="flex flex-none items-center justify-end gap-2"
     >
-      <b className="truncate font-head text-[0.875rem] leading-[1.2] font-bold">{props.title}</b>
-      {props.subtitle != null &&
-        (props.alert ? (
-          <span role="alert" className={`text-[0.75rem] leading-[1.2] font-bold ${ALERT[variant]}`}>
-            {props.subtitle}
-          </span>
-        ) : (
-          <span className={`truncate text-[0.75rem] leading-[1.2] font-medium ${SUBTITLE[variant]}`}>
-            {props.subtitle}
-          </span>
-        ))}
+      {props.children}
+      {/* Durum ANLIK değişir (biri konuşmaya başladı, süre doldu) — tek canlı bölge. */}
+      <span
+        className="sr-only"
+        role={props.statusAlert ? "alert" : undefined}
+        aria-live={props.statusAlert ? undefined : "polite"}
+      >
+        {props.statusTitle && <span>{props.statusTitle}</span>}
+        {props.statusSub != null && <span>{props.statusSub}</span>}
+      </span>
     </div>
   );
 }
@@ -163,15 +122,6 @@ const IconButton = forwardRef<
   },
 );
 
-/** Artboard 4550/4606 — warm durumlarda beyaz daire içinde flame-deep mikrofon. */
-function MicMark() {
-  return (
-    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-card text-flame-deep" aria-hidden>
-      <Microphone size={18} />
-    </span>
-  );
-}
-
 /** Dock taşma menüsü — artboard `.pop`/`.pop-r` (CSS 96-99) sözlüğü. Host'un oda eylemleri
     dock'un ritmini bozmadan burada durur. Dışarı tıklama ve Esc ile kapanır; açıkken odak
     menünün ilk ögesine geçer (klavye kullanıcısı düğmeden sonra boşluğa düşmesin). */
@@ -181,6 +131,8 @@ function DockMenu(props: {
   label: string;
   itemLabel: string;
   onEnd: () => void;
+  /** Başlık satırındaki kısa denetim: menü YUKARI değil AŞAĞI açılır (üstünde yer yok). */
+  below?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -218,7 +170,9 @@ function DockMenu(props: {
         <div
           role="menu"
           aria-label={props.label}
-          className="absolute right-0 bottom-12 z-50 flex w-[11.75rem] flex-col gap-0.5 rounded-2xl border border-line bg-card p-1.5 text-ink shadow-sh2"
+          className={`absolute right-0 z-50 flex w-[11.75rem] flex-col gap-0.5 rounded-2xl border border-line bg-card p-1.5 text-ink shadow-sh2 ${
+            props.below ? "top-12" : "bottom-12"
+          }`}
         >
           <button
             ref={item}
@@ -240,9 +194,20 @@ function DockMenu(props: {
   );
 }
 
-export default function VoiceDock(props: { view: SessionView }) {
+export default function VoiceDock(props: {
+  view: SessionView;
+  /** Denetimin nerede yaşadığı. Kural (kullanıcı kararı 2026-09-08): ses denetimi O SAYFANIN
+      aksiyonlarıyla AYNI yerde durur — masaüstünde başlık satırında (`header`), mobilde alt
+      aksiyon şeridinde (`strip`, `MobileCta` içinde).
+      `header-lg`: sayfanın bir alt şeridi VAR, o yüzden başlık kopyası yalnız ≥1024'te basılır.
+      `header`: sayfanın alt aksiyon grubu YOK (Lobi/Bekle, davetli Mekanlar) — denetim her
+      genişlikte başlıkta kalır, çünkü "aksiyonların yanı" orası.
+      Bir sayfa iki slotu da doldurduğunda aynı anda yalnız BİRİ DOM'a girer. */
+  placement?: "header" | "header-lg" | "strip";
+}) {
   const { t } = useTranslation();
   const view = props.view;
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const host = isHost(view);
   const me = viewerId(view);
   const voice = useVoiceStore(
@@ -254,6 +219,7 @@ export default function VoiceDock(props: { view: SessionView }) {
     })),
   );
   const { run, busy, error } = useSessionAction();
+  const strip = props.placement === "strip";
   const endsAt = view.voice?.endsAt ?? null;
   const now = useNow(!!endsAt);
   const members = (view.participants ?? []).filter((p) => p.inVoice);
@@ -273,9 +239,21 @@ export default function VoiceDock(props: { view: SessionView }) {
     else if (voice.phase === "idle" || voice.phase === "error") joinRef.current?.focus();
   }, [voice.phase]);
 
+  /* Sunum kapısı (kancalar bu satırın ÜSTÜNDE çağrılır — koşullu hook yok).
+     `header` yalnız ≥1024'te, `strip` yalnız altında basılır. Basılmayan `null` döner: DOM'a
+     hiç girmediği için ref'leri boştur, odak yönetimi görünmeyen ikizi odaklayamaz. */
+  if (strip && desktop) return null;
+  if (props.placement === "header-lg" && !desktop) return null;
+  // SOLO'da ses yok; süresi dolmuş ya da kararı geçersizleşmiş oturumda da denetim basılmaz.
+  // Eskiden bu kapı `SessionPage`'deydi; iki sunum iki farklı yerden basıldığı için kurala
+  // bileşenin KENDİSİ sahip olur — çağıran yerlerin hepsinde tekrarlanmaz.
+  if (view.sessionType === "SOLO" || view.status === "EXPIRED") return null;
+  if (view.status === "DECIDED" && !(view.venues ?? []).some((v) => v.id === view.decidedVenueId)) return null;
   if (!endsAt && !host && !voice.endedReason) return null;
-  // Menü düğmesi zemin rengiyle uyumlu olmalı: koyu pill'de beyaz %12, açık (err) varyantta ink %6.
-  const tone: "dark" | "light" = voice.phase === "error" ? "light" : "dark";
+  // Menü düğmesi zemin rengiyle uyumlu olmalı: koyu pill'de beyaz %12, açık zeminde (err varyantı
+  // ve başlık satırındaki kısa denetim) ink %6.
+  // Denetim her zaman açık zeminde (başlık satırı / alt şerit) — ink %6.
+  const tone = "light" as const;
 
   /* Artboard'ın 7 durumunun HİÇBİRİNDE ikinci bir düğme yok: dock [avatarlar | metin | TEK
      eylem] ritmindedir (4557-4560). "Herkes için bitir" yazılı bir pill olarak durduğunda hem
@@ -285,6 +263,7 @@ export default function VoiceDock(props: { view: SessionView }) {
     <DockMenu
       busy={busy}
       tone={tone}
+      below={!strip}
       label={t("voice.more")}
       itemLabel={t("voice.end")}
       onEnd={() => void run(() => voice.end(), "voice.errEnd")}
@@ -299,16 +278,10 @@ export default function VoiceDock(props: { view: SessionView }) {
     const hint = timeLimit && voice.limitMinutes != null
       ? t("voice.endedTimeLimitHint", { min: voice.limitMinutes })
       : null;
+    const title = voice.endedReason ? t(`voice.ended.${voice.endedReason}`) : t("voice.title");
+    const sub = error ?? (voice.endedReason ? hint : t("voice.startHint"));
     return (
-      <Bar label={t("voice.region")} variant="warm">
-        <MicMark />
-        <Titles
-          variant="warm"
-          live={!!voice.endedReason}
-          title={voice.endedReason ? t(`voice.ended.${voice.endedReason}`) : t("voice.title")}
-          subtitle={error ?? (voice.endedReason ? hint : t("voice.startHint"))}
-          alert={!!error}
-        />
+      <Bar label={t("voice.region")} statusTitle={title} statusSub={sub} statusAlert={!!error}>
         {host && (
           <Button
             ref={joinRef}
@@ -321,7 +294,11 @@ export default function VoiceDock(props: { view: SessionView }) {
             aria-label={timeLimit ? undefined : t("voice.startAria")}
             onClick={() => void run(() => voice.start(), "voice.errStart", START_ERROR_BY_SERVER)}
           >
-            {t(timeLimit ? "voice.restart" : "voice.start")}
+            <Microphone size={18} aria-hidden />
+            {/* Kısa denetim başlık satırında YALNIZ başına durur: "Başlat" neyi başlattığını
+                söylemez, o yüzden orada oda adı ("Sesli sohbet") yazılır. Alt çubukta bağlam
+                zaten yanındaki başlık bloğundan geliyor. */}
+            {timeLimit ? t("voice.restart") : t("voice.title")}
           </Button>
         )}
       </Bar>
@@ -336,16 +313,16 @@ export default function VoiceDock(props: { view: SessionView }) {
 
   // Durum 6 · bağlanılamadı / mikrofon reddi — açık pembe err varyantı.
   if (voice.phase === "error") {
+    const sub = voice.micDenied ? t("voice.micDenied") : t("voice.connectFailed");
     return (
-      <Bar label={t("voice.region")} variant="err">
-        <WarningCircle size={20} className="flex-none text-flame-deep" aria-hidden />
-        <Titles
-          variant="err"
-          alert
-          title={t("voice.connectFailedTitle")}
-          subtitle={voice.micDenied ? t("voice.micDenied") : t("voice.connectFailed")}
-        />
+      <Bar
+        label={t("voice.region")}
+        statusTitle={t("voice.connectFailedTitle")}
+        statusSub={sub}
+        statusAlert
+      >
         <Button ref={joinRef} kind="white" size="sm" className="min-h-10" onClick={() => void voice.join()}>
+          <WarningCircle size={18} className="text-flame-deep" aria-hidden />
           {t("voice.retry")}
         </Button>
         {menu}
@@ -370,7 +347,9 @@ export default function VoiceDock(props: { view: SessionView }) {
             key={p.id ?? i}
             className={[
               // Her avatar dock zemini renginde 2px kenar taşır (CSS 452).
-              "relative inline-flex rounded-full ring-2 ring-ink",
+              // Halka dock zemininin rengidir (CSS 452): koyu pill'de ink, başlık satırında paper.
+              // Halka denetimin zemini rengindedir (CSS 452) — açık zeminde paper.
+              "relative inline-flex rounded-full ring-2 ring-paper",
               i > 0 ? "-ml-2" : "",
               failed ? "opacity-55" : "",
             ].join(" ").trim()}
@@ -395,16 +374,13 @@ export default function VoiceDock(props: { view: SessionView }) {
   // Durum 2 · oda açık, dışarıdasın · ve durum 3 · bağlanıyor.
   if (voice.phase !== "in") {
     const joining = voice.phase === "joining";
+    const title = joining ? t("voice.title") : t("voice.open");
+    // Artboard 4567: "Bağlanıyor…" ALT SATIRDIR, düğmenin metni değil — düğme "Katıl"da kalır,
+    // yalnız kilitlenir.
+    const sub = error ?? (joining ? t("voice.joining") : `${t("voice.members", { count: members.length })} · ${minutes}`);
     return (
-      <Bar label={t("voice.region")}>
+      <Bar label={t("voice.region")} statusTitle={title} statusSub={sub} statusAlert={!!error}>
         {avatars}
-        <Titles
-          title={joining ? t("voice.title") : t("voice.open")}
-          // Artboard 4567: "Bağlanıyor…" ALT SATIRDIR, düğmenin metni değil — düğme "Katıl"da
-          // kalır, yalnız kilitlenir.
-          subtitle={error ?? (joining ? t("voice.joining") : `${t("voice.members", { count: members.length })} · ${minutes}`)}
-          alert={!!error}
-        />
         {srRemaining}
         <Button ref={joinRef} kind="flame" size="sm" className="min-h-10" disabled={joining} onClick={() => void voice.join()}>
           <Microphone size={18} aria-hidden />
@@ -422,12 +398,12 @@ export default function VoiceDock(props: { view: SessionView }) {
       ? t("voice.speakingBy", { name: speaker.displayName ?? "?" })
       : minutes;
   return (
-    <Bar label={t("voice.region")}>
+    <Bar label={t("voice.region")} statusTitle={t("voice.inCall")} statusSub={error ?? subtitle} statusAlert={!!error}>
       {avatars}
-      <Titles title={t("voice.inCall")} subtitle={error ?? subtitle} alert={!!error} />
       {srRemaining}
       <IconButton
         ref={muteRef}
+        tone="light"
         on={!voice.muted}
         onClick={voice.toggleMute}
         aria-label={t(voice.muted ? "voice.unmute" : "voice.mute")}
@@ -437,7 +413,7 @@ export default function VoiceDock(props: { view: SessionView }) {
       </IconButton>
       {/* Artboard 4579-4580: ayrılma düğmesi ikon-only (yazılı "Ayrıl" pill'i dock'u 420px'in
           ötesine itiyordu); ad `aria-label`de. */}
-      <IconButton aria-label={t("voice.leave")} onClick={voice.leave}>
+      <IconButton tone="light" aria-label={t("voice.leave")} onClick={voice.leave}>
         <PhoneX size={18} aria-hidden />
       </IconButton>
       {menu}
