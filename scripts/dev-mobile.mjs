@@ -10,7 +10,8 @@
    `pnpm dev:mobile ios "iPhone 17"` (adı/UDID'si eşleşen cihazı seçer, hiç sormaz).
    TTY yoksa (CI, ajan) soru sorulmaz; açık simülatör/emülatör varsa o, yoksa listenin ilki. */
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createInterface } from "node:readline/promises";
 
 const MOBILE = "frontend/mobile";
@@ -55,7 +56,10 @@ if (devices.length === 0) {
 const device = process.argv[3] ? matchDevice(devices, process.argv[3]) : await askDevice(devices);
 if (!device) process.exit(1);
 
-if (platform === "ios") assertIosCanBuild(device);
+if (platform === "ios") {
+  assertSwiftToolchain();
+  assertIosCanBuild(device);
+}
 
 console.log(`dev:mobile: ${device.label}`);
 const child = spawn("pnpm", ["exec", "expo", `run:${platform}`, "--device", device.value], {
@@ -189,6 +193,36 @@ function cancelled(err) {
   process.exit(130);
 }
 
+// ——— iOS ön kontrolleri ———
+
+/**
+ * Expo SDK 57'nin `expo-modules-jsi`'si `weak let` (SE-0481) kullanıyor. Xcode 26.1.1'in
+ * Swift 6.2.1'i bunu DESTEKLEMİYOR ve derleme 15 Swift hatasıyla, üstelik "bizim kodumuzda
+ * bir sorun var" izlenimi vererek patlıyor (2026-09-08 sahada ölçüldü).
+ *
+ * Kaçış yolu YOK, üçü de denendi: (1) `-swift-version 6` ve `-enable-upcoming-feature WeakLet`
+ * derleyiciyi ikna etmiyor; (2) 57 hattının HER sürümünde `weak let` var (57.0.0'da 16 yer);
+ * (3) `weak let` → `weak var` yaması `Sendable` uyumunu kırıyor — özellik zaten bunun için var.
+ * Tek çözüm daha yeni bir Xcode.
+ *
+ * Kontrol bir saniye sürer ve Xcode güncellenince kendiliğinden susar.
+ */
+function assertSwiftToolchain() {
+  const probe = `${tmpdir()}/bumpinto-weaklet-probe.swift`;
+  writeFileSync(probe, "class A {}\nfinal class B { private weak let a: A? = nil }\n");
+  const out = sh("xcrun", ["swiftc", "-typecheck", probe], true, true);
+  if (!/'weak' must be a mutable variable/.test(out)) return;
+
+  console.error("dev:mobile: Xcode'un Swift'i `weak let`'i desteklemiyor — Expo SDK 57 bunu şart koşuyor.");
+  console.error(`  Bu toolchain: ${sh("xcrun", ["swift", "--version"], true).split("\n")[0]}`);
+  console.error("  Sonuç: expo-modules-jsi 15 Swift hatasıyla derlenmez (sorun bizim kodumuzda DEĞİL).");
+  console.error("  Çözüm: Xcode'u güncelle. Sonrasında şununla doğrulayabilirsin —");
+  console.error("    echo 'final class B { private weak let a: AnyObject? = nil }' > /tmp/p.swift \\");
+  console.error("      && xcrun swiftc -typecheck /tmp/p.swift && echo DESTEKLİYOR");
+  console.error("  O zamana dek Android tarafı tamamen çalışıyor: pnpm dev:mobile android");
+  process.exit(1);
+}
+
 // ——— iOS imza ön kontrolü ———
 
 /**
@@ -232,12 +266,14 @@ function entitlementsRequireSigning() {
   return false;
 }
 
-/** Kısa komut çalıştırıcı; `soft` ise hata yerine boş dize döner (cihaz listeleri eksik olabilir). */
-function sh(cmd, args, soft = false) {
+/** Kısa komut çalıştırıcı. `soft`: hata yerine çıktı/boş dize döner. `withStderr`: derleyici
+    tanılamaları stderr'e yazdığı için o akış da metne katılır. */
+function sh(cmd, args, soft = false, withStderr = false) {
+  const stdio = ["ignore", "pipe", withStderr ? "pipe" : "ignore"];
   try {
-    return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  } catch {
-    if (soft) return "";
+    return execFileSync(cmd, args, { encoding: "utf8", stdio });
+  } catch (err) {
+    if (soft) return withStderr ? `${err.stdout ?? ""}${err.stderr ?? ""}` : "";
     throw new Error(`dev:mobile: '${cmd}' çalıştırılamadı`);
   }
 }
