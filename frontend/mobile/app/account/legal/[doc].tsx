@@ -1,4 +1,4 @@
-import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { ArrowSquareOutIcon } from "phosphor-react-native";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import { LegalReader } from "../../../src/components/organisms";
 import { isLegalKey, legalDoc } from "../../../src/content/legal";
 import { webBase } from "../../../src/lib/api";
 import { colors, space } from "../../../src/theme";
+import { goBackOr } from "../../../src/lib/nav";
 
 /**
  * Uygulama içi yasal okuyucu (R-M4). Rota oturum MUHAFIZININ DIŞINDADIR: giriş ekranındaki
@@ -39,7 +40,7 @@ export default function LegalDocScreen() {
       <ScreenHeader
         title={item.title}
         backLabel={t("common.back")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/")}
         right={
           <IconButton
             label={t("legal.openInBrowser")}

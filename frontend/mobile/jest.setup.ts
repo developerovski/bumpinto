@@ -1,3 +1,5 @@
+import { AppState } from "react-native";
+
 /**
  * jest-expo kurulum dosyası — RN modüllerinin test ikizleri.
  *
@@ -54,7 +56,9 @@ jest.mock("expo-clipboard", () => ({
 }));
 
 jest.mock("expo-router", () => ({
-  router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() },
+  /* `canGoBack` VARSAYILAN true: ekranların normal (geçmişli) yolu testlerde de normal yol
+     olsun. Yedek dalını sınayan test bunu `mockReturnValue(false)` ile çevirir. */
+  router: { replace: jest.fn(), push: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) },
   /* `jest.fn` (sabit nesne DEĞİL): parametreli rotaları test eden ekranlar bunu
      `mockReturnValue` ile değiştirir. Varsayılan, oturum rotalarının beklediği slug. */
   useLocalSearchParams: jest.fn(() => ({ slug: "x7k2m" })),
@@ -119,6 +123,16 @@ jest.mock("expo-crypto", () => ({
 }));
 
 jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn(async () => ({ type: "opened" })) }));
+
+/* Uygulama durumu: jest-expo `AppState.currentState`i bir `jest.fn()` olarak bırakıyor ve
+   `addEventListener` abonelik nesnesi döndürmüyor. `useSessionLive` (M-7) canlı sorguyu
+   "uygulama ÖNDE mi" kapısına bağlıyor — ikiz düzeltilmeden kapı testte hep kapalı kalıyor ve
+   yönlendirici testleri üretim kodu doğruyken boş ekran görüyordu (2026-09-08).
+   İkiz CİHAZIN normal hâlini taklit eder: uygulama önde, dinleyici kaldırılabilir.
+   Ön/arka plan GEÇİŞİ bir framework yapıştırıcısıdır ve burada doğrulanmış SAYILMAZ —
+   gerçek geçiş Maestro koşusunda (M-8:T5) sınanır. */
+Object.defineProperty(AppState, "currentState", { get: () => "active", configurable: true });
+AppState.addEventListener = jest.fn(() => ({ remove: jest.fn() })) as never;
 
 /* i18n'i AÇIKÇA kur. Aksi hâlde çeviriler yalnız test edilen ekran dolaylı olarak bir store
    (→ `src/i18n`) içe aktardığında hazır olur; store'suz ekranlar ham anahtar çizer ve test

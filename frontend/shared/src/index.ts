@@ -49,6 +49,22 @@ export {
 export type { DecisionKind, RunoffReason } from "./serverEnums";
 export { venueLink, websiteLink } from "./venueLink";
 export { formatRating, providerMark } from "./format";
+export {
+  fairnessLine,
+  initialOf,
+  type FairnessLine,
+  type Translate,
+  type TravelInfo,
+} from "./travelText";
+export {
+  DEFAULT_MAP_CENTER,
+  approx,
+  centroid,
+  distanceMeters,
+  nearestParticipant,
+  roundedMidpointMeters,
+  type LatLng,
+} from "./geo";
 export { monogram } from "./monogram";
 export {
   DRAG_START_PX,
@@ -68,6 +84,28 @@ export { DECIDING_MINUTES, DECIDING_RATING, isDeciding } from "./runoffTrailer";
 export { LANGUAGES, type LanguageCode } from "./languages";
 export { sessionCtaKey } from "./sessionCta";
 export { activityListLabel } from "./activityLabel";
+export {
+  ACTIVITY_GROUPS,
+  ACTIVITY_GROUP_ORDER,
+  GROUP_TINT,
+  fitsActivity,
+  groupOf,
+  sessionActivities,
+  type ActivityGroup,
+} from "./activity";
+export {
+  MAX_ACTIVITIES,
+  canSubmit,
+  emptyDraft,
+  isActivityLocked,
+  toCreateRequest,
+  toggleActivity,
+  type Activity,
+  type DraftPoint,
+  type NewSessionDraft,
+  type SessionType,
+  type VenueMode,
+} from "./newSession";
 export {
   LEGAL_DOCS,
   bodyFor,

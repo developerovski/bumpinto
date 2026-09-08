@@ -319,9 +319,12 @@ export default function NewSessionPage() {
               inputId="session-address"
               busy={loc.busy}
               onPickOnMap={() => setPicker("own")}
-              /* Artboard 3872/3941: çapalı modda host konumu ZORUNLU DEĞİL — bu yüzden
-                 "…ya da adres yaz" bağlantısının yerini bu not alır (create() de aynı
-                 kapıyı uyguluyor). */
+              /* Çapalı modda konum ne merkezi ne deste sırasını etkiler (DeckFlow.deckOrder çapa
+                 varsa adaleti atlar) — yalnız yol süresini gösterir. Bu yüzden sessiz satır +
+                 "kaldır": yeşil "Tamam" hapı "Ankara'da buluşuyoruz ama sen Den Bosch'tasın"
+                 çelişkisini kilitli biçimde ekranda tutuyordu. */
+              quiet={anchorMode === "ANCHOR"}
+              onRemove={anchorMode === "ANCHOR" ? loc.clear : undefined}
               hint={anchorMode === "ANCHOR" ? t("newSession.ownOptional") : undefined}
             />
             {/* SOLO 1280'de host'un ulaşım türü Konumlar kartının "Sen" satırındadır
@@ -386,6 +389,11 @@ export default function NewSessionPage() {
             )}
           </>
         }
+        /* GRUP'ta uzun olan SOL bölge (etkinlikler → ad → buluşma yeri → konum → ulaşım → CTA);
+           sağdaki davet önizlemesi kısa, bu yüzden kaydırma boyunca ekranda kalabilir. SOLO'da
+           oran TERS (sağda nokta düzenleyici + harita) — orada uzun bölgeyi yapıştırmak alt
+           kısmını erişilemez kılardı. */
+        stickyRight={type === "GROUP"}
         rightLgOnly
       />
       <MobileCta>

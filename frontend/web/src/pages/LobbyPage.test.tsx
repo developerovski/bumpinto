@@ -1,5 +1,9 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }));
+
+import { geocode } from "../lib/geocode";
 import { useSessionStore } from "../store/sessionStore";
 import LobbyPage from "./LobbyPage";
 
@@ -141,5 +145,26 @@ describe("LobbyPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mekanları bul" }));
     expect(await screen.findByText("mekanlar aranıyor…")).toBeInTheDocument();
     await act(async () => { resolve(); });
+  });
+
+  /** REGRESYON (2026-09-09): konum değiştirme yüzeyi YALNIZ Bekle ekranında (konumsuz davetli)
+      vardı; host oturum kurulduktan sonra konumunu hiçbir yerden düzeltemiyordu. Ankara'da
+      çapalı buluşma kuran host "'s-Hertogenbosch · ~2695 dk" satırında kilitli kalıyordu. */
+  it("host kendi konumunu lobiden değiştirebilir", async () => {
+    const updateLocation = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(geocode).mockResolvedValue({ lat: 39.9208, lng: 32.8541, label: "Ankara" });
+    const view = { ...base, anchored: true, participants: [host] };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never, updateLocation } as never);
+    render(<LobbyPage view={view as never} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Konumumu değiştir/ }));
+    fireEvent.change(screen.getByLabelText("Şehir ya da adres"), { target: { value: "Ankara" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    await waitFor(() =>
+      expect(updateLocation).toHaveBeenCalledWith(
+        expect.objectContaining({ lat: 39.9208, lng: 32.8541, label: "Ankara" }),
+      ),
+    );
   });
 });

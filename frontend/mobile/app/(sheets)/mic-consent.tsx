@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { MicrophoneSlashIcon, MoonIcon, TimerIcon } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,13 +9,8 @@ import { REASON_ICON_COLOR, Reason } from "../../src/components/molecules";
 import { resolveMicConsent } from "../../src/lib/micConsent";
 import { requestMicrophone } from "../../src/lib/permissions";
 import { space } from "../../src/theme";
+import { goBackOr } from "../../src/lib/nav";
 
-/**
- * O7 — mikrofon ÖN-BİLGİLENDİRMESİ. `presentMicConsent()` bunu açar, sonucu bu ekran çözer.
- *
- * Sayfa nasıl kapanırsa kapansın (düğme, geri, kaydırma) söz MUTLAKA çözülür: temizlikte
- * `dismissed` gönderilir, aksi hâlde M-6 dock'u sonsuza kadar bekler.
- */
 export default function MicConsentSheet() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -25,7 +19,7 @@ export default function MicConsentSheet() {
   const finish = (result: Parameters<typeof resolveMicConsent>[0]) => {
     settled.current = true;
     resolveMicConsent(result);
-    router.back();
+    goBackOr("/sessions");
   };
 
   useEffect(

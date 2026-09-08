@@ -1,6 +1,5 @@
 import { Suspense, lazy, useState } from "react";
 import VoiceDock from "../components/organisms/VoiceDock";
-import { apiErrorCode } from "../lib/apiError";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
 import { Button, Note, Page } from "../components/atoms";
@@ -13,9 +12,8 @@ import TwoZone from "../components/molecules/TwoZone";
 import WaitingStatus from "../components/molecules/WaitingStatus";
 import ParticipantList from "../components/organisms/ParticipantList";
 import { sessionActivities } from "../lib/activity";
-import { DEFAULT_TRAVEL_MODE, type TravelMode } from "../lib/travelMode";
 import { mapProps, useSessionStore, viewerOf } from "../store/sessionStore";
-import { useOwnLocation } from "../store/useOwnLocation";
+import { useLocationChange } from "../store/useLocationChange";
 
 /* Harita ayrı chunk — her iki kırılımda da ghost'un (butonun) arkasında. */
 const MapView = lazy(() => import("../components/organisms/MapView"));
@@ -27,15 +25,10 @@ const MapView = lazy(() => import("../components/organisms/MapView"));
     refresh() view'ı günceller, MapView kamerayı kendi refit eder. */
 export default function WaitingRoom({ view }: { view: SessionView }) {
   const { t } = useTranslation();
-  const updateLocation = useSessionStore((s) => s.updateLocation);
   const self = viewerOf(view);
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [travelMode, setTravelMode] = useState<TravelMode>(self?.travelMode ?? DEFAULT_TRAVEL_MODE);
+  const change = useLocationChange(self?.travelMode);
   const activities = sessionActivities(view);
   const km = view.radiusKm != null ? Math.round(view.radiusKm) : null;
-  const loc = useOwnLocation();
   const [showMap, setShowMap] = useState(false);
   const { participants: mapParticipants, midpoint, radiusKm, pinLabels } = mapProps(view, t("map.you"));
   // R-W6 kapısı ParticipantList'tekiyle AYNI: yalnız çevrimdışı YA DA konumu gelmemiş kişi
@@ -44,32 +37,6 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
   const nudgeTargets = (view.participants ?? []).filter(
     (p) => !!p.id && p.id !== viewerId && !p.manual && !p.blocked && (p.online === false || !p.hasLocation),
   );
-
-  function toggle() {
-    setError(null);
-    setOpen((o) => !o);
-  }
-
-  async function submitChange() {
-    setError(null);
-    setBusy(true);
-    try {
-      // LocationRequest.lat/lng zorunlu — yalnız ulaşım türü değişse de konum YENİDEN gönderilir
-      // (sunucu viewer'a fuzzed approxLocation döner, gerçek koordinatı geri saklamaz).
-      const resolved = await loc.resolve();
-      if (!resolved) {
-        setError(t(loc.address.trim() ? "join.errGeocode" : "join.errGeolocation"));
-        return;
-      }
-      await updateLocation({ lat: resolved.lat, lng: resolved.lng, label: resolved.label ?? undefined, travelMode });
-      setOpen(false);
-    } catch (e) {
-      setError(t(apiErrorCode(e) === "participants_too_far_apart"
-        ? "join.errTooFar" : "waiting.errUpdate"));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <Page fit>
@@ -119,21 +86,7 @@ export default function WaitingRoom({ view }: { view: SessionView }) {
             </div>
             <div className="max-lg:order-3">
               <WaitingStatus
-              open={open}
-              onToggle={toggle}
-              onSubmit={() => void submitChange()}
-              busy={busy}
-              error={error}
-              locationState={loc.state}
-              locationLabel={loc.coords?.label ?? null}
-              address={loc.address}
-              onAddressChange={loc.setAddress}
-              onUseLocation={loc.detect}
-              onOtherAddress={loc.otherAddress}
-              locationBusy={loc.busy}
-              travelMode={travelMode}
-              onTravelModeChange={setTravelMode}
-              canSubmit={!!loc.coords || !!loc.address.trim()}
+              change={change}
               nudgeTargets={nudgeTargets}
               slug={view.slug ?? ""}
               />

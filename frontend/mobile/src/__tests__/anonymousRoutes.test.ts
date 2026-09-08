@@ -22,6 +22,11 @@ test("uyumluluk rotalarının dosyaları yerinde", () => {
     "(sheets)/location-consent.tsx",
     "(sheets)/mic-consent.tsx",
     "(sheets)/participant.tsx",
+    // M-7 yüzeyleri: kurma, katılma, oturum ve alt sayfaları.
+    "sessions/new.tsx",
+    "s/[slug].tsx",
+    "j/[slug].tsx",
+    "(sheets)/location-mode.tsx",
   ]) {
     expect({ file, exists: existsSync(app(file)) }).toEqual({ file, exists: true });
   }
@@ -34,8 +39,12 @@ test("yasal okuyucular, silme onayı ve davet linki ANONİM açılır", () => {
     "/account/legal/kvkk",
     "/account/deleted",
     "/j/x7k2m",
+    // Misafir katıldıktan SONRA burada yaşar; kimliğini katılımcı jetonu taşır. Bu satır
+    // olmadan `/j/` akışı katılma anında giriş ekranına düşerdi.
+    "/s/x7k2m",
     "/location-consent",
     "/mic-consent",
+    "/location-mode",
   ]) {
     expect({ path, anonymous: isAnonymousRoute(path) }).toEqual({ path, anonymous: true });
   }
@@ -47,6 +56,8 @@ test("hesap ekranları oturum GEREKTİRİR (anonim listede değil)", () => {
     "/account/consent",
     "/account/delete",
     "/sessions",
+    // Oturum KURMAK hesap ister — bu yüzden oturumun kendisi (`/s/`) ayrı bir ön ektedir.
+    "/sessions/new",
     "/profile",
     "/participant",
     "/prefs",

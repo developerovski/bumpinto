@@ -22,6 +22,7 @@ import { ACTIVITY_ICON, MODE_ICON } from "../src/icons";
 import { useAuthStore } from "../src/store/authStore";
 import { useMeStore } from "../src/store/meStore";
 import { colors, space } from "../src/theme";
+import { goBackOr } from "../src/lib/nav";
 
 /**
  * Artboard P22 · Profil.
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
       <ScreenHeader
         title={t("profile.title")}
         backLabel={t("common.close")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/sessions")}
       />
 
       <ScrollView contentContainerStyle={s.body}>

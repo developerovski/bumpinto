@@ -134,6 +134,9 @@ const config: ExpoConfig = {
     "expo-apple-authentication",
     ["expo-location", { locationWhenInUsePermission: LOCATION_PURPOSE, isIosBackgroundLocationEnabled: false }],
     ["expo-audio", { microphonePermission: MIC_PURPOSE }],
+    // Harita motoru MapLibre (K-M2) — ANAHTARSIZ çalışır, Google Maps SDK'sı pakete GİRMEZ.
+    // Eklenti yalnız native kütüphaneyi bağlar; döşeme stili çalışma anında `/api/config`ten.
+    "@maplibre/maplibre-react-native",
     "./plugins/withPrivacyInfo",
     [
       "expo-splash-screen",

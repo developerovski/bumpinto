@@ -8,14 +8,8 @@ import { AppText, Button, Card, Toggle } from "../../src/components/atoms";
 import { ScreenHeader } from "../../src/components/molecules";
 import { colors, space } from "../../src/theme";
 import { useMeStore } from "../../src/store/meStore";
+import { goBackOr } from "../../src/lib/nav";
 
-/**
- * O12 "Açık rıza tercihlerin" (R-M5) — KVKK m.5/1 açık rıza yüzeyi.
- *
- * Yerel durum ekranda tutulur ve "Kaydet"e kadar SUNUCUYA YAZILMAZ: üç anahtarı tek tek
- * yazmak, kullanıcı vazgeçtiğinde yarım kaydedilmiş bir rıza bırakırdı. O8'deki tekil
- * anahtar ise anında yazar; ikisi de AYNI `setConsents`'i kullanır.
- */
 type Draft = { location: boolean; microphone: boolean; analytics: boolean };
 
 export default function ConsentScreen() {
@@ -58,7 +52,7 @@ export default function ConsentScreen() {
     setBusy(true);
     const ok = await setConsents(value);
     setBusy(false);
-    if (ok) router.back();
+    if (ok) goBackOr("/account");
   };
 
   return (
@@ -66,7 +60,7 @@ export default function ConsentScreen() {
       <ScreenHeader
         title={t("consent.title")}
         backLabel={t("common.back")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/account")}
       />
       <ScrollView contentContainerStyle={[s.page, { paddingBottom: insets.bottom + 20 }]}>
         <AppText variant="muted">{t("consent.intro")}</AppText>

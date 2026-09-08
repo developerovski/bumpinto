@@ -6,7 +6,7 @@ vi.mock("../lib/api", () => ({ api: { createSession: vi.fn(), addPoint: vi.fn(),
 vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }));
 
 import { api } from "../lib/api";
-import { geocode } from "../lib/geocode";
+import { geocode, reverseGeocode } from "../lib/geocode";
 import { useAuthStore } from "../store/authStore";
 import { resetConfig, useConfigStore } from "../store/configStore";
 import { useNewSessionStore } from "../store/newSessionStore";
@@ -16,6 +16,20 @@ import NewSessionPage from "./NewSessionPage";
     yapışkan `.cta`); biri `hidden lg:flex`, diğeri `lg:hidden`. jsdom CSS uygulamadığından
     ikisi de DOM'da — sorgular ikisini de görür ve durum iddiaları HER İKİSİ için doğrulanır. */
 const ctas = (name: string) => screen.getAllByRole("button", { name });
+
+/** jsdom Geolocation uygulamıyor; `useOwnLocation` mount'ta `"geolocation" in navigator`
+    diye bakıyor. Bu güdük olmadan otomatik konum HİÇ alınmaz — hatanın yaşandığı hâl
+    (izin verilmiş, konum gelmiş) test edilemez. */
+function stubGeolocation(latitude: number, longitude: number) {
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude, longitude } } as GeolocationPosition) },
+  });
+  return () => {
+    delete (navigator as { geolocation?: unknown }).geolocation;
+  };
+}
+
 
 describe("NewSessionPage", () => {
   it("Grup varsayılan; Bireysel'e geçince Konumlar ve kapalı 'Mekanları bul'", () => {
@@ -151,8 +165,10 @@ describe("NewSessionPage", () => {
   });
 
   /** Artboard 3872/3941: çapalı modda host konumu zorunlu DEĞİL (create() de öyle davranıyor),
-      bu yüzden "…ya da adres yaz" bağlantısının yerini bunu söyleyen not alır. */
-  it("çapalı modda 'Sen neredesin?' altındaki bağlantının yerini 'zorunlu değil' notu alır", () => {
+      bu yüzden not basılır. Ama not, DEĞİŞTİRME yeteneğinin yerine GEÇMEZ — bu testin eski hâli
+      "bağlantı kaybolmalı" diyerek hatayı sözleşmeye yazmıştı (2026-09-09). İkinci giriş yolu:
+      konum tarayıcıdan değil HESAP VARSAYILANINDAN geliyor; tuzak orada da aynı. */
+  it("çapalı modda 'zorunlu değil' notu basılır ama konum yine değiştirilebilir", () => {
     useNewSessionStore.getState().reset();
     useAuthStore.setState({
       status: "signed",
@@ -161,8 +177,9 @@ describe("NewSessionPage", () => {
     render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
     expect(screen.getByText("…ya da adres yaz")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
-    expect(screen.getByText("İstersen; çapalı buluşmada zorunlu değil")).toBeInTheDocument();
-    expect(screen.queryByText("…ya da adres yaz")).not.toBeInTheDocument();
+    expect(screen.getByText("Yalnız senin yol süreni göstermek için; zorunlu değil.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Değiştir" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kaldır" })).toBeInTheDocument();
   });
 
   /** Artboard 910: host'un ulaşım türü Konumlar kartının "Sen" SATIRINDA (`.f-mp`) — sol
@@ -221,5 +238,106 @@ describe("NewSessionPage", () => {
         expect.objectContaining({ anchor: { lat: 51.4416, lng: 5.4697, label: "Eindhoven" } }),
       ),
     );
+  });
+
+  /** REGRESYON (2026-09-09): çapa modunda `hint`, "…ya da adres yaz" bağlantısının YERİNE
+      basılıyordu; "Haritadan seç" de yalnız idle/denied dallarında olduğu için otomatik alınan
+      konumu değiştirmenin HİÇBİR yolu kalmıyordu. Ankara'da buluşma kuran host lobide
+      "'s-Hertogenbosch · ~2695 dk" satırına mahkûm oluyordu. */
+  it("çapa modunda otomatik alınan konum kilitlenmez — değiştir ve kaldır vardır", async () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(reverseGeocode).mockResolvedValue("'s-Hertogenbosch");
+    const restore = stubGeolocation(51.7288, 5.2927);
+    try {
+      render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+      fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+      expect(await screen.findByText("'s-Hertogenbosch civarı · otomatik alındı")).toBeInTheDocument();
+      // Yeşil "Tamam" hapı çapalıda basılmaz: konum merkezi de deste sırasını da belirlemiyor.
+      expect(screen.queryByText("Tamam")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Değiştir" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Kaldır" })).toBeInTheDocument();
+      // "zorunlu değil" cümlesi bağlantının YERİNE geçmez, yanında durur.
+      expect(screen.getByText("Yalnız senin yol süreni göstermek için; zorunlu değil.")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("çapa modunda 'Değiştir' adres alanını ve haritadan seçmeyi geri getirir", async () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(reverseGeocode).mockResolvedValue("'s-Hertogenbosch");
+    const restore = stubGeolocation(51.7288, 5.2927);
+    try {
+      render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+      fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Değiştir" }));
+      expect(screen.getByLabelText("Şehir ya da adres")).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Haritadan seç/ }).length).toBeGreaterThan(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it("çapa modunda 'Kaldır' sonrası istek konum taşımaz", async () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(reverseGeocode).mockResolvedValue("'s-Hertogenbosch");
+    vi.mocked(geocode).mockResolvedValue({ lat: 39.9208, lng: 32.8541, label: "Ankara" });
+    vi.mocked(api.createSession).mockResolvedValue({ slug: "x7k2m" } as never);
+    const restore = stubGeolocation(51.7288, 5.2927);
+    try {
+      render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+      fireEvent.click(screen.getByRole("radio", { name: "Belli bir yerde" }));
+      const field = screen.getByLabelText("Buluşma yeri");
+      fireEvent.change(field, { target: { value: "Ankara" } });
+      fireEvent.blur(field);
+      await screen.findByText("Ankara çevresinde aranacak");
+      fireEvent.click(await screen.findByRole("button", { name: "Kaldır" }));
+      expect(screen.getByText("Konum eklemedin")).toBeInTheDocument();
+      fireEvent.click(ctas("Buluşmayı kur")[0]);
+      await waitFor(() =>
+        expect(api.createSession).toHaveBeenCalledWith(
+          expect.objectContaining({ lat: undefined, lng: undefined, locationLabel: undefined }),
+        ),
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  /** Orta nokta modunda konum ZORUNLU: sessiz satır oraya sızarsa alan zorunluluğunu gizler. */
+  it("orta nokta modunda yeşil konum hapı ve 'başka adres' bağlantısı korunur", async () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    vi.mocked(reverseGeocode).mockResolvedValue("'s-Hertogenbosch");
+    const restore = stubGeolocation(51.7288, 5.2927);
+    try {
+      render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+      expect(await screen.findByText("Tamam")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "…ya da adres yaz" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Kaldır" })).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  /** GRUP'ta sol bölge uzun, sağdaki davet önizlemesi kısa: kaydırırken önizleme üst çubuğun
+      altında durup ekranda kalmalı. SOLO'da oran ters (sağda harita + nokta düzenleyici) —
+      orada yapıştırmak bölgenin altını erişilemez kılardı, bu yüzden kapalı. */
+  it("GRUP'ta sağ bölge lg'de yapışkan, SOLO'da değil", () => {
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    const right = () => screen.getByTestId("zone-right").className;
+    expect(right()).toContain("lg:sticky");
+    // Yapışma ofseti üst çubuk (64px) + sayfa üst dolgusu (34px): kart sıçramadan durur.
+    expect(right()).toContain("lg:top-[6.125rem]");
+    // Ekrana sığmayan sağ bölge (dar pencerede harita seçici) erişilemez kalmasın.
+    expect(right()).toContain("lg:overflow-y-auto");
+
+    fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
+    expect(right()).not.toContain("lg:sticky");
   });
 });

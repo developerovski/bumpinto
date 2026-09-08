@@ -11,8 +11,14 @@ import { AppText, Button, Card } from "../atoms";
  *
  * `accessibilityRole="alert"` ile ekran okuyucu kartı belirdiği anda okur.
  */
-export default function LocationDeniedCard(p: { onRetry: () => void }) {
+export default function LocationDeniedCard(p: {
+  onRetry: () => void;
+  /** Sistem BİR DAHA SORMAYACAKSA (kalıcı ret) "Tekrar dene" hiçbir şey yapmaz — düğme
+      çizilmez, tek çıkış Ayarlar kalır. Ölü düğme kullanıcıyı çıkmaza sokar. */
+  canRetry?: boolean;
+}) {
   const { t } = useTranslation();
+  const canRetry = p.canRetry ?? true;
   return (
     <Card tone="amber" style={s.card}>
       <View accessibilityRole="alert" style={s.body}>
@@ -27,13 +33,15 @@ export default function LocationDeniedCard(p: { onRetry: () => void }) {
           onPress={() => void openAppSettings()}
           style={s.half}
         />
-        <Button
-          title={t("permission.retry")}
-          kind="ghost"
-          small
-          onPress={p.onRetry}
-          style={s.half}
-        />
+        {canRetry ? (
+          <Button
+            title={t("permission.retry")}
+            kind="ghost"
+            small
+            onPress={p.onRetry}
+            style={s.half}
+          />
+        ) : null}
       </View>
     </Card>
   );

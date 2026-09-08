@@ -51,7 +51,12 @@
     "locOk": "OK",
     "locOther": "Type another city or address",
     "locRetry": "Try my location again",
-    "hostAway": "{{host}} isn't in the session right now — you can still join, your location will be waiting."
+    "hostAway": "{{host}} isn't in the session right now — you can still join, your location will be waiting.",
+    "hostMessage": "Message the host",
+    "locChange": "Change",
+    "locRemove": "Remove",
+    "locNone": "No location added",
+    "locAdd": "Add"
   },
   "waiting": {
     "joined": "You're in!",
@@ -404,7 +409,7 @@
     "anchorPlaceholder": "City or address",
     "anchorHint": "Venues are searched within 2 km of this spot.",
     "anchorSet": "Searching around {{label}}",
-    "ownOptional": "If you like; not required for an anchored meet-up",
+    "ownOptional": "Only used to show your travel time; not required.",
     "where": "Where are you?",
     "ownHint": "your current location",
     "ownMissing": "No location yet",
@@ -447,7 +452,8 @@
     "privacy": "Your location is shown rounded to ~1 km; nobody gets your exact address.",
     "anchoredBadge": "meeting spot is set",
     "anchoredNote": "Guests can join without sharing a location; travel times are worked out from their own.",
-    "anchoredSolo": "With a set meeting spot you can search on your own."
+    "anchoredSolo": "With a set meeting spot you can search on your own.",
+    "changeLocation": "Change my location"
   },
   "venues": {
     "meta": "{{count}} venues · ≤ {{km}} km from the midpoint",

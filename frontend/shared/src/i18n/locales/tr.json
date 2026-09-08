@@ -50,7 +50,12 @@
     "locOk": "Tamam",
     "locOther": "Başka bir şehir ya da adres yaz",
     "locRetry": "Konumumu tekrar dene",
-    "hostAway": "{{host}} şu an oturumda değil — yine de katılabilirsin, konumun onu bekler."
+    "hostAway": "{{host}} şu an oturumda değil — yine de katılabilirsin, konumun onu bekler.",
+    "hostMessage": "Host'a yaz",
+    "locChange": "Değiştir",
+    "locRemove": "Kaldır",
+    "locNone": "Konum eklemedin",
+    "locAdd": "Ekle"
   },
   "waiting": {
     "joined": "Katıldın!",
@@ -394,7 +399,7 @@
     "anchorPlaceholder": "Şehir ya da adres",
     "anchorHint": "Mekanlar bu noktanın 2 km çevresinde aranır.",
     "anchorSet": "{{label}} çevresinde aranacak",
-    "ownOptional": "İstersen; çapalı buluşmada zorunlu değil",
+    "ownOptional": "Yalnız senin yol süreni göstermek için; zorunlu değil.",
     "where": "Sen neredesin?",
     "ownHint": "şu anki konumun",
     "ownMissing": "Konumun henüz yok",
@@ -437,7 +442,8 @@
     "privacy": "Konumun ~1 km yuvarlanarak gösterilir; tam adres kimseye gitmez.",
     "anchoredBadge": "buluşma yeri belli",
     "anchoredNote": "Davetliler konum vermeden de katılabilir; süreler kendi konumlarına göre hesaplanır.",
-    "anchoredSolo": "Çapalı buluşmada tek başına da arayabilirsin."
+    "anchoredSolo": "Çapalı buluşmada tek başına da arayabilirsin.",
+    "changeLocation": "Konumumu değiştir"
   },
   "venues": {
     "meta": "{{count}} mekan · orta noktadan ≤ {{km}} km",

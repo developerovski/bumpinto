@@ -1,5 +1,5 @@
 import { LANGUAGES, MODE_LABEL_KEY, TRAVEL_MODES, type TravelMode } from "@bumpinto/shared";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CheckIcon, type Icon } from "phosphor-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -10,15 +10,8 @@ import i18n from "../../src/i18n";
 import { ACTIVITY_ICON, MODE_ICON } from "../../src/icons";
 import { useMeStore } from "../../src/store/meStore";
 import { colors, space } from "../../src/theme";
+import { goBackOr } from "../../src/lib/nav";
 
-/**
- * Artboard P22 · tercih seçici alt sayfası. Tek dosya üç alanı sunar (`field` parametresi):
- * dil, varsayılan etkinlik, varsayılan ulaşım. Varsayılan KONUM burada yok — konum seçici
- * (harita + geocode) M-7'ye ait; profil satırı o zamana dek kapalı çizilir.
- *
- * Seçili değer `meStore`dan okunur (parametreden DEĞİL): yazma başarısız olursa satır eski
- * değerde kalır, ekran uydurma bir seçim göstermez.
- */
 type Field = "language" | "activity" | "travelMode";
 
 const ACTIVITIES = Object.keys(ACTIVITY_ICON) as (keyof typeof ACTIVITY_ICON)[];
@@ -54,7 +47,7 @@ export default function PrefsSheet() {
 
     if (!(await update(patch))) return;
     if (field === "language") await i18n.changeLanguage(next);
-    router.back();
+    goBackOr("/profile");
   }
 
   return (
@@ -62,7 +55,7 @@ export default function PrefsSheet() {
       <ScreenHeader
         title={t(TITLE_KEY[field])}
         backLabel={t("common.close")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/profile")}
       />
       <ScrollView contentContainerStyle={s.body}>
         <Card padded={false}>

@@ -1,3 +1,4 @@
+import { Car } from "@phosphor-icons/react";
 import { Suspense, lazy, useState } from "react";
 import VoiceDock from "../components/organisms/VoiceDock";
 import type { SessionView } from "@bumpinto/shared";
@@ -7,6 +8,7 @@ import ActivityBadges from "../components/molecules/ActivityBadges";
 import ActivityStrip from "../components/molecules/ActivityStrip";
 import InviteCard from "../components/molecules/InviteCard";
 import LazyBoundary from "../components/molecules/LazyBoundary";
+import LocationForm from "../components/molecules/LocationForm";
 import MidpointCard from "../components/molecules/MidpointCard";
 import SessionHeader from "../components/molecules/SessionHeader";
 import SessionSteps from "../components/molecules/SessionSteps";
@@ -15,7 +17,8 @@ import ParticipantList from "../components/organisms/ParticipantList";
 import VenuesLoading from "../components/organisms/VenuesLoading";
 import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
-import { mapProps, useSessionStore } from "../store/sessionStore";
+import { mapProps, useSessionStore, viewerOf } from "../store/sessionStore";
+import { useLocationChange } from "../store/useLocationChange";
 import { useSessionAction } from "../store/useSessionAction";
 
 /* Harita ayrı chunk — lg+ varsayılan mount, 2026-09-04 prezans kararı §7 (§4.7'nin "ghost
@@ -29,6 +32,10 @@ export default function LobbyPage({ view }: { view: SessionView }) {
   const { t } = useTranslation();
   const findVenues = useSessionStore((s) => s.findVenues);
   const { run, busy, error } = useSessionAction();
+  /* Host'un konumu BİR KEZ, oturum kurulurken alınıyordu ve geri dönüşü yoktu: çapalı
+     buluşmada "Ankara'da buluşuyoruz ama sen Den Bosch'tasın · ~2695 dk" satırı hiçbir
+     yerden düzeltilemiyordu (2026-09-09). Aynı uç nokta davetlinin Bekle ekranında vardı. */
+  const change = useLocationChange(viewerOf(view)?.travelMode);
   const desktop = useMediaQuery("(min-width: 1024px)");
   // 390'da ghost'a basilinca; lg'de dogrudan. Tek yonlu OR: genislik degisse de kullanicinin
   // ghost'a bastigi durum korunur.
@@ -97,6 +104,17 @@ export default function LobbyPage({ view }: { view: SessionView }) {
               anchored={anchored}
               steps={<SessionSteps current="locations" />}
               />
+              {change.open ? (
+                <LocationForm change={change} inputId="lobby-address" />
+              ) : (
+                <div className="self-start">
+                  <Button type="button" kind="white" size="sm" onClick={change.toggle} disabled={change.busy}>
+                    <Car size={18} aria-hidden />
+                    {t("lobby.changeLocation")}
+                  </Button>
+                </div>
+              )}
+              {change.error && <ErrorText>{change.error}</ErrorText>}
             </div>
             {/* Artboard 1129 / 4029: gizlilik notu sol bölgenin SONUNDA. Çapalıda gizlilik
                 metni yanlış vaat olur (konum vermek zorunlu değil) — yerini çapa notu alır. */}

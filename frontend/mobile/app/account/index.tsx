@@ -20,14 +20,8 @@ import { AppText, Card, Toggle } from "../../src/components/atoms";
 import { ScreenHeader, SettingsRow } from "../../src/components/molecules";
 import { colors, space } from "../../src/theme";
 import { useMeStore } from "../../src/store/meStore";
+import { goBackOr } from "../../src/lib/nav";
 
-/**
- * O8 "Hesap ve veriler" — mağaza denetiminin ilk baktığı ekran (R-M3).
- *
- * Dört grup, dokuz satır: yasal belgeler, veri kontrolü, hakkında, tehlikeli bölge.
- * Buradaki tek anahtar (analitik) ANINDA yazar; üç anahtarlı O12 ekranı ise "Kaydet"
- * bekler — ikisi de aynı `setConsents`'i kullanır, iki farklı yazma yolu yoktur.
- */
 const ICON = { size: 20, color: colors.ink2, weight: "regular" } as const;
 
 export default function AccountScreen() {
@@ -51,7 +45,7 @@ export default function AccountScreen() {
       <ScreenHeader
         title={t("account.title")}
         backLabel={t("common.back")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/profile")}
       />
       <ScrollView contentContainerStyle={[s.page, { paddingBottom: insets.bottom + 28 }]}>
         <Group title={t("account.legal")}>

@@ -4,12 +4,10 @@
 import { Car, HandWaving } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
 import type { ParticipantDto } from "@bumpinto/shared";
-import type { LocationState } from "../../store/useOwnLocation";
-import type { TravelMode } from "../../lib/travelMode";
+import type { LocationChange } from "../../store/useLocationChange";
 import { useSocialStore } from "../../store/socialStore";
-import { Button, ErrorText, Note } from "../atoms";
-import LocationField from "./LocationField";
-import TravelModeField from "./TravelModeField";
+import { Button, ErrorText } from "../atoms";
+import LocationForm from "./LocationForm";
 
 /** Artboard W5 · sağ bölge kartı — "Mekanlar geliyor" + konum/ulaşım değiştir + dürtme.
     Kapalıyken iki küçük buton yan yana (artboard 1878-1881 / 1960-1963); açılınca aynı
@@ -18,21 +16,8 @@ import TravelModeField from "./TravelModeField";
     değişse de). Dürtme artboard'da DAVETLİ görünümünde duruyor: kurana özel DEĞİL (uç nokta +
     60 sn soğuma `socialStore`'da, sunucu da uygular). */
 export default function WaitingStatus(props: {
-  open: boolean;
-  onToggle: () => void;
-  onSubmit: () => void;
-  busy: boolean;
-  error: string | null;
-  locationState: LocationState;
-  locationLabel: string | null;
-  address: string;
-  onAddressChange: (value: string) => void;
-  onUseLocation: () => void;
-  onOtherAddress: () => void;
-  locationBusy?: boolean;
-  travelMode: TravelMode;
-  onTravelModeChange: (mode: TravelMode) => void;
-  canSubmit: boolean;
+  /** Konum/ulaşım düzenleme durumu — `useLocationChange` (Lobi ile ortak). */
+  change: LocationChange;
   /** Dürtülebilecek kişiler (R-W6 kapısı çağıranda: çevrimdışı YA DA konumu gelmemiş). */
   nudgeTargets?: ParticipantDto[];
   slug?: string;
@@ -59,36 +44,14 @@ export default function WaitingStatus(props: {
           <span className="hidden lg:inline">{t("waiting.copy")}</span>
         </p>
       </div>
-      {props.open ? (
-        <div className="flex w-full flex-col gap-3.5 text-left">
-          <Note>{t("waiting.modeHint")}</Note>
-          <LocationField
-            title={t("join.whereLabel")}
-            state={props.locationState}
-            label={props.locationLabel}
-            address={props.address}
-            onAddressChange={props.onAddressChange}
-            onUseLocation={props.onUseLocation}
-            onOtherAddress={props.onOtherAddress}
-            inputId="waiting-address"
-            busy={props.locationBusy}
-          />
-          <TravelModeField value={props.travelMode} onChange={props.onTravelModeChange} />
-          <div className="flex gap-2">
-            <Button type="button" onClick={props.onSubmit} disabled={props.busy || !props.canSubmit}>
-              {t("common.save")}
-            </Button>
-            <Button type="button" kind="white" onClick={props.onToggle} disabled={props.busy}>
-              {t("common.cancel")}
-            </Button>
-          </div>
-        </div>
+      {props.change.open ? (
+        <LocationForm change={props.change} inputId="waiting-address" />
       ) : (
         /* Artboard: iki `.bsm` buton yan yana — 390'da `flex:1` ile eşit bölüşür, 1280'de içerik
            genişliğinde. `min-height:44px` artboard'ın inline ezmesi (dokunma hedefi); Button
            atomunun `sm` boyu 42px olduğu için satır düzeyinde ezilir. */
         <div className="mt-1.5 flex w-full flex-wrap gap-2 [&>button]:min-h-[2.75rem] [&>button]:flex-1 lg:w-auto lg:[&>button]:flex-none">
-          <Button type="button" kind="white" size="sm" onClick={props.onToggle} disabled={props.busy}>
+          <Button type="button" kind="white" size="sm" onClick={props.change.toggle} disabled={props.change.busy}>
             <Car size={18} aria-hidden />
             {t("waiting.changeLocationAndMode")}
           </Button>
@@ -107,7 +70,7 @@ export default function WaitingStatus(props: {
           ))}
         </div>
       )}
-      {props.error && <ErrorText>{props.error}</ErrorText>}
+      {props.change.error && <ErrorText>{props.change.error}</ErrorText>}
     </div>
   );
 }

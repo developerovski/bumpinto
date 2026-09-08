@@ -2,26 +2,17 @@ import { router } from "expo-router";
 import { TrashIcon } from "phosphor-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText, Button, Card, Input } from "../../src/components/atoms";
 import { ScreenHeader } from "../../src/components/molecules";
+import BottomSheet from "../../src/components/organisms/BottomSheet";
 import { api } from "../../src/lib/api";
-import { colors, radius, space } from "../../src/theme";
+import { colors, space } from "../../src/theme";
 import { useAuthStore } from "../../src/store/authStore";
 import { useMeStore } from "../../src/store/meStore";
-
-/**
- * O15 + O16 — hesabı sil (R-M6). Apple 5.1.1(v) ve Play "hesap silme" şartı.
- *
- * ÜÇ adım bilinçlidir: (1) ne silinir / ne kalır, (2) onay sözcüğünü yazarak doğrulama,
- * (3) sonuç ekranı. Oturum yalnız sunucu 204 döndükten SONRA kapanır — silme başarısızken
- * çıkış yapmak kullanıcıyı verisi hâlâ dururken dışarıda bırakırdı.
- *
- * Onay sözcüğü ÇEVRİLİR (`del.confirmWord`: SİL / DELETE / VERWIJDER) — web ile aynı davranış.
- * Sabit kodlanırsa İngilizce arayüzde kullanıcıdan Türkçe bir sözcük istenirdi.
- */
+import { goBackOr } from "../../src/lib/nav";
 
 export default function DeleteAccountScreen() {
   const { t } = useTranslation();
@@ -56,7 +47,7 @@ export default function DeleteAccountScreen() {
       <ScreenHeader
         title={t("account.delete")}
         backLabel={t("common.back")}
-        onBack={() => router.back()}
+        onBack={() => goBackOr("/account")}
       />
       <ScrollView contentContainerStyle={s.page}>
         <AppText variant="display" style={s.title}>
@@ -109,54 +100,45 @@ export default function DeleteAccountScreen() {
         />
       </View>
 
-      {/* O16 onay alt sayfası — artboard'daki gibi ÇERÇEVE İÇİNDE karartma + sayfa
-          (yerel `Modal` DEĞİL: ayrı bir kök ağaca çizilir, karartmanın altındaki ekran
-          görünmez kalır ve tasarımdaki katman etkisi kaybolur). Karartmaya dokunmak kapatır. */}
-      {sheetOpen ? (
-      <View style={s.overlay} pointerEvents="box-none">
-        <Pressable
-          style={s.scrim}
-          onPress={() => setSheetOpen(false)}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.cancel")}
+      {/* O16 onay alt sayfası — yaprak aşağıdan kayar, karartma yerinde açılır (`BottomSheet`).
+          Karartmanın altındaki sayfa GÖRÜNÜR kalır: kullanıcı neyi onayladığını görmeye
+          devam eder. */}
+      <BottomSheet
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        closeLabel={t("common.cancel")}
+      >
+        <AppText variant="h2">{t("del.sheetTitle")}</AppText>
+        <AppText variant="body">{t("del.confirmLabel", { word: confirmWord })}</AppText>
+        <Input
+          value={typed}
+          onChangeText={setTyped}
+          accessibilityLabel={t("del.confirmText")}
+          autoCapitalize="characters"
+          autoCorrect={false}
         />
-        <View style={[s.sheet, { paddingBottom: insets.bottom + 26 }]}>
-          <View style={s.grab} />
-          <AppText variant="h2">{t("del.sheetTitle")}</AppText>
-          <AppText variant="body">
-            {t("del.confirmLabel", { word: confirmWord })}
+        <AppText variant="muted">{t("del.appleNote")}</AppText>
+        {error ? (
+          <AppText variant="muted" style={s.error}>
+            {t(error)}
           </AppText>
-          <Input
-            value={typed}
-            onChangeText={setTyped}
-            accessibilityLabel={t("del.confirmText")}
-            autoCapitalize="characters"
-            autoCorrect={false}
+        ) : null}
+        <View style={s.row}>
+          <Button
+            kind="ghost"
+            title={t("common.cancel")}
+            onPress={() => setSheetOpen(false)}
+            style={s.half}
           />
-          <AppText variant="muted">{t("del.appleNote")}</AppText>
-          {error ? (
-            <AppText variant="muted" style={s.error}>
-              {t(error)}
-            </AppText>
-          ) : null}
-          <View style={s.row}>
-            <Button
-              kind="ghost"
-              title={t("common.cancel")}
-              onPress={() => setSheetOpen(false)}
-              style={s.half}
-            />
-            <Button
-              kind="danger"
-              title={t("del.submit")}
-              disabled={!canDelete || busy}
-              onPress={() => void remove()}
-              style={s.half}
-            />
-          </View>
+          <Button
+            kind="danger"
+            title={t("del.submit")}
+            disabled={!canDelete || busy}
+            onPress={() => void remove()}
+            style={s.half}
+          />
         </View>
-      </View>
-      ) : null}
+      </BottomSheet>
     </View>
   );
 }
@@ -185,16 +167,6 @@ const s = StyleSheet.create({
   logout: { alignSelf: "flex-start", width: undefined, paddingHorizontal: 18 },
   cta: { paddingHorizontal: space.screenX, paddingTop: 8 },
   error: { color: colors.flameDeep },
-  overlay: { position: "absolute", inset: 0, justifyContent: "flex-end" },
-  scrim: { position: "absolute", inset: 0, backgroundColor: "rgba(39,32,59,0.42)" },
-  sheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    padding: 20,
-    gap: 12,
-  },
-  grab: { width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line2, alignSelf: "center" },
   row: { flexDirection: "row", gap: 8 },
   half: { flex: 1, width: undefined },
 });

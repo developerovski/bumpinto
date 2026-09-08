@@ -14,50 +14,22 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/store/authStore";
 import { colors } from "../src/theme";
 
-/**
- * ANONİM rotalar — oturum muhafızı bunları ASLA yönlendirmez.
- *
- * `/account/legal/*`: giriş ekranındaki (O2) "Kullanım şartları" / "Gizlilik politikası"
- * bağlantıları buraya gider; mağaza incelemesi bunları hesapsız açabilmeli (Apple 5.1.1).
- * `/account/deleted`: buraya gelindiğinde token ZATEN silinmiştir; muhafız çalışsaydı
- * kullanıcı onayı görmeden giriş ekranına düşerdi (O17).
- * `/j/*`: davet linkiyle gelen misafir (M-7) — hesapsız katılır.
- * `/`: giriş ekranı. TAM eşleşmedir; ön ek olarak değerlendirilseydi her yol anonim olurdu.
- * `/location-consent`, `/mic-consent`: izin ön-ekranları (grup adı `(sheets)` yolda görünmez).
- *
- * `/(sheets)/participant` (bildir/engelle) ve `/(sheets)/prefs` BİLEREK dışarıda: ikisi de
- * `/api/me/*` uçlarına yazar, yani hesap ister.
- *
- * Bu liste muhafızın TEK kaynağıdır; `src/__tests__/anonymousRoutes.test.ts` korur.
- */
 export const ANONYMOUS_ROUTES = [
   "/", // giriş ekranının KENDİSİ — ön ek olarak yazılamaz, her yola uyardı
   "/account/legal/",
   "/account/deleted",
   "/j/",
+  "/s/",
   // İzin ön-ekranları hesap yüzeyi DEĞİL, yetenek sorusudur: davet linkiyle gelen misafir
   // (M-7) hesapsız katılır ama konumunu vermesi, sesli sohbete girmesi gerekir.
   "/location-consent",
   "/mic-consent",
+  "/location-mode",
 ] as const;
 
 export const isAnonymousRoute = (path: string): boolean =>
   ANONYMOUS_ROUTES.some((route) => (route === "/" ? path === "/" : path.startsWith(route)));
 
-/**
- * Kök yerleşim — tek stack (alt sekme yok).
- * Alt sayfalar `app/(sheets)` grubunda modal olarak sunulur (M-7'den itibaren doldurulur).
- * i18n fontlardan ÖNCE içe aktarılır: ilk kare çizilirken çeviriler hazır olsun.
- */
-/**
- * Oturum muhafızı. Hesap ekranları (Hesap ve veriler, açık rıza, hesabı sil) oturum İSTER:
- * derin linkle ya da geri yığınından anonim erişilebiliyorlardı ve "Hesabı sil" satırı
- * girişsiz görünüyordu (2026-09-08 emülatörde görüldü).
- *
- * `restore()` KÖKTE çağrılır, giriş ekranında değil: derin linkle doğrudan `/account`'a
- * gelindiğinde giriş ekranı hiç kurulmaz, oturum durumu `unknown`ta kalır ve muhafız
- * hiç çalışmazdı.
- */
 function AuthGuard() {
   const status = useAuthStore((s) => s.status);
   const restore = useAuthStore((s) => s.restore);
@@ -93,7 +65,13 @@ export default function RootLayout() {
         <Stack
           screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}
         >
-          <Stack.Screen name="(sheets)" options={{ presentation: "modal" }} />
+          {/* Alt sayfalar AŞAĞIDAN YUKARI açılır. Android'de `presentation: "modal"` tek
+              başına yatay/soluklaşan varsayılan geçişi bırakıyor — "alt sayfa" hissi ancak
+              hareket yönüyle kuruluyor, bu yüzden animasyon AÇIKÇA verilir. */}
+          <Stack.Screen
+            name="(sheets)"
+            options={{ presentation: "modal", animation: "slide_from_bottom" }}
+          />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

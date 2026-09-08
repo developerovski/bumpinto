@@ -9,16 +9,6 @@ import { REASON_ICON_COLOR, Reason } from "../../src/components/molecules";
 import { requestLocationWhenInUse } from "../../src/lib/permissions";
 import { space } from "../../src/theme";
 
-/**
- * O3 — konum ÖN-BİLGİLENDİRMESİ (Play "prominent disclosure", Apple 5.1.1).
- *
- * Bu ekran sistem diyaloğunu AÇILIŞTA İSTEMEZ: kullanıcı neden sorulduğunu okumadan
- * diyalogla karşılaşırsa hem mağaza reddi hem kalıcı ret riski doğar. Sistem izni yalnız
- * "Devam et"e basılınca istenir; "Adres yazacağım" hiç istemez.
- *
- * Sonuç çağıran ekrana `locationPermission` parametresiyle döner
- * (`granted` | `denied` | `blocked` | `manual`) — M-7 "Neredesin?" alanı bunu okur.
- */
 export default function LocationConsentSheet() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

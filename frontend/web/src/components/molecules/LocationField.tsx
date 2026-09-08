@@ -1,5 +1,6 @@
 /* Kaynak: ui.css .field(gap:15) / .label / .a-dot / .a-dv-text(→ c-dv-text) / .loc(.on) / .err — JoinFormFields'ten çıkarıldı */
 import { MapPin } from "@phosphor-icons/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, ErrorText, TextInput } from "../atoms";
 
@@ -14,6 +15,20 @@ function LocDot({ on }: { on?: boolean }) {
     >
       <i className="block h-[0.5625rem] w-[0.5625rem] rounded-full bg-grass" />
     </span>
+  );
+}
+
+/** Sessiz satırın metin eylemi — DS'de kendi düğme türü yok; `granted` dalındaki
+    "…ya da adres yaz" bağlantısıyla AYNI ölçü ve renk. */
+function QuietAction({ onClick, children }: { onClick: () => void; children: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[0.8125rem] font-semibold text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -32,13 +47,57 @@ export default function LocationField(props: {
   /** Verilirse "haritadan seç" düğmesi çıkar. Harita AÇILINCA mount edilir — faturalanan
       birim `new google.maps.Map()` ve 390'da katılım ekranı bugün hiç harita mount etmiyor. */
   onPickOnMap?: () => void;
-  /** Verilirse `otherLabel` bağlantısının YERİNE basılır (artboard W2b 3872/3941). Çapalı
-      buluşmada host'un konumu zorunlu değildir; oraya "…ya da adres yaz" koymak alanı
-      zorunluymuş gibi gösterirdi. */
+  /** Alanın altına düşen açıklama (artboard W2b 3872/3941). Değiştirme bağlantısının YERİNE
+      GEÇMEZ: konumu zorunlu olmayan bir alanda bile kullanıcı alınmış konumu düzeltebilmeli
+      (2026-09-09 hata: çapalı modda otomatik konum kilitleniyordu). */
   hint?: string;
+  /** Konum bu ekranda kararı ETKİLEMİYOR (çapalı oturum: merkez çapadan gelir, DeckFlow adalet
+      sıralamasını atlar) — yeşil "Tamam" hapı orada "buradan aranacak" gibi okunuyordu. Sessiz
+      varyant tek satıra iner ve değiştir/kaldır eylemlerini yanına alır. */
+  quiet?: boolean;
+  /** Verilirse sessiz satırda "Kaldır" çıkar: konum hiç gönderilmez. */
+  onRemove?: () => void;
 }) {
   const { t } = useTranslation();
   const inputId = props.inputId ?? "location-address";
+  /** Sessiz varyantta seçiciyi yalnız kullanıcı isteyince açarız; konum gelince kendiliğinden
+      kapanır (`granted` dalı `expanded`'ı okumaz) — açık kalsaydı yeşil hap geri gelirdi. */
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = !!props.quiet && (props.state === "granted" || !expanded);
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-[0.875rem] font-semibold">{props.title}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-ink2">
+          {props.state === "granted" ? (
+            <>
+              <span className="flex items-center gap-2 text-ink">
+                <LocDot on={false} />
+                {props.label ? t("join.locAutoHint", { label: props.label }) : t("join.locAutoHintNoLabel")}
+              </span>
+              <QuietAction
+                onClick={() => {
+                  setExpanded(true);
+                  props.onOtherAddress();
+                }}
+              >
+                {t("join.locChange")}
+              </QuietAction>
+              {props.onRemove && <QuietAction onClick={props.onRemove}>{t("join.locRemove")}</QuietAction>}
+            </>
+          ) : (
+            <>
+              <span>{t("join.locNone")}</span>
+              <QuietAction onClick={() => setExpanded(true)}>{t("join.locAdd")}</QuietAction>
+            </>
+          )}
+        </div>
+        {props.hint && <span className="text-[0.75rem] text-ink2">{props.hint}</span>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <span className="text-[0.875rem] font-semibold">{props.title}</span>
@@ -57,17 +116,13 @@ export default function LocationField(props: {
             </div>
             <Badge tone="grass">{t("join.locOk")}</Badge>
           </div>
-          {props.hint ? (
-            <span className="text-[0.75rem] text-ink2">{props.hint}</span>
-          ) : (
-            <button
-              type="button"
-              onClick={props.onOtherAddress}
-              className="self-start text-[0.75rem] font-normal text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
-            >
-              {props.otherLabel ?? t("join.locOther")}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={props.onOtherAddress}
+            className="self-start text-[0.75rem] font-normal text-flame-deep underline-offset-2 hover:underline focus-visible:underline"
+          >
+            {props.otherLabel ?? t("join.locOther")}
+          </button>
         </>
       )}
 
@@ -125,6 +180,9 @@ export default function LocationField(props: {
           )}
         </>
       )}
+      {/* Alanın SONUNDA, üç durumda da: "zorunlu değil" cümlesi konum kaldırıldıktan sonra da
+          geçerli — yalnız `granted` dalında basmak onu tam gerektiği anda siliyordu. */}
+      {props.hint && <span className="text-[0.75rem] text-ink2">{props.hint}</span>}
     </div>
   );
 }

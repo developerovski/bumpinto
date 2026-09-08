@@ -11,16 +11,7 @@ import MapMark from "../src/components/molecules/MapMark";
 import { useAuthStore } from "../src/store/authStore";
 import { colors, space } from "../src/theme";
 
-/**
- * Artboard O2 · Giriş — çıkış yapılmış kök.
- *
- * Apple ile Giriş (R-M1) Google ile EŞİT AĞIRLIKTA sunulur: aynı `kind`, aynı yükseklik,
- * hemen altında — Apple 4.8 "eşdeğer görünürlük" şartı. Düğme yalnız Apple'ın kendi
- * `isAvailableAsync()` cevabı olumluysa çizilir (Android'de ve eski iOS'ta hiç görünmez).
- *
- * Yasal linkler uygulama İÇİ okuyuculara gider (`/account/legal/*`): tarayıcıya atmak
- * kullanıcıyı giriş öncesi uygulamadan çıkarırdı. Bu rotalar oturum gerektirmez.
- */
+
 export default function Landing() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

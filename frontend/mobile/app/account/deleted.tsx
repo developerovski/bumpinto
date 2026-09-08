@@ -7,10 +7,6 @@ import { AppText, Button, HandNote } from "../../src/components/atoms";
 import MapMark from "../../src/components/molecules/MapMark";
 import { colors, space } from "../../src/theme";
 
-/**
- * O17 — son ekran. Oturum MUHAFIZININ DIŞINDADIR: buraya gelindiğinde token zaten silinmiştir,
- * muhafız çalışsaydı kullanıcı onay görmeden giriş ekranına düşerdi.
- */
 export default function AccountDeletedScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

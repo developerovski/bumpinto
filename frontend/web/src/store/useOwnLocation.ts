@@ -69,6 +69,15 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     setCoords(null);
   }
 
+  /** Konumu tamamen geri al — `otherAddress` yazılan adresi bırakıyor, "kaldır" bırakmamalı:
+      çapalı oturumda konumsuz devam etmek geçerli bir seçim (CreateSessionRequest.isOriginPresent). */
+  function clear() {
+    setAddressState("");
+    addressRef.current = "";
+    setCoords(null);
+    setState("idle");
+  }
+
   /** Haritadan seçilen nokta: adres alanı temizlenir, konum "granted" sayılır — kullanıcı
       açıkça bir yer işaretledi, tarayıcı izni beklemenin anlamı yok. */
   function setPicked(picked: Coords) {
@@ -86,5 +95,5 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     return c;
   }
 
-  return { state, coords, address, busy, setAddress, detect, otherAddress, setPicked, resolve };
+  return { state, coords, address, busy, setAddress, detect, otherAddress, clear, setPicked, resolve };
 }

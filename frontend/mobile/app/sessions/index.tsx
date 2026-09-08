@@ -21,19 +21,6 @@ import { useAuthStore } from "../../src/store/authStore";
 import { slugFromInvite, useSessionStore } from "../../src/store/sessionStore";
 import { colors, space } from "../../src/theme";
 
-/**
- * Artboard P1 (dolu liste) · P2 (boş durum).
- *
- * Ekran YALNIZ kompozisyon + store bağlama yapar; kart/satır çizimi moleküllerde.
- */
-
-/**
- * `/new`, `/j/[slug]` ve `/s/[slug]` rotalarını **M-7** açar (plan41 T1/T3/T4). `typedRoutes`
- * henüz var olmayan yolu derleme hatası yapıyor; hedefleri uydurma ekranlarla doldurmak yerine
- * ileri referans TEK yerde işaretlenir. **M-7 o üç dosyayı ekleyince bu yardımcı SİLİNİR** ve
- * çağrılar doğrudan tiplenir (K-M10).
- */
-const futureRoute = (path: string) => path as Parameters<typeof router.push>[0];
 export default function SessionsScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -100,7 +87,7 @@ export default function SessionsScreen() {
                 key={session.slug ?? i}
                 session={session}
                 featured={i === 0}
-                onOpen={(slug) => router.push(futureRoute(`/s/${slug}`))}
+                onOpen={(slug) => router.push(`/s/${slug}`)}
               />
             ))}
           </View>
@@ -121,7 +108,7 @@ export default function SessionsScreen() {
                 <PastSessionRow
                   session={session}
                   index={i}
-                  onOpen={(slug) => router.push(futureRoute(`/s/${slug}`))}
+                  onOpen={(slug) => router.push(`/s/${slug}`)}
                 />
               </View>
             ))}
@@ -150,7 +137,7 @@ export default function SessionsScreen() {
         <Button
           title={t("sessions.new")}
           icon={<PlusIcon size={18} color="#fff" weight="bold" />}
-          onPress={() => router.push(futureRoute("/new"))}
+          onPress={() => router.push("/sessions/new")}
         />
       </View>
     </View>
@@ -190,7 +177,7 @@ function EmptyState() {
           kind="white"
           title={t("join.submit")}
           disabled={!slug}
-          onPress={() => slug && router.push(futureRoute(`/j/${slug}`))}
+          onPress={() => slug && router.push(`/j/${slug}`)}
           style={s.inviteCta}
         />
       </View>

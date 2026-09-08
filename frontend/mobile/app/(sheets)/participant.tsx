@@ -1,5 +1,5 @@
 import type { Schemas } from "@bumpinto/shared";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CheckIcon, FlagIcon, ProhibitIcon, SpeakerSlashIcon } from "phosphor-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,16 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText, Avatar, Button, Card } from "../../src/components/atoms";
 import { useSocialStore } from "../../src/store/socialStore";
 import { colors, space } from "../../src/theme";
+import { goBackOr } from "../../src/lib/nav";
 
-/**
- * O18 (menü) + O19 (sebep) — bildir / engelle / sustur (R-M7, Apple 1.2 UGC).
- *
- * Sebep listesi sunucu enum'una (`HARASSMENT|SPAM|IMPERSONATION|OTHER`) YENİDEN EŞLENDİ,
- * yeni üye uydurulmadı — web `PersonSheet` ile birebir aynı eşleme: IMPERSONATION =
- * "Rahatsız edici ad" (ad üzerinden kimlik ihlali), HARASSMENT = "Sesli sohbette taciz".
- *
- * "Sustur" YERELDİR: sunucuya gitmez, yalnız bu cihazda susturur (M-6 `voiceStore`'a bağlanır).
- */
 const REASONS = ["IMPERSONATION", "HARASSMENT", "SPAM", "OTHER"] as const satisfies readonly Schemas["ReportRequest"]["reason"][];
 
 export default function ParticipantSheet() {
@@ -39,7 +31,9 @@ export default function ParticipantSheet() {
 
   const person = name ?? "?";
 
-  const finish = () => router.back();
+  /* Geçmiş yoksa (derin link / süreç yeniden kurulumu) ait olduğu OTURUMA dönülür — slug
+     zaten parametrede. Slug da yoksa oturum listesi: hiçbir dalda ekranda kilitli kalınmaz. */
+  const finish = () => goBackOr(slug ? `/s/${slug}` : "/sessions");
 
   return (
     <ScrollView

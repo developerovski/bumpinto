@@ -35,6 +35,12 @@ export default function TwoZone(props: {
       Yalnız GÖRSEL sırayı değiştirir (`order-*`, ≥1024'te `lg:order-none` ile sıfırlanır) —
       DOM/okuma sırası AYNI kalır, bileşen tek yerde kalır (kopyalanmaz). */
   mobileFirst?: "right";
+  /** ≥1024'te sağ bölge kaydırmayla birlikte yükselir ve üst çubuğun altına gelince ORADA durur;
+      sol bölge kaymaya devam eder (Yeni oturum: "Davetlinin gördüğü" hep ekranda kalsın).
+      Ofset = üst çubuk (`lg:h-16` = 64px) + sayfa üst dolgusu (34px): kart sıçramadan,
+      başlangıçtaki boşluğun aynısıyla yapışır. `fill`/`centerY` ile birlikte YOK SAYILIR —
+      o yerleşimlerde bölge zaten kalan yüksekliği paylaşıyor ya da dikeyde ortalanıyor. */
+  stickyRight?: boolean;
   /** Artboard 390'da iki bölgenin çocukları BİRBİRİNE GEÇER (ör. Lobi: davet kartı → orta nokta
       → roster). `mobileFirst` bölge bütününü taşır, bu ise bölge kutularını `display:contents`
       yaparak çocukları tek mobil sütunun kardeşi hâline getirir; sıra artık çocuk başına
@@ -48,6 +54,14 @@ export default function TwoZone(props: {
   const fillZone = props.fill ? "fit:min-h-0 fit:overflow-y-auto" : "";
   // `display:contents` yalnız mobilde: kutunun kendi `gap`i düşer, dış kabın `gap-4`ü geçerli olur.
   const flatten = props.interleave ? "max-lg:contents" : "";
+  // `self-start` prop'u kendi kendine yeter kılar: yapışma, kapsayıcının hizalamasına bağlı
+  // kalmaz. `max-h` + `overflow-y` bir GÜVENCEDİR, davranış değil — sağ bölge ekrana sığdığı
+  // sürece hiç devreye girmez; sığmazsa (dar pencerede açılan harita seçici) alt kısmı
+  // erişilemez bırakmak yerine bölge kendi içinde kayar.
+  const stickyRight =
+    props.stickyRight && !props.fill && !props.centerY
+      ? "lg:sticky lg:top-[6.125rem] lg:self-start lg:max-h-[calc(100dvh-7.625rem)] lg:overflow-y-auto"
+      : "";
   return (
     <div
       className={[
@@ -69,7 +83,7 @@ export default function TwoZone(props: {
         data-testid="zone-right"
         className={
           `${props.rightLgOnly ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-4 ${flatten} ${rightOrder} ` +
-          `${zoneGaps[props.rightGap ?? "default"]} ${fillZone}`
+          `${zoneGaps[props.rightGap ?? "default"]} ${fillZone} ${stickyRight}`
         }
       >
         {props.right}

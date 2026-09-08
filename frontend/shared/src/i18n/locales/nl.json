@@ -51,7 +51,12 @@
     "locOk": "Oké",
     "locOther": "Typ een andere stad of adres",
     "locRetry": "Probeer mijn locatie opnieuw",
-    "hostAway": "{{host}} is er nu niet — je kunt toch meedoen, je locatie wacht op hen."
+    "hostAway": "{{host}} is er nu niet — je kunt toch meedoen, je locatie wacht op hen.",
+    "hostMessage": "Bericht de host",
+    "locChange": "Wijzigen",
+    "locRemove": "Verwijderen",
+    "locNone": "Geen locatie toegevoegd",
+    "locAdd": "Toevoegen"
   },
   "waiting": {
     "joined": "Je doet mee!",
@@ -404,7 +409,7 @@
     "anchorPlaceholder": "Stad of adres",
     "anchorHint": "Locaties worden binnen 2 km van deze plek gezocht.",
     "anchorSet": "Zoeken rond {{label}}",
-    "ownOptional": "Als je wilt; niet verplicht bij een vaste plek",
+    "ownOptional": "Alleen om je reistijd te tonen; niet verplicht.",
     "where": "Waar ben je?",
     "ownHint": "je huidige locatie",
     "ownMissing": "Nog geen locatie",
@@ -447,7 +452,8 @@
     "privacy": "Je locatie wordt afgerond op ~1 km getoond; niemand krijgt je exacte adres.",
     "anchoredBadge": "ontmoetingsplek staat vast",
     "anchoredNote": "Genodigden kunnen meedoen zonder locatie; reistijden worden vanaf hun eigen locatie berekend.",
-    "anchoredSolo": "Met een vaste plek kun je ook alleen zoeken."
+    "anchoredSolo": "Met een vaste plek kun je ook alleen zoeken.",
+    "changeLocation": "Mijn locatie wijzigen"
   },
   "venues": {
     "meta": "{{count}} plekken · ≤ {{km}} km van het middelpunt",
