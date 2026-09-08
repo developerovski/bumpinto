@@ -2,25 +2,7 @@ import type { ExpoConfig } from "expo/config";
 
 import { version } from "./package.json";
 
-/**
- * BumpInto mobil — Expo yapılandırması (CNG).
- *
- * Sürüm TEK kaynaktan (`package.json`) okunur; build numarasını EAS uzaktan artırır
- * (`appVersionSource: "remote"`, I-3/plan44).
- *
- * Purpose string'ler (M-5) mağaza formunun ve cihazdaki izin diyaloğunun TEK kaynağıdır:
- * O4/O7 artboard metniyle birebir aynıdır, `Info.plist` ve eklenti seçeneklerine aynı sabitten
- * verilir. Değiştirilirse `src/lib/__tests__/appConfig.test.ts` kırılır.
- *
- * HARİTA: mobil Google Maps KULLANMAZ (açık hibrit spec kararı; backend varsayılanı
- * `MAP_ENGINE=maplibre`, web W-12 ile geçti). Bu yüzden `ios.config.googleMapsApiKey` ve
- * `android.config.googleMaps` YOK — anahtar tanımlamak Google Maps SDK'sını pakete sokar ve
- * `PrivacyInfo.xcprivacy` / Play Data safety beyanlarını yalanlar. Harita seçici M-7'de
- * `@maplibre/maplibre-react-native` ile gelir (K-M2).
- *
- * `android.edgeToEdgeEnabled` SDK 57'de KALDIRILDI: Android 16 edge-to-edge'i zorunlu kılıyor,
- * ayar verilirse prebuild uyarı basar — ekranlar güvenli alanı `safe-area-context` ile bırakır.
- */
+
 const LOCATION_PURPOSE =
   "Herkese adil orta noktayı hesaplamak için konumunu kullanırız. " +
   "Yalnız uygulama açıkken; arkadaşlarına ~1 km yuvarlanmış gösterilir.";
@@ -30,16 +12,7 @@ const MIC_PURPOSE =
 
 const WEB_BASE = process.env.EXPO_PUBLIC_WEB_BASE ?? "https://bumpinto.app";
 
-/**
- * iOS Google girişi URL şeması — iOS OAuth client ID'sinin TERSİ
- * (`1234-abc.apps.googleusercontent.com` → `com.googleusercontent.apps.1234-abc`).
- *
- * Eklentiye seçenek VERİLMEZSE Firebase yoluna düşer (`GoogleService-Info.plist` arar) ve şemayı
- * hiç yazmaz: giriş tarayıcıdan uygulamaya dönemez, üstelik prebuild hata da vermez.
- *
- * Yayın derlemesinde eksikse AÇIKÇA patlar — yer tutucuyla imzalanmış bir sürüm mağazaya
- * çıkarsa Google girişi sahada sessizce ölür.
- */
+
 function googleIosUrlScheme(): string {
   const scheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
   if (scheme) return scheme;
@@ -64,18 +37,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: "app.bumpinto.mobile",
     supportsTablet: false,
-    // Universal Links: bumpinto.app/j/<slug> davetleri uygulamada açılır.
-    //
-    // ÜCRETSİZ Apple hesabı bunu DESTEKLEMEZ: Xcode "Personal development teams … do not
-    // support the Associated Domains capability" der, profil üretilmez. Expo ise bu
-    // entitlement varsa SİMÜLATÖR derlemesinde bile imza ister
-    // (`@expo/cli` simulatorCodeSigning.js) — yani ücretli üyelik gelene dek iOS hiç derlenmez.
-    //
-    // `BUMPINTO_DEV_NO_APPLINKS=1` YALNIZ yerel geliştirme için entitlement'ı düşürür;
-    // `bumpinto://` şema derin linki çalışmaya devam eder, kaybolan yalnız https açılışıdır.
-    // Varsayılan AÇIK: bayrak verilmedikçe entitlement HER ZAMAN üretilir, yayın derlemesi
-    // kazara Universal Links'siz çıkmaz (I-3/plan44 submit kapısı bunu ayrıca doğrular).
-    ...(process.env.BUMPINTO_DEV_NO_APPLINKS
+       ...(process.env.BUMPINTO_DEV_NO_APPLINKS
       ? {}
       : { associatedDomains: ["applinks:bumpinto.app", "applinks:www.bumpinto.app"] }),
     infoPlist: {
@@ -88,19 +50,7 @@ const config: ExpoConfig = {
 
   android: {
     package: "app.bumpinto.mobile",
-    // `edgeToEdgeEnabled` SDK 57'de KALDIRILDI: Android 16 edge-to-edge'i zorunlu kılıyor,
-    // ayar verilirse prebuild uyarı basar. Kenardan kenara düzen artık varsayılan davranış;
-    // ekranlar `react-native-safe-area-context` ile güvenli alanı kendisi bırakır (T3/T4).
-    /* KAPALI — açık bırakmak Android geri tuşunu UYGULAMA GENELİNDE öldürüyor (2026-09-08
-       emülatörde ölçüldü: hem `KEYCODE_BACK` hem gerçek kenar hareketi, her ekrandan
-       uygulamayı kapatıyordu; yığın hiç poplanmıyordu).
-       Sebep: bayrak manifeste `android:enableOnBackInvokedCallback="true"` yazıyor, Android da
-       o zaman eski `Activity.onBackPressed()` yolunu KAPATIYOR ve uygulamanın
-       `OnBackInvokedCallback` kaydetmesini bekliyor. Bu sürümlerde kaydeden YOK — ne
-       `react-native-screens` 4.26 ne de RN 0.86 ReactAndroid (ikisinde de `OnBackInvoked`
-       geçmiyor) — dolayısıyla olay JS'e hiç ulaşmıyor ve sistem varsayılanı activity'yi
-       bitiriyor. Predictive back ancak kütüphaneler geri çağrıyı kaydedince açılabilir. */
-    predictiveBackGestureEnabled: false,
+        predictiveBackGestureEnabled: false,
     // KAPALI LİSTE: Play "Data safety" formu tam olarak bu iki izinle doldurulur.
     permissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.RECORD_AUDIO"],
     // Modüllerin manifeste devrettiği fazlalıklar; arka plan konumu istenirse Play reddeder.
