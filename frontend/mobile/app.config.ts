@@ -25,8 +25,20 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: "app.bumpinto.mobile",
     supportsTablet: false,
-    // Universal Links: bumpinto.app/j/<slug> davetleri uygulamada açılır
-    associatedDomains: ["applinks:bumpinto.app"],
+    // Universal Links: bumpinto.app/j/<slug> davetleri uygulamada açılır.
+    //
+    // ÜCRETSİZ Apple hesabı bunu DESTEKLEMEZ: Xcode "Personal development teams … do not
+    // support the Associated Domains capability" der, profil üretilmez. Expo ise bu
+    // entitlement varsa SİMÜLATÖR derlemesinde bile imza ister
+    // (`@expo/cli` simulatorCodeSigning.js) — yani ücretli üyelik gelene dek iOS hiç derlenmez.
+    //
+    // `BUMPINTO_DEV_NO_APPLINKS=1` YALNIZ yerel geliştirme için entitlement'ı düşürür;
+    // `bumpinto://` şema derin linki çalışmaya devam eder, kaybolan yalnız https açılışıdır.
+    // Varsayılan AÇIK: bayrak verilmedikçe entitlement HER ZAMAN üretilir, yayın derlemesi
+    // kazara Universal Links'siz çıkmaz (I-3/plan44 submit kapısı bunu ayrıca doğrular).
+    ...(process.env.BUMPINTO_DEV_NO_APPLINKS
+      ? {}
+      : { associatedDomains: ["applinks:bumpinto.app"] }),
     config: { googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_KEY },
   },
 

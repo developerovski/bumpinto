@@ -5,6 +5,7 @@
   "scripts": {
     "codegen": "source ./init-nvm.sh && curl -sf http://localhost:8060/v3/api-docs -o frontend/shared/openapi.json && pnpm --filter @bumpinto/shared generate",
     "dev:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web dev",
+    "dev:mobile": "source ./init-nvm.sh && node scripts/dev-mobile.mjs",
     "build:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build",
     "build:web:preprod": "source ./init-nvm.sh && pnpm --filter @bumpinto/web build --mode preprod",
     "test:web": "source ./init-nvm.sh && pnpm --filter @bumpinto/web test --run",

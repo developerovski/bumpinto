@@ -1,10 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react-native";
 
-import { api } from "../../src/lib/api";
-import SessionsScreen from "./index";
+import { api } from "../lib/api";
+import SessionsScreen from "../../app/sessions/index";
 
-/* NOT: `jest.mock` babel-plugin-jest-hoist ile import'ların ÜSTÜNE taşınır. */
-jest.mock("../../src/lib/api", () => ({
+/* NOT: `jest.mock` babel-plugin-jest-hoist ile import'ların ÜSTÜNE taşınır.
+
+   Bu dosya neden `app/` altında DEĞİL: expo-router `app/` kökünü `require.context` ile tarar ve
+   regex'i yalnız `+api`/`+html`/`+middleware` dosyalarını eler — `.test.tsx` de ROTA sayılır,
+   `@testing-library/react-native` bundle'a girer ve Node `console` modülünü isteyip uygulamayı
+   çökertir (2026-09-08 emülatörde görüldü). Ekran testleri bu yüzden `src/__tests__/`te yaşar. */
+jest.mock("../lib/api", () => ({
   api: { listSessions: jest.fn() },
   webBase: "https://bumpinto.app",
 }));
