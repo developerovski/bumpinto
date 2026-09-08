@@ -41,3 +41,31 @@ test("açık oturum kartında hazır sayısı ve duruma uygun CTA", async () => 
   expect(screen.getByText("2/3 bitirdi")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Desteye git" })).toBeTruthy();
 });
+
+/* Artboard P2 çerçevesi: `.top` / `.scroll` / `.cta` KARDEŞTİR — yalnız ortadaki kayar.
+   Üst çubuk ya da birincil eylem kaydırmanın içine girerse liste uzadıkça ekranın dışına
+   düşüyor; "Yeni buluşma" böyle kaybolmuştu (2026-09-08 cihazda görüldü, testler görmüyordu). */
+const insideScrollView = (label: string) => {
+  let node = screen.getByLabelText(label).parent;
+  while (node) {
+    if (String(node.type).includes("ScrollView")) return true;
+    node = node.parent;
+  }
+  return false;
+};
+
+test("üst çubuk ve birincil eylem ScrollView'ın DIŞINDA, sabit durur", async () => {
+  (api.listSessions as jest.Mock).mockResolvedValue({ open: [], past: [] });
+  await render(<SessionsScreen />);
+  await waitFor(() => expect(screen.getByText("Henüz buluşma yok")).toBeTruthy());
+
+  expect(insideScrollView("Yeni buluşma kur")).toBe(false);
+  expect(insideScrollView("Profil")).toBe(false);
+});
+
+test("boş durumda 'Yeni buluşma' TEK kez çizilir (sabit çubuk + kart tekrarı yok)", async () => {
+  (api.listSessions as jest.Mock).mockResolvedValue({ open: [], past: [] });
+  await render(<SessionsScreen />);
+  await waitFor(() => expect(screen.getByText("Henüz buluşma yok")).toBeTruthy());
+  expect(screen.getAllByLabelText("Yeni buluşma kur")).toHaveLength(1);
+});

@@ -12,3 +12,4 @@ export { default as Segmented, type SegmentedOption } from "./Segmented";
 export { default as Skeleton } from "./Skeleton";
 export { default as Sticker } from "./Sticker";
 export { default as Toggle } from "./Toggle";
+export { default as Wordmark } from "./Wordmark";

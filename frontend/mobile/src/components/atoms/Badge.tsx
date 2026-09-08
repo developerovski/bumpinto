@@ -10,11 +10,15 @@ type Tone = "flame" | "grass" | "amber" | "neutral";
 export default function Badge(p: {
   children: ReactNode;
   tone?: Tone;
+  /** Metnin SOLUNDA duran glif. Metnin İÇİNE konursa satır ekseni kayar ve ikon
+      yazıya göre yukarıda/aşağıda durur — bu yüzden ayrı bir kardeş olarak çizilir. */
+  icon?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
   const tone = p.tone ?? "neutral";
   return (
     <View style={[s.base, { backgroundColor: BG[tone] }, p.style]}>
+      {p.icon}
       <AppText variant="num" style={{ fontSize: 12, color: FG[tone] }}>
         {p.children}
       </AppText>
@@ -41,5 +45,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
 });

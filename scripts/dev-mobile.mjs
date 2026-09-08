@@ -17,6 +17,24 @@ import { createInterface } from "node:readline/promises";
 const MOBILE = "frontend/mobile";
 const PLATFORMS = { i: "ios", ios: "ios", a: "android", android: "android" };
 
+/**
+ * Projenin ihtiyacına göre AVD tanımı.
+ *
+ * `google_apis_playstore`: Google girişi Play Services İSTER; sade `default` imajda
+ * `GoogleSignin` çalışmaz. API 35, `targetSdkVersion: 36` uygulamayı sorunsuz koşturur —
+ * 36 imajı Apple Silicon'da henüz her kanalda yok, 35 hem kurulu hem yeterli.
+ * `pixel_8` (1080×2400) mağaza telefon ekran görüntüsü ölçüsüne (1080×2340) en yakın profil.
+ */
+const AVD = {
+  name: "bumpinto-api35",
+  api: 35,
+  tag: "google_apis_playstore",
+  abi: process.arch === "arm64" ? "arm64-v8a" : "x86_64",
+  device: "pixel_8",
+};
+const avdPackage = () => `system-images;android-${AVD.api};${AVD.tag};${AVD.abi}`;
+
+
 const platform = process.argv[2]
   ? PLATFORMS[process.argv[2].trim().toLowerCase()]
   : await askPlatform();
@@ -43,14 +61,19 @@ if (platform === "android" && !sdkRoot && !existsSync(`${MOBILE}/android/local.p
   process.exit(1);
 }
 
-const devices = platform === "ios" ? listIosDevices() : listAndroidDevices();
+let devices = platform === "ios" ? listIosDevices() : listAndroidDevices();
 if (devices.length === 0) {
-  console.error(
-    platform === "ios"
-      ? "dev:mobile: kullanılabilir iPhone yok (Xcode > Settings > Platforms'tan simülatör kur)."
-      : "dev:mobile: kullanılabilir Android cihaz/emülatör yok (Android Studio > Device Manager).",
-  );
-  process.exit(1);
+  if (platform === "ios") {
+    console.error("dev:mobile: kullanılabilir iPhone yok (Xcode > Settings > Platforms'tan simülatör kur).");
+    process.exit(1);
+  }
+  // Android'de çıkmak yerine projenin ihtiyacına uygun AVD kurulur (aşağıdaki sabitler).
+  await createAndroidAvd();
+  devices = listAndroidDevices();
+  if (devices.length === 0) {
+    console.error("dev:mobile: AVD oluşturuldu ama listelenemedi — `avdmanager list avd` ile bak.");
+    process.exit(1);
+  }
 }
 
 const device = process.argv[3] ? matchDevice(devices, process.argv[3]) : await askDevice(devices);
@@ -123,15 +146,99 @@ function listAndroidDevices() {
       booted: true,
     }));
 
+  /* Açık emülatörün AVD ADI adb'den sorulur. Koşan satırın etiketi MODEL adını taşır
+     (`sdk_gphone64_arm64`) — AVD adıyla karşılaştırmak hiç eşleşmez ve aynı emülatör listede
+     iki kez çıkardı. */
+  const bootedAvds = new Set(
+    running
+      .filter((r) => r.value.startsWith("emulator-"))
+      .map((r) => sh(adb, ["-s", r.value, "emu", "avd", "name"], true).split("\n")[0].trim())
+      .filter(Boolean),
+  );
+
   const avds = sh(`${sdkRoot}/emulator/emulator`, ["-list-avds"], true)
     .split("\n")
     .map((s) => s.trim())
     .filter((s) => s && !s.includes(" "))
-    // Açık emülatörün AVD adı listede yine görünür; iki kez sunmamak için koşanlar varsa elenir.
-    .filter((name) => !running.some((r) => r.label.includes(name)))
+    .filter((name) => !bootedAvds.has(name))
     .map((name) => ({ label: `${name} — emülatör (kapalı, açılacak)`, value: name, booted: false }));
 
   return [...running, ...avds];
+}
+
+// ——— AVD kurulumu ———
+
+async function createAndroidAvd() {
+  const tools = `${sdkRoot}/cmdline-tools/latest/bin`;
+  if (!existsSync(`${tools}/avdmanager`)) {
+    console.error("dev:mobile: `cmdline-tools` kurulu değil — Android Studio > SDK Manager >");
+    console.error("  SDK Tools > 'Android SDK Command-line Tools (latest)' kutusunu işaretle.");
+    process.exit(1);
+  }
+
+  const imageDir = `${sdkRoot}/system-images/android-${AVD.api}/${AVD.tag}/${AVD.abi}`;
+  if (!existsSync(imageDir)) {
+    // ~1.5 GB indirme: sessizce başlatılmaz, izin istenir.
+    console.log(`dev:mobile: sistem imajı yok (${avdPackage()}) — indirilmesi gerekiyor (~1.5 GB).`);
+    if (!(await confirm("İndirilsin mi?"))) process.exit(1);
+    run(`${tools}/sdkmanager`, [avdPackage()]);
+  }
+
+  console.log(`dev:mobile: emülatör oluşturuluyor — ${AVD.name} (${AVD.device}, API ${AVD.api})`);
+  // `--force`: aynı adda yarım kalmış tanım varsa üstüne yazar, kullanıcıyı komut satırında bırakmaz.
+  run(`${tools}/avdmanager`, [
+    "--silent", "create", "avd",
+    "--name", AVD.name,
+    "--package", avdPackage(),
+    "--device", AVD.device,
+    "--force",
+  ]);
+  tuneAvdConfig();
+  console.log(`dev:mobile: ${AVD.name} hazır.`);
+}
+
+/**
+ * `avdmanager` cihaz profilinden üretirken `hw.keyboard = no` yazar: Mac klavyesi emülatöre
+ * HİÇ yazamaz, yalnız ekran klavyesi çalışır. Oturum adı / adres / "SİL" onayı gibi her metin
+ * girişini elle tıklamak gerekirdi (2026-09-08 sahada görüldü).
+ *
+ * Dosya `key = value` biçiminde düz metindir; yalnız bilinen anahtarlar değiştirilir, tanım
+ * yeniden yazılmaz — kullanıcının Device Manager'da yaptığı diğer ayarlar korunur.
+ */
+function tuneAvdConfig() {
+  const ini = `${process.env.HOME}/.android/avd/${AVD.name}.avd/config.ini`;
+  if (!existsSync(ini)) return;
+  const want = { "hw.keyboard": "yes" };
+  const next = readFileSync(ini, "utf8")
+    .split("\n")
+    .map((line) => {
+      const key = line.split("=")[0].trim();
+      return key in want ? `${key} = ${want[key]}` : line;
+    })
+    .join("\n");
+  writeFileSync(ini, next);
+}
+
+async function confirm(question) {
+  // Etkileşimsiz kabukta (CI, ajan) soru sorulmaz: büyük indirmeyi kendiliğinden başlatmayız.
+  if (!process.stdin.isTTY) {
+    console.error("dev:mobile: etkileşimsiz kabuk — indirmeyi elle çalıştır:");
+    console.error(`    ${sdkRoot}/cmdline-tools/latest/bin/sdkmanager "${avdPackage()}"`);
+    return false;
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return /^(e|y|evet|yes)?$/i.test((await rl.question(`${question} [E/h]: `)).trim());
+  } catch (err) {
+    return cancelled(err);
+  } finally {
+    rl.close();
+  }
+}
+
+/** Çıktıyı yakalamadan koşar (indirme/oluşturma ilerlemesi görünsün). */
+function run(cmd, args) {
+  execFileSync(cmd, args, { stdio: "inherit" });
 }
 
 // ——— seçim ———

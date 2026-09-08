@@ -32,7 +32,15 @@ const mountAt = async (pathname: string, status: "in" | "out" | "unknown") => {
 beforeEach(() => jest.clearAllMocks());
 
 test("oturum yokken hesap ekranları giriş ekranına atılır", async () => {
-  for (const p of ["/account", "/account/consent", "/account/delete", "/sessions", "/profile"]) {
+  for (const p of [
+    "/account",
+    "/account/consent",
+    "/account/delete",
+    "/sessions",
+    "/profile",
+    "/participant", // bildir/engelle — /api/me/blocks'a yazar
+    "/prefs", // profil tercihleri — /api/me'ye yazar
+  ]) {
     jest.clearAllMocks();
     await mountAt(p, "out");
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
@@ -46,6 +54,8 @@ test("yasal okuyucular, silme onayı ve davet linki ANONİM kalır", async () =>
     "/account/deleted",
     "/j/x7k2m",
     "/",
+    "/location-consent",
+    "/mic-consent",
   ]) {
     jest.clearAllMocks();
     await mountAt(p, "out");

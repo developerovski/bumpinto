@@ -23,6 +23,10 @@ import { colors } from "../src/theme";
  * kullanıcı onayı görmeden giriş ekranına düşerdi (O17).
  * `/j/*`: davet linkiyle gelen misafir (M-7) — hesapsız katılır.
  * `/`: giriş ekranı. TAM eşleşmedir; ön ek olarak değerlendirilseydi her yol anonim olurdu.
+ * `/location-consent`, `/mic-consent`: izin ön-ekranları (grup adı `(sheets)` yolda görünmez).
+ *
+ * `/(sheets)/participant` (bildir/engelle) ve `/(sheets)/prefs` BİLEREK dışarıda: ikisi de
+ * `/api/me/*` uçlarına yazar, yani hesap ister.
  *
  * Bu liste muhafızın TEK kaynağıdır; `src/__tests__/anonymousRoutes.test.ts` korur.
  */
@@ -31,6 +35,10 @@ export const ANONYMOUS_ROUTES = [
   "/account/legal/",
   "/account/deleted",
   "/j/",
+  // İzin ön-ekranları hesap yüzeyi DEĞİL, yetenek sorusudur: davet linkiyle gelen misafir
+  // (M-7) hesapsız katılır ama konumunu vermesi, sesli sohbete girmesi gerekir.
+  "/location-consent",
+  "/mic-consent",
 ] as const;
 
 export const isAnonymousRoute = (path: string): boolean =>

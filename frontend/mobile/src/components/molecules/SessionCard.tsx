@@ -1,4 +1,4 @@
-import { sessionCtaKey, type Schemas } from "@bumpinto/shared";
+import { activityListLabel, sessionCtaKey, type Schemas } from "@bumpinto/shared";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
 
@@ -17,18 +17,23 @@ export default function SessionCard(p: {
   featured?: boolean;
   onOpen: (slug: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const s0 = p.session;
   const total = s0.participantCount ?? 0;
   const done = s0.doneCount ?? 0;
   const people = s0.participants ?? [];
   const Activity = s0.activityTypes?.[0] ? ACTIVITY_ICON[s0.activityTypes[0]] : null;
+  /* Artboard P1'de kart HER ZAMAN başlıklı. `name` boşken boş bir `h2` çiziliyordu:
+     satır yüksekliği kadar boşluk bırakıp kartı kimliksiz gösteriyordu (2026-09-08). */
+  const title =
+    s0.name ||
+    activityListLabel(s0.activityTypes ?? [], t, i18n.resolvedLanguage ?? i18n.language);
 
   return (
     <Card tone={p.featured ? "flame" : undefined} style={s.card}>
       {p.featured ? <Sticker style={s.sticker}>{t("sessions.deckOpen")}</Sticker> : null}
 
-      <AppText variant="h2">{s0.name}</AppText>
+      <AppText variant="h2">{title}</AppText>
 
       <View style={s.meta}>
         {Activity ? <Activity size={15} color={colors.ink2} /> : null}

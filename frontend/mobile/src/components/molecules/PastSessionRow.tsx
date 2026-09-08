@@ -1,4 +1,4 @@
-import { monogram } from "@bumpinto/shared";
+import { activityListLabel, monogram } from "@bumpinto/shared";
 import type { Schemas } from "@bumpinto/shared";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,16 +19,24 @@ export default function PastSessionRow(p: {
   index: number;
   onOpen: (slug: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const s0 = p.session;
   const photo = s0.decidedVenuePhotoUrl;
   const tint = photoTints[p.index % photoTints.length];
   const badge = badgeOf(s0);
 
+  const title =
+    s0.name ||
+    activityListLabel(s0.activityTypes ?? [], t, i18n.resolvedLanguage ?? i18n.language);
+  const subtitle = [s0.decidedVenueName, t("sessions.people", { count: s0.participantCount ?? 0 })]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={s0.name}
+      // Ad boş olabilir; etiket asla boş kalmaz, yoksa ekran okuyucu satırı adlandıramaz.
+      accessibilityLabel={title}
       onPress={() => p.onOpen(s0.slug ?? "")}
       style={({ pressed }) => [s.row, pressed ? { opacity: 0.7 } : null]}
     >
@@ -50,13 +58,14 @@ export default function PastSessionRow(p: {
       </View>
 
       <View style={s.body}>
+        {/* Adsız oturumda başlık satırı ÇİZİLMEZ: boş `h3` bir satır yüksekliği kaplıyor,
+            metni aşağı itiyor ve satır ortalı olmasına rağmen rozet yukarıda duruyor gibi
+            görünüyordu (2026-09-08 cihazda görüldü). */}
         <AppText variant="h3" numberOfLines={1}>
-          {s0.name}
+          {title}
         </AppText>
         <AppText variant="muted" numberOfLines={1}>
-          {[s0.decidedVenueName, t("sessions.people", { count: s0.participantCount ?? 0 })]
-            .filter(Boolean)
-            .join(" · ")}
+          {subtitle}
         </AppText>
       </View>
 
@@ -78,6 +87,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: space.gap,
     paddingVertical: space.rowY,
+    // Artboard `.srow` 11px/16px — satır artık KART içinde, yatay boşluk kendinden gelmeli.
+    paddingHorizontal: space.cardX,
   },
   thumb: { width: 48, height: 48, borderRadius: radius.thumb, overflow: "hidden" },
   thumbFill: { width: "100%", height: "100%" },

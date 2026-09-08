@@ -34,13 +34,23 @@ test("yasal okuyucular, silme onayı ve davet linki ANONİM açılır", () => {
     "/account/legal/kvkk",
     "/account/deleted",
     "/j/x7k2m",
+    "/location-consent",
+    "/mic-consent",
   ]) {
     expect({ path, anonymous: isAnonymousRoute(path) }).toEqual({ path, anonymous: true });
   }
 });
 
 test("hesap ekranları oturum GEREKTİRİR (anonim listede değil)", () => {
-  for (const path of ["/account", "/account/consent", "/account/delete", "/sessions", "/profile"]) {
+  for (const path of [
+    "/account",
+    "/account/consent",
+    "/account/delete",
+    "/sessions",
+    "/profile",
+    "/participant",
+    "/prefs",
+  ]) {
     expect({ path, anonymous: isAnonymousRoute(path) }).toEqual({ path, anonymous: false });
   }
 });

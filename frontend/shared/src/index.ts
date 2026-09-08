@@ -67,6 +67,7 @@ export { backupOf } from "./backupPlan";
 export { DECIDING_MINUTES, DECIDING_RATING, isDeciding } from "./runoffTrailer";
 export { LANGUAGES, type LanguageCode } from "./languages";
 export { sessionCtaKey } from "./sessionCta";
+export { activityListLabel } from "./activityLabel";
 export {
   LEGAL_DOCS,
   bodyFor,

@@ -31,14 +31,8 @@ export function sessionActivities(view: { activityTypes?: string[] }): string[] 
 
 /** Cümle içine giren alan adları: `Intl.ListFormat` bağlacı locale'den alır (tr "ve",
     nl "en", en Oxford). Elle birleştirme üç dilden ikisinde yanlış olurdu. */
-export function activityListLabel(
-  activities: string[],
-  t: (key: string) => string,
-  locale: string,
-): string {
-  const labels = activities.map((a) => t(`activity.${a}`));
-  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(labels);
-}
+/* Mobil de aynı etiketi basıyor (adsız oturum başlığı) — tek kaynak `@bumpinto/shared`. */
+export { activityListLabel } from "@bumpinto/shared";
 
 /* Karar dokümanı §4.6 — "uyum satırı" için aktivite başına beklenen sağlayıcı kategorileri.
    Küçük harfe indirgenmiş, kısmi eşleşme (includes) ile bakılır: sağlayıcı taksonomileri
