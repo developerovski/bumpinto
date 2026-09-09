@@ -13,6 +13,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "../src/store/authStore";
 import { watchNetwork } from "../src/store/netStore";
+import { watchAppBackground } from "../src/voice/backgroundGuard";
 import { colors } from "../src/theme";
 
 export const ANONYMOUS_ROUTES = [
@@ -53,6 +54,9 @@ export default function RootLayout() {
   // Ağ aboneliği KÖKTE bir kez: her ekran kendi dinleyicisini kursaydı uçuş modunda N tane
   // geri çağrı aynı durumu yazardı ve sökülmeyen abonelikler sızardı.
   useEffect(() => watchNetwork(), []);
+  // Sesli sohbet arka planda SUSAR (O7 sözü). Kökte bir kez; dock'un kendi ömrüne bağlanamaz,
+  // çünkü mesh ekran geçişlerinde ayakta kalır (spec §7).
+  useEffect(() => watchAppBackground(), []);
 
   const [loaded] = useFonts({
     BricolageGrotesque_700Bold,

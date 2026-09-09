@@ -44,7 +44,13 @@ vi.mock("../lib/voiceMesh", () => {
     async handleSignal(signal: unknown) { this.signals.push(signal); }
     close() { this.closed = true; }
   }
-  return { VoiceMesh: FakeMesh };
+  /* Adaptör fabrikaları da taklit edilir: mesh artık platformsuz, `createPeer`/`createAudio`
+     dışarıdan geliyor. Fabrika taklidi eksik export bırakırsa modül içe aktarımda patlar. */
+  return {
+    VoiceMesh: FakeMesh,
+    createWebPeer: vi.fn(),
+    createWebAudioSink: vi.fn(() => ({ play: vi.fn(), setMuted: vi.fn(), stop: vi.fn() })),
+  };
 });
 
 import { api } from "../lib/api";

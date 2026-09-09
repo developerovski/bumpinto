@@ -1,6 +1,6 @@
 import * as Audio from "expo-audio";
 import * as Location from "expo-location";
-import { Linking } from "react-native";
+import { Linking, PermissionsAndroid, Platform } from "react-native";
 
 /**
  * İzin isteme TEK modülde: ekranlar yalnız kopya + düğmedir, sistem diyaloğunu buradan çağırır.
@@ -33,6 +33,25 @@ export async function requestMicrophone(): Promise<PermissionOutcome> {
   const current = await Audio.getRecordingPermissionsAsync();
   if (current.granted) return "granted";
   return outcome(await Audio.requestRecordingPermissionsAsync());
+}
+
+/**
+ * Bluetooth kulaklığa YÖNLENDİRME izni (Android 12+ / API 31+).
+ *
+ * EN İYİ ÇABA: reddedilirse sesli sohbet BOZULMAZ, yalnız ses telefonun kendi
+ * hoparlöründen/kulaklığından çıkar — `react-native-incall-manager` izni bulamayınca çökmez,
+ * bluetooth'u sessizce atlar. Bu yüzden ayrı bir ön-ekran YOK: kullanıcı zaten O7'de sesli
+ * sohbete izin verdi, bu onun ses yolunun bir ayrıntısı.
+ *
+ * iOS'ta karşılığı yok (yönlendirme AVAudioSession'ın işi) — orada hiç sorulmaz.
+ */
+export async function requestBluetoothConnect(): Promise<PermissionOutcome> {
+  if (Platform.OS !== "android" || Number(Platform.Version) < 31) return "granted";
+  const result = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+  );
+  if (result === PermissionsAndroid.RESULTS.GRANTED) return "granted";
+  return result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN ? "blocked" : "denied";
 }
 
 export async function openAppSettings(): Promise<void> {

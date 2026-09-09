@@ -35,10 +35,15 @@ test("eklenti purpose string'leri Info.plist ile aynı metni kullanır", () => {
   expect(audio[1].microphonePermission).toBe(MIC);
 });
 
-test("yalnız iki tehlikeli Android izni ister, arka plan konumu engeller", () => {
+/* İzin listesi BEKÇİ testi: her yeni izin bilinçli bir mağaza kararıdır, kazayla eklenemez.
+   `BLUETOOTH_CONNECT` 2026-09-09'da kullanıcı kararıyla girdi (M-6): WebRTC eklentisi onu
+   eklemiyor ve izinsiz kalınca `react-native-incall-manager` bluetooth kulaklığı SESSİZCE
+   atlıyordu — ses telefondan çıkıyordu. Çalışma zamanı talebi `requestBluetoothConnect`te. */
+test("yalnız beklenen tehlikeli Android izinleri istenir, arka plan konumu engellenir", () => {
   expect(expo.android!.permissions).toEqual([
     "android.permission.ACCESS_FINE_LOCATION",
     "android.permission.RECORD_AUDIO",
+    "android.permission.BLUETOOTH_CONNECT",
   ]);
   expect(expo.android!.blockedPermissions).toContain(
     "android.permission.ACCESS_BACKGROUND_LOCATION",

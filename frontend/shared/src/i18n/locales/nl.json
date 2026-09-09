@@ -538,6 +538,8 @@
     "mute": "Dempen",
     "unmute": "Dempen opheffen",
     "micDenied": "Microfoontoegang is nodig. Sta het toe in je browserinstellingen en probeer opnieuw.",
+    "micBlocked": "Microfoontoegang staat uit. Je kunt dit aanzetten in Instellingen.",
+    "speaker": "Luidspreker",
     "connectFailed": "Kon geen verbinding maken met de spraakchat — probeer opnieuw.",
     "inVoice": "in spraakchat",
     "speaking": "aan het woord",

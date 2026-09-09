@@ -3,9 +3,16 @@ import { AxiosError } from "axios";
 import { create } from "zustand";
 import { api } from "../lib/api";
 import { createLevelSampler, sharedAudioContext } from "../lib/audioLevels";
-import { VoiceMesh, type IncomingSignal, type PeerSnapshot } from "../lib/voiceMesh";
+import { VoiceMesh, createWebAudioSink, createWebPeer } from "../lib/voiceMesh";
+import type { IncomingSignal, PeerSnapshot } from "@bumpinto/shared";
 import { liveChannel, voiceInbox, voiceSignal } from "./liveChannel";
 import { useSessionStore, viewerId } from "./sessionStore";
+
+/** DEV günlüğü artık mesh'in içinde değil: platformsuz çekirdek `console`u bilmez, çağıran
+    kendi kanalını geçer (`onWarn`). */
+const warn = import.meta.env.DEV
+  ? (m: string, ...rest: unknown[]) => console.warn(m, ...rest)
+  : undefined;
 
 export type VoicePhase = "idle" | "joining" | "in" | "error";
 export type EndReason = "HOST" | "TIME_LIMIT" | "EMPTY";
@@ -181,10 +188,13 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         stream,
         send: (signal) => {
           const ok = liveChannel.publish(voiceSignal(slug), signal);
-          if (!ok && import.meta.env.DEV) console.warn("voice signal publish failed (not connected)", signal);
+          if (!ok) warn?.("voice signal publish failed (not connected)", signal);
         },
         onChange: (peers, selfSpeaking) => set({ peers, selfSpeaking }),
         createLevels: (cb) => createLevelSampler(cb, { context: audioCtx }),
+        createPeer: createWebPeer,
+        createAudio: (id) => createWebAudioSink(id, warn),
+        onWarn: warn,
       });
       mesh.setMuted(get().muted);
       mesh.setMutedPeers(Object.keys(get().mutedPeers));

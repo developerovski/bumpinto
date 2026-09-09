@@ -18,8 +18,26 @@ jest.mock("../lib/api", () => ({
     getConfig: jest.fn(() => Promise.reject(new Error("no config"))),
   },
   webBase: "https://bumpinto.app",
+  /* Canlı kanal (M-6) el sıkışmayı bu ikisinden kurar; ikiz eksik bırakılırsa `useSessionLive`
+     tanımsız taban URL'yle patlar. */
+  API_BASE_URL: "http://localhost:8060",
+  participantToken: jest.fn(() => "tok-1"),
   hasParticipantToken: jest.fn(() => true),
   rememberParticipantToken: jest.fn(),
+}));
+
+/* STOMP istemcisi bir framework yapıştırıcısıdır: yönlendirici testinde gerçek soket
+   açılmaz. El sıkışma `liveChannel.test.ts` (sahte soket) ve `scripts/ws-smoke.mjs`
+   (canlı sunucu) ile doğrulanır. */
+jest.mock("../store/liveChannel", () => ({
+  liveChannel: {
+    open: jest.fn(() => jest.fn()),
+    subscribe: jest.fn(() => jest.fn()),
+    publish: jest.fn(() => true),
+  },
+  sessionTopic: (slug: string) => `/topic/session/${slug}`,
+  voiceInbox: (slug: string, id: string) => `/topic/session/${slug}/voice/${id}`,
+  voiceSignal: (slug: string) => `/app/sessions/${slug}/voice/signal`,
 }));
 
 const base = {

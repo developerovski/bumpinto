@@ -527,6 +527,8 @@
     "mute": "Mikrofonu kapat",
     "unmute": "Mikrofonu aç",
     "micDenied": "Mikrofon izni gerekli. Tarayıcı ayarlarından izin verip tekrar dene.",
+    "micBlocked": "Mikrofon izni kapalı. Ayarlardan açabilirsin.",
+    "speaker": "Hoparlör",
     "connectFailed": "Sesli sohbete bağlanılamadı — tekrar dene.",
     "inVoice": "sesli sohbette",
     "speaking": "konuşuyor",

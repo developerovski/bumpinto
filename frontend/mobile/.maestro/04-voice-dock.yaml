@@ -1,0 +1,61 @@
+# Sesli sohbet dock'u (P25) — mikrofon izni akışı ve dock durumları.
+#
+# ÖN KOŞUL: `MAESTRO_SLUG` HOST olduğun bir oturumu göstermeli (dock'un "Başlat"ı yalnız
+# kurana görünür) ve oturum GRUP olmalı (SOLO'da sesli sohbet yoktur).
+#
+# Bu akış üç şeyi doğrular ve üçü de birim testlerde DOĞRULANAMAZ:
+#   1. O7 ön-ekranı sistem mikrofon diyaloğundan ÖNCE çıkar (Play "prominent disclosure").
+#   2. İzin verilince gerçek WebRTC yığını ayağa kalkar (dock "Sesli sohbette"ye geçer).
+#   3. Red kalıcıysa dock Ayarlar yolunu gösterir, akış ÇIKMAZA girmez.
+appId: app.bumpinto.mobile
+---
+- launchApp: { clearState: true, permissions: { microphone: unset } }
+
+# Açılışta mikrofon İSTENMEZ — izin yalnız özellik kullanıldığında sorulur.
+- assertNotVisible: { text: ".*mikrofon.*izin.*|.*Mikrofon.*İzin.*|Allow.*microphone.*" }
+
+- tapOn: "Google ile devam et"
+- tapOn: { text: ".*@.*", optional: true }
+- assertVisible: { text: ".*Nereye.*", timeout: 20000 }
+
+- openLink: "https://bumpinto.app/j/${MAESTRO_SLUG}"
+- assertVisible: { text: ".*Sesli sohbet.*", timeout: 20000 }
+
+# P25:1 — kapalı + host: yalnız "Başlat" görünür, "Katıl" YOK.
+- assertVisible: "Başlat"
+- assertNotVisible: "Katıl"
+- tapOn: "Başlat"
+
+# P25:2 — oda açıldı: kişi sayısı ve kalan süre.
+- assertVisible: { text: ".*kişi", timeout: 20000 }
+- assertVisible: { text: ".*dk kaldı" }
+
+# O7 ön-ekranı SİSTEM diyaloğundan ÖNCE.
+- tapOn: "Katıl"
+- assertVisible: "Sesli sohbet için mikrofon"
+- assertVisible: "Sonraki adımda telefonun izin soracak."
+- tapOn: "Devam et"
+
+# Sistem diyaloğu: ÖNCE reddet — kurtarma yolunu doğrula (P25:6 + O6).
+- tapOn: { text: "İzin Verme|Don.t allow|Don.t Allow|Reddet" }
+- assertVisible: { text: ".*Mikrofon izni.*|.*izin gerekli.*", timeout: 10000 }
+
+# Sonra izin ver: dock içeri geçmeli (P25:4).
+- tapOn: { text: "Tekrar dene|Katıl" }
+- tapOn: { text: "Devam et", optional: true }
+- tapOn: { text: "İzin Ver.*|Allow.*|Uygulamayı kullanırken.*|While using.*" }
+- assertVisible: { text: "Sesli sohbette|.*konuşuyor", timeout: 30000 }
+
+# P25:5 — sustur/aç.
+- tapOn: "Mikrofonu kapat"
+- assertVisible: "Mikrofonun kapalı"
+- tapOn: "Mikrofonu aç"
+
+# Arka plana atınca mikrofon susar (O7 sözü); dönüşte konuşma sürer, oda KAPANMAZ.
+- pressKey: Home
+- launchApp
+- assertVisible: { text: "Sesli sohbette|.*konuşuyor", timeout: 20000 }
+
+# Ayrılma ve host'un odayı bitirmesi.
+- tapOn: "Ayrıl"
+- assertVisible: { text: "Katıl", timeout: 20000 }

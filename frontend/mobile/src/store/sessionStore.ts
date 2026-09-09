@@ -44,6 +44,13 @@ export const useSessionStore = create<{
   },
 }));
 
+/** Görüntüleyenin katılımcı kimliği — web `sessionStore` ile aynı yardımcı. */
+export const viewerId = (view: SessionView | null): string | null =>
+  view?.viewer?.participantId ?? null;
+
+/** Görüntüleyen oturumu kuran kişi mi. */
+export const isHost = (view: SessionView | null): boolean => view?.viewer?.host === true;
+
 /**
  * Yapıştırılan davet metninden slug çıkarır. Web'de bugün karşılığı YOK (davet kutusu
  * mobile özgü, artboard P2); M-9 `joinCode.ts`'i shared'a alırken bu da oraya taşınır.

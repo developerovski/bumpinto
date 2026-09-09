@@ -115,3 +115,10 @@ export {
   type LegalLang,
   type LegalSlug,
 } from "./content/legal";
+export { VoiceMesh, type MeshDeps } from "./voice/mesh";
+export { createSpeechGate, type SpeechGate, type SpeechGateOptions } from "./voice/levels";
+export type {
+  AudioSink, IncomingSignal, LevelSampler, MeshIceCandidate, MeshIceServer, MeshPeerConnection,
+  MeshSdp, MeshStatsEntry, MeshStatsReport, MeshStream, MeshTrack, OutgoingSignal,
+  PeerSnapshot, PeerState, SignalType,
+} from "./voice/types";

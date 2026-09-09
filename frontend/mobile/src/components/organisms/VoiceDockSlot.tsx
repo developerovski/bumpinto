@@ -1,10 +1,13 @@
 /**
- * Sesli sohbet dock'u için YER TUTUCU — hiçbir şey çizmez.
+ * Sesli sohbet dock'unun ekranlardaki YER TUTUCUSU — hiçbir şey çizmez.
  *
- * Gerçek dock M-6'da (R-M10, plan40) buraya gelir; yeri CTA'nın üstüdür
- * (`native.css` `.dock { bottom: 104 }`). Ekranlar onu ŞİMDİDEN mount eder ki M-6 tek
- * dosyada bitsin ve dock'un görünürlük kuralları (SOLO / süresi dolmuş oturum) beş ayrı
- * ekrana dağılmasın.
+ * Dock'un kendisi oturum durum YÖNLENDİRİCİSİNDE (`app/s/[slug].tsx`) bir kez mount edilir,
+ * ekranın KARDEŞİ olarak. Sebebi 2026-09-09'da emülatörde görüldü: bu slot beş ekranda da
+ * `ScrollView`in İÇİNDE duruyor ve `position: absolute` orada görünüm alanına değil KAYDIRMA
+ * İÇERİĞİNE tutunuyor — dock listenin dibine düşüyor, CTA'nın üstünde yüzmüyordu.
+ *
+ * Slot yine de duruyor: mesh ekran geçişlerinde ayakta kalır (spec §7) ve ekranlar dock'un
+ * kapladığı alanı kendi alt boşluklarıyla ayırmayı sürdürür.
  */
 export default function VoiceDockSlot(_p: { slug?: string }) {
   return null;

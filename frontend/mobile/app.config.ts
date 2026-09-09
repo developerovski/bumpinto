@@ -52,7 +52,15 @@ const config: ExpoConfig = {
     package: "app.bumpinto.mobile",
         predictiveBackGestureEnabled: false,
     // KAPALI LİSTE: Play "Data safety" formu tam olarak bu iki izinle doldurulur.
-    permissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.RECORD_AUDIO"],
+    permissions: [
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.RECORD_AUDIO",
+      // Sesli sohbette bluetooth kulaklığa yönlendirme (M-6). WebRTC eklentisi bunu EKLEMİYOR;
+      // `react-native-incall-manager` API 31+'ta izni bulamayınca çökmez ama bluetooth'u
+      // SESSİZCE atlar (`AppRTCBluetoothManager` yalnız uyarı basar) — kulaklık takan kullanıcı
+      // sesi telefondan alırdı. 2026-09-09 kullanıcı kararı: destekle.
+      "android.permission.BLUETOOTH_CONNECT",
+    ],
     // Modüllerin manifeste devrettiği fazlalıklar; arka plan konumu istenirse Play reddeder.
     blockedPermissions: [
       "android.permission.ACCESS_BACKGROUND_LOCATION",
@@ -93,6 +101,18 @@ const config: ExpoConfig = {
     "expo-apple-authentication",
     ["expo-location", { locationWhenInUsePermission: LOCATION_PURPOSE, isIosBackgroundLocationEnabled: false }],
     ["expo-audio", { microphonePermission: MIC_PURPOSE }],
+    // Sesli sohbet (M-6). Purpose string O7 kopyasıdır — `MIC_PURPOSE` ile TEK kaynak;
+    // ikinci bir metin yazılsaydı mağaza incelemesi iki farklı gerekçe görürdü.
+    // Android tarafında aynı eklenti RECORD_AUDIO / MODIFY_AUDIO_SETTINGS / BLUETOOTH_CONNECT
+    // ekler; `android.permissions` listesine ELLE eklenmez (çift kayıt).
+    [
+      "@config-plugins/react-native-webrtc",
+      {
+        microphonePermission: MIC_PURPOSE,
+        // Kamera KAPALI: sesli sohbet video açmaz; gereksiz izin incelemede soru işareti olur.
+        cameraPermission: false,
+      },
+    ],
     // Harita motoru MapLibre (K-M2) — ANAHTARSIZ çalışır, Google Maps SDK'sı pakete GİRMEZ.
     // Eklenti yalnız native kütüphaneyi bağlar; döşeme stili çalışma anında `/api/config`ten.
     "@maplibre/maplibre-react-native",

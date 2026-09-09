@@ -1,10 +1,11 @@
 import type { ParticipantDto } from "@bumpinto/shared";
 import { router } from "expo-router";
-import { XIcon } from "phosphor-react-native";
+import { MicrophoneIcon, XIcon } from "phosphor-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { MODE_ICON } from "../../icons";
+import { useVoiceStore } from "../../store/voiceStore";
 import { colors, space } from "../../theme";
 import { AppText, Avatar, Badge, IconButton } from "../atoms";
 
@@ -36,6 +37,14 @@ export default function ParticipantRow(p: {
 }) {
   const { t } = useTranslation();
   const person = p.participant;
+
+  /* Sesli sohbet göstergeleri (M-6). Kaynak SUNUCU (`inVoice`) + yerel mesh (konuşuyor mu);
+     istemci canlılık TÜRETMEZ. Engellenmiş satırda hiçbiri çizilmez — o satır kimliği zaten
+     gizliyor. */
+  const speaking = useVoiceStore((s) =>
+    p.self ? s.selfSpeaking : person.id ? !!s.peers[person.id]?.speaking : false,
+  );
+  const inVoice = person.inVoice === true && person.blocked !== true;
   const blocked = person.blocked === true;
   const name = blocked ? t("social.blockedName") : (person.displayName ?? "?");
 
@@ -95,6 +104,7 @@ export default function ParticipantRow(p: {
         online={blocked ? undefined : online || undefined}
         ring={!blocked && ready}
         waiting={!blocked && !ready}
+        speaking={!blocked && speaking}
       />
 
       <View style={s.text}>
@@ -104,6 +114,15 @@ export default function ParticipantRow(p: {
         </AppText>
         {blocked ? null : (
           <View style={s.sub}>
+            {/* Sesli sohbette olan kişi: küçük mikrofon glifi. Konuşurken flame, sessizken
+                nötr — ayrı bir "konuşuyor" ROZETİ yok (rozet çorbası yasağı). */}
+            {inVoice ? (
+              <MicrophoneIcon
+                size={13}
+                color={speaking ? colors.flameDeep : colors.ink3}
+                weight="fill"
+              />
+            ) : null}
             {place ? <AppText variant="muted">{place}</AppText> : null}
             {modeIcons.length > 0 ? (
               <>

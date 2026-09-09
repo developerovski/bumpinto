@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { StyleSheet, View } from "react-native";
 
 import { Skeleton } from "../../src/components/atoms";
+import VoiceDock from "../../src/components/organisms/VoiceDock";
 import DeckScreen from "../../src/screens/DeckScreen";
 import ErrorScreen from "../../src/screens/ErrorScreen";
 import LobbyScreen from "../../src/screens/LobbyScreen";
@@ -29,7 +30,15 @@ export default function SessionRoute() {
   if (error) return <ErrorScreen kind={error === "session.expired" ? "expired" : "notFound"} />;
   if (!view) return <LoadingShell />;
 
-  return screenFor(view);
+  /* Dock ekranın KARDEŞİ: her ekran kendi `ScrollView`ini kuruyor ve dock oraya girerse
+     mutlak konumu kaydırma içeriğine tutunup listenin dibine düşer (2026-09-09 emülatörde).
+     Burada bir kez mount edilir — mesh ekran geçişlerinde de ayakta kalır (spec §7). */
+  return (
+    <View style={s.host}>
+      {screenFor(view)}
+      <VoiceDock view={view} />
+    </View>
+  );
 }
 
 function screenFor(view: SessionView) {
@@ -84,6 +93,7 @@ function LoadingShell() {
 }
 
 const s = StyleSheet.create({
+  host: { flex: 1 },
   shell: {
     flex: 1,
     backgroundColor: colors.paper,

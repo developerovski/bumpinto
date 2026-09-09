@@ -43,9 +43,12 @@ test("arka plan konum API'si HİÇ kullanılmıyor (uyumluluk §6)", () => {
   expect(source).not.toMatch(/Background(Permissions|Location|Update)/);
 });
 
-test("izin modülü yalnız iki izni biliyor: konum ve mikrofon", () => {
+test("izin modülü yalnız beklenen izinleri biliyor: konum, mikrofon, bluetooth", () => {
   expect(Object.keys(permissions).sort()).toEqual([
     "openAppSettings",
+    /* Bluetooth 2026-09-09'da eklendi (M-6, kullanıcı kararı): sesli sohbette kulaklığa
+       yönlendirme için. EN İYİ ÇABA — reddedilirse ses telefondan çıkar, akış bozulmaz. */
+    "requestBluetoothConnect",
     "requestLocationWhenInUse",
     "requestMicrophone",
   ]);

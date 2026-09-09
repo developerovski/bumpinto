@@ -21,6 +21,14 @@ export const hasParticipantToken = (slug: string) => participantTokens.has(slug)
 
 export const webBase = extra.webBase;
 
+/** STOMP kanalının el sıkışma adresi buradan türetilir (M-6 T3) — ikinci bir taban URL yok. */
+export const API_BASE_URL = extra.apiUrl;
+
+/** Katılımcı jetonu; `createHttp`in okuduğu AYNI bellek haritası. Canlı kanal el sıkışmada
+    başlığa bunu koyar (mobilde çerez yok). */
+export const participantToken = (slug: string): string | null =>
+  participantTokens.get(slug) ?? null;
+
 export const api = createBumpintoApi(
   createHttp(
     extra.apiUrl,

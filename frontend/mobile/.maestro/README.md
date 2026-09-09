@@ -71,6 +71,7 @@ maestro test -e MAESTRO_SLUG=$MAESTRO_SLUG .maestro     # değişkeni açıkça 
 | `01-signin-join-deck-decide.yaml` | Giriş → derin linkle katıl → izin → deste → gönder → karar | Hayır: hazır oturum + açık deste ister |
 | `02-deeplink.yaml` | `https` ve `bumpinto://`, uygulama kapalı/açık, bilinmeyen slug'da çıkışlı hata | Hayır: geçerli `MAESTRO_SLUG` ister |
 | `03-location-permission.yaml` | Açılışta izin İSTENMEZ · ön-ekran sistemden ÖNCE · redde O6 kurtarması ve adres yolu | Evet |
+| `04-voice-dock.yaml` | P25 dock durumları · O7 mikrofon ön-ekranı sistemden ÖNCE · red kurtarması · gerçek WebRTC yığını · arka planda susma | Hayır: HOST olduğun GRUP oturumu ister |
 
 ## Bilinen kırılganlıklar
 
@@ -79,5 +80,8 @@ maestro test -e MAESTRO_SLUG=$MAESTRO_SLUG .maestro     # değişkeni açıkça 
 - **Sistem izin diyaloğunun metni** OEM'e ve Android sürümüne göre değişir; seçiciler
   regex (`İzin Ver.*|Allow.*|…`) — yeni bir varyantla karşılaşırsan regex'i genişlet,
   akışı `optional` yapma (izin diyaloğunun çıktığını doğrulamak testin ta kendisi).
+- **Sesli sohbet akışı (04)** iki cihaz olmadan yalnız TEK taraflı doğrulanır: dock içeri geçer
+  ve mikrofon açılır, ama karşı tarafın sesi duyulmaz. Uçtan uca ses için ikinci bir cihaz
+  (ya da web istemcisi) aynı oturuma katılmalı.
 - **Swipe sayısı** (12) destedeki mekan sayısına bağlı; daha az mekan gelirse fazla kaydırmalar
   boşa gider ve akış yine de P15'e ulaşır (zararsız).

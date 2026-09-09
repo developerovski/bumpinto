@@ -109,6 +109,36 @@ jest.mock("expo-audio", () => ({
   requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
 }));
 
+/* WebRTC (M-6) yerel modüldür: içe aktarımda `NativeEventEmitter` kurar ve testte patlar.
+   İkiz yalnız YÜZEYDİR — gerçek medya/eşleşme cihazda (`scripts/ws-smoke.mjs` + Maestro)
+   doğrulanır. `RTCPeerConnection` T5'in adaptörü için burada; mesh mantığı zaten
+   `@bumpinto/shared/voice`ta platformsuz test ediliyor. */
+jest.mock("react-native-webrtc", () => ({
+  mediaDevices: {
+    getUserMedia: jest.fn(async () => ({ getTracks: () => [], getAudioTracks: () => [] })),
+  },
+  RTCPeerConnection: jest.fn(() => ({
+    addTrack: jest.fn(),
+    createOffer: jest.fn(async () => ({ type: "offer", sdp: "sdp" })),
+    createAnswer: jest.fn(async () => ({ type: "answer", sdp: "sdp" })),
+    setLocalDescription: jest.fn(async () => undefined),
+    setRemoteDescription: jest.fn(async () => undefined),
+    addIceCandidate: jest.fn(async () => undefined),
+    getStats: jest.fn(async () => new Map()),
+    close: jest.fn(),
+    connectionState: "new",
+    signalingState: "stable",
+    remoteDescription: null,
+  })),
+}));
+
+/* Ses yönlendirmesi (M-6). Eski tarz yerel modül; New Arch'ta interop katmanından geçer ve
+   testte yoktur. Gerçek yönlendirme (kulaklık/hoparlör/bluetooth) yalnız CİHAZDA doğrulanır. */
+jest.mock("react-native-incall-manager", () => ({
+  __esModule: true,
+  default: { start: jest.fn(), stop: jest.fn(), setForceSpeakerphoneOn: jest.fn() },
+}));
+
 jest.mock("expo-apple-authentication", () => ({
   isAvailableAsync: jest.fn(async () => true),
   signInAsync: jest.fn(),

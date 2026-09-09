@@ -1,9 +1,9 @@
-/** K12: konuşan kişi tespiti tamamen istemcide — her peer akışının RMS'i, sunucuya hiç gitmez. */
-export type LevelSampler = {
-  attach(id: string, stream: MediaStream): void;
-  detach(id: string): void;
-  close(): void;
-};
+import { createSpeechGate, type LevelSampler, type MeshStream } from "@bumpinto/shared";
+
+/** K12: konuşan kişi tespiti tamamen istemcide — her peer akışının RMS'i, sunucuya hiç gitmez.
+    ÖLÇÜM burada (AnalyserNode RMS), KARAR ortak kapıda (`createSpeechGate`) — eşik ve tutma
+    web ile mobilde tek uygulama. */
+export type { LevelSampler };
 
 export type LevelSamplerOptions = {
   intervalMs?: number;
@@ -19,8 +19,6 @@ type Probe = {
   source: MediaStreamAudioSourceNode;
   analyser: AnalyserNode;
   buffer: Uint8Array<ArrayBuffer>;
-  lastLoudAt: number;
-  speaking: boolean;
 };
 
 let shared: AudioContext | null = null;
@@ -39,14 +37,15 @@ export function createLevelSampler(
   options: LevelSamplerOptions = {},
 ): LevelSampler {
   const intervalMs = options.intervalMs ?? 200;
-  const threshold = options.threshold ?? 0.02;
-  const holdMs = options.holdMs ?? 300;
-  const now = options.now ?? (() => Date.now());
   const context = options.context ?? sharedAudioContext();
   const probes = new Map<string, Probe>();
+  const gate = createSpeechGate(onSpeaking, {
+    threshold: options.threshold,
+    holdMs: options.holdMs,
+    now: options.now,
+  });
 
   function sample() {
-    const t = now();
     probes.forEach((probe, id) => {
       probe.analyser.getByteTimeDomainData(probe.buffer);
       let sum = 0;
@@ -54,13 +53,7 @@ export function createLevelSampler(
         const v = (probe.buffer[i] - 128) / 128;
         sum += v * v;
       }
-      const rms = Math.sqrt(sum / probe.buffer.length);
-      if (rms > threshold) probe.lastLoudAt = t;
-      const speaking = t - probe.lastLoudAt < holdMs;
-      if (speaking !== probe.speaking) {
-        probe.speaking = speaking;
-        onSpeaking(id, speaking);
-      }
+      gate.push(id, Math.sqrt(sum / probe.buffer.length));
     });
   }
 
@@ -71,25 +64,24 @@ export function createLevelSampler(
     if (!probe) return;
     probe.source.disconnect();
     probes.delete(id);
-    if (probe.speaking) onSpeaking(id, false);
+    gate.remove(id);
   }
 
   return {
-    attach(id, stream) {
+    attach(id, stream: MeshStream) {
       detach(id);
-      const source = context.createMediaStreamSource(stream);
+      const source = context.createMediaStreamSource(stream as unknown as MediaStream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
-      probes.set(id, {
-        source, analyser, buffer: new Uint8Array(analyser.fftSize), lastLoudAt: Number.NEGATIVE_INFINITY, speaking: false,
-      });
+      probes.set(id, { source, analyser, buffer: new Uint8Array(analyser.fftSize) });
     },
     detach,
     close() {
       clearInterval(timer);
       probes.forEach((probe) => probe.source.disconnect());
       probes.clear();
+      gate.clear();
       // Bağlamı ASLA kapatmaz: paylaşılan (ya da enjekte edilmiş) AudioContext başka ses
       // akışlarınca da kullanılıyor olabilir — tek paylaşılan bağlam ömür boyu açık kalır.
     },

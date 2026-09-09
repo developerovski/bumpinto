@@ -538,6 +538,8 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "micDenied": "Microphone access is needed. Allow it in your browser settings and try again.",
+    "micBlocked": "Microphone access is off. You can turn it on in Settings.",
+    "speaker": "Speaker",
     "connectFailed": "Couldn't connect to voice chat — try again.",
     "inVoice": "in voice chat",
     "speaking": "speaking",
