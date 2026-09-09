@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import VoiceDock from "../components/organisms/VoiceDock";
 import { useTranslation } from "react-i18next";
 import type { SessionView } from "@bumpinto/shared";
-import { providerIds } from "../lib/provider";
+import { attributionProviders } from "@bumpinto/shared";
 import { Button, ErrorText, Page } from "../components/atoms";
 import Attribution from "../components/molecules/Attribution";
 import DeckHeader, { HeaderButton } from "../components/molecules/DeckHeader";
@@ -38,7 +38,7 @@ export default function DeckScreen(props: { slug: string; view: SessionView }) {
     [venues],
   );
   // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
-  const listProviders = useMemo(() => providerIds(venues), [venues]);
+  const listProviders = useMemo(() => attributionProviders(venues), [venues]);
   // travel[] katılımcı UUID'siyle anahtarlı; artboard "Sen 28 dk · Mehmet 34 dk" diyor.
   const travel = useTravelLabels(props.view);
 

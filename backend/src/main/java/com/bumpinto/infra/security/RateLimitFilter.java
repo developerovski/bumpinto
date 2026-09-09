@@ -62,9 +62,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 new Policy("ws", "GET", Pattern.compile("^/api/sessions/[^/]+/ws$"), 240),
                 // Ingress arkasinda TRUST_FORWARDED_FOR kapaliyken tum istemciler tek kovadadir; 30/dk pay birakir.
                 new Policy("geocode", "POST", Pattern.compile("^/api/geocode(/reverse)?$"), 30),
-                // R-B6: dis aktarma 1/saat. Dakikalik bir kural burada 60 dosya/saat demekti.
-                new Policy("export", "GET", Pattern.compile("^/api/me/export$"), 1,
-                        Duration.ofHours(1)),
+                // R-B6'nin "1/saat" kurali BURADA DEGIL: bu filtre guvenlik zincirinden once
+                // kosar ve elinde yalniz IP vardir. IP'ye anahtarlanmis saatlik bir kova,
+                // TRUST_FORWARDED_FOR kapaliyken ingress arkasindaki TUM kurulumu saatte tek
+                // dosyaya indiriyordu ve kimliksiz bir istek o jetonu 401 almadan yakabiliyordu
+                // (K-B34). Kural hesap kimliginin ARKASINA tasindi (AccountQuotaPort);
+                // /api/me/export burada "api" kovasinda (120/dk, IP) kalir — kimliksiz seli
+                // ucuz reddeder, gercek limiti kurmaz.
                 // R-B9: kod uzayi 32^5 ama 10/dk kaba kuvveti anlamsiz kilar.
                 new Policy("bycode", "GET", Pattern.compile("^/api/sessions/by-code/[^/]+$"), 10),
                 // R-B10: OG karti /api ALTINDA DEGIL, yani catch-all'a hic dusmez; kendi

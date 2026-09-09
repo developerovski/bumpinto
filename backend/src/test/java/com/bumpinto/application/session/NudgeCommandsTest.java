@@ -2,6 +2,8 @@ package com.bumpinto.application.session;
 
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.TooManyRequestsException;
+import com.bumpinto.application.safety.Blocks;
+import com.bumpinto.domain.safety.Block;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.session.ActivityType;
@@ -30,9 +32,12 @@ class NudgeCommandsTest {
 
     final FakeStores.InMemorySessionStore store = new FakeStores.InMemorySessionStore();
     final FakeStores.RecordingEvents events = new FakeStores.RecordingEvents();
+    final FakeStores.InMemoryBlockStore blockStore = new FakeStores.InMemoryBlockStore();
     UUID sessionId;
     UUID mehmet;
     UUID ayse;
+    /** Ayşe'nin hesabı — engeli koyan taraf hesap kimliğiyle bilinir. */
+    final UUID ayseAccount = UUID.randomUUID();
     NudgeCommands nudges;
     /** Sahte kotanın TÜKETİLEN anahtarları: "kota hiç sorulmadı"nın tek kanıtı bunun boş olması. */
     final Set<String> used = new HashSet<>();
@@ -44,15 +49,23 @@ class NudgeCommandsTest {
                 T0.plusSeconds(3600), null, List.of()));
         sessionId = s.id();
         mehmet = seat("Mehmet", true, false);
-        ayse = seat("Ayşe", false, false);
+        ayse = seat("Ayşe", false, false, ayseAccount);
+        Clock clock = Clock.fixed(T0, ZoneOffset.UTC);
         nudges = new NudgeCommands(store, events, (from, to, window) -> used.add(from + ":" + to),
-                Clock.fixed(T0, ZoneOffset.UTC));
+                new Blocks(blockStore, store, events, clock), clock);
     }
 
     private UUID seat(String name, boolean host, boolean manual) {
         UUID id = UUID.randomUUID();
         store.saveParticipant(new Participant(id, sessionId, name, null, host, null, manual,
                 null, TravelMode.CAR));
+        return id;
+    }
+
+    private UUID seat(String name, boolean host, boolean manual, UUID userId) {
+        UUID id = UUID.randomUUID();
+        store.saveParticipant(new Participant(id, sessionId, name, null, host, null, manual,
+                null, TravelMode.CAR, userId));
         return id;
     }
 
@@ -105,6 +118,41 @@ class NudgeCommandsTest {
         nudges.nudge("s1", mehmet, ayse);
 
         assertThat(used).containsExactly(mehmet + ":" + ayse);
+        assertThat(events.published).hasSize(1);
+    }
+
+    /**
+     * K-B35: dürt engeli TANIMIYORDU. Engel SES ODASINDAKİYLE aynı kuraldır — çift yönlü:
+     * engelleyen de engellenen de karşı tarafın cihazında zil çaldıramaz. Zil kimlikli
+     * (`fromParticipantId`) ve 60 sn'de bir tekrarlanabilir olduğu için engel tanımayan dürt,
+     * engellemenin kapatmak için var olduğu kanalın ta kendisidir (Apple 1.2 UGC).
+     *
+     * <p>Kota kanıtı burada da sonuca değil `used`in BOŞ kalmasına bakar: reddedilen dürt meşru
+     * zili 60 sn susturmamalı (`aRejectedNudgeDoesNotSpendTheQuota` ile aynı ilke).
+     */
+    @Test
+    void aBlockedPairCannotNudgeInEitherDirection() {
+        blockStore.save(Block.ofParticipant(UUID.randomUUID(), ayseAccount, mehmet, sessionId, T0));
+
+        // Engellenen -> engelleyen: kurbanın cihazında "Mehmet seni dürttü" ÇIKMAZ.
+        assertThatThrownBy(() -> nudges.nudge("s1", mehmet, ayse))
+                .isInstanceOf(ForbiddenException.class);
+        // Engelleyen -> engellenen: aynı kapı, ters yön (ses odasıyla aynı simetri).
+        assertThatThrownBy(() -> nudges.nudge("s1", ayse, mehmet))
+                .isInstanceOf(ForbiddenException.class);
+
+        assertThat(used).isEmpty();
+        assertThat(events.published).isEmpty();
+    }
+
+    /** Engel BAŞKA bir çifti bağlamaz: üçüncü kişiye giden zil çalmaya devam eder. */
+    @Test
+    void aBlockOnlyBindsThePairItNames() {
+        UUID kerem = seat("Kerem", false, false);
+        blockStore.save(Block.ofParticipant(UUID.randomUUID(), ayseAccount, mehmet, sessionId, T0));
+
+        nudges.nudge("s1", mehmet, kerem);
+
         assertThat(events.published).hasSize(1);
     }
 }

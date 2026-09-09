@@ -34,6 +34,29 @@ describe("VenueCard", () => {
     expect(screen.queryByText("Google Maps")).not.toBeInTheDocument();
   });
 
+  /**
+   * K-M41 (LİSANS): kart `tagline`ı basıyorsa, o cümlenin KAYNAĞI da atıf ister. FSQ tips'ten
+   * türeyen bir cümle Foursquare atfı doğurur — mekan Google'dan gelmiş olsa bile (GUIDE
+   * kural 8). Eşleme paylaşılan `attributionProviders`ta; kart yalnız onu çağırır.
+   */
+  it("FSQ kaynaklı tagline Foursquare atfını da getirir", () => {
+    useConfigStore.setState({ config: CONFIG });
+    render(
+      <VenueCard
+        venue={{
+          id: "v1",
+          name: "Café Berlage",
+          provider: "google",
+          tagline: "Sakin, oturmalı",
+          taglineSource: "FSQ",
+        }}
+      />,
+    );
+    expect(screen.getByText("Sakin, oturmalı")).toBeInTheDocument();
+    expect(screen.getByText("Google Maps")).toBeInTheDocument();
+    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+  });
+
   it("boş photoUrl fotoğrafsız sayılır — monogram var, provider'lı atıf yine gösterilir", () => {
     useConfigStore.setState({ config: CONFIG });
     render(<VenueCard venue={{ id: "v1", name: "Café Berlage", photoUrl: "", provider: "GOOGLE" }} />);

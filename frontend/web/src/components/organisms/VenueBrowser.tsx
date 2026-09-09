@@ -1,10 +1,9 @@
 import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListBullets, MapTrifold } from "@phosphor-icons/react";
-import { byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
+import { attributionProviders, byFairness, byRating, type ParticipantDto, type VenueDto as Venue } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { providerIds } from "../../lib/provider";
 import { Button, HandNote, Note } from "../atoms";
 import Attribution from "../molecules/Attribution";
 import LazyBoundary from "../molecules/LazyBoundary";
@@ -68,7 +67,7 @@ export default function VenueBrowser(props: {
   const selected = sel ?? picked ?? null;
   const selectedVenue = venues.find((v) => v.id === selected);
   // Sağlayıcı atfı (spec §11) — listedeki HER kaynağın satırı config'ten basılır.
-  const listProviders = providerIds(venues);
+  const listProviders = attributionProviders(venues);
   // `.f-fit` çeşitlilik kapısı (§4.6): satır uyum cümlesini ancak listede ≥2 FARKLI kategori
   // varsa basar — 12 kahvecinin hepsine "Kahve için: kafe" yazmak bilgi taşımaz.
   const categories = useMemo(

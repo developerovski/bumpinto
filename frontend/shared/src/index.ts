@@ -68,6 +68,7 @@ export {
 } from "./geo";
 export { monogram } from "./monogram";
 export { attributionProviders } from "./attribution";
+export { reportThenBlock, type ReportOutcome } from "./report";
 export {
   JOIN_CODE_ALPHABET,
   JOIN_CODE_LENGTH,

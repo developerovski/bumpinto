@@ -91,7 +91,9 @@ public class SessionCommands {
      * Kimliksiz cagiran icin yeni koltuk acilir: davet linki anonim katilima aciktir.
      *
      * <p>Var olan koltuk OLDUGU GIBI donulur. Yeniden katilim bir kayit degil kimlik kurtarmadir;
-     * ad ve konum sahibinindir ve kendi ucundan guncellenir (PUT /location).
+     * ad ve konum sahibinindir ve kendi ucundan guncellenir (PUT /location). Mobil katilimci
+     * token'ini bu ucla ONARIR ({@code ParticipantTokenDelivery#refresh}): token bellekte durur
+     * ve uygulama yeniden baslayinca kaybolur, cerez gibi yeniden yazilamaz.
      *
      * <p>Durum kapisi YALNIZ yeni koltuga uygulanir: deste basladiktan (SWIPING/RUNOFF) veya
      * bittikten (DECIDED) sonra kimligi olan cagiran yine de kendi koltugunu geri alir, cunku
@@ -102,13 +104,15 @@ public class SessionCommands {
     public Participant join(String slug, Caller caller, String displayName, GeoPoint location,
                             String locationLabel, TravelMode travelMode) {
         Session session = required(slug);
-        if (session.isSolo()) {
-            throw new ConflictException("solo session has no invite link");
-        }
-        // Koltuk kurtarma kapidan ONCE: sekmesini yenileyen uye her durumda kendi koltugunu alir.
+        // Koltuk kurtarma HER kapidan ONCE: sekmesini yenileyen uye her durumda kendi koltugunu
+        // alir. SOLO kapisi da bunun ARDINDAN gelir — SOLO'nun davet linki yoktur ama host'un
+        // kimlik kurtarmasi katilim DEGILDIR (K-B24/K-M39).
         Optional<Participant> seat = seatOf(session, caller);
         if (seat.isPresent()) {
             return seat.get();
+        }
+        if (session.isSolo()) {
+            throw new ConflictException("solo session has no invite link");
         }
         if (CLOSED_TO_NEW_SEATS.contains(session.status())) {
             throw new ConflictException("session is closed for new participants: " + session.status());

@@ -2,6 +2,7 @@ import type { Schemas, SessionView } from "@bumpinto/shared";
 import { create } from "zustand";
 
 import { api } from "../lib/api";
+import { repairParticipantToken } from "../lib/participantSession";
 import { useNetStore } from "./netStore";
 
 type SessionListResponse = Schemas["SessionListResponse"];
@@ -36,8 +37,13 @@ export const useSessionStore = create<{
 
   async loadView(slug) {
     try {
-      set({ view: await api.getSession(slug), error: null });
+      const view = await api.getSession(slug);
+      set({ view, error: null });
       synced();
+      /* Jeton onarımı okumadan SONRA: listeden (ya da uygulama yeniden başladıktan sonra)
+         açılan oturumda katılımcı jetonu yoktur ve her yazma ucu 403 alır (K-M39). Kendi
+         hatasını yutar — buradaki `catch` "oturum bulunamadı" demek olurdu. */
+      await repairParticipantToken(slug, view);
     } catch {
       set({ error: "session.notFound" });
     }

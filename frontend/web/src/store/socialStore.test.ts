@@ -59,4 +59,31 @@ describe("socialStore", () => {
     expect(api.report).not.toHaveBeenCalled();
     expect(keys()).toContain("social.blocked");
   });
+
+  /**
+   * K-W33: rapor GİTTİ, engel düştü. Jenerik "gönderilemedi" kullanıcıyı tekrar denemeye iter
+   * ve sunucuda MÜKERRER rapor açar. Ayrıca satır iyimser engellenmiş GÖSTERİLMEZ: sunucu o
+   * kişiyi hâlâ içeri alıyor, yerel gizleme sahte güvenlik olurdu.
+   */
+  it("engel düşerse rapor gittiği AYRI mesajla söylenir, satır engellenmiş sayılmaz", async () => {
+    mock(api.report).mockResolvedValue(undefined);
+    mock(api.blockParticipant).mockRejectedValue(new Error("500"));
+
+    await useSocialStore.getState().report("x", "k", "Kerem", "OTHER", undefined);
+
+    expect(keys()).toContain("social.reportedNotBlocked");
+    expect(keys()).not.toContain("social.error");
+    expect(useSocialStore.getState().blocked.k).toBeUndefined();
+    expect(useSocialStore.getState().busy).toBe(false);
+  });
+
+  it("rapor düşerse engel HİÇ denenmez ve jenerik hata basılır", async () => {
+    mock(api.report).mockRejectedValue(new Error("500"));
+
+    await useSocialStore.getState().report("x", "k", "Kerem", "OTHER", undefined);
+
+    expect(api.blockParticipant).not.toHaveBeenCalled();
+    expect(keys()).toContain("social.error");
+    expect(keys()).not.toContain("social.reportedNotBlocked");
+  });
 });

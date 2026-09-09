@@ -719,6 +719,7 @@
     "reportNote": "De melding gaat naar ons team en wordt binnen 24 uur bekeken. {{name}} ziet dit niet.",
     "send": "Versturen",
     "reported": "Gemeld · {{name}} geblokkeerd",
+    "reportedNotBlocked": "Je melding is verzonden, maar {{name}} kon niet worden geblokkeerd. Probeer opnieuw te blokkeren.",
     "blocked": "{{name}} geblokkeerd",
     "error": "Versturen is niet gelukt — probeer opnieuw.",
     "blockedRow": "geblokkeerd",

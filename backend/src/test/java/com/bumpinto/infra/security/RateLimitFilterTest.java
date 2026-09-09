@@ -150,23 +150,42 @@ class RateLimitFilterTest {
     }
 
     /**
-     * Dışa aktarma kovası SAATLİKTİR (R-B6): dakikalık bir pencere 60 dosya/saat demekti.
-     * Pencere yalnızca politikada değil, kova ANAHTARINDA da taşınmalı — yoksa kovayı
-     * kuran {@code newBucket} onu göremez ve sessizce 1 dakikaya düşer.
+     * Saatlik bir pencere kova ANAHTARINDA da taşınmalı — yoksa kovayı kuran {@code newBucket}
+     * onu göremez ve sessizce 1 dakikaya düşer. Politika sentetiktir: bugün gönderilen hiçbir
+     * politika dakikadan uzun değil (bkz. {@code shippedPoliciesDoNotKeepAnHourlyBucketOnIp}),
+     * ama dikiş korunmalı.
      */
     @Test
-    void exportBucketRefillsHourlyNotEveryMinute() throws Exception {
-        RateLimitFilter.Policy export = RateLimitFilter.defaultPolicies().stream()
-                .filter(p -> p.id().equals("export")).findFirst().orElseThrow();
-        assertThat(export.capacity()).isEqualTo(1);
-        assertThat(export.window()).isEqualTo(Duration.ofHours(1));
+    void anHourlyPolicyRefillsHourlyNotEveryMinute() throws Exception {
+        RateLimitFilter.Policy hourly = new RateLimitFilter.Policy("hourly", "GET",
+                Pattern.compile("^/api/me/export$"), 1, Duration.ofHours(1));
 
-        RateLimitFilter filter = new RateLimitFilter(List.of(export), false);
+        RateLimitFilter filter = new RateLimitFilter(List.of(hourly), false);
         assertCapacity(filter, 1, "GET", "/api/me/export");
         // Retry-After penceredendir: saatlik kovaya "60 sn sonra dene" yeniden deneme fırtınasıdır.
         MockHttpServletResponse blocked = new MockHttpServletResponse();
         filter.doFilter(request("GET", "/api/me/export"), blocked, new MockFilterChain());
         assertThat(blocked.getHeader("Retry-After")).isEqualTo("3600");
+    }
+
+    /**
+     * K-B34 regresyonu: dışa aktarmanın 1/saat kuralı BURADA olamaz. Filtre
+     * {@code @Order(HIGHEST_PRECEDENCE)} ile güvenlik zincirinden ÖNCE koşar ve elinde yalnız IP
+     * vardır — kimliksiz bir istek o saatin tek jetonunu 401 almadan yakar, ve
+     * {@code TRUST_FORWARDED_FOR} kapalıyken ingress arkasında TÜM kurulum tek kovayı paylaşır.
+     * Kural {@code UserDataExport}'a (hesap kimliği) taşındı; burada uç yalnız "api" kovasında
+     * (120/dk) kalır: kimliksiz seli ucuz reddeder, gerçek limiti kurmaz.
+     */
+    @Test
+    void shippedPoliciesDoNotKeepAnHourlyBucketOnIp() {
+        RateLimitFilter.Policy match = RateLimitFilter.defaultPolicies().stream()
+                .filter(p -> (p.method() == null || p.method().equals("GET"))
+                        && p.path().matcher("/api/me/export").matches())
+                .findFirst().orElse(RateLimitFilter.FALLBACK);
+
+        assertThat(match.id()).isEqualTo("api");
+        assertThat(RateLimitFilter.defaultPolicies())
+                .allSatisfy(p -> assertThat(p.window()).isEqualTo(Duration.ofMinutes(1)));
     }
 
     /**
@@ -178,7 +197,6 @@ class RateLimitFilterTest {
     void bucketCacheOutlivesTheLongestPolicyWindow() {
         Duration longest = RateLimitFilter.defaultPolicies().stream()
                 .map(RateLimitFilter.Policy::window).max(Comparator.naturalOrder()).orElseThrow();
-        assertThat(longest).isEqualTo(Duration.ofHours(1)); // export
         assertThat(RateLimitFilter.bucketTtl(RateLimitFilter.defaultPolicies()))
                 .isGreaterThan(longest)
                 .isGreaterThan(Duration.ofMinutes(10)); // eski sabit TTL
@@ -218,7 +236,7 @@ class RateLimitFilterTest {
     void existingPoliciesKeepTheOneMinuteWindow() {
         assertThat(TINY.window()).isEqualTo(Duration.ofMinutes(1));
         assertThat(RateLimitFilter.FALLBACK.window()).isEqualTo(Duration.ofMinutes(1));
-        assertThat(RateLimitFilter.defaultPolicies()).filteredOn(p -> !p.id().equals("export"))
+        assertThat(RateLimitFilter.defaultPolicies())
                 .allSatisfy(p -> assertThat(p.window()).isEqualTo(Duration.ofMinutes(1)));
     }
 

@@ -48,13 +48,17 @@ export function useSessionLive(slug: string | undefined) {
     if (!slug) return;
     let alive = true;
 
+    let close: (() => void) | null = null;
+
     const tick = () => {
-      if (!alive || AppState.currentState !== "active" || !useNetStore.getState().online) return;
-      void loadView(slug);
+      if (!alive || AppState.currentState !== "active" || !useNetStore.getState().online) {
+        return Promise.resolve();
+      }
+      return loadView(slug);
     };
-    tick();
-    const timer = setInterval(tick, POLL_MS);
-    const appState = AppState.addEventListener("change", (state) => state === "active" && tick());
+    const timer = setInterval(() => void tick(), POLL_MS);
+    const appState = AppState.addEventListener(
+      "change", (state) => state === "active" && void tick());
 
     // Abonelik açılıştan ÖNCE kaydedilir: `liveChannel` bağlanınca kurar, kaçan olay olmaz.
     const unsubscribe = liveChannel.subscribe(sessionTopic(slug), (body) => {
@@ -65,16 +69,22 @@ export function useSessionLive(slug: string | undefined) {
       const event = parseSessionEvent(body);
       if (event) emitSessionEvent(event);
     });
-    const close = liveChannel.open(
-      slug,
-      API_BASE_URL,
-      () => participantToken(slug),
-      () => {
-        // Bağlı OLUNMAYAN pencerede kaçan olayları kapatır (abonelik zaten kaydedilmişti).
-        void loadView(slug);
-        useVoiceStore.getState().resetRoster();
-      },
-    );
+    /* Kanal İLK okumadan SONRA açılır: el sıkışma katılımcı jetonu ister (`SessionWsHandshake`)
+       ve jetonsuz açılan oturumda o jeton ilk `loadView`in onarımından gelir (K-M39). Sıra
+       gözetilmezse el sıkışma reddedilir ve kanal 5 sn'lik yeniden bağlanmayı bekler. */
+    void tick().then(() => {
+      if (!alive) return;
+      close = liveChannel.open(
+        slug,
+        API_BASE_URL,
+        () => participantToken(slug),
+        () => {
+          // Bağlı OLUNMAYAN pencerede kaçan olayları kapatır (abonelik zaten kaydedilmişti).
+          void loadView(slug);
+          useVoiceStore.getState().resetRoster();
+        },
+      );
+    });
 
     return () => {
       alive = false;
@@ -84,7 +94,7 @@ export function useSessionLive(slug: string | undefined) {
       // UNSUBSCRIBE çerçevesi soket kapanmadan gitsin.
       useVoiceStore.getState().leave();
       unsubscribe();
-      close();
+      close?.();
     };
   }, [slug, loadView]);
 }

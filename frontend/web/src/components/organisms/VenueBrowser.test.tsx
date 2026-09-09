@@ -281,6 +281,22 @@ describe("VenueBrowser", () => {
     expect(screen.getByText("Sakin, oturmalı")).toBeInTheDocument();
   });
 
+  /**
+   * K-M41 (LİSANS): liste altındaki birleşik atıf, ekrandaki HER yükümlülük kaynağını
+   * kapsamalı. FSQ tips'ten türeyen "neyle bilinir" cümlesi Foursquare atfı ister — liste
+   * tamamen Google mekanlarından oluşsa bile (GUIDE kural 8).
+   */
+  it("FSQ kaynaklı tagline liste atfına Foursquare'i ekler", () => {
+    useConfigStore.setState({ config: CONFIG });
+    const fromFsq = [
+      { ...venues[0], provider: "google", tagline: "Sakin, oturmalı", taglineSource: "FSQ" } as never,
+      { ...venues[1], provider: "google" } as never,
+    ];
+    render(<VenueBrowser {...base} venues={fromFsq} mode="host" />);
+    expect(screen.getByText("Google Maps")).toBeInTheDocument();
+    expect(screen.getByText("Powered by Foursquare")).toBeInTheDocument();
+  });
+
   it("konumu henüz gelmemiş TEK katılımcı: adlı pozitif not (§5.C)", () => {
     const waiting = [
       ...people,

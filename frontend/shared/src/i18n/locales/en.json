@@ -719,6 +719,7 @@
     "reportNote": "The report goes to our team and is reviewed within 24 hours. {{name}} won't see it.",
     "send": "Send",
     "reported": "Reported · {{name}} blocked",
+    "reportedNotBlocked": "Your report was sent, but {{name}} could not be blocked. Try blocking again.",
     "blocked": "{{name}} blocked",
     "error": "Couldn't send — try again.",
     "blockedRow": "blocked",

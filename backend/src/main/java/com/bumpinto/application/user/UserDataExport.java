@@ -1,6 +1,8 @@
 package com.bumpinto.application.user;
 
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.error.TooManyRequestsException;
+import com.bumpinto.domain.port.AccountQuotaPort;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMinutes;
 import com.bumpinto.domain.geo.TravelMode;
@@ -10,6 +12,7 @@ import com.bumpinto.domain.user.UserProfile;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -35,17 +38,35 @@ public class UserDataExport {
     public record Export(Instant exportedAt, Profile profile, List<Participation> participations) {
     }
 
+    /** R-B6: hesap basina 1/saat. */
+    static final String QUOTA = "export";
+    static final Duration WINDOW = Duration.ofHours(1);
+
     private final UserStorePort users;
     private final UserDataPort data;
+    private final AccountQuotaPort quota;
     private final Clock clock;
 
-    public UserDataExport(UserStorePort users, UserDataPort data, Clock clock) {
+    public UserDataExport(UserStorePort users, UserDataPort data, AccountQuotaPort quota,
+                          Clock clock) {
         this.users = users;
         this.data = data;
+        this.quota = quota;
         this.clock = clock;
     }
 
+    /**
+     * Kota EN BASTA tuketilir — profil okumasindan ve katilim taramasindan once: reddedilecek
+     * bir istek is yaptirmamali.
+     *
+     * <p>Hiz siniri BURADA, {@code RateLimitFilter}'da DEGIL (K-B34): filtre guvenlik zincirinden
+     * once kosar, hesabi bilemez ve IP'ye anahtarlanmis 1/saat kovasi ingress arkasinda tum
+     * kurulumu tek dosyaya indirirdi — kimliksiz bir istek de o tek jetonu yakabilirdi.
+     */
     public Export of(UUID userId) {
+        if (!quota.tryConsume(QUOTA, userId, WINDOW)) {
+            throw new TooManyRequestsException("export_cooldown", WINDOW);
+        }
         UserProfile p = users.profileOf(userId)
                 .orElseThrow(() -> new NotFoundException("user not found"));
         GeoPoint home = p.defaultLocation() == null ? null

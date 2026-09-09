@@ -1,6 +1,7 @@
 /* Kaynak: artboard W7 Runoff 1280 (2379-2410) / 390 kilitli (2455-2487) / 1280 kilitli
    (3656-3692) ve W7b Berabere (4362-4392 / 4425-4444). */
 import type { VenueDto as Venue } from "@bumpinto/shared";
+import { attributionProviders } from "@bumpinto/shared";
 import type { TravelInfo } from "../../lib/useTravelLabels";
 import Attribution from "../molecules/Attribution";
 import RunoffTrailer from "../molecules/RunoffTrailer";
@@ -37,7 +38,7 @@ export default function RunoffList(props: {
     !props.tie && props.disabled && props.choice != null && props.choice !== v.id;
   // Atıf artboard'da kartın İÇİNDE değil, ızgaranın/listenin ALTINDA tek `.f-attrs` şerididir
   // (3688 / 2494). Lisans gereği mobilde de basılmalı — 390'da hiç yoktu (§2 P1).
-  const providers = [...new Set(props.finalists.map((v) => v.provider).filter(Boolean))] as string[];
+  const providers = attributionProviders(props.finalists);
 
   return (
     <>

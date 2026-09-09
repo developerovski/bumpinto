@@ -1,4 +1,5 @@
 import type { Schemas } from "@bumpinto/shared";
+import { reportThenBlock } from "@bumpinto/shared";
 import * as Haptics from "expo-haptics";
 import { create } from "zustand";
 
@@ -52,17 +53,23 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   notice: null,
   error: null,
 
+  /* "Bildir" tek düğme ama İKİ yazma. Engel düşerse rapor ZATEN gitmiştir: jenerik
+     "gönderilemedi" kullanıcıyı tekrar denemeye iter ve mükerrer rapor açar (K-W33).
+     Sıralama kuralı paylaşılan `reportThenBlock`ta; burada yalnız metin seçilir. */
   async report(slug, participantId, reason, note) {
     set({ busy: true, error: null });
-    try {
-      await api.report({ sessionSlug: slug, targetParticipantId: participantId, reason, note });
-      await api.blockParticipant({ participantId });
-      set({ blocked: { ...get().blocked, [participantId]: true } });
-    } catch {
-      set({ error: "social.error" });
-    } finally {
-      set({ busy: false });
-    }
+    const outcome = await reportThenBlock(
+      () => api.report({ sessionSlug: slug, targetParticipantId: participantId, reason, note }),
+      () => api.blockParticipant({ participantId }),
+    );
+    // `blocked` YALNIZ gerçekten engellendiyse işaretlenir: engel düşmüşken kişiyi yerel olarak
+    // gizlemek, sunucu onu hâlâ içeri alırken sahte bir güvenlik duygusu verirdi.
+    if (outcome === "done") set({ blocked: { ...get().blocked, [participantId]: true } });
+    set({
+      busy: false,
+      error: outcome === "done" ? null
+        : outcome === "reportFailed" ? "social.error" : "social.reportedNotBlocked",
+    });
   },
 
   async block(participantId) {

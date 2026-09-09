@@ -708,6 +708,7 @@
     "reportNote": "Bildirim ekibimize gider; 24 saat içinde bakılır. {{name}} bunu görmez.",
     "send": "Gönder",
     "reported": "Bildirildi · {{name}} engellendi",
+    "reportedNotBlocked": "Bildirimin gönderildi, ama {{name}} engellenemedi. Engellemeyi tekrar dene.",
     "blocked": "{{name}} engellendi",
     "error": "Gönderilemedi — tekrar dene.",
     "blockedRow": "engellendi",

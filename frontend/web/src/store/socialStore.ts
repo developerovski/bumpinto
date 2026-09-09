@@ -1,4 +1,5 @@
 import type { Schemas } from "@bumpinto/shared";
+import { reportThenBlock } from "@bumpinto/shared";
 import { create } from "zustand";
 import { api } from "../lib/api";
 import { useSessionStore } from "./sessionStore";
@@ -42,19 +43,25 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       toast("presence.nudgeError", undefined, "flame");
     }
   },
+  /* "Bildir" tek düğme ama İKİ yazma. Engel düşerse rapor ZATEN gitmiştir: jenerik
+     "gönderilemedi" kullanıcıyı tekrar denemeye iter ve mükerrer rapor açar (K-W33).
+     Hangi adımın düştüğü paylaşılan `reportThenBlock`tan gelir. */
   report: async (slug, participantId, name, reason, note) => {
     set({ busy: true });
-    try {
-      await api.report({ sessionSlug: slug, targetParticipantId: participantId, reason, note });
-      await api.blockParticipant({ participantId });
+    const outcome = await reportThenBlock(
+      () => api.report({ sessionSlug: slug, targetParticipantId: participantId, reason, note }),
+      () => api.blockParticipant({ participantId }),
+    );
+    // `blocked` YALNIZ gerçekten engellendiyse işaretlenir: engel düşmüşken kişiyi yerel
+    // olarak gizlemek, sunucu onu hâlâ içeri alırken sahte bir güvenlik duygusu verirdi.
+    if (outcome === "done") {
       set({ blocked: { ...get().blocked, [participantId]: true } });
       await useSessionStore.getState().refresh();
-      toast("social.reported", { name });
-    } catch {
-      toast("social.error", undefined, "flame");
-    } finally {
-      set({ busy: false });
     }
+    set({ busy: false });
+    if (outcome === "done") toast("social.reported", { name });
+    else if (outcome === "reportFailed") toast("social.error", undefined, "flame");
+    else toast("social.reportedNotBlocked", { name }, "flame");
   },
   block: async (participantId, name) => {
     set({ busy: true });

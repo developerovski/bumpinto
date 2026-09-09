@@ -5,7 +5,9 @@ import { useToastStore } from "./toastStore";
 
 /* `jest.mock` babel-plugin-jest-hoist ile import'ların ÜSTÜNE taşınır — burada
    import'lardan sonra durması `import/first` ile çelişmemek içindir. */
-jest.mock("../lib/api", () => ({ api: { nudge: jest.fn() } }));
+jest.mock("../lib/api", () => ({
+  api: { nudge: jest.fn(), report: jest.fn(), blockParticipant: jest.fn() },
+}));
 
 const mock = (fn: unknown) => fn as jest.Mock;
 const keys = () => useToastStore.getState().toasts.map((t) => t.messageKey);
@@ -13,7 +15,7 @@ const keys = () => useToastStore.getState().toasts.map((t) => t.messageKey);
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  useSocialStore.setState({ nudgedAt: {} });
+  useSocialStore.setState({ nudgedAt: {}, blocked: {}, busy: false, error: null });
   useToastStore.setState({ toasts: [] });
 });
 afterEach(() => jest.useRealTimers());
@@ -66,4 +68,29 @@ test("kimlik yoksa hiç abone olunmaz", () => {
   useSocialStore.getState().listen(undefined)();
   emitSessionEvent({ type: "nudged", payload: { fromParticipantId: "m", toParticipantId: "me" } });
   expect(keys()).toHaveLength(0);
+});
+
+/**
+ * K-W33 (mobil eşi): rapor GİTTİ, engel düştü. Tek bir "gönderilemedi" mesajı kullanıcıyı
+ * tekrar denemeye iter ve sunucuda MÜKERRER rapor açar. Satır da engellenmiş SAYILMAZ —
+ * sunucu o kişiyi hâlâ içeri alıyor, yerel gizleme sahte güvenlik olurdu.
+ */
+test("engel düşerse rapor gittiği AYRI hata anahtarıyla söylenir", async () => {
+  mock(api.report).mockResolvedValue(undefined);
+  mock(api.blockParticipant).mockRejectedValue(new Error("500"));
+
+  await useSocialStore.getState().report("x7k2m", "k", "OTHER", undefined);
+
+  expect(useSocialStore.getState().error).toBe("social.reportedNotBlocked");
+  expect(useSocialStore.getState().blocked.k).toBeUndefined();
+  expect(useSocialStore.getState().busy).toBe(false);
+});
+
+test("rapor düşerse engel HİÇ denenmez", async () => {
+  mock(api.report).mockRejectedValue(new Error("500"));
+
+  await useSocialStore.getState().report("x7k2m", "k", "OTHER", undefined);
+
+  expect(api.blockParticipant).not.toHaveBeenCalled();
+  expect(useSocialStore.getState().error).toBe("social.error");
 });

@@ -81,8 +81,9 @@ class MeController {
     }
 
     /**
-     * Tek istek, indirilebilir dosya. Hiz siniri RateLimitFilter'dadir (1/saat): burada ikinci
-     * bir kova tutmak ayni kurali iki yerde yasatirdi.
+     * Tek istek, indirilebilir dosya. Hiz siniri kullanim durumunun ICINDEDIR
+     * ({@code UserDataExport}, hesap basina 1/saat): kural hesap kimligini ister, filtre ise
+     * guvenlik zincirinden once kosar ve yalniz IP'yi bilir (K-B34). Kontrolor ince kalir.
      */
     @GetMapping("/export")
     ResponseEntity<ApiDtos.ExportResponse> export(@AuthenticationPrincipal Jwt jwt) {

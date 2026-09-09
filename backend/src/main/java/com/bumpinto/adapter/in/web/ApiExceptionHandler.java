@@ -8,7 +8,9 @@ import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.error.TooManyRequestsException;
 import com.bumpinto.application.error.UnauthorizedException;
 import com.bumpinto.domain.geo.GeocodeBusyException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -44,11 +46,18 @@ class ApiExceptionHandler {
         return new ApiError(e.getMessage());
     }
 
-    /** Kota asimi sunucu hatasi degil, "az sonra tekrar dene"dir. */
+    /**
+     * Kota asimi sunucu hatasi degil, "az sonra tekrar dene"dir. Sure BILINIYORSA
+     * {@code Retry-After} ile soylenir: saatlik bir kotada istemcinin varsayacagi 60 sn yeniden
+     * deneme firtinasi olurdu (RateLimitFilter ayni basligi ayni gerekceyle basar).
+     */
     @ExceptionHandler(TooManyRequestsException.class)
-    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    ApiError tooMany(TooManyRequestsException e) {
-        return new ApiError(e.getMessage());
+    ResponseEntity<ApiError> tooMany(TooManyRequestsException e) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
+        if (e.retryAfter() != null) {
+            response.header(HttpHeaders.RETRY_AFTER, String.valueOf(e.retryAfter().toSeconds()));
+        }
+        return response.body(new ApiError(e.getMessage()));
     }
 
     /** Throttle atlamasi "sonuc yok" degil "tekrar dene"dir: 429. */

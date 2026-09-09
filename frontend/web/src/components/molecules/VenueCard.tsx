@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VenueDto } from "@bumpinto/shared";
-import { fairnessOf } from "@bumpinto/shared";
+import { attributionProviders, fairnessOf } from "@bumpinto/shared";
 import { formatRating } from "../../lib/format";
 import { monogram } from "../../lib/monogram";
 import { fairnessLine } from "../../lib/travelText";
@@ -317,7 +317,7 @@ export default function VenueCard(props: {
           {widget === "bars" && <TravelBars venue={v} travel={travel} hideLead={!!badgeLead} />}
           {widget === "range" && <RangeBar venue={v} travel={travel} />}
           {props.footer}
-          {(props.attribution ?? true) && <Attribution providers={v.provider ? [v.provider] : []} />}
+          {(props.attribution ?? true) && <Attribution providers={attributionProviders([v])} />}
         </div>
       )}
     </div>

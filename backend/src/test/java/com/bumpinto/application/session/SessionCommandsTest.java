@@ -116,6 +116,33 @@ class SessionCommandsTest {
         assertThat(store.participantsOf(r.session().id())).hasSize(2);
     }
 
+    /**
+     * SOLO host'u kendi koltugunu GERI ALIR. Mobilde katilimci token'i yalnizca BELLEKTE durur
+     * ve uygulama yeniden baslayinca kaybolur (K-M39); web cerezi okuma ucunda yeniden yazilir
+     * ({@code ParticipantTokenDelivery#refresh}) ama mobilin tek onarim yolu bu uctur ve SOLO
+     * kapisi koltuk kurtarmadan ONCE calistigi surece host kendi noktalarini duzenleyemez
+     * (K-B24). Kapi kaldirilmadi, yalnizca SIRASI degisti: koltugu OLMAYAN cagiran yine 409
+     * alir — SOLO'nun davet linki yoktur.
+     */
+    @Test
+    void soloHostRecoversItsSeatWhileTheInviteLinkStaysClosed() {
+        UUID hostAccount = UUID.randomUUID();
+        SessionCommands.CreateSessionResult r = commands.createSession(
+                hostAccount, null, List.of(ActivityType.COFFEE), SessionType.SOLO, DEN_BOSCH,
+                "Mehmet", null, null, null);
+
+        Participant again = commands.join(r.session().slug(), Caller.account(hostAccount),
+                "Mehmet", null, null, null);
+
+        assertThat(again.id()).isEqualTo(r.hostParticipant().id());
+        assertThat(again.host()).isTrue();
+        assertThat(store.participantsOf(r.session().id())).hasSize(1);
+        assertThat(events.published).isEmpty(); // kurtarma katilim DEGILDIR, olay da yok
+
+        assertThatThrownBy(() -> commands.join(r.session().slug(), Caller.ANONYMOUS,
+                "Ayşe", SOMEREN, null, null)).isInstanceOf(ConflictException.class);
+    }
+
     /** Davet linki anonim katilima ACIK kalir: kimliksiz her katilim yeni bir koltuktur. */
     @Test
     void anonymousJoinsAlwaysOpenNewSeats() {

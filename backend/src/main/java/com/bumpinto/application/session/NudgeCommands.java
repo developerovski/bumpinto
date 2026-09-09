@@ -2,6 +2,7 @@ package com.bumpinto.application.session;
 
 import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.TooManyRequestsException;
+import com.bumpinto.application.safety.Blocks;
 import com.bumpinto.domain.port.NudgeCooldownPort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
@@ -25,13 +26,20 @@ public class NudgeCommands {
     private final SessionStorePort store;
     private final SessionEventsPort events;
     private final NudgeCooldownPort cooldown;
+    private final Blocks blocks;
     private final Clock clock;
 
+    /**
+     * {@code Blocks} DOGRUDAN enjekte edilir, {@code VoiceAdmission} uzerinden degil: kapi ayni
+     * kurali (cift yonlu engelli cift) sorar ama koltuk listesi burada ZATEN elde — admission
+     * onu bir kez daha okurdu.
+     */
     public NudgeCommands(SessionStorePort store, SessionEventsPort events,
-                         NudgeCooldownPort cooldown, Clock clock) {
+                         NudgeCooldownPort cooldown, Blocks blocks, Clock clock) {
         this.store = store;
         this.events = events;
         this.cooldown = cooldown;
+        this.blocks = blocks;
         this.clock = clock;
     }
 
@@ -50,6 +58,13 @@ public class NudgeCommands {
         // Elle eklenen nokta token tasimaz, soket acamaz: zil calacak bir cihaz yok.
         if (target.manual()) {
             throw new ForbiddenException("manual points cannot be nudged");
+        }
+        // Engel SES ODASIYLA ayni kural: cift yonlu. Zil kimlikli ve 60 sn'de bir
+        // tekrarlanabilir oldugu icin engel tanimayan durt, engellemenin kapatmak icin var
+        // oldugu kanalin ta kendisi olurdu (K-B35, Apple 1.2 UGC).
+        if (blocks.blockedPairIds(session.id(), fromParticipantId, seats)
+                .contains(toParticipantId)) {
+            throw new ForbiddenException("blocked participants cannot nudge each other");
         }
         if (!cooldown.tryNudge(fromParticipantId, toParticipantId, WINDOW)) {
             throw new TooManyRequestsException("nudge_cooldown");

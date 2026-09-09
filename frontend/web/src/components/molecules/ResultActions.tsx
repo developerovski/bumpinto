@@ -14,6 +14,7 @@ import { CalendarPlus, MapPin, NavigationArrow } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SessionView, VenueDto } from "@bumpinto/shared";
+import { attributionProviders } from "@bumpinto/shared";
 import { probePhoto, renderShareCard } from "../../lib/shareCard";
 import { venueLink, websiteLink } from "../../lib/venueLink";
 import { Button, LinkButton } from "../atoms";
@@ -97,7 +98,7 @@ export default function ResultActions(props: {
         </a>
       )}
       {/* Artboard `.f-attr` — atıf düğmelerle AYNI satırda, yatay çip. */}
-      <Attribution providers={props.venue.provider ? [props.venue.provider] : []} row />
+      <Attribution providers={attributionProviders([props.venue])} row />
       {cardReady && (
         <ShareCard nodeRef={cardRef} venue={props.venue} participants={props.view.participants ?? []} photo={photo} />
       )}

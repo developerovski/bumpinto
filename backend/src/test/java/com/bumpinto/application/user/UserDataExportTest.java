@@ -1,6 +1,8 @@
 package com.bumpinto.application.user;
 
+import com.bumpinto.adapter.out.quota.InMemoryAccountQuota;
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.error.TooManyRequestsException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.UserDataPort;
@@ -28,11 +30,22 @@ class UserDataExportTest {
     }
 
     private UserDataExport export(List<UserDataPort.Participation> rows, GeoPoint home) {
+        return export(rows, home, UUID.randomUUID());
+    }
+
+    /** Kota GERCEK adaptor: "hesap basina" iddiasi sahte bir kovayla kanitlanamaz. */
+    private UserDataExport export(List<UserDataPort.Participation> rows, GeoPoint home,
+                                  UUID... alsoKnownAccounts) {
+        Clock clock = Clock.fixed(T0, ZoneOffset.UTC);
         FakeStores.InMemoryUserStore users = new FakeStores.InMemoryUserStore();
         users.saveProfile(new UserProfile(ME, "ayse@example.com", "Ayşe", home, "Eindhoven",
                 ActivityType.COFFEE, "tr", TravelMode.BIKE));
+        for (UUID other : alsoKnownAccounts) {
+            users.saveProfile(new UserProfile(other, "kerem@example.com", "Kerem", null, null,
+                    null, "tr", TravelMode.CAR));
+        }
         UserDataPort data = userId -> ME.equals(userId) ? rows : List.of();
-        return new UserDataExport(users, data, Clock.fixed(T0, ZoneOffset.UTC));
+        return new UserDataExport(users, data, new InMemoryAccountQuota(clock), clock);
     }
 
     @Test
@@ -77,5 +90,23 @@ class UserDataExportTest {
         UserDataExport export = export(List.of());
         UUID stranger = UUID.randomUUID();
         assertThatThrownBy(() -> export.of(stranger)).isInstanceOf(NotFoundException.class);
+    }
+
+    /**
+     * K-B34 regresyonu: kota HESABA anahtarli. Kural IP'ye anahtarli filtrede dururken gercek
+     * limit "kullanici basina 1/saat" degil, ingress arkasinda "KURULUM basina 1/saat"ti — yani
+     * bir kullanicinin dosyasi digerlerinin saatini yakiyordu.
+     */
+    @Test
+    void theHourlyQuotaIsPerAccountNotPerInstallation() {
+        UUID kerem = UUID.randomUUID();
+        UserDataExport export = export(List.of(), null, kerem);
+
+        assertThat(export.of(ME).profile().email()).isEqualTo("ayse@example.com");
+        assertThatThrownBy(() -> export.of(ME)).isInstanceOf(TooManyRequestsException.class);
+
+        // Ayşe'nin dosyası Kerem'in saatini YAKMAZ.
+        assertThat(export.of(kerem).profile().email()).isEqualTo("kerem@example.com");
+        assertThatThrownBy(() -> export.of(kerem)).isInstanceOf(TooManyRequestsException.class);
     }
 }
