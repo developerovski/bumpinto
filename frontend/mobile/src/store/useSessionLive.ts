@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 
 import { API_BASE_URL, participantToken } from "../lib/api";
 import { liveChannel, sessionTopic } from "./liveChannel";
+import { emitSessionEvent, parseSessionEvent } from "./liveEvents";
 import { useNetStore } from "./netStore";
 import { useSessionStore } from "./sessionStore";
 import { useVoiceStore, type EndReason } from "./voiceStore";
@@ -17,6 +18,10 @@ import { useVoiceStore, type EndReason } from "./voiceStore";
  * Poll kapıları M-7'den KORUNDU (web'de karşılığı yok, mobilde şart): uygulama arka plandayken
  * ya da çevrimdışıyken istek atılmaz, öne dönüşte hemen bir tik atılır. Kanal kendi yeniden
  * bağlanmasını `reconnectDelay` ile yönetir.
+ *
+ * Kanaldan gelen HER olay ayrıca `liveEvents`e yayınlanır (M-9): `socialStore` `nudged`ı
+ * oradan alır ve soketi hiç görmez. Bu tek satır K-M6'yı kapatır — M-6 kanalı indirene kadar
+ * seam'in üreticisi yoktu.
  *
  * Ses bağlantıları da buradan geçer: `voice_ended` sebebi dock'a taşınır, WS yeniden
  * bağlanınca roster mesh'e tekrar itilir (kopukluk sırasında failed'e düşen peer'ler canlanır)
@@ -56,6 +61,9 @@ export function useSessionLive(slug: string | undefined) {
       void loadView(slug);
       const reason = endedReasonOf(body);
       if (reason) useVoiceStore.getState().ended(reason);
+      // Olay depolara TEK kapıdan dağılır; JSON değilse yalnız "tazele" zili olarak kalır.
+      const event = parseSessionEvent(body);
+      if (event) emitSessionEvent(event);
     });
     const close = liveChannel.open(
       slug,

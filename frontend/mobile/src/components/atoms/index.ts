@@ -4,6 +4,7 @@ export { default as Badge } from "./Badge";
 export { default as Button } from "./Button";
 export { default as Card } from "./Card";
 export { default as Chip } from "./Chip";
+export { default as GoogleLogo } from "./GoogleLogo";
 export { default as HandNote } from "./HandNote";
 export { default as IconButton } from "./IconButton";
 export { default as Input } from "./Input";

@@ -69,6 +69,7 @@ export default function WaitingScreen({ view }: { view: SessionView }) {
           viewerId={viewerId}
           anchored={anchored}
           step="locations"
+          host={false}
         />
 
         {/* Konumunu ya da ulaşım türünü değiştirmek davetlinin TEK eylemi — alt sayfada. */}

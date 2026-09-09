@@ -1,4 +1,4 @@
-# Maestro e2e akışları (M-8 T5)
+# Maestro e2e akışları (M-8 T5, M-9 T8)
 
 Bu akışlar **gerçek istemcide** koşar. Jest ikizleri framework yapıştırıcısını
 (derin link eşlemesi, izin diyaloğu, geri tuşu, Google girişi) **doğrulamaz** — depo kuralı
@@ -41,6 +41,13 @@ TOKEN=$(python3 -c "import json;print(json.load(open('/tmp/session.json'))['part
 export MAESTRO_SLUG="$SLUG"
 ```
 
+`05-code-join` **kodu** ister (slug'ı değil). Oturum görünümünden al:
+
+```bash
+export MAESTRO_JOIN_CODE=$(curl -s -H "X-Participant-Token: $TOKEN" \
+  "$API/api/sessions/$SLUG" | python3 -c "import json,sys;print(json.load(sys.stdin)['joinCode'])")
+```
+
 `01-signin-join-deck-decide` desteyi bekler; host tarafında mekanları bulup desteyi aç:
 
 ```bash
@@ -72,6 +79,7 @@ maestro test -e MAESTRO_SLUG=$MAESTRO_SLUG .maestro     # değişkeni açıkça 
 | `02-deeplink.yaml` | `https` ve `bumpinto://`, uygulama kapalı/açık, bilinmeyen slug'da çıkışlı hata | Hayır: geçerli `MAESTRO_SLUG` ister |
 | `03-location-permission.yaml` | Açılışta izin İSTENMEZ · ön-ekran sistemden ÖNCE · redde O6 kurtarması ve adres yolu | Evet |
 | `04-voice-dock.yaml` | P25 dock durumları · O7 mikrofon ön-ekranı sistemden ÖNCE · red kurtarması · gerçek WebRTC yığını · arka planda susma | Hayır: HOST olduğun GRUP oturumu ister |
+| `05-code-join.yaml` | 5 haneli kodla katılım (`by-code`) · bilinmeyen kod · kısa kod · kamera ön-bilgilendirmesi sistemden ÖNCE | Hayır: geçerli `MAESTRO_JOIN_CODE` ister |
 
 ## Bilinen kırılganlıklar
 
@@ -83,5 +91,7 @@ maestro test -e MAESTRO_SLUG=$MAESTRO_SLUG .maestro     # değişkeni açıkça 
 - **Sesli sohbet akışı (04)** iki cihaz olmadan yalnız TEK taraflı doğrulanır: dock içeri geçer
   ve mikrofon açılır, ama karşı tarafın sesi duyulmaz. Uçtan uca ses için ikinci bir cihaz
   (ya da web istemcisi) aynı oturuma katılmalı.
+- **QR taraması (05)** emülatörde DOĞRULANMAZ: sanal kamera gerçek bir kare okumaz. Gerçek
+  tarama `docs/store/DEVICE-CHECKLIST-M9.md` üzerinden fiziksel cihazda işaretlenir.
 - **Swipe sayısı** (12) destedeki mekan sayısına bağlı; daha az mekan gelirse fazla kaydırmalar
   boşa gider ve akış yine de P15'e ulaşır (zararsız).

@@ -1,5 +1,6 @@
 import * as Clipboard from "expo-clipboard";
-import { CheckIcon, CopyIcon, ShareNetworkIcon } from "phosphor-react-native";
+import { router } from "expo-router";
+import { CheckIcon, CopyIcon, QrCodeIcon, ShareNetworkIcon } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Share, StyleSheet, View } from "react-native";
@@ -17,6 +18,9 @@ import { AppText, Button, Card, IconButton } from "../atoms";
  *
  * `compact` (P6: link paylaşıldıktan sonra kart küçülür) kod satırını düşürür — oturumda
  * ikinci kişi varsa link zaten iletilmiştir, kod artık bilgi taşımaz.
+ *
+ * QR düğmesi `joinCode`a BAĞLI (M-9): kod davetli görünümüne gelmez, gelmediğinde masadaki
+ * arkadaşa gösterilecek bir şey de yoktur — düğme çizilmez.
  */
 export default function InviteCard(p: { slug: string; joinCode?: string; sessionName?: string; compact?: boolean }) {
   const { t } = useTranslation();
@@ -66,6 +70,13 @@ export default function InviteCard(p: { slug: string; joinCode?: string; session
         )}
       </View>
 
+      {p.joinCode ? (
+        <IconButton
+          label={t("code.showQr")}
+          onPress={() => router.push({ pathname: "/(sheets)/qr", params: { slug: p.slug } })}
+          icon={<QrCodeIcon size={18} color={colors.ink} />}
+        />
+      ) : null}
       <IconButton
         label={t(copied ? "lobby.copied" : "lobby.copy")}
         onPress={copy}

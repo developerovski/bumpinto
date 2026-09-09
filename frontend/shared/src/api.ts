@@ -77,6 +77,10 @@ export function createBumpintoApi(http: AxiosInstance) {
       http.post("/api/auth/logout", refreshToken ? { refreshToken } : {}).then(() => undefined),
     preview: (slug: string) =>
       http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
+    /* 5 haneli davet kodunu slug'a çevirir (§2). Kod GİZLİ değildir ama oturumu da açmaz:
+       yanıt yalnız `SessionPreview` — katılım hâlâ `/j/<slug>` akışından geçer. */
+    sessionByCode: (code: string) =>
+      http.get<SessionPreview>(`/api/sessions/by-code/${code}`).then((r) => r.data),
     getConfig: () => http.get<AppConfig>("/api/config").then((r) => r.data),
     geocode: (body: { query: string; biasLat?: number; biasLng?: number }) =>
       http.post<{ lat: number; lng: number; label: string }>("/api/geocode", body).then((r) => r.data),

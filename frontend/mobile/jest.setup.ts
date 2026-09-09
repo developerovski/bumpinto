@@ -168,3 +168,42 @@ AppState.addEventListener = jest.fn(() => ({ remove: jest.fn() })) as never;
    (→ `src/i18n`) içe aktardığında hazır olur; store'suz ekranlar ham anahtar çizer ve test
    sebepsiz kırılır. Kurulum mock'lardan SONRA gelir (expo-localization ikizi hazır olsun). */
 require("./src/i18n");
+
+/* M-9 yerel modülleri. Hepsi YÜZEY ikizidir: kamera, dosya yazımı, kart çizimi ve sistem
+   paylaşım sayfası jest'te DOĞRULANMAZ — gerçek yüzeyler T8'in cihaz kontrol listesinde
+   dev build'de koşar (depo kuralı: framework yapıştırıcısı testsiz bırakılmaz). */
+jest.mock("react-native-view-shot", () => ({ captureRef: jest.fn(async () => "file:///card.png") }));
+
+jest.mock("expo-sharing", () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  shareAsync: jest.fn(async () => undefined),
+}));
+
+/* SDK 57 `File`/`Paths` API'si. `File`in kurucusu dizin + ad alır ve `uri` üretir; gerçek
+   dosya yazımı taklit edilmez (çağrıldığı doğrulanır, diske dokunulmaz). */
+jest.mock("expo-file-system", () => ({
+  Paths: { cache: "file:///cache/" },
+  File: class {
+    uri: string;
+    constructor(dir: { toString?: () => string } | string, name: string) {
+      this.uri = `${String(dir)}${name}`;
+    }
+    write = jest.fn();
+    delete = jest.fn();
+  },
+}));
+
+jest.mock("react-native-qrcode-svg", () => {
+  const { View } = require("react-native");
+  return { __esModule: true, default: View };
+});
+
+jest.mock("expo-camera", () => {
+  const { View } = require("react-native");
+  return { CameraView: View, useCameraPermissions: jest.fn(() => [{ granted: true }, jest.fn()]) };
+});
+
+jest.mock("@react-native-community/datetimepicker", () => {
+  const { View } = require("react-native");
+  return { __esModule: true, default: View };
+});

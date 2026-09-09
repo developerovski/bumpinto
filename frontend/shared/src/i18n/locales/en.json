@@ -730,7 +730,10 @@
     "preparing": "Preparing the card…",
     "cardTitle": "We're meeting at {{venue}}",
     "cardFooter": "everyone ~{{min}}–{{max}} min · {{spread}} min apart",
-    "fileName": "bumpinto-{{slug}}.png"
+    "fileName": "bumpinto-{{slug}}.png",
+    "cardFailed": "Couldn't make the image — shared as text.",
+    "dialogTitle": "Share the result card",
+    "textFallback": "{{venue}} · {{url}}"
   },
   "calendar": {
     "add": "Add to calendar",
@@ -740,10 +743,29 @@
     "time": "Time",
     "download": "Download calendar file",
     "google": "Open in Google Calendar",
-    "eventTitle": "{{venue}} · {{session}}"
+    "eventTitle": "{{venue}} · {{session}}",
+    "share": "Add to calendar",
+    "error": "Couldn't create the calendar file."
   },
   "source": {
     "google": "Google",
     "foursquare": "Foursquare"
+  },
+  "code": {
+    "label": "Got an invite link?",
+    "hint": "Paste a code or link",
+    "join": "Join",
+    "scan": "Scan QR",
+    "showQr": "Show QR",
+    "qrTitle": "Let them scan this",
+    "qrHint": "Point their camera at this code.",
+    "scanTitle": "Scan the invite QR",
+    "scanDisclosure": "The camera opens only to read the invite QR code; nothing is stored or sent.",
+    "scanAllow": "Open the camera",
+    "scanDenied": "Camera access is off",
+    "scanDeniedCopy": "You can also type the code by hand.",
+    "scanSettings": "Open settings",
+    "invalid": "The code has 5 characters",
+    "notFound": "No meet-up found for that code"
   }
 }

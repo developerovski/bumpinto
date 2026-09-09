@@ -1,4 +1,5 @@
 import {
+  attributionProviders,
   fairnessLine,
   fairnessOf,
   fitsActivity,
@@ -180,7 +181,7 @@ function DeckCard(p: {
         ) : null}
 
         <TravelBars venue={v} travel={p.travel} hideLead />
-        {p.muted ? null : <Attribution providers={v.provider ? [v.provider] : []} />}
+        {p.muted ? null : <Attribution providers={attributionProviders([v])} />}
       </View>
     </View>
   );

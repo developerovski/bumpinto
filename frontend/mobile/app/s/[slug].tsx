@@ -1,5 +1,6 @@
 import type { SessionView } from "@bumpinto/shared";
 import { useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Skeleton } from "../../src/components/atoms";
@@ -16,6 +17,7 @@ import VenuesScreen from "../../src/screens/VenuesScreen";
 import WaitingScreen from "../../src/screens/WaitingScreen";
 import { useSessionLive } from "../../src/store/useSessionLive";
 import { useSessionStore } from "../../src/store/sessionStore";
+import { useSocialStore } from "../../src/store/socialStore";
 import { colors, space } from "../../src/theme";
 
 export default function SessionRoute() {
@@ -24,6 +26,12 @@ export default function SessionRoute() {
 
   const view = useSessionStore((s) => s.view);
   const error = useSessionStore((s) => s.error);
+
+  /* `nudged` bildirimi OTURUM boyunca dinlenir, tek bir ekranda değil: dürtülen kişi o an
+     deste kaydırıyor da olabilir. Abonelik kimlik gelince kurulur, ekran değişince değil. */
+  const selfId = view?.viewer?.participantId;
+  const listen = useSocialStore((s) => s.listen);
+  useEffect(() => listen(selfId), [listen, selfId]);
 
   // Hata görünümden ÖNCE gelir: bayat bir `view` üstünde "süresi doldu" yazmaktansa
   // kullanıcıyı çıkışı olan bir ekrana koy.

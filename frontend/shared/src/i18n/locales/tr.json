@@ -719,7 +719,10 @@
     "preparing": "Kart hazırlanıyor…",
     "cardTitle": "{{venue}}'de buluşuyoruz",
     "cardFooter": "herkes ~{{min}}–{{max}} dk · fark {{spread}} dk",
-    "fileName": "bumpinto-{{slug}}.png"
+    "fileName": "bumpinto-{{slug}}.png",
+    "cardFailed": "Görsel üretilemedi — metin paylaşıldı.",
+    "dialogTitle": "Sonuç kartını paylaş",
+    "textFallback": "{{venue}} · {{url}}"
   },
   "calendar": {
     "add": "Takvime ekle",
@@ -729,10 +732,29 @@
     "time": "Saat",
     "download": "Takvim dosyası indir",
     "google": "Google Calendar'da aç",
-    "eventTitle": "{{venue}} · {{session}}"
+    "eventTitle": "{{venue}} · {{session}}",
+    "share": "Takvime ekle",
+    "error": "Takvim dosyası oluşturulamadı."
   },
   "source": {
     "google": "Google",
     "foursquare": "Foursquare"
+  },
+  "code": {
+    "label": "Bir davet linkin mi var?",
+    "hint": "Kod ya da link yapıştır",
+    "join": "Katıl",
+    "scan": "QR tara",
+    "showQr": "QR göster",
+    "qrTitle": "Kodu okutun",
+    "qrHint": "Arkadaşın kamerayı buna tutsun.",
+    "scanTitle": "Davet QR'ını tara",
+    "scanDisclosure": "Kamera yalnız davet QR kodunu okumak için açılır; görüntü kaydedilmez, gönderilmez.",
+    "scanAllow": "Kamerayı aç",
+    "scanDenied": "Kamera izni kapalı",
+    "scanDeniedCopy": "Kodu elle yazarak da katılabilirsin.",
+    "scanSettings": "Ayarları aç",
+    "invalid": "Kod 5 haneli olmalı",
+    "notFound": "Bu kodla oturum bulunamadı"
   }
 }

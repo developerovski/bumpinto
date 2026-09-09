@@ -1,4 +1,5 @@
 import {
+  attributionProviders,
   GROUP_TINT,
   activityListLabel,
   byFairness,
@@ -66,7 +67,7 @@ export default function VenuesScreen({ view }: { view: SessionView }) {
   const tint = GROUP_TINT[groupOf(activities[0] ?? "")];
   const sorted = [...venues].sort(sort === "fair" ? byFairness : byRating);
   const categories = venues.map((v) => v.category ?? "");
-  const providers = [...new Set(venues.map((v) => v.provider).filter((p): p is string => !!p))];
+  const providers = attributionProviders(venues);
 
   // Sunucu kapısının AYNISI: konumu olan, elle eklenmemiş ve odada olan katılımcı ≥ 2.
   // `online` alanı yoksa çevrimiçi sayılır — bilgi gelmeden host'un önüne duvar çıkmaz.

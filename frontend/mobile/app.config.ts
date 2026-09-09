@@ -10,6 +10,13 @@ const LOCATION_PURPOSE =
 const MIC_PURPOSE =
   "Buluşmadaki arkadaşlarınla sesli konuşabilmen için mikrofon gerekir. Ses kaydedilmez.";
 
+/* Kamera YALNIZ davet QR'ı için açılır (M-9). Metin `code.scanDisclosure` ile aynı sözü verir:
+   iki farklı gerekçe yazılsaydı mağaza incelemesi çelişki görürdü. M-5 tüm purpose string'leri
+   O4/O7'den tek yerde toplarken bu satır oraya alınır (K-M7). */
+const CAMERA_PURPOSE =
+  "BumpInto kamerayı yalnız arkadaşının davet QR kodunu okumak için kullanır. " +
+  "Görüntü kaydedilmez, gönderilmez.";
+
 const WEB_BASE = process.env.EXPO_PUBLIC_WEB_BASE ?? "https://bumpinto.app";
 
 
@@ -43,6 +50,7 @@ const config: ExpoConfig = {
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_PURPOSE,
       NSMicrophoneUsageDescription: MIC_PURPOSE,
+      NSCameraUsageDescription: CAMERA_PURPOSE,
       // Yalnız HTTPS/TLS kullanılıyor — Fransız şifreleme beyanı her yüklemede sorulmasın.
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -55,6 +63,9 @@ const config: ExpoConfig = {
     permissions: [
       "android.permission.ACCESS_FINE_LOCATION",
       "android.permission.RECORD_AUDIO",
+      // Davet QR'ını okumak (M-9). WebRTC eklentisi kamerayı KAPALI tutuyor (video yok);
+      // buradaki izin yalnız `expo-camera`nın tarayıcısı içindir.
+      "android.permission.CAMERA",
       // Sesli sohbette bluetooth kulaklığa yönlendirme (M-6). WebRTC eklentisi bunu EKLEMİYOR;
       // `react-native-incall-manager` API 31+'ta izni bulamayınca çökmez ama bluetooth'u
       // SESSİZCE atlar (`AppRTCBluetoothManager` yalnız uyarı basar) — kulaklık takan kullanıcı
@@ -65,7 +76,12 @@ const config: ExpoConfig = {
     blockedPermissions: [
       "android.permission.ACCESS_BACKGROUND_LOCATION",
       "android.permission.ACCESS_COARSE_LOCATION",
-      "android.permission.CAMERA",
+      // `expo-file-system` bunları `maxSdkVersion=32` ile manifeste devrediyor (M-9). Bizim
+      // yazdığımız TEK dosya uygulamanın KENDİ önbelleğinde (kart PNG'si, .ics) — orası hiçbir
+      // API düzeyinde izin istemez. Play "Data safety" formu bu listeyle dolduruluyor:
+      // kullanılmayan bir depolama izni orada açıklanamaz.
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
     ],
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
@@ -101,6 +117,9 @@ const config: ExpoConfig = {
     "expo-apple-authentication",
     ["expo-location", { locationWhenInUsePermission: LOCATION_PURPOSE, isIosBackgroundLocationEnabled: false }],
     ["expo-audio", { microphonePermission: MIC_PURPOSE }],
+    // QR tarama (M-9). `recordAudioAndroidPermission: false` — tarayıcı video kaydetmez,
+    // gereksiz bir mikrofon izni manifeste girmesin.
+    ["expo-camera", { cameraPermission: CAMERA_PURPOSE, recordAudioAndroidPermission: false }],
     // Sesli sohbet (M-6). Purpose string O7 kopyasıdır — `MIC_PURPOSE` ile TEK kaynak;
     // ikinci bir metin yazılsaydı mağaza incelemesi iki farklı gerekçe görürdü.
     // Android tarafında aynı eklenti RECORD_AUDIO / MODIFY_AUDIO_SETTINGS / BLUETOOTH_CONNECT
@@ -117,6 +136,8 @@ const config: ExpoConfig = {
     // Eklenti yalnız native kütüphaneyi bağlar; döşeme stili çalışma anında `/api/config`ten.
     "@maplibre/maplibre-react-native",
     "./plugins/withPrivacyInfo",
+    // Live Activity taslağı (M-9 T7): yalnız Info.plist anahtarı; widget target'ı B-16'da.
+    "./plugins/withLiveActivity",
     [
       "expo-splash-screen",
       {

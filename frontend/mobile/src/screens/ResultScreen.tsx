@@ -1,4 +1,5 @@
 import {
+  attributionProviders,
   backupOf,
   fairnessOf,
   fitsActivity,
@@ -9,7 +10,15 @@ import {
 } from "@bumpinto/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { MapPinLineIcon, ScalesIcon, SparkleIcon, ShareNetworkIcon } from "phosphor-react-native";
+import {
+  CalendarPlusIcon,
+  ImageIcon,
+  MapPinLineIcon,
+  ScalesIcon,
+  SparkleIcon,
+  ShareNetworkIcon,
+} from "phosphor-react-native";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, ScrollView, Share, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,17 +28,21 @@ import Attribution from "../components/molecules/Attribution";
 import Reason, { REASON_ICON_COLOR } from "../components/molecules/Reason";
 import VenueRow from "../components/molecules/VenueRow";
 import ResultCard from "../components/organisms/ResultCard";
+import ShareCardImage from "../components/organisms/ShareCardImage";
 import VoiceDockSlot from "../components/organisms/VoiceDockSlot";
 import { webBase } from "../lib/api";
+import { captureShareCard, shareCard } from "../lib/shareCard";
+import { useToastStore } from "../store/toastStore";
 import { useTravelLabels } from "../store/useTravelLabels";
 import { colors, space } from "../theme";
 
 /**
  * Artboard P20 — karar. Oturumun son ekranı: nereye, kim ne kadar yol yapıyor, NEDEN orası.
  *
- * **Sonuç kartı STATİK** (R-M11/R-M12 → M-9): "Takvime ekle" ve "Kartı paylaş" düğmeleri
- * ÇİZİLMEZ — ICS üretimi ve kart görseli o planda. Üst çubuktaki paylaşım düz metindir
- * (`Share.share`), yani bugün de çalışan bir şey.
+ * P20 ikili düğme satırı (M-9): "Takvime ekle" ve "Kartı paylaş". Kart görseli EKRAN DIŞI
+ * `ShareCardImage` düğümünden 1080×1920 PNG olarak yakalanır; çizim çökerse metin paylaşımına
+ * düşülür (kullanıcı elinde bir şeyle kalır). Üst çubuktaki paylaşım düz metin yolunu
+ * korur — hızlı yol ve emniyet ağı.
  *
  * "Neden burası" ekseni VERİSİ OLMAYAN satırı gizler: uydurma gerekçe yazmak kararın
  * güvenilirliğini yok eder.
@@ -38,6 +51,9 @@ export default function ResultScreen({ view }: { view: SessionView }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const travel = useTravelLabels(view);
+  const push = useToastStore((s) => s.push);
+  const cardRef = useRef<View>(null);
+  const [busy, setBusy] = useState(false);
 
   const locale = i18n.resolvedLanguage ?? "tr";
   const slug = view.slug ?? "";
@@ -96,6 +112,22 @@ export default function ResultScreen({ view }: { view: SessionView }) {
     }).catch(() => undefined);
   }
 
+  async function shareImage() {
+    setBusy(true);
+    try {
+      const uri = await captureShareCard(cardRef);
+      const text = t("share.textFallback", {
+        venue: winner!.name ?? "",
+        url: `${webBase}/j/${slug}`,
+      });
+      const result = await shareCard(uri, text, t("share.dialogTitle"));
+      // Vazgeçmek ("failed") bir hata DEĞİL: yalnız görsel üretilemediğinde açıklama basılır.
+      if (!uri && result !== "failed") push("share.cardFailed", undefined, "flame");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <View style={s.screen}>
       <View style={[s.top, { paddingTop: insets.top + 8 }]}>
@@ -113,6 +145,10 @@ export default function ResultScreen({ view }: { view: SessionView }) {
       <ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
         <AppText variant="h1">{winner.name}</AppText>
 
+        {/* P20 ikili düğme satırı. Ekran dışı çizim düğümü YANINDA durur: görünür düzeni
+            etkilemez, yalnız `captureShareCard` okur. */}
+        <ShareCardImage nodeRef={cardRef} venue={winner} participants={participants} />
+
         <View style={s.cardWrap}>
           <ResultCard
             venue={winner}
@@ -120,6 +156,31 @@ export default function ResultScreen({ view }: { view: SessionView }) {
             participants={participants}
             likes={likes != null ? { n: likes, total: voters.length } : undefined}
             decidedAt={view.decidedAt}
+          />
+        </View>
+
+        <View style={s.actions}>
+          <Button
+            small
+            kind="white"
+            icon={<CalendarPlusIcon size={16} color={colors.ink} />}
+            title={t("calendar.add")}
+            onPress={() =>
+              router.push({
+                pathname: "/(sheets)/meet-time",
+                params: { slug, venueId: winner!.id ?? "" },
+              })
+            }
+            style={s.action}
+          />
+          <Button
+            small
+            kind="white"
+            disabled={busy}
+            icon={<ImageIcon size={16} color={colors.ink} />}
+            title={busy ? t("share.preparing") : t("share.card")}
+            onPress={() => void shareImage()}
+            style={s.action}
           />
         </View>
 
@@ -182,7 +243,7 @@ export default function ResultScreen({ view }: { view: SessionView }) {
           />
         </Card>
 
-        <Attribution providers={[winner.provider ?? "", backup?.provider ?? ""]} />
+        <Attribution providers={attributionProviders([winner, backup])} />
         <VoiceDockSlot slug={slug} />
       </ScrollView>
 
@@ -214,6 +275,8 @@ const s = StyleSheet.create({
   page: { paddingHorizontal: space.screenX, paddingBottom: 110, gap: space.gap },
   // Eğik kartın köşeleri kırpılmasın diye yatay pay.
   cardWrap: { paddingHorizontal: 4, paddingTop: 14 },
+  actions: { flexDirection: "row", gap: 8 },
+  action: { flex: 1, width: "auto" },
   why: { gap: 10 },
   hand: { alignSelf: "center" },
   backupHead: { paddingHorizontal: 14, paddingTop: 12 },

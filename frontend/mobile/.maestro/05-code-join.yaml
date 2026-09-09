@@ -1,0 +1,52 @@
+# Kod ile katılım (M-9) — framework YAPIŞTIRICISI, testsiz bırakılmaz (depo kuralı).
+#
+# Jest'te `api.sessionByCode` bir ikizdir: gerçek `GET /api/sessions/by-code/{code}` çağrısı,
+# kodun kanonikleştirilmesi (küçük harf → büyük) ve dönen slug'a gitme yolu yalnız BURADA
+# uçtan uca koşar. QR TARAMASI bu akışta değil: emülatör kamerası sanal bir kare basar ve
+# gerçek bir okuma yapmaz — o satır cihaz kontrol listesindedir (DEVICE-CHECKLIST-M9).
+#
+# Ön koşul: geçerli bir `MAESTRO_JOIN_CODE`. Oturumun kodunu host jetonuyla al:
+#   curl -s -H "X-Participant-Token: $TOKEN" localhost:8060/api/sessions/$SLUG | jq -r .joinCode
+appId: app.bumpinto.mobile
+---
+- launchApp: { clearState: true }
+
+# Giriş: hesap seçici cihaz kabuğundan gelir (README "bilinen kırılganlıklar").
+- tapOn: "Google ile devam et"
+- tapOn:
+    text: ".*@.*"
+    optional: true
+
+# P2 boş durumu — davet kartı kod/link kutusuyla birlikte.
+- assertVisible: { text: "Bir davet linkin mi var?", timeout: 30000 }
+- assertVisible: "QR tara"
+
+# 1) KÜÇÜK harfle yazılan kod kanonikleştirilip uca gider.
+- tapOn: { id: "invite-input" }
+- inputText: "${MAESTRO_JOIN_CODE}"
+- tapOn: "Katıl"
+- assertVisible: { text: ".*seni buluşmaya çağırdı.*", timeout: 30000 }
+
+# 2) Bilinmeyen kod ÇIKMAZ ekran değil: satır içi tek cümle, kutu yerinde kalır.
+- back
+- assertVisible: { text: "Bir davet linkin mi var?", timeout: 20000 }
+- tapOn: { id: "invite-input" }
+- eraseText
+- inputText: "ZZZZZ"
+- tapOn: "Katıl"
+- assertVisible: { text: "Bu kodla oturum bulunamadı", timeout: 20000 }
+- assertVisible: "Bir davet linkin mi var?"
+
+# 3) Beş haneden kısa girdi uca HİÇ gitmez (istemci kapısı).
+- tapOn: { id: "invite-input" }
+- eraseText
+- inputText: "ABC"
+- tapOn: "Katıl"
+- assertVisible: "Kod 5 haneli olmalı"
+
+# 4) Kamera ön-bilgilendirmesi sistem diyaloğundan ÖNCE (Play prominent disclosure).
+- tapOn: "QR tara"
+- assertVisible: { text: ".*yalnız davet QR kodunu okumak için.*", timeout: 20000 }
+- assertNotVisible: ".*kamerayı kullanmasına izin.*"
+- tapOn: "Kamerayı aç"
+- assertVisible: { text: "İzin Ver.*|Allow.*|.*İZİN VER.*", timeout: 20000 }

@@ -22,6 +22,14 @@ describe("ics", () => {
     expect(text.trimEnd().endsWith("END:VCALENDAR")).toBe(true);
   });
 
+  /* `VTIMEZONE` YAZILMAZ: damgalar mutlak UTC, `TZID` gereksiz — `X-WR-TIMEZONE` yalnız
+     görüntüleyene ipucu. Mobil ve web AYNI metni üretir (M-9:T5 taşıması). */
+  it("VTIMEZONE bloğu yazmaz ve varsayılan saat tam saate oturur", () => {
+    expect(buildIcs(event)).not.toContain("BEGIN:VTIMEZONE");
+    expect(defaultMeetAt("2026-09-06T12:41:00Z").getMinutes()).toBe(0);
+    expect(defaultMeetAt("gecersiz").getMinutes()).toBe(0);
+  });
+
   it("Google Calendar linki aynı aralığı taşır; varsayılan saat karar + 1 saat", () => {
     const url = new URL(googleCalendarUrl(event));
     expect(url.searchParams.get("dates")).toBe("20260906T183000Z/20260906T200000Z");

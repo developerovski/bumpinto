@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import { PlusIcon } from "phosphor-react-native";
@@ -12,14 +12,19 @@ import {
   Button,
   Card,
   HandNote,
-  Input,
   Skeleton,
   Wordmark,
 } from "../../src/components/atoms";
-import { MapMark, OfflineBanner, PastSessionRow, SessionCard } from "../../src/components/molecules";
+import {
+  InviteEntryCard,
+  MapMark,
+  OfflineBanner,
+  PastSessionRow,
+  SessionCard,
+} from "../../src/components/molecules";
 import { useAuthStore } from "../../src/store/authStore";
 import { useNetStore } from "../../src/store/netStore";
-import { slugFromInvite, useSessionStore } from "../../src/store/sessionStore";
+import { useSessionStore } from "../../src/store/sessionStore";
 import { colors, space } from "../../src/theme";
 import { useOncePress } from "../../src/lib/useOncePress";
 
@@ -162,8 +167,6 @@ export default function SessionsScreen() {
 /** Artboard P2 — hiç buluşma yokken: işaret, kopya ve davet kutusu. */
 function EmptyState() {
   const { t } = useTranslation();
-  const [invite, setInvite] = useState("");
-  const slug = slugFromInvite(invite);
 
   return (
     <View style={s.empty}>
@@ -176,25 +179,11 @@ function EmptyState() {
       </AppText>
       <HandNote>{t("sessions.emptyHand")}</HandNote>
 
-      {/* "Yeni buluşma" burada TEKRARLANMAZ: sabit alt çubukta duruyor (artboard P2 boş). */}
+      {/* "Yeni buluşma" burada TEKRARLANMAZ: sabit alt çubukta duruyor (artboard P2 boş).
+          Kod/link çözümlemesi `InviteEntryCard`ta TEK yerde — QR taraması ve `by-code`
+          sorgusu da oradan gelir (M-9). */}
       <View style={s.invite}>
-        <Input
-          value={invite}
-          onChangeText={setInvite}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel={t("sessions.pastePlaceholder")}
-          placeholder={t("sessions.pastePlaceholder")}
-          containerStyle={{ flex: 1 }}
-        />
-        <Button
-          small
-          kind="white"
-          title={t("join.submit")}
-          disabled={!slug}
-          onPress={() => slug && router.push(`/j/${slug}`)}
-          style={s.inviteCta}
-        />
+        <InviteEntryCard />
       </View>
     </View>
   );
@@ -225,6 +214,5 @@ const s = StyleSheet.create({
   empty: { alignItems: "center", paddingTop: 24 },
   emptyTitle: { textAlign: "center", marginTop: 18 },
   emptyCopy: { textAlign: "center", color: colors.ink2, marginTop: 8 },
-  invite: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 22, width: "100%" },
-  inviteCta: { width: "auto", flexShrink: 0 },
+  invite: { marginTop: 22, width: "100%" },
 });

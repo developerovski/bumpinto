@@ -1,13 +1,25 @@
 import type { ParticipantDto } from "@bumpinto/shared";
 import { router } from "expo-router";
-import { MicrophoneIcon, XIcon } from "phosphor-react-native";
+import { HandWavingIcon, MicrophoneIcon, XIcon } from "phosphor-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { MODE_ICON } from "../../icons";
 import { useVoiceStore } from "../../store/voiceStore";
 import { colors, space } from "../../theme";
-import { AppText, Avatar, Badge, IconButton } from "../atoms";
+import { AppText, Avatar, Badge, Button, IconButton } from "../atoms";
+
+/** Yerelleştirilmiş saat; geçersiz ISO'da satır HİÇ çizilmez (uydurma damga basılmaz).
+    `Intl` yoksa (eski Hermes yapılandırması) 24 saatlik yedeğe düşer. */
+function hhmm(iso: string, locale: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(d);
+  } catch {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+}
 
 /**
  * Oturum katılımcı satırı (O18 / P5 / P6 / P7 / P10 `.srow`). Lobi, Bekle, Bireysel kurulum
@@ -18,7 +30,9 @@ import { AppText, Avatar, Badge, IconButton } from "../atoms";
  * engellendiğini görmez, bu yüzden bu gizleme yalnız engelleyenin ekranındadır.
  *
  * ÇEVRİMDIŞI satır solar ve alt satıra tek kelime eklenir — ayrı bir rozet ya da "geç kaldı"
- * damgası YOK (ürünün dil kuralları katılımcıyı suçlayan ifadeyi yasaklar).
+ * damgası YOK (ürünün dil kuralları katılımcıyı suçlayan ifadeyi yasaklar). `lastSeenAt`
+ * gelirse o kelime saate döner ("Son görülen · 10:38"); GELMEZSE yalnız "çevrimdışı" kalır —
+ * sunucudan gelmeyen bir zaman damgası UYDURULMAZ.
  *
  * ÇAPALI oturumda konum vermemek eksiklik DEĞİL: satır hazır görünür, nabız/kesikli avatar
  * çizilmez — kimse bu kişiyi beklemiyor (artboard P7).
@@ -34,8 +48,13 @@ export default function ParticipantRow(p: {
   anchored?: boolean;
   /** Bireysel kurulumda elle eklenen noktayı kaldırır (P5 `.icb.gh` X). */
   onRemove?: () => void;
+  /** P10/P17 dürtme (M-9). Verilmezse düğme HİÇ çizilmez — davetli görünümü ve konumu gelmiş
+      kişiler bu yüzden düğmesiz kalır. Çağıran `socialStore.nudge`ı çağırır; satır uç bilmez. */
+  onNudge?: (participantId: string, name: string) => void;
+  /** Soğuma sürerken düğme pasif: dokunuş sunucuya gitmeden "az önce dürttün" der. */
+  nudgeDisabled?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const person = p.participant;
 
   /* Sesli sohbet göstergeleri (M-6). Kaynak SUNUCU (`inVoice`) + yerel mesh (konuşuyor mu);
@@ -61,6 +80,8 @@ export default function ParticipantRow(p: {
   // kullanıcı KENDİ satırını soluk, "offline" etiketli görüyordu (2026-09-08 emülatörde).
   const away = person.online === false && !person.manual && !p.self;
   const online = person.online !== false && !person.manual && !p.self;
+  const seen =
+    away && person.lastSeenAt ? hhmm(person.lastSeenAt, i18n.resolvedLanguage ?? i18n.language) : null;
 
   // EBIKE iki glif basar (bisiklet + şimşek) — `MODE_ICON` bu yüzden DİZİ döner.
   const mode = person.hasLocation ? person.travelMode : undefined;
@@ -144,11 +165,28 @@ export default function ParticipantRow(p: {
             {away ? (
               <>
                 <AppText variant="muted">·</AppText>
-                <AppText variant="muted">{t("waiting.offline")}</AppText>
+                <AppText variant="muted">
+                  {seen ? t("presence.lastSeen", { time: seen }) : t("waiting.offline")}
+                </AppText>
               </>
             ) : null}
           </View>
         )}
+
+        {/* P10/P17 `.btn.b-gh.bsm`. KİMİN dürtüleceğine satır karar VERMEZ — çağıran verir:
+            lobide konumu bekleneni, "Gönderildi"de desteyi bitirmeyeni. Satır yalnız
+            dürtülemez olanı eler: kendisi, engellenmiş ve elle eklenen nokta (hesabı yok). */}
+        {p.onNudge && !blocked && !person.manual && !p.self && person.id ? (
+          <Button
+            small
+            kind="ghost"
+            disabled={p.nudgeDisabled}
+            title={t("presence.nudge", { name })}
+            icon={<HandWavingIcon size={16} color={colors.flameDeep} weight="bold" />}
+            style={s.nudge}
+            onPress={() => p.onNudge?.(person.id!, name)}
+          />
+        ) : null}
       </View>
 
       {blocked ? (
@@ -191,4 +229,5 @@ const s = StyleSheet.create({
   name: { fontWeight: "700" },
   sub: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
   minutes: { color: colors.ink2 },
+  nudge: { width: "auto", alignSelf: "flex-start", marginTop: 6, paddingHorizontal: 0 },
 });

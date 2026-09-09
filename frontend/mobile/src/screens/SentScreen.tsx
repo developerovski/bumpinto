@@ -1,4 +1,4 @@
-import { votersOf, type SessionView } from "@bumpinto/shared";
+import { attributionProviders, votersOf, type SessionView } from "@bumpinto/shared";
 import { LockSimpleIcon } from "phosphor-react-native";
 import { Trans, useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -11,15 +11,16 @@ import StepBar from "../components/molecules/StepBar";
 import VenueRow from "../components/molecules/VenueRow";
 import VoiceDockSlot from "../components/organisms/VoiceDockSlot";
 import { useDeckStore } from "../store/deckStore";
+import { useSocialStore } from "../store/socialStore";
 import { useTravelLabels } from "../store/useTravelLabels";
 import { colors, space } from "../theme";
 
 /**
  * Artboard P17 — beğeniler gönderildi, diğerleri bekleniyor.
  *
- * **"Dürt" düğmesi ÇİZİLMEZ** (K-M4): uç var ama presence 2.0'ın soğuma sayacı ve `nudged`
- * geri bildirimi M-9'da; yarım bir dürtme düğmesi kullanıcıya sonucu görünmeyen bir eylem
- * verirdi.
+ * "Dürt" burada DESTEYİ BİTİRMEYENE aittir (M-9): bu ekranda beklenen tek şey diğerlerinin
+ * kaydırmayı bitirmesi. Lobideki dürtme konum bekleyene gider — aynı uç, farklı kapı.
+ * Düğme YALNIZ kurana çizilir (W-15 host kilidi).
  *
  * Kişi başı kaydırma İLERLEMESİ gösterilmez: sözleşmede `deckDone` var, "kaç kart kaldı"
  * YOK. Uydurma bir yüzde çizmektense grubun toplam ilerlemesi gösterilir (alan icat edilmez).
@@ -31,6 +32,10 @@ export default function SentScreen({ view }: { view: SessionView }) {
 
   const liked = useDeckStore((s) => s.liked);
   const venues = useDeckStore((s) => s.venues);
+  const nudge = useSocialStore((s) => s.nudge);
+  const nudgedAt = useSocialStore((s) => s.nudgedAt);
+  const canNudge = useSocialStore((s) => s.canNudge);
+  const isHost = view.viewer?.host === true;
 
   const participants = view.participants ?? [];
   const voters = votersOf(participants);
@@ -84,6 +89,12 @@ export default function SentScreen({ view }: { view: SessionView }) {
                   index={index}
                   self={person.id === view.viewer?.participantId}
                   anchored={view.anchored}
+                  onNudge={
+                    isHost && !person.deckDone
+                      ? (id, name) => void nudge(view.slug ?? "", id, name)
+                      : undefined
+                  }
+                  nudgeDisabled={!!nudgedAt && !canNudge(person.id ?? "")}
                 />
               </View>
               <Badge tone={person.deckDone ? "grass" : "neutral"}>
@@ -109,7 +120,7 @@ export default function SentScreen({ view }: { view: SessionView }) {
               />
             ))}
             <View style={s.attr}>
-              <Attribution providers={likedVenues.map((v) => v.provider ?? "")} />
+              <Attribution providers={attributionProviders(likedVenues)} />
             </View>
           </Card>
         ) : null}

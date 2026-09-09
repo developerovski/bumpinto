@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ToastHost } from "../src/components/molecules";
 import { setSignedOutHandler } from "../src/lib/api";
 import { useAuthStore } from "../src/store/authStore";
 import { watchNetwork } from "../src/store/netStore";
@@ -88,6 +89,10 @@ export default function RootLayout() {
             options={{ presentation: "modal", animation: "slide_from_bottom" }}
           />
         </Stack>
+        {/* Şerit `Stack`ten SONRA: ekranların sabit alt çubuğunun ÜSTÜNDE kalsın.
+            Kökte bir kez — her ekran kendi kopyasını mount etseydi geçişte bildirim
+            kaybolurdu (dürtme onayı ekran değiştirirken de görünmeli). */}
+        <ToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

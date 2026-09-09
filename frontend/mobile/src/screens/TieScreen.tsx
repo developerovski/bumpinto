@@ -1,4 +1,4 @@
-import { fairestOf, votersOf, type SessionView } from "@bumpinto/shared";
+import { attributionProviders, fairestOf, votersOf, type SessionView } from "@bumpinto/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -96,7 +96,7 @@ export default function TieScreen({ view }: { view: SessionView }) {
 
         {host ? <HandNote style={s.hand}>{t("runoff.tieHand")}</HandNote> : null}
 
-        <Attribution providers={finalists.map((v) => v.provider ?? "")} />
+        <Attribution providers={attributionProviders(finalists)} />
         <VoiceDockSlot slug={slug} />
       </ScrollView>
 

@@ -1,4 +1,4 @@
-import type { SessionView } from "@bumpinto/shared";
+import { attributionProviders, type SessionView } from "@bumpinto/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -79,7 +79,7 @@ export default function ListScreen({ view }: { view: SessionView }) {
             />
           ))}
           <View style={s.attr}>
-            <Attribution providers={venues.map((v) => v.provider ?? "")} />
+            <Attribution providers={attributionProviders(venues)} />
           </View>
         </Card>
       </ScrollView>

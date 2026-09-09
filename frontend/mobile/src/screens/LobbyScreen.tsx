@@ -97,6 +97,7 @@ export default function LobbyScreen({ view }: { view: SessionView }) {
           viewerId={view.viewer?.participantId}
           anchored={anchored}
           step="locations"
+          host={true}
         />
 
         <AppText variant="muted" style={s.note}>

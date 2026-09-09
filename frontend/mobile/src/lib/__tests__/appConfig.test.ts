@@ -12,12 +12,16 @@ const LOCATION =
   "Yalnız uygulama açıkken; arkadaşlarına ~1 km yuvarlanmış gösterilir.";
 const MIC =
   "Buluşmadaki arkadaşlarınla sesli konuşabilmen için mikrofon gerekir. Ses kaydedilmez.";
+const CAMERA =
+  "BumpInto kamerayı yalnız arkadaşının davet QR kodunu okumak için kullanır. " +
+  "Görüntü kaydedilmez, gönderilmez.";
 
 const expo = config;
 
 test("purpose string'ler O4/O7 metinleriyle birebir aynı, ihracat beyanı false", () => {
   expect(expo.ios!.infoPlist!.NSLocationWhenInUseUsageDescription).toBe(LOCATION);
   expect(expo.ios!.infoPlist!.NSMicrophoneUsageDescription).toBe(MIC);
+  expect(expo.ios!.infoPlist!.NSCameraUsageDescription).toBe(CAMERA);
   expect(expo.ios!.infoPlist!.ITSAppUsesNonExemptEncryption).toBe(false);
 });
 
@@ -33,22 +37,41 @@ test("eklenti purpose string'leri Info.plist ile aynı metni kullanır", () => {
     { microphonePermission: string },
   ];
   expect(audio[1].microphonePermission).toBe(MIC);
+  const camera = expo.plugins!.find((p) => Array.isArray(p) && p[0] === "expo-camera") as [
+    string,
+    { cameraPermission: string; recordAudioAndroidPermission: boolean },
+  ];
+  expect(camera[1].cameraPermission).toBe(CAMERA);
+  // Tarayıcı video KAYDETMEZ: gereksiz bir mikrofon izni manifeste girmesin.
+  expect(camera[1].recordAudioAndroidPermission).toBe(false);
 });
 
 /* İzin listesi BEKÇİ testi: her yeni izin bilinçli bir mağaza kararıdır, kazayla eklenemez.
    `BLUETOOTH_CONNECT` 2026-09-09'da kullanıcı kararıyla girdi (M-6): WebRTC eklentisi onu
    eklemiyor ve izinsiz kalınca `react-native-incall-manager` bluetooth kulaklığı SESSİZCE
-   atlıyordu — ses telefondan çıkıyordu. Çalışma zamanı talebi `requestBluetoothConnect`te. */
+   atlıyordu — ses telefondan çıkıyordu. Çalışma zamanı talebi `requestBluetoothConnect`te.
+
+   `CAMERA` 2026-09-09'da girdi (M-9): davet QR tarayıcısı. ENGELLİ listeden ÇIKARILDI —
+   engelli kaldığı sürece `expo-camera` izni hiç alamaz ve tarayıcı sessizce çalışmazdı.
+   Kamera YALNIZ tarama sayfasında açılır, video kaydedilmez. */
 test("yalnız beklenen tehlikeli Android izinleri istenir, arka plan konumu engellenir", () => {
   expect(expo.android!.permissions).toEqual([
     "android.permission.ACCESS_FINE_LOCATION",
     "android.permission.RECORD_AUDIO",
+    "android.permission.CAMERA",
     "android.permission.BLUETOOTH_CONNECT",
   ]);
   expect(expo.android!.blockedPermissions).toContain(
     "android.permission.ACCESS_BACKGROUND_LOCATION",
   );
-  expect(expo.android!.blockedPermissions).toContain("android.permission.CAMERA");
+  expect(expo.android!.blockedPermissions).toContain("android.permission.ACCESS_COARSE_LOCATION");
+  /* `expo-file-system` eski depolama izinlerini manifeste devrediyor; yalnız kendi
+     önbelleğimize yazdığımız için ikisi de engellenir (M-9). */
+  expect(expo.android!.blockedPermissions).toContain("android.permission.READ_EXTERNAL_STORAGE");
+  expect(expo.android!.blockedPermissions).toContain("android.permission.WRITE_EXTERNAL_STORAGE");
+  // QR tarayıcısı izni GEREKTİRİR: engelli listede kalırsa manifest'ten silinir ve
+  // `requestPermission()` daima reddedilir (M-9'da bulundu).
+  expect(expo.android!.blockedPermissions).not.toContain("android.permission.CAMERA");
 });
 
 test("derin link yalnız /j/ yakalar; /account/delete web'de kalır", () => {

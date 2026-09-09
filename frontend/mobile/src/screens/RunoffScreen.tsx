@@ -1,4 +1,5 @@
 import {
+  attributionProviders,
   allVoted,
   isDeciding,
   sessionActivities,
@@ -138,7 +139,7 @@ export default function RunoffScreen({ view }: { view: SessionView }) {
           </AppText>
         </View>
 
-        <Attribution providers={finalists.map((v) => v.provider ?? "")} />
+        <Attribution providers={attributionProviders(finalists)} />
         <VoiceDockSlot slug={slug} />
       </ScrollView>
 

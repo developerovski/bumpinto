@@ -132,3 +132,73 @@ test("kendi satırı çevrimdışı GÖSTERİLMEZ, solmaz", async () => {
     expect.arrayContaining([expect.objectContaining({ opacity: 0.55 })]),
   );
 });
+
+/* --- M-9 presence 2.0 --------------------------------------------------------------- */
+
+/* `lastSeenAt` GELİRSE "çevrimdışı" kelimesi saate döner. Alan yoksa satır eski hâlinde
+   kalır — sunucudan gelmeyen bir damga uydurulmaz. */
+test("çevrimdışı satırda lastSeenAt varsa saat yazılır", async () => {
+  await render(
+    <ParticipantRow
+      participant={{ ...kerem, online: false, lastSeenAt: "2026-09-06T10:38:00Z" }}
+      slug="x7k2m"
+    />,
+  );
+  expect(screen.getByText(/Son görülen · /)).toBeTruthy();
+  expect(screen.queryByText("çevrimdışı")).toBeNull();
+});
+
+test("lastSeenAt geçersizse yalnız 'çevrimdışı' kalır", async () => {
+  await render(
+    <ParticipantRow participant={{ ...kerem, online: false, lastSeenAt: "yok" }} slug="x7k2m" />,
+  );
+  expect(screen.getByText("çevrimdışı")).toBeTruthy();
+  expect(screen.queryByText(/Son görülen/)).toBeNull();
+});
+
+/* Dürt düğmesi ÇAĞIRANIN kararı: `onNudge` verilmeyen satırda hiç çizilmez. */
+test("onNudge verilmeyen satırda dürt düğmesi yok", async () => {
+  await render(<ParticipantRow participant={{ id: "p9", displayName: "Ayşe" }} slug="x7k2m" />);
+  expect(screen.queryByLabelText("Ayşe'i dürt")).toBeNull();
+});
+
+test("dürt düğmesi kimliği ve adı geri verir", async () => {
+  const onNudge = jest.fn();
+  await render(
+    <ParticipantRow participant={{ id: "p9", displayName: "Ayşe" }} slug="x7k2m" onNudge={onNudge} />,
+  );
+  fireEvent.press(screen.getByLabelText("Ayşe'i dürt"));
+  expect(onNudge).toHaveBeenCalledWith("p9", "Ayşe");
+});
+
+test("soğuma sürerken dürt düğmesi pasif", async () => {
+  const onNudge = jest.fn();
+  await render(
+    <ParticipantRow
+      participant={{ id: "p9", displayName: "Ayşe" }}
+      slug="x7k2m"
+      onNudge={onNudge}
+      nudgeDisabled
+    />,
+  );
+  expect(screen.getByLabelText("Ayşe'i dürt").props.accessibilityState).toEqual(
+    expect.objectContaining({ disabled: true }),
+  );
+});
+
+/* Elle eklenen noktanın hesabı YOK: dürtülecek bir cihaz da yok. Kendi satırı da elenir. */
+test("elle eklenen nokta ve kendi satırı dürtülemez", async () => {
+  await render(
+    <ParticipantRow
+      participant={{ ...kerem, manual: true }}
+      slug="x7k2m"
+      onNudge={jest.fn()}
+    />,
+  );
+  expect(screen.queryByLabelText("Kerem'i dürt")).toBeNull();
+});
+
+test("kendi satırında dürt düğmesi çizilmez", async () => {
+  await render(<ParticipantRow participant={kerem} slug="x7k2m" self onNudge={jest.fn()} />);
+  expect(screen.queryByLabelText("Kerem'i dürt")).toBeNull();
+});

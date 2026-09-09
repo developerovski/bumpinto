@@ -6,7 +6,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppText, Button, HandNote, Sticker } from "../src/components/atoms";
+import { AppText, Button, GoogleLogo, HandNote, Sticker } from "../src/components/atoms";
 import MapMark from "../src/components/molecules/MapMark";
 import { useAuthStore } from "../src/store/authStore";
 import { colors, space } from "../src/theme";
@@ -59,7 +59,12 @@ export default function Landing() {
       <HandNote style={s.hand}>{t("landing.hand")}</HandNote>
 
       <View style={s.cta}>
-        <Button kind="white" title={t("landing.google")} onPress={() => void signIn()} />
+        <Button
+          kind="white"
+          title={t("landing.google")}
+          onPress={() => void signIn()}
+          icon={<GoogleLogo size={18} />}
+        />
         {appleReady ? (
           <Button
             kind="white"

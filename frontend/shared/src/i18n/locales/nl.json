@@ -730,7 +730,10 @@
     "preparing": "Kaart wordt gemaakt…",
     "cardTitle": "We spreken af bij {{venue}}",
     "cardFooter": "iedereen ~{{min}}–{{max}} min · {{spread}} min verschil",
-    "fileName": "bumpinto-{{slug}}.png"
+    "fileName": "bumpinto-{{slug}}.png",
+    "cardFailed": "Afbeelding mislukt — als tekst gedeeld.",
+    "dialogTitle": "Resultaatkaart delen",
+    "textFallback": "{{venue}} · {{url}}"
   },
   "calendar": {
     "add": "Aan agenda toevoegen",
@@ -740,10 +743,29 @@
     "time": "Tijd",
     "download": "Agendabestand downloaden",
     "google": "Openen in Google Calendar",
-    "eventTitle": "{{venue}} · {{session}}"
+    "eventTitle": "{{venue}} · {{session}}",
+    "share": "Aan agenda toevoegen",
+    "error": "Agendabestand maken is mislukt."
   },
   "source": {
     "google": "Google",
     "foursquare": "Foursquare"
+  },
+  "code": {
+    "label": "Heb je een uitnodigingslink?",
+    "hint": "Plak een code of link",
+    "join": "Meedoen",
+    "scan": "QR scannen",
+    "showQr": "QR tonen",
+    "qrTitle": "Laat dit scannen",
+    "qrHint": "Richt hun camera op deze code.",
+    "scanTitle": "Scan de uitnodigings-QR",
+    "scanDisclosure": "De camera opent alleen om de uitnodigings-QR te lezen; er wordt niets bewaard of verstuurd.",
+    "scanAllow": "Camera openen",
+    "scanDenied": "Cameratoegang staat uit",
+    "scanDeniedCopy": "Je kunt de code ook met de hand typen.",
+    "scanSettings": "Instellingen openen",
+    "invalid": "De code heeft 5 tekens",
+    "notFound": "Geen afspraak gevonden voor die code"
   }
 }
