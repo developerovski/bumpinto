@@ -33,7 +33,12 @@ class TokenServiceTest {
         Jwt jwt = tokens.decoder().decode(token);
         assertThat(jwt.getSubject()).isEqualTo(userId.toString());
         assertThat(jwt.getClaimAsString("email")).isEqualTo("m@x.dev");
-        assertThat(jwt.getExpiresAt()).isAfter(Instant.now().plus(Duration.ofHours(11)));
+        // Sure PROPS'tan turetilir, GOMULMEZ: erisim TTL'i 12h -> 15m degistiginde (B-16)
+        // gomulu "11 saat" sayisi testi yanlis yerden kirdi.
+        Duration ttl = PROPS.security().tokenTtl();
+        assertThat(jwt.getExpiresAt())
+                .isAfter(Instant.now().plus(ttl).minus(Duration.ofMinutes(1)))
+                .isBefore(Instant.now().plus(ttl).plus(Duration.ofMinutes(1)));
     }
 
     @Test
@@ -45,7 +50,7 @@ class TokenServiceTest {
 
     @Test
     void shortSecretIsRejectedAtConstruction() {
-        AppProps weak = TestProps.of(new AppProps.Security("cid", "kisa", Duration.ofHours(1)));
+        AppProps weak = TestProps.of(new AppProps.Security("cid", "kisa", Duration.ofHours(1), Duration.ofDays(30)));
         assertThatThrownBy(() -> new TokenService(weak, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -74,7 +79,8 @@ class TokenServiceTest {
     @Test
     void unresolvedPlaceholderIsRejectedEvenWhenLongEnough() {
         AppProps unresolved = TestProps.of(new AppProps.Security("cid",
-                "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}", Duration.ofHours(1)));
+                "${A_VERY_LONG_TOKEN_SECRET_ENV_VARIABLE_NAME}", Duration.ofHours(1),
+                Duration.ofDays(30)));
         assertThatThrownBy(() -> new TokenService(unresolved, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("TOKEN_SECRET is not configured");

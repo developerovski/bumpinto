@@ -14,6 +14,8 @@ type AuthState = {
   load: () => Promise<void>;
   login: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Sunucu oturumu bitirdi (yenileme reddedildi) — ağa GİTMEDEN yerel durumu temizler. */
+  signedOut: () => void;
   setMe: (me: MeResponse) => void;
   /** PUT /api/me tam değişim yapar — mevcut me'den taşınıp patch ile ezilir. */
   updatePrefs: (patch: Partial<UpdateMeRequest>) => Promise<void>;
@@ -75,6 +77,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       setAnalyticsConsent(false);
       useSessionsStore.getState().reset();
     }
+  },
+  /**
+   * `logout()` DEĞİL: o `POST /api/auth/logout` atar. Buraya, sunucu yenilemeyi ZATEN
+   * reddettiği için gelinir — ikinci bir ağ turu beklemenin anlamı yok ve çevrimdışıyken
+   * kullanıcıyı asılı bırakırdı. Yan etkiler `logout` ile aynı: rıza kapısı, oturum listesi.
+   */
+  signedOut: () => {
+    set({ me: null, status: "anon" });
+    setAnalyticsConsent(false);
+    useSessionsStore.getState().reset();
   },
   setMe: (me) => set({ me, status: "signed" }),
   updatePrefs: async (patch) => {

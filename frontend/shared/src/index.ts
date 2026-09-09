@@ -1,4 +1,5 @@
-export { createHttp, type AuthProviders, type HttpOptions } from "./http";
+export { createHttp, createRefreshGate, type AuthProviders, type HttpOptions,
+  type RefreshGate } from "./http";
 export {
   createBumpintoApi,
   type AppConfig,

@@ -195,6 +195,34 @@ class SchemaMigrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    /**
+     * V19: yenileme jetonu OPAK ve iptal edilebilir. Kolon {@code token_hash} — jetonun
+     * KENDISI degil: bir DB dokumu tum canli oturumlar demek olurdu (V6'da katilimci jetonu
+     * icin ayni ders alinmisti, duz metin bearer sirri kolonu dusurulmustu).
+     */
+    @Test
+    void v19CreatesRefreshTokensWithHashedOpaqueTokens() {
+        assertThat(columnsOf("refresh_tokens"))
+                .contains("id", "user_id", "token_hash", "family_id", "rotated_from", "client",
+                        "issued_at", "expires_at", "revoked_at")
+                .doesNotContain("token");
+    }
+
+    /** Ayni ozet iki kez yazilamaz: rotasyonun TEK KULLANIMLIK olmasi buna dayanir. */
+    @Test
+    void v19MakesTokenHashUnique() {
+        assertThat(jdbc.queryForList(
+                "select indexdef from pg_indexes where tablename = 'refresh_tokens'",
+                String.class))
+                .anyMatch(def -> def.contains("UNIQUE") && def.contains("token_hash"));
+    }
+
+    /** Hesap fiziksel olarak silinince (AccountRetention supurmesi) jetonlari da gider. */
+    @Test
+    void v19CascadesRefreshTokensWhenTheUserRowGoes() {
+        assertThat(deleteRuleOf("refresh_tokens", "user_id")).isEqualTo("CASCADE");
+    }
+
     private UUID insertHost(String email) {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into users (id, email, name) values (?, ?, ?)", id, email, "V18");

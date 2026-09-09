@@ -35,6 +35,9 @@ public class SecurityConfig {
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/google"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/apple"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/logout"),
+            // Yenileme: cagiranin erisim jetonu TANIM GEREGI olu. Kimlik dogrulamasi yenileme
+            // jetonunun kendisidir, bearer'a bakilmaz.
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/refresh"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/sessions/*/participants"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/*/preview"),
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.GET, "/api/sessions/by-code/*"),
@@ -102,19 +105,38 @@ public class SecurityConfig {
      * yok sayilmaz, once DOGRULANIR: bayat ya da bozuk bir token public bir ucu 401'letmemeli,
      * yalnizca yok sayilmalidir. Bedeli istek basina bir HMAC dogrulamasi, kazanci hayalet
      * katilimci satirlarinin bitmesi.
+     *
+     * <p><b>K-M38 (2026-09-09, cihazda bulundu):</b> ayni dusunce OTURUM uclari icin de gecerli.
+     * Gecersiz bir bearer ZATEN HICBIR SEY acmiyordu; sorun onu 401 ile cezalandirmakti —
+     * Spring'in bearer filtresi {@link ParticipantTokenFilter}'dan ONCE kosup zinciri kesiyor,
+     * misafirin GECERLI oturum kimligi hic degerlendirilemiyordu (curl A/B: yalniz katilimci
+     * jetonu 200 · + gecersiz bearer 401). Hesap jetonu 12 saatte doluyor, oturum 24 saat
+     * yasiyordu; arada uygulamayi acan herkes oturumunu kaybediyordu.
+     *
+     * <p>Kapsam BILEREK dar: bayat jeton yalniz istek KENDI BASINA bir kimlik tasiyorsa
+     * dusurulur (public uc, ya da o slug'a ait GECERLI katilimci jetonu). Hesap uclarinda 401
+     * donmeye DEVAM EDER — kosulsuz dusurulseydi istemci jetonunun oldugunu hic ogrenmez, 401
+     * kesicisi (W-16/M-10) hic tetiklenmez ve kullanici sessizce yetkisiz kalirdi.
+     *
+     * <p>Bedel: bu dar yolda katilimci jetonu iki kez cozulur (burada ve filtrede) — istek
+     * basina bir fazla HMAC dogrulamasi, yalnizca zaten hatali olan yolda.
      */
     @Bean
-    BearerTokenResolver bearerTokenResolver(JwtDecoder accountDecoder) {
+    BearerTokenResolver bearerTokenResolver(JwtDecoder accountDecoder, TokenService tokens) {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
+        // Katilimci jetonu TUR kapisindan gecmez (typ=pt), bu yuzden ham cozucu kullanilir.
+        JwtDecoder rawDecoder = tokens.decoder();
         return request -> {
             String presented = headerResolver.resolve(request);
             if (presented == null) {
                 presented = accessCookie(request);
             }
-            if (presented == null || !isPublicEndpoint(request)) {
+            if (presented == null || valid(accountDecoder, presented)) {
                 return presented;
             }
-            return valid(accountDecoder, presented) ? presented : null;
+            boolean requestCarriesItsOwnIdentity = isPublicEndpoint(request)
+                    || ParticipantTokens.carriedBy(request, rawDecoder);
+            return requestCarriesItsOwnIdentity ? null : presented;
         };
     }
 

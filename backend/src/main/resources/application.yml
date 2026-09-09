@@ -17,7 +17,11 @@ bumpinto:
     # Local default'lari application-local.yml'de.
     google-client-id: ${GOOGLE_CLIENT_ID}
     token-secret: ${TOKEN_SECRET}
-    token-ttl: 12h
+    # 12h -> 15m (B-16): erisim jetonu artik KISA omurlu, yaninda yenileme jetonu var.
+    # Calinan bir erisim jetonunun penceresi 12 saatten 15 dakikaya iner.
+    token-ttl: 15m
+    # Yenileme jetonu kayan pencere: her rotasyon sureyi bastan baslatir.
+    refresh-ttl: 30d
   apple:
     # Bos birakilabilir: Apple girisi kapali (503), uygulama acilir. Prod'da ZORUNLU (4.8).
     services-id: ${APPLE_SERVICES_ID:}

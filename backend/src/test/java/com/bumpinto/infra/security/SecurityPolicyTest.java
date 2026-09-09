@@ -76,7 +76,8 @@ class SecurityPolicyTest {
         AppProps.Venues venues = new AppProps.Venues(sources, TestProps.venues().route());
 
         AppProps props = TestProps.of(
-                new AppProps.Security("cid", "super-secret-token-0123456789abcd", Duration.ofHours(12)),
+                new AppProps.Security("cid", "super-secret-token-0123456789abcd",
+                        Duration.ofMinutes(15), Duration.ofDays(30)),
                 new AppProps.Cors(List.of("https://bumpinto.app")),
                 new AppProps.Cookies(true, ""),
                 new AppProps.RateLimit(false),
@@ -96,7 +97,7 @@ class SecurityPolicyTest {
         assertThat(props.venues().sources().get("google").toString())
                 .doesNotContain("gplaces-secret-key");
         // Teshis degeri kaybolmaz: TTL, origin listesi, client-id ve XFF karari okunur.
-        assertThat(printed).contains("PT12H", "https://bumpinto.app", "cid",
+        assertThat(printed).contains("PT15M", "https://bumpinto.app", "cid",
                 "trustForwardedFor=false", "cf-key-id");
     }
 
@@ -411,5 +412,62 @@ class SecurityPolicyTest {
         MockHttpServletRequest foreign = request("POST", "/api/sessions/q3n8p/swipes");
         foreign.addHeader(ParticipantTokenFilter.HEADER, token);
         assertThat(reachesApp(foreign)).isFalse();
+    }
+
+    /**
+     * K-M38'in KOKU (2026-09-09 cihazda bulundu, curl A/B ile kanitlandi): gecerli katilimci
+     * jetonu + BAYAT hesap jetonu = 401.
+     *
+     * <p>Sebep SIRA: Spring'in BearerTokenAuthenticationFilter'i ParticipantTokenFilter'dan
+     * ONCE kosar ve gecersiz bearer'da zinciri KESER — misafirin gecerli oturum kimligi hic
+     * degerlendirilemiyordu. Etki: hesap jetonu 12 saatte doluyordu, oturum 24 saat yasiyor;
+     * arada uygulamayi acan HERKES oturumunu kaybediyordu.
+     */
+    @Test
+    void staleBearerDoesNotKillAValidParticipantToken() throws Exception {
+        String token = CONTEXT.getBean(TokenService.class).issueParticipantToken(
+                UUID.randomUUID(), UUID.randomUUID(), "x7k2m", false);
+
+        MockHttpServletRequest request = request("POST", "/api/sessions/x7k2m/swipes");
+        request.addHeader(ParticipantTokenFilter.HEADER, token);
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bu-jeton-bozuk");
+
+        assertThat(reachesApp(request)).isTrue();
+    }
+
+    /**
+     * KARSI kapi: hesap ucunda bayat jeton 401 DONMEYE DEVAM EDER. Dusseydi istemci jetonunun
+     * oldugunu hic ogrenmez, 401 kesicisi (W-16/M-10) hic tetiklenmez ve kullanici sessizce
+     * "girisli ama yetkisiz" bir arafta kalirdi.
+     */
+    @Test
+    void staleBearerStillFailsOnAccountEndpoints() throws Exception {
+        MockHttpServletRequest request = request("POST", "/api/sessions");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bu-jeton-bozuk");
+
+        assertThat(reachesApp(request)).isFalse();
+    }
+
+    /** Katilimci jetonu da bozuksa istek GERCEKTEN anonimdir: 401 kalir. */
+    @Test
+    void staleBearerWithAStaleParticipantTokenStaysUnauthorized() throws Exception {
+        MockHttpServletRequest request = request("POST", "/api/sessions/x7k2m/swipes");
+        request.addHeader(ParticipantTokenFilter.HEADER, "bu-da-bozuk");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bu-jeton-bozuk");
+
+        assertThat(reachesApp(request)).isFalse();
+    }
+
+    /** Bayat bearer BASKA bir oturumun gecerli jetonuyla da gecemez: slug kapisi duruyor. */
+    @Test
+    void staleBearerIsNotRescuedByAForeignParticipantToken() throws Exception {
+        String token = CONTEXT.getBean(TokenService.class).issueParticipantToken(
+                UUID.randomUUID(), UUID.randomUUID(), "x7k2m", false);
+
+        MockHttpServletRequest request = request("POST", "/api/sessions/q3n8p/swipes");
+        request.addHeader(ParticipantTokenFilter.HEADER, token);
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bu-jeton-bozuk");
+
+        assertThat(reachesApp(request)).isFalse();
     }
 }

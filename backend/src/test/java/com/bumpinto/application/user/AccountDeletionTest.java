@@ -8,6 +8,7 @@ import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.support.FakeStores;
+import com.bumpinto.support.TestProps;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -26,8 +27,11 @@ class AccountDeletionTest {
     final FakeStores.InMemoryUserStore users = new FakeStores.InMemoryUserStore();
     final FakeStores.InMemorySessionStore sessions = new FakeStores.InMemorySessionStore();
     final AccountIdentityTest.FakeAppleTokens apple = new AccountIdentityTest.FakeAppleTokens();
-    final AccountDeletion deletion =
-            new AccountDeletion(users, sessions, apple, Clock.fixed(NOW, ZoneOffset.UTC));
+    final RefreshTokensTest.FakeStore refreshStore = new RefreshTokensTest.FakeStore();
+    final RefreshTokens refreshTokens =
+            new RefreshTokens(refreshStore, TestProps.defaults(), Clock.fixed(NOW, ZoneOffset.UTC));
+    final AccountDeletion deletion = new AccountDeletion(users, sessions, apple, refreshTokens,
+            Clock.fixed(NOW, ZoneOffset.UTC));
 
     UUID hostedSession(UUID hostId, String slug) {
         return sessions.saveSession(new Session(UUID.randomUUID(), slug, hostId, "Kahve",
@@ -68,5 +72,34 @@ class AccountDeletionTest {
         deletion.delete(me);
 
         assertThat(users.profileOf(me)).isEmpty();
+    }
+
+    /**
+     * Silme "erisim ANINDA kapanir" demek (Apple 5.1.1(v) / §2). Yenileme jetonu kalsaydi
+     * silinmis hesap 30 gun boyunca kendine yeni erisim jetonu bastirabilirdi — soft delete'in
+     * tum anlami giderdi.
+     */
+    @Test
+    void deletionRevokesEveryRefreshTokenOfTheAccount() {
+        UUID me = users.upsertByEmail("me@bumpinto.test", "Ben");
+        String phone = refreshTokens.issue(me, "mobile").token();
+        String laptop = refreshTokens.issue(me, "web").token();
+
+        deletion.delete(me);
+
+        assertThat(refreshTokens.rotate(phone, "mobile")).isEmpty();
+        assertThat(refreshTokens.rotate(laptop, "web")).isEmpty();
+    }
+
+    /** Baskasinin jetonlarina dokunulmaz: silme HEDEFLIDIR. */
+    @Test
+    void deletionLeavesOtherAccountsSignedIn() {
+        UUID me = users.upsertByEmail("me@bumpinto.test", "Ben");
+        UUID other = users.upsertByEmail("other@bumpinto.test", "Baskasi");
+        String theirs = refreshTokens.issue(other, "web").token();
+
+        deletion.delete(me);
+
+        assertThat(refreshTokens.rotate(theirs, "web")).isPresent();
     }
 }

@@ -1,7 +1,14 @@
-import { createBumpintoApi, createHttp } from "@bumpinto/shared";
+import {
+  createBumpintoApi, createHttp, createRefreshGate, type Schemas,
+} from "@bumpinto/shared";
+import { create as createAxios } from "axios";
 import Constants from "expo-constants";
 
-import { getAccessToken } from "./tokenStore";
+import { useNetStore } from "../store/netStore";
+import {
+  clearAccessToken, clearRefreshToken, expiringSoon, getAccessToken, getRefreshToken,
+  setAccessToken, setRefreshToken,
+} from "./tokenStore";
 
 /**
  * Tek HTTP istemcisi. `client: "mobile"` başlığı backend'e cookie DEĞİL gövde döndürmesini
@@ -29,13 +36,69 @@ export const API_BASE_URL = extra.apiUrl;
 export const participantToken = (slug: string): string | null =>
   participantTokens.get(slug) ?? null;
 
+/** `exp`e bu kadar kala önden yenilenir: 15 dakikalık jetonda 60 sn bir ağ turuna rahat yeter. */
+const REFRESH_MARGIN_MS = 60_000;
+
+/** KESİCİSİZ örnek: yenilemenin kendi 401'i kesiciye geri düşemez (yapısal güvence). */
+const bare = createAxios({
+  baseURL: extra.apiUrl,
+  timeout: 10000,
+  headers: { "X-Client": "mobile" },
+});
+
+/**
+ * TEK kapı: hem 401 kesicisi hem önden yenileme buradan geçer. İki ayrı kapı olsaydı ikisi
+ * çakışır, sunucu ikincisini "yeniden kullanım" sayıp AİLEYİ iptal ederdi (B-16).
+ */
+const gate = createRefreshGate(async () => {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const { data } = await bare.post<Schemas["LoginResponse"]>(
+      "/api/auth/refresh", { refreshToken });
+    if (!data.accessToken || !data.refreshToken) return false;
+    await setAccessToken(data.accessToken);
+    // Rotasyon TEK KULLANIMLIK: eskisi bu yanıtla birlikte ÖLDÜ, üzerine yazmak şart.
+    await setRefreshToken(data.refreshToken);
+    return true;
+  } catch (error) {
+    // YALNIZ 401'de silinir: ağ hatasında jetonu atmak, uçak modundan dönen kullanıcıyı
+    // sebepsiz çıkışa düşürürdü.
+    if ((error as { response?: { status?: number } }).response?.status === 401) {
+      await clearAccessToken();
+      await clearRefreshToken();
+    }
+    return false;
+  }
+});
+
+let signedOutHandler: () => void = () => {};
+
+/**
+ * Kök (`app/_layout.tsx`) kaydeder. `authStore` buradan İTHAL EDİLMEZ: authStore zaten `api`yi
+ * ithal ediyor, ters yön döngü olurdu ve testlerin `jest.mock("../lib/api")` ikizlerini bozardı.
+ */
+export const setSignedOutHandler = (fn: () => void) => {
+  signedOutHandler = fn;
+};
+
 export const api = createBumpintoApi(
   createHttp(
     extra.apiUrl,
     {
-      getIdToken: () => getAccessToken(),
+      getIdToken: async () => {
+        const token = await getAccessToken();
+        // Çevrimdışıyken yenileme DENENMEZ: kesin başarısız olur ve elde jeton varken
+        // kullanıcıyı boşuna çıkışa düşürürdü. Ne varsa o gönderilir.
+        if (!useNetStore.getState().online) return token;
+        if (token && !expiringSoon(token, REFRESH_MARGIN_MS)) return token;
+        // Jeton yok ya da bitmek üzere: AYNI uçuşa katıl, sonra tazesini oku.
+        await gate.run();
+        return getAccessToken();
+      },
       getParticipantToken: (slug) => participantTokens.get(slug),
+      onSignedOut: () => signedOutHandler(),
     },
-    { client: "mobile" },
+    { client: "mobile", gate },
   ),
 );

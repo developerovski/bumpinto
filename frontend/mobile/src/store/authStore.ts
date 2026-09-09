@@ -5,7 +5,10 @@ import { create } from "zustand";
 import i18n from "../i18n";
 import { api } from "../lib/api";
 import { signInWithApple } from "../lib/appleAuth";
-import { clearAccessToken, getAccessToken, setAccessToken } from "../lib/tokenStore";
+import {
+  clearAccessToken, clearRefreshToken, getAccessToken, getRefreshToken, setAccessToken,
+  setRefreshToken,
+} from "../lib/tokenStore";
 
 /**
  * Giriş durumu. Google ve Apple AYNI yolu kullanır (`finishLogin`): token'ı yaz, profili çek,
@@ -31,16 +34,20 @@ type AuthState = {
   signIn: () => Promise<void>;
   signInApple: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Sunucu yenilemeyi REDDETTİ: ağa gitmeden yerel jetonları at ve giriş ekranına düş. */
+  signedOut: () => Promise<void>;
 };
 
 /** Google ve Apple'ın ORTAK son adımı: token → profil → dil. */
 async function finishLogin(
-  login: { accessToken?: string; userId?: string },
+  login: { accessToken?: string; refreshToken?: string; userId?: string },
   set: (partial: Partial<AuthState>) => void,
   errorKey: string,
 ): Promise<void> {
-  if (!login.accessToken) return set({ status: "out", error: errorKey });
+  // İkisi de ŞART: yenileme jetonu olmadan kullanıcı 15 dakika sonra sessizce düşerdi.
+  if (!login.accessToken || !login.refreshToken) return set({ status: "out", error: errorKey });
   await setAccessToken(login.accessToken);
+  await setRefreshToken(login.refreshToken);
   const me = await api.me().catch(() => null);
   if (me?.language) await i18n.changeLanguage(me.language);
   set({ status: "in", userId: login.userId ?? null, displayName: me?.displayName ?? null });
@@ -84,9 +91,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   async signOut() {
-    await api.logout().catch(() => undefined);
+    // Jeton SUNUCUDA iptal edilsin: yalnız cihazdan silmek, çalınmış bir kopyayı 30 gün daha
+    // canlı bırakırdı.
+    await api.logout((await getRefreshToken()) ?? undefined).catch(() => undefined);
     await GoogleSignin.signOut().catch(() => undefined);
     await clearAccessToken();
+    await clearRefreshToken();
+    set({ status: "out", userId: null, displayName: null });
+  },
+
+  /**
+   * Sunucu yenilemeyi REDDETTİ (jeton iptal edilmiş ya da aile kapanmış). `signOut()` DEĞİL:
+   * o ayrıca çıkış ucunu ve Google oturumunu kapatır — burada zaten reddedildik, ikinci bir
+   * ağ turu beklemenin anlamı yok. `AuthGuard` `status: "out"` görünce köke atar.
+   */
+  async signedOut() {
+    await clearAccessToken();
+    await clearRefreshToken();
     set({ status: "out", userId: null, displayName: null });
   },
 }));

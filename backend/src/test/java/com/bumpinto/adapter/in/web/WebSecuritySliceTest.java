@@ -122,8 +122,12 @@ class WebSecuritySliceTest {
     void tokenCarryingDtosMaskSecretsInToString() {
         UUID id = UUID.randomUUID();
 
-        assertThat(new AuthController.LoginResponse("jwt-secret-value", Instant.EPOCH, id)
-                .toString()).doesNotContain("jwt-secret-value").contains(id.toString());
+        assertThat(new AuthController.LoginResponse("jwt-secret-value", "rt-secret-value",
+                Instant.EPOCH, id).toString())
+                .doesNotContain("jwt-secret-value").doesNotContain("rt-secret-value")
+                .contains(id.toString());
+        assertThat(new AuthController.RefreshRequest("rt-secret-value").toString())
+                .doesNotContain("rt-secret-value");
         assertThat(new AuthController.GoogleLoginRequest("google-id-token-value").toString())
                 .doesNotContain("google-id-token-value");
         assertThat(new ApiDtos.JoinResponse(id, "pt-secret-value").toString())

@@ -11,10 +11,14 @@ import * as SecureStore from "expo-secure-store";
  * sonra "Bu oturum bulunamadı"). Hesap jetonu 12 saat, oturum 24 saat yaşadığı için bu pencere
  * gerçek kullanıcıda açılıyor.
  *
- * Sessiz yenileme hâlâ v1.1'de (belgeli taviz): burada yalnız ÖLÜ jeton düşürülür, ekranlar
- * `status: "out"` görüp köke döner.
+ * **Sessiz yenileme ARTIK VAR (M-10).** Ölü jetonu düşürmek burada KALIR — emniyet ağı olarak,
+ * yenilemenin YERİNE değil: `api.ts` `exp` yaklaşırken önden yeniler, 401 gelirse shared'daki
+ * kesici bir kez yeniler ve isteği tekrar oynar. Bu kapı, yenilemenin de başarısız olduğu
+ * durumda ölü jetonun sunucuya gitmesini engeller.
  */
 const KEY = "bumpinto.accessToken";
+/** Yenileme jetonu AYRI anahtarda: erişim jetonu 15 dakikada değişir, bu 30 gün yaşar. */
+const REFRESH_KEY = "bumpinto.refreshToken";
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -81,3 +85,23 @@ export const getAccessToken = async (): Promise<string | null> => {
 
 export const setAccessToken = (token: string) => SecureStore.setItemAsync(KEY, token);
 export const clearAccessToken = () => SecureStore.deleteItemAsync(KEY);
+
+/** `exp`e kalan süre (ms). `null` = çözülemedi ya da jeton `exp` taşımıyor. */
+function msUntilExpiry(token: string): number | null {
+  const payload = payloadOf(token);
+  const exp = payload?.exp;
+  return typeof exp === "number" ? exp * 1000 - Date.now() : null;
+}
+
+/**
+ * Süre dolmasına `withinMs`ten az mı kaldı? `exp` yoksa HAYIR: istemci kendi kafasından süre
+ * uydurmaz (K-M38'de alınan duruş) — o jeton 401 alana kadar kullanılır.
+ */
+export const expiringSoon = (token: string, withinMs: number): boolean => {
+  const left = msUntilExpiry(token);
+  return left !== null && left <= withinMs;
+};
+
+export const getRefreshToken = () => SecureStore.getItemAsync(REFRESH_KEY);
+export const setRefreshToken = (token: string) => SecureStore.setItemAsync(REFRESH_KEY, token);
+export const clearRefreshToken = () => SecureStore.deleteItemAsync(REFRESH_KEY);

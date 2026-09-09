@@ -1,6 +1,9 @@
 import * as SecureStore from "expo-secure-store";
 
-import { clearAccessToken, getAccessToken, setAccessToken } from "./tokenStore";
+import {
+  clearAccessToken, clearRefreshToken, expiringSoon, getAccessToken, getRefreshToken,
+  setAccessToken, setRefreshToken,
+} from "./tokenStore";
 
 /**
  * Hesap jetonu — SÜRESİ DOLMUŞ jeton hiç kullanılmaz (K-M38).
@@ -27,6 +30,7 @@ const past = () => Math.floor(Date.now() / 1000) - 3600;
 beforeEach(async () => {
   jest.clearAllMocks();
   await clearAccessToken();
+  await clearRefreshToken();
 });
 
 test("geçerli jeton olduğu gibi döner", async () => {
@@ -66,4 +70,38 @@ test("çok baytlı gövde bozmaz — `exp` yine okunur", async () => {
 
 test("jeton yoksa null", async () => {
   await expect(getAccessToken()).resolves.toBeNull();
+});
+
+test("`exp`e 60 sn'den az kalan jeton 'bitmek üzere' sayılır", () => {
+  const soon = Math.floor(Date.now() / 1000) + 30;
+
+  expect(expiringSoon(jwt({ exp: soon }), 60_000)).toBe(true);
+  expect(expiringSoon(jwt({ exp: future() }), 60_000)).toBe(false);
+});
+
+/** `exp` taşımayan jeton kabul edilir — istemci kendi kafasından süre uydurmaz (K-M38). */
+test("`exp` taşımayan jeton bitmek üzere SAYILMAZ", () => {
+  expect(expiringSoon(jwt({ sub: "u1" }), 60_000)).toBe(false);
+});
+
+test("süresi GEÇMİŞ jeton da bitmek üzere sayılır — önden yenileme onu da kurtarır", () => {
+  expect(expiringSoon(jwt({ exp: past() }), 60_000)).toBe(true);
+});
+
+test("yenileme jetonu AYRI anahtarda yaşar ve silinebilir", async () => {
+  await setRefreshToken("rt-1");
+  await expect(getRefreshToken()).resolves.toBe("rt-1");
+
+  await clearRefreshToken();
+  await expect(getRefreshToken()).resolves.toBeNull();
+});
+
+/** Erişim jetonunu silmek yenilemeyi ÖLDÜRMEMELİ: sessiz yenilemenin tüm dayanağı odur. */
+test("erişim jetonu silinince yenileme jetonu durur", async () => {
+  await setAccessToken(jwt({ sub: "u1", exp: future() }));
+  await setRefreshToken("rt-1");
+
+  await clearAccessToken();
+
+  await expect(getRefreshToken()).resolves.toBe("rt-1");
 });

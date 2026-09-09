@@ -1,8 +1,11 @@
 package com.bumpinto.adapter.in.web;
 
+import com.bumpinto.application.error.UnauthorizedException;
 import com.bumpinto.application.error.UnavailableException;
 import com.bumpinto.application.user.AccountIdentity;
+import com.bumpinto.application.user.RefreshTokens;
 import com.bumpinto.domain.port.UserStorePort;
+import com.bumpinto.domain.user.UserProfile;
 import com.bumpinto.infra.security.AppleIdVerifier;
 import com.bumpinto.infra.config.AppProps;
 import com.bumpinto.infra.security.AuthCookies;
@@ -41,12 +44,22 @@ class AuthController {
         }
     }
 
-    record LoginResponse(String accessToken, Instant expiresAt, UUID userId) {
+    record LoginResponse(String accessToken, String refreshToken, Instant expiresAt, UUID userId) {
 
         @Override
         public String toString() {
             return "LoginResponse[accessToken=" + ApiDtos.masked(accessToken)
+                    + ", refreshToken=" + ApiDtos.masked(refreshToken)
                     + ", expiresAt=" + expiresAt + ", userId=" + userId + "]";
+        }
+    }
+
+    /** Mobil govdesi (yenileme ve cikis). Web'de bos gelir: jeton cerezden okunur. */
+    record RefreshRequest(String refreshToken) {
+
+        @Override
+        public String toString() {
+            return "RefreshRequest[refreshToken=" + ApiDtos.masked(refreshToken) + "]";
         }
     }
 
@@ -67,18 +80,20 @@ class AuthController {
     private final AccountIdentity identity;
     private final UserStorePort users;
     private final TokenService tokens;
+    private final RefreshTokens refreshTokens;
     private final AuthCookies cookies;
     private final AppProps props;
     private final Clock clock;
 
     AuthController(GoogleIdVerifier google, AppleIdVerifier appleVerifier,
                    AccountIdentity identity, UserStorePort users, TokenService tokens,
-                   AuthCookies cookies, AppProps props, Clock clock) {
+                   RefreshTokens refreshTokens, AuthCookies cookies, AppProps props, Clock clock) {
         this.google = google;
         this.appleVerifier = appleVerifier;
         this.identity = identity;
         this.users = users;
         this.tokens = tokens;
+        this.refreshTokens = refreshTokens;
         this.cookies = cookies;
         this.props = props;
         this.clock = clock;
@@ -112,27 +127,96 @@ class AuthController {
     /** Iki giris ucunun ORTAK kuyrugu: token uretimi + web cerez davranisi birebir ayni. */
     private ResponseEntity<LoginResponse> respond(HttpServletRequest http, UUID userId,
                                                   String email, String client) {
+        boolean web = isWeb(client);
         String accessToken = tokens.issueAccessToken(userId, email);
+        // Giris = YENI aile: her cihaz kendi rotasyon zincirini tasir.
+        RefreshTokens.Issued refresh = refreshTokens.issue(userId, clientTag(client));
         Instant expiresAt = clock.instant().plus(props.security().tokenTtl());
 
-        if ("web".equalsIgnoreCase(client)) {
+        if (web) {
             ResponseEntity.BodyBuilder response = ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE,
-                            cookies.access(accessToken, props.security().tokenTtl()).toString());
+                            cookies.access(accessToken, props.security().tokenTtl()).toString())
+                    .header(HttpHeaders.SET_COOKIE, cookies
+                            .refresh(refresh.token(), props.security().refreshTtl()).toString());
             // Tarayicidaki hesap DEGISTIYSE onceki kimlige yazilmis katilimci cerezleri de gider.
             if (signedInAsSomeoneElse(http, userId)) {
                 setCookies(response, cookies.clearParticipants(http));
             }
-            return response.body(new LoginResponse(null, expiresAt, userId));
+            return response.body(new LoginResponse(null, null, expiresAt, userId));
         }
-        return ResponseEntity.ok(new LoginResponse(accessToken, expiresAt, userId));
+        return ResponseEntity.ok(
+                new LoginResponse(accessToken, refresh.token(), expiresAt, userId));
     }
 
-    /** Kimlik gerekmez: suresi dolmus cerezle de cikis yapilabilmeli. Mobil icin no-op (204). */
+    /**
+     * PUBLIC uc: cagiranin erisim jetonu TANIM GEREGI olu, kimlik dogrulamasi yenileme
+     * jetonunun KENDISIDIR (sunucu onu DB'deki ozetle eslestirir).
+     *
+     * <p>Rotasyon TEK KULLANIMLIK: donen jeton yeni, eski aninda iptal. Istemcinin iki
+     * yenilemeyi PARALEL atmamasi bu yuzden onemli — ikincisi "yeniden kullanim" sayilip
+     * AILEYI kapatir; tek-ucuslu kesici (W-16/M-10) tam olarak bunu garanti eder.
+     */
+    @PostMapping("/refresh")
+    ResponseEntity<LoginResponse> refresh(HttpServletRequest http,
+            @RequestBody(required = false) RefreshRequest body,
+            @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
+        boolean web = isWeb(client);
+        String presented = web ? refreshCookie(http) : bodyToken(body);
+        RefreshTokens.Rotation rotated = refreshTokens.rotate(presented, clientTag(client))
+                .orElseThrow(() -> new UnauthorizedException("invalid_refresh_token"));
+
+        // Silinmis hesap yeniden jeton alamaz. AccountDeletion aileyi zaten iptal eder; bu,
+        // yarisi kaybeden bir istegin kapanmis hesaba erisim jetonu basmasini engelleyen
+        // IKINCI kapi.
+        UserProfile profile = users.profileOf(rotated.userId())
+                .orElseThrow(() -> new UnauthorizedException("invalid_refresh_token"));
+
+        String accessToken = tokens.issueAccessToken(profile.id(), profile.email());
+        Instant expiresAt = clock.instant().plus(props.security().tokenTtl());
+
+        if (web) {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE,
+                            cookies.access(accessToken, props.security().tokenTtl()).toString())
+                    .header(HttpHeaders.SET_COOKIE, cookies
+                            .refresh(rotated.token(), props.security().refreshTtl()).toString())
+                    .body(new LoginResponse(null, null, expiresAt, profile.id()));
+        }
+        return ResponseEntity.ok(
+                new LoginResponse(accessToken, rotated.token(), expiresAt, profile.id()));
+    }
+
+    private static boolean isWeb(String client) {
+        return "web".equalsIgnoreCase(client);
+    }
+
+    /** refresh_tokens.client: yalniz teshis/gunluk icin, yetki karari VERMEZ. */
+    private static String clientTag(String client) {
+        return isWeb(client) ? "web" : "mobile";
+    }
+
+    private static String bodyToken(RefreshRequest body) {
+        return body == null ? null : body.refreshToken();
+    }
+
+    private static String refreshCookie(HttpServletRequest http) {
+        return cookieValue(http, AuthCookies.REFRESH);
+    }
+
+    /** Kimlik gerekmez: suresi dolmus cerezle de cikis yapilabilmeli. */
     @PostMapping("/logout")
-    ResponseEntity<Void> logout(HttpServletRequest http) {
+    ResponseEntity<Void> logout(HttpServletRequest http,
+            @RequestBody(required = false) RefreshRequest body) {
+        // Yenileme jetonu tarayicida CEREZDE, mobilde GOVDEDE gelir; hangisi geldiyse ailesi
+        // kapanir. Iptal edilmezse "cikis yaptim" diyen kullanicinin jetonu 30 gun daha
+        // erisim jetonu bastirabilirdi.
+        String presented = bodyToken(body) != null ? bodyToken(body) : refreshCookie(http);
+        refreshTokens.revokeFamilyOf(presented);
+
         ResponseEntity.HeadersBuilder<?> response = ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString());
+                .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString())
+                .header(HttpHeaders.SET_COOKIE, cookies.clearRefresh().toString());
         // Cikis "bu tarayici artik ben degilim" demek: oturum kapsamli katilimci token'lari da
         // biter, yoksa tarayiciyi devralan kisi onlarla yazmaya devam eder.
         setCookies(response, cookies.clearParticipants(http));
@@ -162,11 +246,15 @@ class AuthController {
     }
 
     private static String accessCookie(HttpServletRequest http) {
+        return cookieValue(http, AuthCookies.ACCESS);
+    }
+
+    private static String cookieValue(HttpServletRequest http, String name) {
         if (http.getCookies() == null) {
             return null;
         }
         return Arrays.stream(http.getCookies())
-                .filter(cookie -> AuthCookies.ACCESS.equals(cookie.getName()))
+                .filter(cookie -> name.equals(cookie.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);

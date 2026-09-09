@@ -31,13 +31,18 @@ public record AppProps(Security security, Apple apple, Cors cors, Cookies cookie
         return value;
     }
 
-    public record Security(String googleClientId, String tokenSecret, Duration tokenTtl) {
+    /**
+     * @param tokenTtl   erisim jetonu (B-16'da 12h -> 15m); kisa olmasi calinma penceresini kapatir
+     * @param refreshTtl yenileme jetonu; kayan pencere, her rotasyon sureyi bastan baslatir
+     */
+    public record Security(String googleClientId, String tokenSecret, Duration tokenTtl,
+                           Duration refreshTtl) {
 
         /** googleClientId sir degil (istemcilerde acikca tasinir), teshis icin okunur kalir. */
         @Override
         public String toString() {
             return "Security[googleClientId=" + googleClientId + ", tokenSecret=" + MASK
-                    + ", tokenTtl=" + tokenTtl + "]";
+                    + ", tokenTtl=" + tokenTtl + ", refreshTtl=" + refreshTtl + "]";
         }
     }
 

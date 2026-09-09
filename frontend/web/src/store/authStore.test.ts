@@ -80,4 +80,16 @@ describe("authStore", () => {
     expect(useAuthStore.getState().status).toBe("anon");
     expect(analyticsConsent()).toBe(false);
   });
+
+  it("signedOut → anon (AĞA GİTMEDEN)", () => {
+    // Casus dosya boyunca paylaşılır; "hiç çağrılmadı" iddiası ancak sıfırlanmışsa anlamlı.
+    vi.mocked(api.logout).mockClear();
+    useAuthStore.setState({ me: { id: "u1" } as never, status: "signed" });
+
+    useAuthStore.getState().signedOut();
+
+    expect(useAuthStore.getState().status).toBe("anon");
+    expect(useAuthStore.getState().me).toBeNull();
+    expect(api.logout).not.toHaveBeenCalled();
+  });
 });

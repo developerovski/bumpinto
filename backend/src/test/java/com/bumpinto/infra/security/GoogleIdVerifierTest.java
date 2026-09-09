@@ -48,7 +48,7 @@ class GoogleIdVerifierTest {
 
     static AppProps props(String googleClientId) {
         return TestProps.of(new AppProps.Security(googleClientId,
-                "0123456789abcdef0123456789abcdef", Duration.ofHours(12)));
+                "0123456789abcdef0123456789abcdef", Duration.ofMinutes(15), Duration.ofDays(30)));
     }
 
     static GoogleIdVerifier verifier() {

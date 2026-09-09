@@ -37,13 +37,15 @@ public class AccountDeletion {
     private final UserStorePort users;
     private final SessionStorePort sessions;
     private final AppleTokensPort apple;
+    private final RefreshTokens refreshTokens;
     private final Clock clock;
 
     public AccountDeletion(UserStorePort users, SessionStorePort sessions, AppleTokensPort apple,
-                           Clock clock) {
+                           RefreshTokens refreshTokens, Clock clock) {
         this.users = users;
         this.sessions = sessions;
         this.apple = apple;
+        this.refreshTokens = refreshTokens;
         this.clock = clock;
     }
 
@@ -52,6 +54,9 @@ public class AccountDeletion {
         Instant now = clock.instant();
         // Revoke ONCE: softDelete apple_refresh_token'i temizler, sonra okunamazdi.
         revokeApple(userId);
+        // Erisim ANINDA kapanir: yenileme jetonu kalsaydi silinmis hesap 30 gun boyunca
+        // kendine yeni erisim jetonu bastirabilirdi ve soft delete'in anlami kalmazdi.
+        refreshTokens.revokeAllOf(userId);
         for (UUID sessionId : sessions.sessionIdsOfHost(userId)) {
             sessions.deleteSession(sessionId);
         }

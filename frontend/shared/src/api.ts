@@ -68,7 +68,13 @@ export function createBumpintoApi(http: AxiosInstance) {
     me: () => http.get<MeResponse>("/api/me").then((r) => r.data),
     updateMe: (body: Schemas["UpdateMeRequest"]) =>
       http.put<MeResponse>("/api/me", body).then((r) => r.data),
-    logout: () => http.post("/api/auth/logout").then(() => undefined),
+    /* Yenileme jetonu SUNUCUDA iptal edilsin diye gönderilir: mobilde gövdeyle (çerez yok),
+       webde çerez zaten gider ve argüman verilmez. Yalnız cihazdan silmek, çalınmış bir
+       kopyayı 30 gün daha canlı bırakırdı.
+       `refresh` BİLEREK bu arayüze EKLENMEZ: kesicinin takılı olduğu örnekten çağrılırsa
+       kendi 401'i kesiciye geri düşer. Platformlar onu kesicisiz ham axios ile atar. */
+    logout: (refreshToken?: string) =>
+      http.post("/api/auth/logout", refreshToken ? { refreshToken } : {}).then(() => undefined),
     preview: (slug: string) =>
       http.get<SessionPreview>(`/api/sessions/${slug}/preview`).then((r) => r.data),
     getConfig: () => http.get<AppConfig>("/api/config").then((r) => r.data),

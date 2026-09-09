@@ -6,6 +6,7 @@ import com.bumpinto.application.error.ForbiddenException;
 import com.bumpinto.application.error.NoVenuesFoundException;
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.error.TooManyRequestsException;
+import com.bumpinto.application.error.UnauthorizedException;
 import com.bumpinto.domain.geo.GeocodeBusyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -55,6 +56,16 @@ class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     ApiError geocodeBusy(GeocodeBusyException e) {
         return new ApiError("geocode_busy");
+    }
+
+    /**
+     * Reddedilen yenileme jetonu (B-16). Govde SEBEP tasimaz: "suresi doldu" ile "iptal edildi"
+     * ayrimi saldirgana ailenin durumunu soylerdi.
+     */
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    ApiError unauthorized(UnauthorizedException e) {
+        return new ApiError(e.getMessage());
     }
 
     /**

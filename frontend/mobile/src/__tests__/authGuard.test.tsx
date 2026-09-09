@@ -7,6 +7,8 @@ import { useAuthStore } from "../store/authStore";
 jest.mock("../lib/api", () => ({
   api: { me: jest.fn(async () => null), logout: jest.fn(async () => undefined) },
   webBase: "https://bumpinto.app",
+  // Kök, 401 kesicisinin çıkış kancasını burada kurar (M-10); ikiz onu taşımazsa mount patlar.
+  setSignedOutHandler: jest.fn(),
 }));
 
 const path = usePathname as unknown as jest.Mock;

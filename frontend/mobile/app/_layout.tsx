@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { setSignedOutHandler } from "../src/lib/api";
 import { useAuthStore } from "../src/store/authStore";
 import { watchNetwork } from "../src/store/netStore";
 import { watchAppBackground } from "../src/voice/backgroundGuard";
@@ -51,6 +52,11 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  // Kesici oturumu bitirdiğinde mağaza "out"a düşer; yönlendirmeyi AuthGuard yapar.
+  // Kancanın kökte kurulması şart: `api` modülü `authStore`u ithal edemez (ters yön döngü).
+  useEffect(() => {
+    setSignedOutHandler(() => void useAuthStore.getState().signedOut());
+  }, []);
   // Ağ aboneliği KÖKTE bir kez: her ekran kendi dinleyicisini kursaydı uçuş modunda N tane
   // geri çağrı aynı durumu yazardı ve sökülmeyen abonelikler sızardı.
   useEffect(() => watchNetwork(), []);

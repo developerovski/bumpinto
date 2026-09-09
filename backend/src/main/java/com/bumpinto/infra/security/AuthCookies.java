@@ -16,6 +16,17 @@ public class AuthCookies {
 
     public static final String ACCESS = "bumpinto_at";
     static final String ACCESS_PATH = "/api";
+    public static final String REFRESH = "bumpinto_rt";
+
+    /**
+     * DAR ama CIKISI KAPSAYAN yol. {@code /api/auth/refresh} ilk bakista daha dogru gorunur;
+     * ama tarayici cerezi yalniz Path'inin ALTINDAKI isteklere gonderir (RFC 6265), yani
+     * {@code /api/auth/logout} istegi yenileme cerezini HIC tasimazdi — sunucu ne okuyabilir
+     * ne silebilirdi ve cikan kullanicinin yenileme jetonu hem tarayicida hem DB'de canli
+     * kalirdi. Bu dosya ayni hatayi katilimci cerezinde bir kez yasadi (bkz. {@link
+     * #clearParticipants}). {@code /api/auth} yalniz dort ucu kapsar: dar kalma amaci korunur.
+     */
+    static final String REFRESH_PATH = "/api/auth";
     static final String PARTICIPANT_PREFIX = "bumpinto_pt_";
 
     private final AppProps props;
@@ -35,6 +46,15 @@ public class AuthCookies {
     // Web cikisi: ayni ad/yol ile Max-Age=0
     public ResponseCookie clearAccess() {
         return base(ACCESS, "", ACCESS_PATH, Duration.ZERO);
+    }
+
+    /** Yenileme jetonu erisim cerezinden AYRI yasar: /api altindaki her istege takilmaz. */
+    public ResponseCookie refresh(String token, Duration ttl) {
+        return base(REFRESH, token, REFRESH_PATH, ttl);
+    }
+
+    public ResponseCookie clearRefresh() {
+        return base(REFRESH, "", REFRESH_PATH, Duration.ZERO);
     }
 
     /**

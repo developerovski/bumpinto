@@ -15,7 +15,8 @@ public final class TestProps {
     }
 
     public static AppProps.Security security() {
-        return new AppProps.Security("cid", "0123456789abcdef0123456789abcdef", Duration.ofHours(12));
+        return new AppProps.Security("cid", "0123456789abcdef0123456789abcdef",
+                Duration.ofMinutes(15), Duration.ofDays(30));
     }
 
     public static AppProps.Apple apple() {
