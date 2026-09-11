@@ -111,18 +111,14 @@ public class SessionViewAssembler {
         for (int i = 0; i < snap.venues().size(); i++) {
             Venue v = snap.venues().get(i);
             Map<UUID, TravelLeg> leg = legs.isEmpty() ? Map.of() : legs.get(i);
-            // Eski sozlesme korunur: dakika haritasi hala Integer.
-            Map<UUID, Integer> travelMinutes = new LinkedHashMap<>();
-            leg.forEach((id, l) -> travelMinutes.put(id, l.minutes()));
             // Hic konumlu katilimci yoksa (0,0,null) degil null: "herkes esit" YALANI yazilmaz.
-            ApiDtos.FairnessDto fairness = located.isEmpty() ? null : toFairnessDto(Fairness.of(travelMinutes));
+            ApiDtos.FairnessDto fairness = located.isEmpty() ? null : toFairnessDto(Fairness.of(minutesOf(leg)));
             List<ApiDtos.TravelDto> travel = leg.entrySet().stream()
                     .map(e -> new ApiDtos.TravelDto(e.getKey(), e.getValue().minutes(), e.getValue().estimated()))
                     .toList();
             String mapsUrl = MapLinks.directions(v.location().lat(), v.location().lng(), viewerMode);
             venues.add(new ApiDtos.VenueDto(v.id(), v.name(), v.location().lat(), v.location().lng(),
-                    v.rating(), v.priceLevel(), v.photoUrl(), mapsUrl, v.deckOrder(),
-                    travelMinutes, fairness,
+                    v.rating(), v.priceLevel(), v.photoUrl(), mapsUrl, v.deckOrder(), fairness,
                     v.provider(), v.category(), v.address(), v.locality(), v.ratingCount(),
                     v.hoursToday(), v.placeLink(), v.activityType(),
                     v.popularity(), v.ratingScale(), travel, v.tagline(), v.taglineSource()));
@@ -242,6 +238,13 @@ public class SessionViewAssembler {
     static ApiDtos.GeoPointDto approx(GeoPoint p) {
         GeoPoint rounded = TravelMinutes.approx(p);
         return new ApiDtos.GeoPointDto(rounded.lat(), rounded.lng());
+    }
+
+    /** Fairness'in girdisi; LinkedHashMap: esitlikte "en uzun" kisi deterministik kalir. */
+    private static Map<UUID, Integer> minutesOf(Map<UUID, TravelLeg> leg) {
+        Map<UUID, Integer> minutes = new LinkedHashMap<>();
+        leg.forEach((id, l) -> minutes.put(id, l.minutes()));
+        return minutes;
     }
 
     private static ApiDtos.FairnessDto toFairnessDto(Fairness f) {

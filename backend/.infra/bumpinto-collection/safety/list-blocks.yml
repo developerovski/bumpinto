@@ -21,7 +21,14 @@ runtime:
 docs:
   type: text/markdown
   content: |-
-    Hesabin engel listesi. Iki tur satir gelir:
+    Hesabin engel listesi, en yeni once (`createdAt` azalan). Zarfsiz `BlockDto[]`.
+    Iki tur satir gelir:
     - **Hesap engeli**: `userId` dolu, kalicidir.
     - **Anonim koltuk engeli**: `participantId` dolu, YALNIZ o oturum boyunca yasar
       (anonim koltugun kalici kimligi yoktur; kalici engel yanlis kisiyi susturur).
+
+    `displayName` (nullable, K-W16): engellenenin OKUMA ANINDAKI adi — hesap engelinde
+    `users.name`, koltuk engelinde `participants.display_name`. Ad engelde saklanmaz; kisi
+    adini degistirirse liste yeni adi gosterir. Silinmis hesap, anonimlesmis koltuk ya da
+    bos ad → `null` ("Silindi"/"Ayrildi" yer tutuculari ad olarak donmez); istemci
+    "adi gorunmeyen kisi" basar. Kaldirma: `remove-block.yml`.

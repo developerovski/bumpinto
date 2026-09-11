@@ -54,7 +54,7 @@ docs:
     Atif: bu alani gosteren her ekranda "© OpenStreetMap contributors".
 
     Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir (ayni `SessionViewAssembler`) —
-    `venues[]` burada ilk kez `travelMinutes`, `fairness{maxMinutes,spreadMinutes,longestParticipantId}`,
+    `venues[]` burada ilk kez `travel[]`, `fairness{maxMinutes,spreadMinutes,longestParticipantId}`,
     `provider`, `category`, `address`, `locality`, `ratingCount`, `hoursToday`, `placeLink` dolu
     olarak doner (alan detaylari icin `get-session.yml` docs). `deckOrder` burada ilk kez
     yazilir: capasiz oturumda adalet siralamasiyla, capali oturumda puan siralamasiyla.

@@ -67,6 +67,12 @@ class SessionViewAssemblerTest {
                 null, 0.8, 10, null);
     }
 
+    /** Yol sureleri yalniz {@code travel[]}'da (K-B26); testler kisi → dakika okur. */
+    static Map<UUID, Integer> minutesOf(ApiDtos.VenueDto dto) {
+        return dto.travel().stream().collect(java.util.stream.Collectors.toMap(
+                ApiDtos.TravelDto::participantId, ApiDtos.TravelDto::minutes));
+    }
+
     Venue venue(String externalId, ActivityType activityType) {
         return new Venue(UUID.randomUUID(), UUID.randomUUID(), "google", externalId, "V",
                 new GeoPoint(51.44, 5.47), 4.6, 2, null, 0,
@@ -133,7 +139,7 @@ class SessionViewAssemblerTest {
         ApiDtos.SessionView view = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);
 
-        Map<UUID, Integer> minutes = view.venues().get(0).travelMinutes();
+        Map<UUID, Integer> minutes = minutesOf(view.venues().get(0));
         assertThat(minutes).containsOnlyKeys(walker.id(), driver.id());
         assertThat(minutes.values()).allMatch(m -> m % 5 == 0 && m >= 5); // 5 dk basamagi
         // Yaya mekanin dibinde: en kucuk basamak; surucu Den Bosch'tan geliyor: daha uzun
@@ -169,8 +175,8 @@ class SessionViewAssemblerTest {
 
         ApiDtos.VenueDto dto = view.venues().get(0);
         assertThat(dto.travel()).allMatch(t -> !t.estimated());
-        assertThat(dto.travelMinutes().get(walker.id())).isEqualTo(5);
-        assertThat(dto.travelMinutes().get(driver.id())).isEqualTo(15);
+        assertThat(minutesOf(dto).get(walker.id())).isEqualTo(5);
+        assertThat(minutesOf(dto).get(driver.id())).isEqualTo(15);
     }
 
     /**
@@ -187,7 +193,7 @@ class SessionViewAssemblerTest {
         ApiDtos.VenueDto dto = assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(nowhere), List.of(v), Map.of(), Map.of(), Map.of()), null).venues().get(0);
 
-        assertThat(dto.travelMinutes()).isEmpty();
+        assertThat(dto.travel()).isEmpty();
         assertThat(dto.fairness()).isNull();
     }
 
@@ -202,9 +208,9 @@ class SessionViewAssemblerTest {
         Participant nudged = new Participant(UUID.randomUUID(), s.id(), "B",
                 new GeoPoint(51.7019, 5.2962), false, null, false, null, TravelMode.CAR);
 
-        Map<UUID, Integer> minutes = assembler.toView(new SessionQueries.SessionSnapshot(
+        Map<UUID, Integer> minutes = minutesOf(assembler.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(exact, nudged), List.of(v), Map.of(), Map.of(), Map.of()), null)
-                .venues().get(0).travelMinutes();
+                .venues().get(0));
         assertThat(minutes.get(exact.id())).isEqualTo(minutes.get(nudged.id()));
     }
 

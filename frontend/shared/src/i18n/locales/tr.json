@@ -612,7 +612,18 @@
     "errConsent": "Kaydedilemedi — tekrar dene.",
     "errExport": "Veriler indirilemedi — tekrar dene.",
     "errExportRate": "Saatte bir kez indirilebilir. Biraz sonra tekrar dene.",
-    "attributions": "Atıflar ve lisanslar"
+    "attributions": "Atıflar ve lisanslar",
+    "blocks": "Engellenen kişiler"
+  },
+  "blocks": {
+    "title": "Engellenen kişiler",
+    "unnamed": "Adı görünmeyen kişi",
+    "since": "Engellendi · {{date}}",
+    "remove": "Engeli kaldır",
+    "empty": "Kimseyi engellemedin.",
+    "loading": "Liste yükleniyor…",
+    "errLoad": "Liste yüklenemedi — tekrar dene.",
+    "errRemove": "Engel kaldırılamadı — tekrar dene."
   },
   "consent": {
     "title": "Açık rıza tercihlerin",

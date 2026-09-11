@@ -307,6 +307,8 @@ SessionView    + midpointLabel, decisionKind, decidedAt, runoffReason, likeCount
                + anchored (true → midpoint yuvarlanmaz, radiusKm sabit 2.0)
 ParticipantDto + travelMode, midpointMinutes
 VenueDto       + provider, category, address, locality, ratingCount, hoursToday, placeLink, fairness
+               + travel[] {participantId, minutes, estimated} — yol süresinin TEK kaynağı
+                 (eski travelMinutes haritası K-B26'da düştü)
 ```
 
 `DecisionEngine` beraberliği hâlâ **puanla** kırar (spec §4.5) — adalet yalnız `venues[]`
@@ -526,6 +528,8 @@ alınsa da sayaç kalıcı kalır.
 **`venues` (V10)** — Premium alanlar için `popularity real`, `rating_scale smallint`,
 `photo_ref text`, `fetched_at timestamptz not null default now()` eklendi; saklama kuralının
 kaybeden satırın adını boşaltabilmesi için `name` artık **nullable** (V1'deki `not null` kalktı).
+**V22** `maps_url`'i düşürdü: yol tarifi bağlantısı saklanmaz, her okumada görüntüleyenin
+ulaşım türüyle `MapLinks.directions`'tan türetilir (`VenueDto.mapsUrl`).
 
 **`venues_open` + PostGIS (V11)** — açık taban (Overture Places NL + OSM NL, aylık ithal) için
 `create extension if not exists postgis` ve `geom geometry(Point, 4326)` sütunlu ayrı tablo;

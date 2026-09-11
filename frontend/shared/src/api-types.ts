@@ -886,9 +886,6 @@ export interface components {
             mapsUrl?: string;
             /** Format: int32 */
             deckOrder?: number;
-            travelMinutes?: {
-                [key: string]: number;
-            };
             fairness?: components["schemas"]["FairnessDto"];
             provider?: string;
             category?: string;
@@ -1027,6 +1024,7 @@ export interface components {
             participantId?: string;
             /** Format: date-time */
             createdAt?: string;
+            displayName?: string;
         };
         GeocodeRequest: {
             query: string;

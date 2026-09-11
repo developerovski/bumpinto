@@ -132,7 +132,7 @@ export default function JoinScreen() {
                     ))}
                   </View>
                   <AppText variant="muted" style={s.whoCopy}>
-                    {t("join.whoCopy", { names: readyNames.join(", ") })}
+                    {t("join.whoCopy", { names: readyNames.join(", "), count: readyNames.length })}
                   </AppText>
                 </View>
               </Card>

@@ -46,3 +46,6 @@ docs:
       engellemis olursa olsun.
 
     Anonim koltuk engeli `blocked` olayini yayinlar: roster ve ses uyeligi tazelenir.
+
+    Yanit `BlockDto`; `displayName` burada hep `null` — ad yalniz listede (`list-blocks.yml`)
+    okuma aninda cozulur.

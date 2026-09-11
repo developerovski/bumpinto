@@ -31,7 +31,7 @@ docs:
 
     Suresi dolmus oturum burada `EXPIRED` raporlanir — DB'ye yazilmaz, hesaplanan durumdur.
 
-    `venues[].travelMinutes` **participantId** ile anahtarlidir (displayName degil —
+    `venues[].travel[]` satirlari **participantId** tasir (displayName degil —
     ayni isimli iki katilimci veri kaybina yol aciyordu).
 
     Bu istek destedeki ilk mekani `venueId` degiskenine yazar; Deck istekleri onu kullanir.
@@ -55,13 +55,15 @@ docs:
     - `radiusKm` sabit `2.0`; katilimci yayilimindan hesaplanmaz.
     - `midpoint` HIC konumlu katilimci olmadan da dolu gelir.
     - UI'da `FairnessBadge` cizilmez (rozet mekanlari kiyaslar; sabit bir daire icinde 20
-      kartin hepsinde ayni seyi yazardi). `travelMinutes` ve tek mekanlik adalet ozeti kalir.
+      kartin hepsinde ayni seyi yazardi). `travel[]` ve tek mekanlik adalet ozeti kalir.
 
     `viewer{participantId, host}`: istegi yapanin oturumdaki satiri — katilimci token'i kendi
     satiri, host JWT host satiri; uye degilse null. Sayfa yenilemede 'ben kimim' bunu kullanir.
 
-    `venues[].travelMinutes`: katilimci id -> ~dakika (5 dk basamagi, yuvarlanmis konumdan,
-    kisinin `travelMode`'una gore). KONUMU OLAN HERKES icindir — istegi yapan dahil.
+    `venues[].travel[]`: `{ participantId, minutes, estimated }` — ~dakika (yuvarlanmis konumdan,
+    kisinin `travelMode`'una gore; `estimated=true` ise OSRM yanit vermedi, kus ucusu tahmini).
+    KONUMU OLAN HERKES icindir — istegi yapan dahil. Eski `travelMinutes` haritasi K-B26'da
+    kaldirildi; tek kaynak `travel[]`.
     `venues[].fairness`: `{ maxMinutes, spreadMinutes, longestParticipantId }` (spec §4.1).
     `participants[].midpointMinutes`: kisinin yuvarlanmis konumundan oturumun MERKEZINE
     (capasizda agirlikli orta nokta, capalida capa), kendi `travelMode`'uyla, 5 dk
@@ -96,8 +98,9 @@ docs:
     kelimesidir (kart meta satiri); `address` tam kisa adrestir (Karar ekrani YER ekseni).
     Foursquare oturumlarinda `rating`, `priceLevel`, `photoUrl` ve `ratingCount` null'dur
     (Premium alanlar acilis maliyet modelinde istenmez).
-    `mapsUrl` saglayici vermezse `https://www.google.com/maps/dir/?api=1&destination=lat,lng`
-    olarak turetilir.
+    `mapsUrl` saklanmaz, her okumada GORUNTULEYENIN ulasim turuyle turetilir
+    (`https://www.google.com/maps/dir/?api=1&destination=lat,lng&travelmode=...`; uye degilse
+    `driving`). `venues.maps_url` kolonu V22'de dusuruldu.
 
     `participants[].online`: acik bir soketi VAR ya da son 2 saniye icinde koptu (grace
     penceresi — sayfa yenileme veya kisa kopma offline gostermez). `manual=true` satirlarda

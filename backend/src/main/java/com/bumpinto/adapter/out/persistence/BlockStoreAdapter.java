@@ -2,8 +2,10 @@ package com.bumpinto.adapter.out.persistence;
 
 import com.bumpinto.domain.port.BlockStorePort;
 import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.safety.BlockListing;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -30,9 +32,21 @@ public class BlockStoreAdapter implements BlockStorePort {
         return block;
     }
 
-    @Override public List<Block> blocksOf(UUID blockerUserId) {
-        return blocks.findByBlockerUserId(blockerUserId).stream()
-                .map(BlockStoreAdapter::toBlock).toList();
+    @Override public List<BlockListing> listingsOf(UUID blockerUserId) {
+        return blocks.listingRowsOf(blockerUserId).stream().map(r -> {
+            UUID blockedUserId = (UUID) r[1];
+            Block block = new Block((UUID) r[0], blockerUserId, blockedUserId, (UUID) r[2],
+                    (UUID) r[3], (Instant) r[4]);
+            String name = blockedUserId != null
+                    ? visibleName((String) r[5], (Instant) r[6])
+                    : visibleName((String) r[7], (Instant) r[8]);
+            return new BlockListing(block, name);
+        }).toList();
+    }
+
+    /** Silinmis hesabin / anonimlesmis koltugun adi yer tutucudur, gosterilmez. */
+    private static String visibleName(String name, Instant gone) {
+        return gone != null || name == null || name.isBlank() ? null : name;
     }
 
     /** Baskasinin engeli BULUNAMAMIS sayilir: varligi bile sizmaz. */
@@ -64,8 +78,4 @@ public class BlockStoreAdapter implements BlockStorePort {
                 .collect(Collectors.toSet());
     }
 
-    private static Block toBlock(BlockEntity b) {
-        return new Block(b.id, b.blockerUserId, b.blockedUserId, b.blockedParticipantId,
-                b.sessionId, b.createdAt);
-    }
 }

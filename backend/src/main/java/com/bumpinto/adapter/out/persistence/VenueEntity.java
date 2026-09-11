@@ -20,7 +20,6 @@ class VenueEntity {
     Double rating;
     Integer priceLevel;
     String photoUrl;
-    String mapsUrl; // kolon duruyor ama artik yazilmiyor: mapsUrl viewer'in araciyla turetilir
     int deckOrder;
     String category;
     String address;

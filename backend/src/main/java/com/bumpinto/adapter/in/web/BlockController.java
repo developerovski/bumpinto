@@ -31,14 +31,15 @@ class BlockController {
     @GetMapping
     List<ApiDtos.BlockDto> list(@AuthenticationPrincipal Jwt jwt) {
         return blocks.list(WebPrincipals.accountId(jwt)).stream()
-                .map(BlockController::toDto).toList();
+                .map(l -> toDto(l.block(), l.displayName())).toList();
     }
 
+    /** Yanitta {@code displayName} null: ad yalniz listede, okuma aninda cozulur. */
     @PostMapping
     ApiDtos.BlockDto add(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ApiDtos.BlockRequest request) {
         return toDto(blocks.add(WebPrincipals.accountId(jwt), request.userId(),
-                request.participantId(), request.sessionSlug()));
+                request.participantId(), request.sessionSlug()), null);
     }
 
     @DeleteMapping("/{id}")
@@ -47,8 +48,8 @@ class BlockController {
         blocks.remove(WebPrincipals.accountId(jwt), id);
     }
 
-    private static ApiDtos.BlockDto toDto(Block block) {
+    private static ApiDtos.BlockDto toDto(Block block, String displayName) {
         return new ApiDtos.BlockDto(block.id(), block.blockedUserId(),
-                block.blockedParticipantId(), block.createdAt());
+                block.blockedParticipantId(), block.createdAt(), displayName);
     }
 }

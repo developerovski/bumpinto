@@ -68,7 +68,7 @@ export default function WhoIsHere(props: {
                 ))}
               </div>
               {ready.length > 0 && (
-                <span className="text-[0.8125rem] leading-[1.45] text-ink2">{t("join.whoCopy", { names })}</span>
+                <span className="text-[0.8125rem] leading-[1.45] text-ink2">{t("join.whoCopy", { names, count: ready.length })}</span>
               )}
             </div>
           )}

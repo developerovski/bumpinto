@@ -7,6 +7,7 @@ import LazyBoundary from "../components/molecules/LazyBoundary";
 import SessionHeader from "../components/molecules/SessionHeader";
 import TwoZone from "../components/molecules/TwoZone";
 import PointsEditor from "../components/organisms/PointsEditor";
+import VenuesLoading from "../components/organisms/VenuesLoading";
 import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { pointCount } from "../store/newSessionStore";
@@ -22,7 +23,11 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
   const addPoint = useSessionStore((s) => s.addPoint);
   const removePoint = useSessionStore((s) => s.removePoint);
   const findVenues = useSessionStore((s) => s.findVenues);
-  const { run, busy, error } = useSessionAction();
+  // İki ayrı kilit (K-W23): "Mekanları bul" tam ekran iskelete döner (LobbyPage deseni, artboard
+  // W3e); nokta ekle/sil ise yerinde kalır — tek örnek paylaşılsaydı her nokta işleminde de
+  // iskelet çıkardı.
+  const points = useSessionAction();
+  const find = useSessionAction();
 
   const participants = view.participants ?? [];
   const host = participants.find((p) => p.host) ?? null;
@@ -34,6 +39,8 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
   // test-setup.ts'teki güdük varsayılan `false` döner, testler ghost'suz haritanın mount
   // olmadığını doğrulayabilir.
   const desktop = useMediaQuery("(min-width: 1024px)");
+
+  if (find.busy) return <VenuesLoading view={view} />;
 
   return (
     <Page>
@@ -58,7 +65,7 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
                 travelMode: p.travelMode,
               }))}
               onAdd={(p) =>
-                run(
+                points.run(
                   () =>
                     addPoint({
                       displayName: p.displayName,
@@ -72,13 +79,13 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
               }
               onRemove={(i) => {
                 const id = manual[i]?.id;
-                if (id) void run(() => removePoint(id), "lobby.errPoint");
+                if (id) void points.run(() => removePoint(id), "lobby.errPoint");
               }}
             />
             {/* Çapalı oturumda konum önkoşulu B-10'da düştü (DeckFlow.findVenues). */}
             <Button
-              onClick={() => void run(findVenues, "lobby.errFind")}
-              disabled={(!view.anchored && count < 2) || busy}
+              onClick={() => void find.run(findVenues, "lobby.errFind")}
+              disabled={(!view.anchored && count < 2) || points.busy || find.busy}
             >
               {t("newSession.findVenues")}
             </Button>
@@ -87,7 +94,8 @@ export default function SoloSetupPage({ view }: { view: SessionView }) {
             {!view.anchored && (
               <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
             )}
-            {error && <ErrorText>{error}</ErrorText>}
+            {points.error && <ErrorText>{points.error}</ErrorText>}
+            {find.error && <ErrorText>{find.error}</ErrorText>}
           </>
         }
         right={

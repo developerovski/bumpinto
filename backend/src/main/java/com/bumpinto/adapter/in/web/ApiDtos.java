@@ -205,10 +205,11 @@ public final class ApiDtos {
     /**
      * mapsUrl: goruntuleyenin ulasim turuyle MapLinks'ten uretilir (spec §10) — "Yol tarifi al"
      * butonu hicbir oturumda olu kalmaz. placeLink: mekanin kendi sayfasi (Maps ya da site).
+     * Yol sureleri yalniz {@code travel[]}'da (K-B26: eski {@code travelMinutes} haritasi dustu).
      */
     public record VenueDto(UUID id, String name, double lat, double lng, Double rating,
                            Integer priceLevel, String photoUrl, String mapsUrl, int deckOrder,
-                           Map<UUID, Integer> travelMinutes, FairnessDto fairness,
+                           FairnessDto fairness,
                            String provider, String category, String address, String locality,
                            Integer ratingCount, String hoursToday, String placeLink,
                            /** Hangi ilgi alanindan geldigi; atif cozulemediyse null. */
@@ -440,7 +441,12 @@ public final class ApiDtos {
         }
     }
 
-    public record BlockDto(UUID id, UUID userId, UUID participantId, Instant createdAt) {
+    public record BlockDto(UUID id, UUID userId, UUID participantId, Instant createdAt,
+                           /**
+                            * Engellenenin okuma anindaki adi (K-W16); silinmis hesap,
+                            * anonimlesmis koltuk ya da bos adda null. POST yanitinda hep null.
+                            */
+                           String displayName) {
     }
 
     public record DeleteTokenResponse(String deleteConfirmToken, Instant expiresAt) {

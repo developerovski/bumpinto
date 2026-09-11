@@ -7,6 +7,7 @@ import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.safety.BlockListing;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import org.springframework.stereotype.Service;
@@ -55,8 +56,8 @@ public class Blocks {
         return saved;
     }
 
-    public List<Block> list(UUID blockerUserId) {
-        return store.blocksOf(blockerUserId);
+    public List<BlockListing> list(UUID blockerUserId) {
+        return store.listingsOf(blockerUserId);
     }
 
     @Transactional

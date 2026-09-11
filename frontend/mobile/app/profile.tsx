@@ -9,13 +9,14 @@ import {
   ShieldCheckIcon,
   SignOutIcon,
 } from "phosphor-react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText, Avatar, Badge, Button, Card } from "../src/components/atoms";
 import { ScreenHeader } from "../src/components/molecules";
+import MapPickerSheet from "../src/components/organisms/MapPickerSheet";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ACTIVITY_ICON, MODE_ICON } from "../src/icons";
@@ -28,9 +29,13 @@ import { goBackOr } from "../src/lib/nav";
  * Artboard P22 · Profil.
  *
  * "Hesap ve veriler" ve "Destek" satırları M-5'te açıldı (`app/account/*`).
- * Varsayılan KONUM satırı hâlâ kapalı: konum seçici (harita + geocode) M-7'ye ait.
+ * Varsayılan KONUM satırı K-M7'de açıldı: M-7'nin `MapPickerSheet`i profilin ÜSTÜNDE açılır
+ * (`sessions/new.tsx` deseni), seçim `meStore.update` ile yazılır — gövde diğer tercihleri
+ * taşır (K-M46). Varsayılanı temizlemek kapsam dışı.
  */
 const ICON = { size: 17, color: colors.ink2 } as const;
+/** `LocationPrefDto.label` @Size(max = 80) — sunucu uzun etiketi 400 ile reddeder. */
+const LABEL_MAX = 80;
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -39,6 +44,8 @@ export default function ProfileScreen() {
   const me = useMeStore((s) => s.me);
   const error = useMeStore((s) => s.error);
   const load = useMeStore((s) => s.load);
+  const update = useMeStore((s) => s.update);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     void load();
@@ -97,7 +104,9 @@ export default function ProfileScreen() {
             label={t("profile.defaultLocation")}
             value={me?.defaultLocation?.label}
             icon={<MapPinIcon {...ICON} />}
-            disabled
+            // `me` gelmeden açılmaz: `update` yüklenmemiş profile yazmayı zaten reddeder.
+            disabled={!me}
+            onPress={() => setPickerOpen(true)}
           />
           <Row
             label={t("profile.defaultActivity")}
@@ -184,11 +193,29 @@ export default function ProfileScreen() {
           }}
         />
       </View>
+
+      {/* Profilin ÜSTÜNDE yerinde alt sayfa (sessions/new.tsx deseni). Açılış merkezi mevcut
+          varsayılan konum; yoksa sayfanın kendi varsayılanı. */}
+      <MapPickerSheet
+        visible={pickerOpen}
+        center={me?.defaultLocation ? { lat: me.defaultLocation.lat, lng: me.defaultLocation.lng } : null}
+        onCancel={() => setPickerOpen(false)}
+        onPick={(picked) => {
+          setPickerOpen(false);
+          void update({
+            defaultLocation: {
+              lat: picked.lat,
+              lng: picked.lng,
+              label: picked.label?.slice(0, LABEL_MAX),
+            },
+          });
+        }}
+      />
     </View>
   );
 }
 
-/** Tercih/hesap satırı. `disabled` satır çizilir ama basılamaz (ekranı sonraki plana ait). */
+/** Tercih/hesap satırı. `disabled` satır çizilir ama basılamaz. */
 function Row(p: {
   label: string;
   /** Karttaki ilk satır üst çizgi çizmez. */

@@ -15,6 +15,7 @@ import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.safety.Block;
+import com.bumpinto.domain.safety.BlockListing;
 import com.bumpinto.domain.safety.Report;
 import com.bumpinto.domain.session.MeetCheckin;
 import com.bumpinto.domain.session.Participant;
@@ -387,9 +388,11 @@ public class FakeStores {
             return block;
         }
 
-        @Override public List<Block> blocksOf(UUID blockerUserId) {
+        /** Bellekte kullanici/koltuk tablosu yok: ad hep null. */
+        @Override public List<BlockListing> listingsOf(UUID blockerUserId) {
             return blocks.values().stream()
-                    .filter(b -> b.blockerUserId().equals(blockerUserId)).toList();
+                    .filter(b -> b.blockerUserId().equals(blockerUserId))
+                    .map(b -> new BlockListing(b, null)).toList();
         }
 
         @Override public boolean delete(UUID blockerUserId, UUID blockId) {

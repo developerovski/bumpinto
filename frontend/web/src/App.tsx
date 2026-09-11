@@ -5,6 +5,7 @@ import ErrorPage from "./pages/ErrorPage";
 import AccountDeletedPage from "./pages/AccountDeletedPage";
 import AccountPage from "./pages/AccountPage";
 import AttributionsPage from "./pages/AttributionsPage";
+import BlocksPage from "./pages/BlocksPage";
 import ConsentPage from "./pages/ConsentPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import LegalPage from "./pages/LegalPage";
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/support" element={<SupportPage />} />
         <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
         <Route path="/account/consent" element={<RequireAuth><ConsentPage /></RequireAuth>} />
+        <Route path="/account/blocks" element={<RequireAuth><BlocksPage /></RequireAuth>} />
         <Route path="*" element={<ErrorPage kind="lost" />} />
       </Route>
       {/* AppShell DIŞINDA (PlainShell): silme akışı gezinme/altbilgi taşımaz, kurulumsuz çalışır. */}

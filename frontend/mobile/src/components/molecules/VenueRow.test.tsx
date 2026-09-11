@@ -19,7 +19,10 @@ const venue = (over: Record<string, unknown> = {}) =>
     tagline: "Sakin, oturmalı, iyi filtre kahve",
     taglineSource: "FSQ",
     photoUrl: "https://cdn/x.jpg",
-    travelMinutes: { m: 25, k: 35 },
+    travel: [
+      { participantId: "m", minutes: 25, estimated: true },
+      { participantId: "k", minutes: 35, estimated: true },
+    ],
     ...over,
   }) as never;
 

@@ -2,7 +2,7 @@
    sağ: kimlik kartı + saklama notu + çıkış. Play "hesap yönetimi" ve Apple 5.1.1
    gizlilik erişimi bu ekrandan sağlanır. */
 import {
-  ChartLine, DownloadSimple, FileText, Lifebuoy, MapTrifold, Scroll as ScrollIcon,
+  ChartLine, DownloadSimple, FileText, Lifebuoy, MapTrifold, Prohibit, Scroll as ScrollIcon,
   ShieldCheck, SignOut, ToggleRight, Trash,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -97,6 +97,9 @@ export default function AccountPage() {
               aside={<Toggle checked={analytics} label={t("account.analytics")} onChange={(n) => void toggleAnalytics(n)} />} />
             <SettingRow icon={<DownloadSimple size={ICON} />} label={t("account.export")} hint={t("account.exportHint")}
               disabled={busy} onClick={() => void download()} />
+            {/* K-W16: artboard W13'te yok — engel listesinin ve kaldırmanın web'de başka yüzeyi
+                olmadığı için eklendi (artboard'sız varsayılan, yeni görsel dil yok). */}
+            <SettingRow icon={<Prohibit size={ICON} />} label={t("account.blocks")} to="/account/blocks" />
           </SettingsCard>
           {error && <ErrorText>{error}</ErrorText>}
           <Overline>{t("account.about")}</Overline>

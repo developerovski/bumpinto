@@ -30,7 +30,7 @@ docs:
     Rate limit: ozel politika yok, genel `api` kovasina duser (120/dk).
 
     Yanit govdesi `get-session.yml` ile AYNI `SessionView` semasidir — `venues[]` alanlari
-    (`fairness`, `travelMinutes`, `provider`, `category`, `address`, `locality`, `ratingCount`,
+    (`fairness`, `travel`, `provider`, `category`, `address`, `locality`, `ratingCount`,
     `hoursToday`, `placeLink`) DEGISMEDEN korunur; yalniz siralama/`deckOrder` yeniden hesaplanir.
 
     Yeni 409: en az 2 "sunumda" (present) oy kullanacak katilimci yoksa `need at least 2

@@ -93,7 +93,7 @@ class StoreAdapterTest {
         assertThat(blocks.blockerUserIdsOf(other)).containsExactly(me);
         assertThat(blocks.delete(other, blockId)).isFalse();
         assertThat(blocks.delete(me, blockId)).isTrue();
-        assertThat(blocks.blocksOf(me)).isEmpty();
+        assertThat(blocks.listingsOf(me)).isEmpty();
     }
 
     @Test
