@@ -22,6 +22,11 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Atıflar ve lisanslar" })).toBeInTheDocument();
     expect(screen.getByText("Phosphor Icons")).toBeInTheDocument();
   });
+  it("anonim /kesfet → landing'e yönlenir (Keşfet hesap ister)", () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    render(<MemoryRouter initialEntries={["/kesfet"]}><App /></MemoryRouter>);
+    expect(screen.getByText(/buluşalım\./)).toBeInTheDocument();
+  });
   it("anonim /sessions → landing'e yönlenir", () => {
     useAuthStore.setState({ status: "anon", me: null });
     render(<MemoryRouter initialEntries={["/sessions"]}><App /></MemoryRouter>);

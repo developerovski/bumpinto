@@ -1,6 +1,8 @@
 import { useEffect } from "react";
+import { useAuthStore } from "./authStore";
 import { liveChannel, sessionTopic } from "./liveChannel";
-import { useSessionStore } from "./sessionStore";
+import { useSeatRequestsStore } from "./seatRequestsStore";
+import { isHost, useSessionStore } from "./sessionStore";
 import { useToastStore } from "./toastStore";
 import { useVoiceStore, type EndReason } from "./voiceStore";
 
@@ -32,6 +34,15 @@ function nudgedMe(body: string, selfId: string | null): boolean {
   }
 }
 
+/** WS `seat_requests_changed {}` (B-17) — gövdesiz zil; kimlik sızmaz, liste uçtan tazelenir. */
+function seatRequestsChanged(body: string): boolean {
+  try {
+    return (JSON.parse(body) as { type?: string }).type === "seat_requests_changed";
+  } catch {
+    return false;
+  }
+}
+
 export function useSessionLive(slug: string) {
   const bind = useSessionStore((s) => s.bind);
   const refresh = useSessionStore((s) => s.refresh);
@@ -47,6 +58,11 @@ export function useSessionLive(slug: string) {
       if (reason) useVoiceStore.getState().ended(reason);
       const selfId = useSessionStore.getState().view?.viewer?.participantId ?? null;
       if (nudgedMe(body, selfId)) useToastStore.getState().push("presence.nudged", undefined, "flame");
+      // Zil oturumun TÜM koltuklu abonelerine gider; liste ucu host'a özel (üye 403 alırdı).
+      // Hesapsız host (çıkış yapmış, çerezle lobide) hesap ucuna gitmez: 401 çıkış kesicisini tetiklerdi.
+      if (seatRequestsChanged(body) && isHost(useSessionStore.getState().view) && useAuthStore.getState().status === "signed") {
+        void useSeatRequestsStore.getState().load(slug);
+      }
     });
     // Abonelik zaten bağlanmadan ÖNCE kaydedildi ve kuruluş sırası "onConnect'te attach, sonra
     // onConnect callback'i" olduğu için buradaki tazeleme "abone olana kadarki boşluğu" değil,

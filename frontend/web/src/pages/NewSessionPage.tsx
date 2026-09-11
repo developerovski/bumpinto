@@ -1,8 +1,17 @@
-import type { Schemas } from "@bumpinto/shared";
+import {
+  DURATIONS,
+  MAX_CAPACITY,
+  MIN_CAPACITY,
+  WHERE_LABEL_MAX,
+  effectiveJoinPolicy,
+  openPlanError,
+  type DurationHours,
+  type Schemas,
+} from "@bumpinto/shared";
 import { ArrowLeft, MapPin } from "@phosphor-icons/react";
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, ErrorText, HandNote, Heading, Note, Page } from "../components/atoms";
 import ActivityPicker from "../components/molecules/ActivityPicker";
 import Field from "../components/molecules/Field";
@@ -12,11 +21,12 @@ import LocationField from "../components/molecules/LocationField";
 import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
 import Segmented from "../components/molecules/Segmented";
 import Sheet from "../components/molecules/Sheet";
+import Stepper from "../components/molecules/Stepper";
 import TravelModeField from "../components/molecules/TravelModeField";
 import TwoZone from "../components/molecules/TwoZone";
 import TypeSelector from "../components/molecules/TypeSelector";
 import PointsEditor from "../components/organisms/PointsEditor";
-import { MAX_ACTIVITIES } from "../lib/activity";
+import { ACTIVITY_GROUPS, MAX_ACTIVITIES } from "../lib/activity";
 import { DEFAULT_MAP_CENTER, centroid } from "../lib/geo";
 import { geocode } from "../lib/geocode";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -31,6 +41,9 @@ const MapView = lazy(() => import("../components/organisms/MapView"));
 const MapPicker = lazy(() => import("../components/organisms/MapPicker"));
 
 type Activity = Schemas["CreateSessionRequest"]["activityTypes"][number];
+
+/** `?activity=` güvenilmez girdidir: bilinmeyen değer `reset`e girerse sunucu 400 döner. */
+const KNOWN_ACTIVITIES = new Set<string>(Object.values(ACTIVITY_GROUPS).flat());
 
 /** DS `.lb` — form bölüm başlığı (Field/LocationField ile AYNI ölçü: 14px/600, cümle düzeni).
     `.ov` (11.5px, büyük harf) YALNIZ etkinlik grup başlıkları ve "Konumlar" için ayrıldı —
@@ -64,6 +77,9 @@ export default function NewSessionPage() {
   const setLocalPointTravelMode = useNewSessionStore((s) => s.setLocalPointTravelMode);
   const submit = useNewSessionStore((s) => s.submit);
   const reset = useNewSessionStore((s) => s.reset);
+  const plan = useNewSessionStore((s) => s.plan);
+  const setPlan = useNewSessionStore((s) => s.setPlan);
+  const [params] = useSearchParams();
 
   const loc = useOwnLocation({
     initial: me?.defaultLocation
@@ -76,6 +92,9 @@ export default function NewSessionPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [anchorQuery, setAnchorQuery] = useState("");
   const [picker, setPicker] = useState<"own" | "anchor" | null>(null);
+  /** Plan hataları ilk gönderim denemesinden (ya da alandan çıkıştan) SONRA görünür: Şimdi'yi
+      seçer seçmez kırmızı bir "Nerede?" alanı karşılamasın. */
+  const [showPlanErrors, setShowPlanErrors] = useState(false);
   /** İstek kuşağı: haritadan seçim ya da yeni bir sorgu araya girerse geç dönen Nominatim
       cevabı çapayı ele geçiremesin (`useOwnLocation`'ın `addressRef` koruması ile aynı sınıf). */
   const anchorReq = useRef(0);
@@ -108,30 +127,56 @@ export default function NewSessionPage() {
   }
 
   useEffect(() => {
-    reset((me?.defaultActivity as Activity) ?? undefined);
+    // TEK efekt ve sıra önemli: sorgu parametreleri reset'ten SONRA uygulanır, yoksa reset onları siler.
+    // Keşfet girişleri: `?now=1` (Buradayım) → Şimdi, `?open=1&activity=X` (Plan aç) → Tarih seç.
+    const queried = params.get("activity");
+    const activity = queried && KNOWN_ACTIVITIES.has(queried) ? (queried as Activity) : undefined;
+    reset(activity ?? (me?.defaultActivity as Activity) ?? undefined);
     if (me?.defaultTravelMode) setTravelMode(me.defaultTravelMode);
-    // yalnız ilk mount'ta — reset ve varsayılan etkinlik/ulaşım
+    if (params.get("now") === "1") setPlan({ when: "NOW" });
+    else if (params.get("open") === "1") setPlan({ when: "DATE" });
+    // yalnız ilk mount'ta — reset, varsayılan etkinlik/ulaşım ve Keşfet'ten gelen mod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const instant = plan.when === "NOW";
+  const isPlan = plan.when !== "UNSET";
+  const planErr = openPlanError(plan, new Date());
+  /* Şimdi planının çapası "o anki konum" (spec §1.3). Profildeki kayıtlı konum ev olabilir ve OPEN
+     varsayılanında koltuk alan herkes kesin noktayı görür — Şimdi'ye girince taze konum istenir,
+     kayıtlı nokta ekrandan da düşer. */
+  useEffect(() => {
+    if (instant && loc.source === "initial") loc.redetect();
+    // yalnız moda girişte — `loc` her render yeni nesne
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instant]);
+
   async function create() {
+    if (isPlan && openPlanError(plan, new Date())) {
+      setShowPlanErrors(true);
+      return;
+    }
     setSubmitting(true);
     try {
       setLocalError(null);
-      const resolvedOwn = await loc.resolve();
+      // Kayıtlı varsayılan Şimdi'de konum SAYILMAZ (düğme zaten kapalı; burası ikinci kilit).
+      const resolvedOwn = instant && loc.source === "initial" ? null : await loc.resolve();
       // Çapalı oturumda host'un konumu ZORUNLU DEĞİL: modun var oluş sebebi sürtünmeyi
-      // kaldırmak. Veren host için yol süresi yine hesaplanır.
-      if (!resolvedOwn && anchorMode !== "ANCHOR") {
+      // kaldırmak. Veren host için yol süresi yine hesaplanır. Şimdi'de ise ZORUNLU: çapanın
+      // noktası kuranın konumudur (sunucu çapasız pencereyi 400'ler).
+      if (!resolvedOwn && (instant || anchorMode !== "ANCHOR")) {
         setLocalError(t(loc.address.trim() ? "join.errGeocode" : "join.errGeolocation"));
         return;
       }
       // Alan çözülmemiş ya da DEĞİŞMİŞ olabilir: blur ile submit aynı tıkta yarışıyor.
       // Beklemezsek kullanıcının yazdığından BAŞKA bir yerde buluşma kurulur.
+      // Şimdi'de çapa modu yok sayılır (store da öyle): gizli bir çapa çözülmez, istenmez.
+      const anchored = !instant && anchorMode === "ANCHOR";
       let effectiveAnchor = anchor;
-      if (anchorMode === "ANCHOR" && anchorQuery.trim() !== resolvedQuery.current) {
+      if (anchored && anchorQuery.trim() !== resolvedQuery.current) {
         effectiveAnchor = await resolveAnchor();
       }
-      if (anchorMode === "ANCHOR" && !effectiveAnchor) {
+      if (anchored && !effectiveAnchor) {
         setLocalError(t("newSession.errNoAnchor"));
         return;
       }
@@ -247,10 +292,14 @@ export default function NewSessionPage() {
   // Artboard 888–890 (1280) `.row` + `.btn.fit` + ipucu YAN YANA; 1044–1047 (390) `.cta`
   // kaydırma alanının DIŞINDA, tam genişlik. Aynı düğme iki yerleşimde de basılır — biri
   // `lg:hidden`, diğeri `hidden lg:flex`.
+  // Şimdi'de konum şart: yoksa ve adres de yazılmadıysa düğme kapanır (adres yazan kullanıcıyı
+  // kilitlemez — `setAddress` koordinatı `resolve()`a dek siler).
+  const ownMissing = instant && (!own || loc.source === "initial") && !loc.address.trim();
   const ctaButton = (size: "md" | "fit") =>
     type === "GROUP" ? (
-      <Button size={size} onClick={create} disabled={busy || submitting}>
-        {t("newSession.createGroup")}
+      <Button size={size} onClick={create} disabled={busy || submitting || ownMissing}>
+        {instant && <MapPin size={18} aria-hidden />}
+        {t(instant ? "plan.ctaNow" : isPlan ? "plan.ctaDate" : "newSession.createGroup")}
       </Button>
     ) : (
       <Button size={size} onClick={create} disabled={busy || submitting || (anchorMode !== "ANCHOR" && count < 2)}>
@@ -262,7 +311,143 @@ export default function NewSessionPage() {
   const ctaNote =
     type === "SOLO" && anchorMode !== "ANCHOR" ? (
       <Note>{count < 2 ? t("newSession.needTwo") : t("newSession.findHint", { count })}</Note>
+    ) : ownMissing ? (
+      <Note>{t("newSession.ownMissing")}</Note>
+    ) : isPlan ? (
+      // Artboard P3/P3a `.f-note` — CTA'nın altında ortalı güven cümlesi.
+      <Note small center>{t("plan.publicPlaceNote")}</Note>
     ) : null;
+
+  const whereError = showPlanErrors && planErr === "plan.errWhereRequired" ? t(planErr) : undefined;
+  const dateError =
+    showPlanErrors && (planErr === "plan.errMeetAtRequired" || planErr === "plan.errMeetAtPast") ? t(planErr) : undefined;
+
+  /* Artboard P3 (Tarih seç) / P3a (Şimdi): "Ne zaman" 3'lüsü → moda özgü alanlar → kaç kişi →
+     katılım. "Kim görsün?" buluşma yeri seçiminden SONRA gelir (`audienceBlock`). Yalnız GRUP:
+     Bireysel'in davet linki yok, açık plan olamaz (store değişmezi). */
+  const whenBlock = (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label>{t("plan.when")}</Label>
+        <Segmented
+          fill
+          ariaLabel={t("plan.when")}
+          value={plan.when}
+          onChange={(w) => {
+            setPlan({ when: w });
+            setShowPlanErrors(false);
+          }}
+          options={[
+            { value: "UNSET", label: t("plan.whenUnset") },
+            { value: "NOW", label: t("plan.now") },
+            { value: "DATE", label: t("plan.pickDate") },
+          ]}
+        />
+        {/* Artboard P3 açıklamayı Belirsiz/Tarih seç'te basar; P3a'da yerini "Kaç saat" satırı alır. */}
+        {!instant && <Note small>{t("plan.whenHint")}</Note>}
+        {instant && (
+          /* Artboard P3a: "Kaç saat" etiketi rayla AYNI satırda, 76px sabit sütun. */
+          <div className="flex items-center gap-2.5">
+            <span className="w-[4.75rem] flex-none text-[0.875rem] font-semibold">{t("plan.duration")}</span>
+            <div className="min-w-0 flex-1">
+              <Segmented
+                fill
+                ariaLabel={t("plan.duration")}
+                value={String(plan.durationHours)}
+                onChange={(v) => setPlan({ durationHours: Number(v) as DurationHours })}
+                options={DURATIONS.map((h) => ({ value: String(h), label: t("plan.durationHours", { count: h }) }))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+      {instant && (
+        <div className="flex flex-col gap-2">
+          <Field
+            id="plan-where"
+            label={t("plan.where")}
+            value={plan.whereLabel}
+            maxLength={WHERE_LABEL_MAX}
+            placeholder={t("plan.wherePlaceholder")}
+            onChange={(e) => setPlan({ whereLabel: e.target.value })}
+            onBlur={() => setShowPlanErrors(true)}
+            error={whereError}
+          />
+          <Note small>{t("plan.whereHint")}</Note>
+        </div>
+      )}
+      {plan.when === "DATE" && (
+        <div className="flex flex-col gap-2">
+          {/* Artboard P3: "Tarih" esnek, "Saat" 120px — hata satırı ikisinin altında TEK. */}
+          <div className="flex gap-2.5">
+            <div className="min-w-0 flex-1">
+              <Field id="plan-date" type="date" label={t("plan.date")} value={plan.meetDate}
+                aria-invalid={!!dateError}
+                onChange={(e) => setPlan({ meetDate: e.target.value })} />
+            </div>
+            <div className="w-[7.5rem] flex-none">
+              <Field id="plan-time" type="time" label={t("plan.time")} value={plan.meetTime}
+                aria-invalid={!!dateError}
+                onChange={(e) => setPlan({ meetTime: e.target.value })}
+                onBlur={() => { if (plan.meetDate && plan.meetTime) setShowPlanErrors(true); }} />
+            </div>
+          </div>
+          {dateError && <ErrorText>{dateError}</ErrorText>}
+        </div>
+      )}
+      {isPlan && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <Label>{t("plan.capacity")}</Label>
+              <Note small>{t("plan.capacityHint")}</Note>
+            </div>
+            <Stepper
+              value={plan.capacity}
+              min={MIN_CAPACITY}
+              max={MAX_CAPACITY}
+              onChange={(n) => setPlan({ capacity: n })}
+              label={t("plan.capacity")}
+              decLabel={t("plan.capacityDec")}
+              incLabel={t("plan.capacityInc")}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>{t("plan.joinPolicy")}</Label>
+            <Segmented
+              fill
+              ariaLabel={t("plan.joinPolicy")}
+              value={effectiveJoinPolicy(plan)}
+              onChange={(p) => setPlan({ joinPolicy: p })}
+              options={[
+                { value: "APPROVAL", label: t("plan.approval") },
+                { value: "OPEN", label: t("plan.openJoin") },
+              ]}
+            />
+            {instant && <Note small>{t("plan.joinDefaultNow")}</Note>}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  const audienceBlock = isPlan && (
+    <div className="flex flex-col gap-2">
+      <Label>{t("plan.audience")}</Label>
+      {/* Arkadaşlar B-19 ile gelir — olmayan seçenek soluk bile çizilmez (spec §11.5). */}
+      <Segmented
+        fill
+        ariaLabel={t("plan.audience")}
+        value={plan.audience}
+        onChange={(a) => setPlan({ audience: a })}
+        options={[
+          { value: "PUBLIC", label: t("plan.audiencePublic") },
+          { value: "NONE", label: t("plan.audienceNone") },
+        ]}
+      />
+      <Note small>{t("plan.audienceHint")}</Note>
+    </div>
+  );
 
   return (
     <Page>
@@ -277,8 +462,10 @@ export default function NewSessionPage() {
         <ArrowLeft size={16} aria-hidden />
         {t("newSession.back")}
       </Link>
-      {/* Artboard 963/3916: Yeni oturum 390 başlığı 30px. */}
-      <Heading size="compact">{t("newSession.title")}</Heading>
+      {/* Artboard 963/3916: Yeni oturum 390 başlığı 30px. P3/P3a: plan modunda başlık "Plan aç" / "Buradayım". */}
+      <Heading size="compact">
+        {t(instant ? "plan.titleNow" : isPlan ? "plan.titleDate" : "newSession.title")}
+      </Heading>
       <TwoZone
         left={
           <>
@@ -306,7 +493,9 @@ export default function NewSessionPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            {!meetWhereInRight && meetWhere}
+            {type === "GROUP" && whenBlock}
+            {!meetWhereInRight && !instant && meetWhere}
+            {type === "GROUP" && audienceBlock}
             <LocationField
               title={t("newSession.where")}
               state={loc.state}
@@ -323,9 +512,9 @@ export default function NewSessionPage() {
                  varsa adaleti atlar) — yalnız yol süresini gösterir. Bu yüzden sessiz satır +
                  "kaldır": yeşil "Tamam" hapı "Ankara'da buluşuyoruz ama sen Den Bosch'tasın"
                  çelişkisini kilitli biçimde ekranda tutuyordu. */
-              quiet={anchorMode === "ANCHOR"}
-              onRemove={anchorMode === "ANCHOR" ? loc.clear : undefined}
-              hint={anchorMode === "ANCHOR" ? t("newSession.ownOptional") : undefined}
+              quiet={!instant && anchorMode === "ANCHOR"}
+              onRemove={!instant && anchorMode === "ANCHOR" ? loc.clear : undefined}
+              hint={!instant && anchorMode === "ANCHOR" ? t("newSession.ownOptional") : undefined}
             />
             {/* SOLO 1280'de host'un ulaşım türü Konumlar kartının "Sen" satırındadır
                 (artboard 910); 390'da sağ bölge yok, bu yüzden ray burada kalır. */}

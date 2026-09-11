@@ -6,7 +6,7 @@ import { Button, Note, Overline, Page } from "../components/atoms";
 import IdentityCard from "../components/molecules/IdentityCard";
 import MobileCta, { DesktopOnly } from "../components/molecules/MobileCta";
 import PageHeader from "../components/molecules/PageHeader";
-import ProfileStats from "../components/molecules/ProfileStats";
+import BadgeRow from "../components/molecules/BadgeRow";
 import SettingRow from "../components/molecules/SettingRow";
 import SettingsCard from "../components/molecules/SettingsCard";
 import TwoZone from "../components/molecules/TwoZone";
@@ -47,7 +47,8 @@ export default function ProfilePage() {
         leftGap="md"
         left={<>
           <IdentityCard me={me} onSaveName={(displayName) => updatePrefs({ displayName })} />
-          <ProfileStats stats={me.stats} />
+          {/* Keşfet POC P6: sayaçlar açtığın · buluşma · hafta seri + rozetler (spec §11.6). */}
+          <BadgeRow stats={me.stats} />
           {/* Saklama notu 390'da EN SONA (Hesap kartının ardına) düşer — artboard 2830. Sol
               bölgede kalırsa telefonda "Tercihler"in ÖNÜNDE görünür; bu yüzden burada yalnız
               masaüstü kopyası durur, mobil kopyası sağ bölgenin sonundadır. */}
@@ -62,6 +63,7 @@ export default function ProfilePage() {
             onLocation={(defaultLocation) => updatePrefs({ defaultLocation })}
             onActivity={(defaultActivity) => updatePrefs({ defaultActivity: defaultActivity as MeResponse["defaultActivity"] })}
             onTravelMode={(defaultTravelMode) => updatePrefs({ defaultTravelMode })}
+            onInterests={(interests) => updatePrefs({ interests: interests as MeResponse["interests"] })}
           />
           {/* Artboard 2750 / 2830: her ikisi de `.mi` 12px. */}
           <Note small>{t("profile.langHint")}</Note>

@@ -14,6 +14,7 @@ import SessionHeader from "../components/molecules/SessionHeader";
 import SessionSteps from "../components/molecules/SessionSteps";
 import TwoZone from "../components/molecules/TwoZone";
 import ParticipantList from "../components/organisms/ParticipantList";
+import SeatRequestsPanel from "../components/organisms/SeatRequestsPanel";
 import VenuesLoading from "../components/organisms/VenuesLoading";
 import { sessionActivities } from "../lib/activity";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -96,6 +97,13 @@ export default function LobbyPage({ view }: { view: SessionView }) {
             <div className="max-lg:order-1">
               <InviteCard slug={view.slug ?? ""} joinCode={view.joinCode} sessionName={view.name} />
             </div>
+            {/* Açık plan: Keşfet'ten gelen katılım istekleri host'a burada düşer (artboard P4). Lobi
+                zaten host'a özel (`pageFor`); DOM sırası mobilde davetin hemen ardı. */}
+            {view.openPlan && (
+              <div className="max-lg:order-1">
+                <SeatRequestsPanel view={view} />
+              </div>
+            )}
             <div className="flex flex-col gap-4 max-lg:order-3">
               <ParticipantList
               participants={participants}

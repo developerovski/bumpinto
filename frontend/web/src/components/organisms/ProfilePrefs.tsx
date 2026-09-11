@@ -1,19 +1,23 @@
-import { CaretDown, Car, Check, Coffee, Globe, MapPin } from "@phosphor-icons/react";
+import { CaretDown, Car, Check, Coffee, Globe, MapPin, Sparkle } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MeResponse } from "@bumpinto/shared";
-import { Button, ErrorText } from "../atoms";
-import { ACTIVITY_ICONS, groupOf } from "../../lib/activity";
+import { Button, ErrorText, Note } from "../atoms";
+import { ACTIVITY_ICONS, activityListLabel, groupOf } from "../../lib/activity";
 import { DEFAULT_TRAVEL_MODE, MODE_ICON, MODE_LABEL_KEY, type TravelMode } from "../../lib/travelMode";
 import { LANGUAGES } from "../../lib/languages";
 import ActivityPicker from "../molecules/ActivityPicker";
 import LocationField from "../molecules/LocationField";
 import PrefRow from "../molecules/PrefRow";
 import TravelModeField from "../molecules/TravelModeField";
+import { useAuthStore } from "../../store/authStore";
 import { useOwnLocation } from "../../store/useOwnLocation";
 
 /* Dil artık açılır panel değil (kartın hep açık bej ayağı) — bu yüzden listede yok. */
-type Panel = "location" | "activity" | "travelMode" | null;
+type Panel = "location" | "activity" | "interests" | "travelMode" | null;
+
+/** Keşfet'in varsayılan süzgeci; sunucu 5'ten fazlasını 400'ler (`UpdateMeRequest.interests`). */
+const MAX_INTERESTS = 5;
 
 /** Artboard W9 · Profil tercihler kartı — konum, etkinlik, ulaşım ve dil düzenlenebilir açılır
     panelli. `defaultTravelMode` yalnız Katıl formunu İSTEMCİ tarafında ön-doldurur (backend
@@ -24,12 +28,14 @@ export default function ProfilePrefs({
   onLocation,
   onActivity,
   onTravelMode,
+  onInterests,
 }: {
   me: MeResponse;
   onLanguage: (code: string) => Promise<void>;
   onLocation: (loc: { lat: number; lng: number; label?: string }) => Promise<void>;
   onActivity: (a: string) => Promise<void>;
   onTravelMode: (mode: TravelMode) => Promise<void>;
+  onInterests: (list: string[]) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState<Panel>(null);
@@ -38,6 +44,22 @@ export default function ProfilePrefs({
      etkinlik/ulaşım panelindeki hata dil ayağında da tekrar ederdi. */
   const [langError, setLangError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /* İyimser liste: yanıt beklenmeden çip hemen değişir. Hata olursa dokunuş anındaki anlık görüntüye
+     DEĞİL, sunucunun son ONAYLADIĞI listeye (`me.interests`, başarılı PUT yanıtıyla güncellenir) dönülür:
+     sıra dışı biten istekler ekranda sunucuda olmayan bir liste bırakmasın. */
+  const [interests, setInterests] = useState<string[]>(me.interests ?? []);
+
+  function toggleInterest(a: string) {
+    const prev = interests;
+    const next = prev.includes(a) ? prev.filter((x) => x !== a) : prev.length < MAX_INTERESTS ? [...prev, a] : prev;
+    if (next === prev) return;
+    setError(null);
+    setInterests(next);
+    void onInterests(next).catch(() => {
+      setInterests(useAuthStore.getState().me?.interests ?? []);
+      setError(t("profile.errSave"));
+    });
+  }
   const activity = me.defaultActivity;
   const Icon = activity ? ACTIVITY_ICONS[activity] : undefined;
   // 390 ikon karoları (2792-2814): artboard seçili tercihin kendi glifini gösterir; hiç seçim
@@ -143,6 +165,26 @@ export default function ProfilePrefs({
             ariaLabel={t("profile.defaultActivity")}
           />
           {open === "activity" && errorNode}
+        </div>
+      </PrefRow>
+      <div className="mx-[1.125rem] h-px bg-line" />
+      <PrefRow
+        label={t("profile.interests")}
+        icon={<Sparkle />}
+        value={interests.length ? activityListLabel(interests, t, i18n.language) : null}
+        open={open === "interests"}
+        onToggle={() => toggle("interests")}
+      >
+        <div className="mx-[1.125rem] mb-3.5 flex flex-col gap-3">
+          <Note small>{t("profile.interestsHint")}</Note>
+          <ActivityPicker
+            compact
+            max={MAX_INTERESTS}
+            value={interests}
+            onToggle={toggleInterest}
+            ariaLabel={t("profile.interests")}
+          />
+          {open === "interests" && errorNode}
         </div>
       </PrefRow>
       <div className="mx-[1.125rem] h-px bg-line" />

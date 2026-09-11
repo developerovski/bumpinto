@@ -48,6 +48,10 @@ export default function GoogleSignIn({ onDone }: { onDone?: () => void }) {
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
   const box = useRef<HTMLDivElement>(null);
+  /* `onDone` efekt bağımlılığı DEĞİL: satır içi geri çağrı veren her çağıran her render'da GIS
+     düğmesini söküp yeniden kurdururdu (iframe titrer, süren tıklama kaybolur). */
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   const [error, setError] = useState<string | null>(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
   const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
@@ -62,7 +66,7 @@ export default function GoogleSignIn({ onDone }: { onDone?: () => void }) {
         callback: (r) => {
           if (cancelled) return;
           void login(r.credential)
-            .then(() => { if (onDone) onDone(); else navigate("/sessions"); })
+            .then(() => { if (onDoneRef.current) onDoneRef.current(); else navigate("/sessions"); })
             .catch(() => setError(t("landing.errLogin")));
         },
       });
@@ -75,7 +79,7 @@ export default function GoogleSignIn({ onDone }: { onDone?: () => void }) {
       });
     }).catch(() => setError(t("landing.errScript")));
     return () => { cancelled = true; };
-  }, [clientId, login, navigate, onDone, locale, t]);
+  }, [clientId, login, navigate, locale, t]);
 
   if (!clientId) return <Note>{t("landing.noClientId")}</Note>;
   return (

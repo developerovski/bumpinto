@@ -10,6 +10,7 @@ import ConsentPage from "./pages/ConsentPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import LegalPage from "./pages/LegalPage";
 import SupportPage from "./pages/SupportPage";
+import DiscoverPage from "./pages/DiscoverPage";
 import Landing from "./pages/Landing";
 import NewSessionPage from "./pages/NewSessionPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -24,6 +25,8 @@ export default function App() {
         <Route path="/j/:slug" element={<SessionPage />} />
         <Route path="/sessions" element={<RequireAuth><SessionsPage /></RequireAuth>} />
         <Route path="/sessions/new" element={<RequireAuth><NewSessionPage /></RequireAuth>} />
+        {/* Keşfet hesap ister (`GET /api/discover` hesap JWT'si; anonim 401). */}
+        <Route path="/kesfet" element={<RequireAuth><DiscoverPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         {/* RequireAuth YOK (kasıtlı): mağaza meta verisi bu URL'leri anonim erişilebilir ister. */}
         <Route path="/privacy" element={<LegalPage slug="privacy" />} />

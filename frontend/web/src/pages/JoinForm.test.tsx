@@ -55,6 +55,27 @@ describe("JoinForm — travelMode", () => {
   });
 });
 
+/* K-B37 devri: açık planda `POST /participants` 409 `open_plan_seat_request_required` döner.
+   Önizleme ilk yüklemede düşmüşse ziyaretçi buraya düşebilir — form önizlemeyi tazeler ve
+   SessionPage plan detayına geçer; "Katılamadın" hatası BASILMAZ. */
+describe("JoinForm — açık plan kapısı", () => {
+  it("409 open_plan_seat_request_required → önizleme tazelenir, hata yok", async () => {
+    useAuthStore.setState({ status: "anon", me: null });
+    const loadPreview = vi.fn(async () => {
+      useSessionStore.setState({ preview: { slug: "x7k2m", openPlan: { capacity: 4 } } as never });
+    });
+    useSessionStore.setState({
+      slug: "x7k2m", preview: null, loadPreview,
+      join: vi.fn().mockRejectedValue({ response: { status: 409, data: { error: "open_plan_seat_request_required" } } }),
+    });
+    render(<MemoryRouter><JoinForm /></MemoryRouter>);
+    fireEvent.change(screen.getByRole("textbox", { name: "Adın" }), { target: { value: "Priya" } });
+    fireEvent.click(screen.getByRole("button", { name: "Katıl" }));
+    await vi.waitFor(() => expect(loadPreview).toHaveBeenCalled());
+    expect(screen.queryByText("Katılamadın — bu oturum kapanmış olabilir.")).toBeNull();
+  });
+});
+
 describe("JoinForm — host çevrimiçiliği", () => {
   const preview = {
     slug: "x7k2m", name: "Cuma kahvesi", activityTypes: ["COFFEE"], sessionType: "GROUP",

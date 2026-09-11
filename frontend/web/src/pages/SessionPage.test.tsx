@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../store/useSessionLive", () => ({ useSessionLive: () => undefined }));
 import { useSessionStore } from "../store/sessionStore";
@@ -24,7 +24,7 @@ function at(view: object) {
 /** Üye olmayan görüntüleyen: sunucu 401/403 döndü, elde yalnız kamu önizlemesi var. */
 function asOutsider(status: string | null) {
   useSessionStore.setState({
-    slug: "x", view: null, error: null,
+    slug: "x", view: null, error: null, previewSettled: true,
     preview: status === null ? null : ({ slug: "x", status, participants: [] } as never),
   });
   render(<MemoryRouter initialEntries={["/j/x"]}><Routes><Route path="/j/:slug" element={<SessionPage />} /></Routes></MemoryRouter>);
@@ -72,9 +72,39 @@ describe("SessionPage — kapanmış buluşma linki", () => {
     asOutsider("COLLECTING");
     expect(screen.getByRole("button", { name: "Katıl" })).toBeInTheDocument();
   });
-  it("önizleme henüz gelmediyse katılım formu (bugünkü davranış korunur)", () => {
+  it("önizleme alınamadıysa (sessiz hata) katılım formu yedeği açılır", () => {
     asOutsider(null);
     expect(screen.getByRole("button", { name: "Katıl" })).toBeInTheDocument();
+  });
+  /* Görünüm/önizleme yoldayken katılım formu AÇILMAZ: form mount'ta konum izni ister ve açık
+     planda yanlış ekrandır (Keşfet kartından gelen her ziyaretçi izin istemiyle karşılaşırdı). */
+  it("önizleme yoldayken katılım formu açılmaz, yükleniyor durumu basılır", () => {
+    useSessionStore.setState({ slug: "x", view: null, error: null, preview: null, previewSettled: false });
+    render(<MemoryRouter initialEntries={["/j/x"]}><Routes><Route path="/j/:slug" element={<SessionPage />} /></Routes></MemoryRouter>);
+    expect(screen.queryByRole("textbox", { name: "Adın" })).toBeNull();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+  });
+});
+
+/* W-17 W6: buluşma (pencereli planda pencere) geçince üyeye TEK soru. Yalnız cevap işaretler;
+   kapatmak (scrim/Esc) bu açılışlık gizler, bir sonraki açılışta yine sorulur. */
+describe("SessionPage — Buluştunuz mu?", () => {
+  const planView = { ...base, status: "COLLECTING", viewer: { participantId: "a", host: false },
+    openPlan: { meetAt: "2026-09-01T08:00:00Z", capacity: 4, approvedSeats: 3, confirmed: true, meetPassed: true, joinPolicy: "APPROVAL", audience: "PUBLIC" } };
+  beforeEach(() => localStorage.clear());
+
+  it("üye + openPlan.meetPassed → alt sayfa açılır", () => {
+    at(planView);
+    expect(screen.getByRole("dialog", { name: "Buluştunuz mu?" })).toBeInTheDocument();
+  });
+  it("daha önce cevaplandıysa sorulmaz", () => {
+    localStorage.setItem("bumpinto.checkin.x", "1");
+    at(planView);
+    expect(screen.queryByRole("dialog", { name: "Buluştunuz mu?" })).toBeNull();
+  });
+  it("buluşma geçmediyse ya da gizli oturumsa sorulmaz", () => {
+    at({ ...planView, openPlan: { ...planView.openPlan, meetPassed: false } });
+    expect(screen.queryByRole("dialog", { name: "Buluştunuz mu?" })).toBeNull();
   });
 });
 

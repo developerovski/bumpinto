@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { useAuthStore } from "../../store/authStore";
@@ -30,5 +30,17 @@ describe("TopBar", () => {
     renderBar();
     expect(screen.getByRole("link", { name: "Oturumlar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /hesap menüsü/i })).toBeInTheDocument();
+  });
+
+  /* Keşfet mobilde de üst çubukta: plan teziyle Oturumlar kadar birincil giriş. */
+  it("giriş yapmış: Keşfet bağlantısı her genişlikte görünür ve avatar menüsünde de var", () => {
+    useAuthStore.setState({ status: "signed", me: { id: "u1", displayName: "Mehmet" } });
+    renderBar();
+    const k = screen.getByRole("link", { name: "Keşfet" });
+    expect(k).toHaveAttribute("href", "/kesfet");
+    expect(k.className).not.toMatch(/(^| )hidden( |$)/);
+    expect(screen.getByRole("link", { name: "Oturumlar" }).className).toMatch(/(^| )hidden( |$)/);
+    fireEvent.click(screen.getByRole("button", { name: /hesap menüsü/i }));
+    expect(screen.getByRole("menuitem", { name: "Keşfet" })).toHaveAttribute("href", "/kesfet");
   });
 });

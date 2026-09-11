@@ -36,6 +36,16 @@ describe("VenueDeck jesti (plan 14)", () => {
     expect(useDeckStore.getState().index).toBe(1);
   });
 
+  /* Açık bir modal (ör. "Buluştunuz mu?") varken ok tuşları diyaloğun düğmeleri arasında gezinmek
+     içindir — arkadaki desteye görünmez oy yazmamalı. */
+  it("açık modal diyalog varken ok/Backspace kısayolları desteye oy YAZMAZ", () => {
+    render(<><VenueDeck venues={venues} /><div role="dialog" aria-modal="true" /></>);
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "Backspace" });
+    expect(api.swipe).not.toHaveBeenCalled();
+    expect(useDeckStore.getState().index).toBe(0);
+  });
+
   it("eşiği aşan sola sürükleme geç sayılır", () => {
     render(<VenueDeck venues={venues} />);
     drag(-200);

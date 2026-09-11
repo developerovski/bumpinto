@@ -6,7 +6,8 @@
     "retry": "Try again",
     "cancel": "Cancel",
     "close": "Close",
-    "back": "Back"
+    "back": "Back",
+    "ok": "OK"
   },
   "shell": {
     "sessions": "Meetups",
@@ -14,7 +15,8 @@
     "logout": "Sign out",
     "langAria": "Choose language",
     "accountAria": "Account menu",
-    "account": "Account and data"
+    "account": "Account and data",
+    "discover": "Discover"
   },
   "session": {
     "notFound": "This session wasn't found — is the link right?",
@@ -321,7 +323,14 @@
     "errSave": "Couldn't save — try again.",
     "defaultTravelMode": "Default travel mode",
     "account": "Account",
-    "accountHint": "Privacy · GDPR · attributions · delete account"
+    "accountHint": "Privacy · GDPR · attributions · delete account",
+    "interests": "Your interests",
+    "interestsHint": "Discover shows these first · up to 5",
+    "statHosted": "opened",
+    "statMet": "meetups",
+    "statStreak": "week streak",
+    "badges": "Badges",
+    "badgesHand": "your badges are yours — you're not competing with anyone"
   },
   "error": {
     "hmm": "Hmm.",
@@ -368,23 +377,28 @@
   "travelMode": {
     "WALK": {
       "name": "Walking",
-      "coming": "walking over"
+      "coming": "walking over",
+      "by": "on foot"
     },
     "BIKE": {
       "name": "Bike",
-      "coming": "coming by bike"
+      "coming": "coming by bike",
+      "by": "by bike"
     },
     "EBIKE": {
       "name": "E-bike",
-      "coming": "coming by e-bike"
+      "coming": "coming by e-bike",
+      "by": "by e-bike"
     },
     "TRANSIT": {
       "name": "Transit",
-      "coming": "coming by transit"
+      "coming": "coming by transit",
+      "by": "by public transport"
     },
     "CAR": {
       "name": "Car",
-      "coming": "coming by car"
+      "coming": "coming by car",
+      "by": "by car"
     },
     "question": "How are you getting there?",
     "forName": "How is {{name}} getting there?",
@@ -780,5 +794,162 @@
     "scanSettings": "Open settings",
     "invalid": "The code has 5 characters",
     "notFound": "No meet-up found for that code"
+  },
+  "duration": {
+    "hm": "{{h}} h {{m}} min",
+    "h": "{{h}} h",
+    "m": "{{m}} min"
+  },
+  "discover": {
+    "title": "<0>Join</0> someone's plan.",
+    "lead": "New in town? Don't stay home just because you don't know anyone. Join a plan — the meeting point is equally far for everyone.",
+    "overline_one": "{{range}} · {{count}} plan",
+    "overline_other": "{{range}} · {{count}} plans",
+    "range": {
+      "now": "Now",
+      "week": "This week",
+      "weekend": "Weekend",
+      "all": "All"
+    },
+    "rangeAria": "Time range",
+    "filterAria": "Activity types",
+    "here": "I'm here",
+    "open": "Open a plan",
+    "openFor": "Open a {{activity}} plan",
+    "seats_one": "{{count}} spot",
+    "seats_other": "{{count}} spots",
+    "seatsAria": "{{approved}} of {{capacity}} seats taken",
+    "confirmed": "{{approved}}/{{capacity}} · confirmed",
+    "nowSticker": "{{approved}}/{{capacity}} · now",
+    "hostedBy": "Opened by <0>{{name}}</0>",
+    "nowLabel": "now",
+    "remaining": "~{{time}} left",
+    "inProgress": "now · ~{{time}} left",
+    "minutes": "~{{minutes}} min for you",
+    "emptyTitle": {
+      "week": "No {{activity}} plans this week.",
+      "weekend": "No {{activity}} plans this weekend.",
+      "all": "No {{activity}} plans yet."
+    },
+    "emptyTitlePlain": {
+      "week": "No plans this week.",
+      "weekend": "No plans this weekend.",
+      "all": "No open plans right now."
+    },
+    "emptyLead": "Someone like you is probably waiting too. Open the first one — we'll spread the word.",
+    "emptyHand": "confirmed once 3 people join ↓",
+    "otherTypes": "Browse other types",
+    "emptyNowTitle": "Nothing is happening right now.",
+    "emptyNowLead": "If you're somewhere, say so. Your plan stays under \"Now\" for the time you pick.",
+    "emptyNowHand": "at a café? say so — confirmed once 3 join",
+    "backToWeek": "See this week's plans",
+    "hand": "the exact spot shows once you join — minutes come from a rounded location.",
+    "trust": "every plan in a public place · at least 3 people",
+    "errLoad": "Couldn't load plans."
+  },
+  "plan": {
+    "titleDate": "Open a plan",
+    "titleNow": "I'm here",
+    "when": "When",
+    "whenUnset": "Not set",
+    "now": "Now",
+    "pickDate": "Pick a date",
+    "whenHint": "Not set = private session (not in Discover) · Now = I'm-here window",
+    "date": "Date",
+    "time": "Time",
+    "duration": "How long",
+    "durationHours_one": "{{count}} h",
+    "durationHours_other": "{{count}} h",
+    "where": "Where?",
+    "wherePlaceholder": "Café Zwart, Kleine Berg",
+    "whereHint": "your location is automatic, you name the place",
+    "errWhereRequired": "Say where you are.",
+    "errMeetAtRequired": "Pick a date and time.",
+    "errMeetAtPast": "The meeting time can't be in the past.",
+    "capacity": "How many people",
+    "capacityHint": "including you · not confirmed below 3",
+    "capacityDec": "One person fewer",
+    "capacityInc": "One person more",
+    "joinPolicy": "Joining",
+    "approval": "I'll approve",
+    "openJoin": "Anyone can join",
+    "joinDefaultNow": "default for now-plans",
+    "audience": "Who sees it?",
+    "audiencePublic": "Everyone",
+    "audienceNone": "No one",
+    "audienceHint": "Everyone = Discover list · No one = invite link only",
+    "publicPlaceNote": "Pick a public place; home addresses aren't allowed.",
+    "ctaNow": "Say I'm here",
+    "ctaDate": "Open the plan",
+    "back": "Discover",
+    "fit": "matches your interests: {{activity}}",
+    "exactLater": "the exact meeting point shows once you're approved",
+    "exactLaterOpen": "the exact meeting point shows once you join",
+    "startedAt": "started {{time}}",
+    "who": "who's coming",
+    "hostRow": "{{name}} · opened it",
+    "host": "host",
+    "seatFree_one": "{{count}} spot open — could be yours",
+    "seatFree_other": "{{count}} spots open — one could be yours",
+    "confirmedSticker": "{{approved}}/{{capacity}} · confirmed",
+    "safety": "You meet <0>in a public place</0>, the host approves who joins, and the plan isn't confirmed until 3 people are in. If anything's wrong, report or block.",
+    "safetyOpen": "You meet <0>in a public place</0>. This plan is open to all: whoever takes a seat sees the exact spot, and it isn't confirmed until 3 people are in. If anything's wrong, report or block."
+  },
+  "seat": {
+    "want": "I want to join",
+    "join": "Join",
+    "note": "A short note (optional)",
+    "afterApprove": "Once {{host}} approves, you'll see the exact spot and the group.",
+    "joinNote": "You get a seat right away and see the exact spot.",
+    "pending": "Request sent",
+    "pendingLead": "This opens once {{host}} approves.",
+    "declined": "This plan is full or wasn't a fit.",
+    "backToDiscover": "Back to Discover",
+    "errRequest": "Couldn't send the request.",
+    "errFull": "The plan is full.",
+    "errClosed": "This plan has closed.",
+    "requests": "Join requests",
+    "newCount": "{{count}} new",
+    "summary": "{{when}} · {{capacity}} people · {{approved}} approved",
+    "approve": "Approve",
+    "decline": "Skip",
+    "approved": "approved, sees the exact spot",
+    "confirmedSticker": "{{approved}}/{{capacity}} · confirmed!",
+    "left_one": "{{count}} spot left — \"skip\" is invisible to everyone.",
+    "left_other": "{{count}} spots left — \"skip\" is invisible to everyone.",
+    "noRequests": "No requests yet."
+  },
+  "checkin": {
+    "title": "Did you meet?",
+    "lead": "One tap is enough. Your answer counts toward the plan and your own badges — you're not rating anyone.",
+    "yes": "Yes, we met",
+    "no": "It didn't happen",
+    "hand": "if it was good, plan again with the same group →",
+    "error": "Couldn't save your answer — try again."
+  },
+  "badge": {
+    "new": "new badge",
+    "next": "Next up: {{title}}.",
+    "hand": "it stays on your profile →",
+    "progressMet_one": "{{have}}/{{goal}} · {{count}} meetup to go.",
+    "progressMet_other": "{{have}}/{{goal}} · {{count}} meetups to go.",
+    "progressStreak_one": "{{have}}/{{goal}} · {{count}} week to go.",
+    "progressStreak_other": "{{have}}/{{goal}} · {{count}} weeks to go.",
+    "first_met": {
+      "title": "First meetup",
+      "hint": "You met someone for the first time."
+    },
+    "met_3": {
+      "title": "3 meetups",
+      "hint": "You really met up three times."
+    },
+    "met_10": {
+      "title": "10 meetups",
+      "hint": "You really met up ten times."
+    },
+    "streak_3": {
+      "title": "3-week streak",
+      "hint": "You met up three weeks in a row."
+    }
   }
 }

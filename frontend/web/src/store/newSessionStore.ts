@@ -1,4 +1,13 @@
-import type { ParticipantDto, Schemas } from "@bumpinto/shared";
+import {
+  anchorForInstant,
+  emptyOpenPlanDraft,
+  openPlanError,
+  openPlanInputOf,
+  type OpenPlanDraft,
+  type OpenPlanErrorKey,
+  type ParticipantDto,
+  type Schemas,
+} from "@bumpinto/shared";
 import { create } from "zustand";
 import { api } from "../lib/api";
 import { MAX_ACTIVITIES } from "../lib/activity";
@@ -26,6 +35,11 @@ type State = {
   setAnchorMode: (m: AnchorMode) => void; setAnchor: (a: Loc | null) => void;
   addLocalPoint: (p: LocalPoint) => void; removeLocalPoint: (index: number) => void;
   setLocalPointTravelMode: (index: number, mode: TravelMode) => void;
+  /** "Ne zaman" — UNSET gizli oturum, NOW/DATE açık plan. Kurallar shared `openPlan.ts`'te. */
+  plan: OpenPlanDraft;
+  setPlan: (patch: Partial<OpenPlanDraft>) => void;
+  /** i18n hata anahtarı ya da null; CTA `disabled` ve alan hatası bunu okur. */
+  validate: () => OpenPlanErrorKey | null;
   /** Kur (+ SOLO: noktaları ekle, mekanları bul). Oturum slug'ını döner. */
   submit: (displayName: string, own: Loc | null) => Promise<string>;
   reset: (defaultActivity?: Activity) => void;
@@ -33,7 +47,7 @@ type State = {
 
 const initial = (): Pick<
   State,
-  "type" | "activities" | "name" | "points" | "travelMode" | "busy" | "error" | "anchorMode" | "anchor"
+  "type" | "activities" | "name" | "points" | "travelMode" | "busy" | "error" | "anchorMode" | "anchor" | "plan"
 > => ({
   type: "GROUP",
   activities: ["COFFEE"],
@@ -44,11 +58,14 @@ const initial = (): Pick<
   error: null,
   anchorMode: "MIDPOINT",
   anchor: null,
+  plan: emptyOpenPlanDraft(),
 });
 
 export const useNewSessionStore = create<State>((set, get) => ({
   ...initial(),
-  setType: (t) => set({ type: t }),
+  /* SOLO'nun davet linki yok → açık plan olamaz. Değişmez setter'larda: gövdede GROUP'a
+     zorlamak SOLO arayüzünü (PointsEditor, "Mekanları bul") ekranda bırakırdı. */
+  setType: (t) => set((s) => (t === "SOLO" ? { type: t, plan: { ...s.plan, when: "UNSET", joinPolicy: null } } : { type: t })),
   /** Sınırlar TEK yerde: picker chip'i devre dışı bıraksa bile store son sözü söyler.
       Son alan kaldırılmaz — backend boş listeyi 400'le reddediyor. */
   toggleActivity: (a) =>
@@ -68,23 +85,49 @@ export const useNewSessionStore = create<State>((set, get) => ({
   removeLocalPoint: (index) => set((s) => ({ points: s.points.filter((_, i) => i !== index) })),
   setLocalPointTravelMode: (index, mode) =>
     set((s) => ({ points: s.points.map((p, i) => (i === index ? { ...p, travelMode: mode } : p)) })),
+  /* Moda geçişte joinPolicy null'a çekilir: varsayılan (NOW→OPEN, DATE→APPROVAL) yeniden
+     devreye girer; host politikaya dokunduysa (aynı patch içinde) o kalır. */
+  setPlan: (patch) =>
+    set((s) => ({
+      plan: { ...s.plan, ...("when" in patch && patch.when !== s.plan.when ? { joinPolicy: null } : {}), ...patch },
+      ...(patch.when && patch.when !== "UNSET" ? { type: "GROUP" as const } : {}),
+    })),
+  validate: () => openPlanError(get().plan, new Date()),
   submit: async (displayName, own) => {
-    const { type, activities, name, points, travelMode, anchorMode, anchor } = get();
+    const { type, activities, name, points, travelMode, anchorMode, anchor, plan } = get();
     const anchored = anchorMode === "ANCHOR" && anchor != null;
+    const now = new Date();
+    const instant = plan.when === "NOW";
+    // Şimdi'de çapa kuranın konumu + "Nerede?" etiketi; ekrandaki çapa modu YOK SAYILIR (gizli
+    // kalmış eski bir çapa pencereli plana sızmasın).
+    const instantAnchor = anchorForInstant(plan, own);
+    // Açık plan her zaman GROUP (shared `toCreateRequest` ile aynı kural; setter'lar da bunu korur).
+    const sessionType: SessionType = plan.when === "UNSET" ? type : "GROUP";
+    // Sayfa açıkken geçen bir tarih `openPlanInputOf`'u undefined'a çevirir ve oturum SESSİZCE
+    // gizli kurulurdu — gönderim anında yeniden doğrula. Sunucuda geçmiş tarih denetimi yok.
+    const planError = openPlanError(plan, now);
+    if (planError || (instant && !instantAnchor)) {
+      const key = planError ?? "newSession.ownMissing";
+      set({ error: key });
+      throw new Error(key);
+    }
     set({ busy: true, error: null });
     try {
       let slug: string;
       try {
         const r = await api.createSession({
           activityTypes: activities,
-          sessionType: type,
+          sessionType,
           name: name.trim() || undefined,
           lat: own?.lat,
           lng: own?.lng,
           displayName,
           locationLabel: own?.label ?? undefined,
           travelMode,
-          anchor: anchored ? { lat: anchor.lat, lng: anchor.lng, label: anchor.label ?? undefined } : undefined,
+          anchor: instant
+            ? instantAnchor ?? undefined
+            : anchored ? { lat: anchor.lat, lng: anchor.lng, label: anchor.label ?? undefined } : undefined,
+          openPlan: openPlanInputOf(plan, now),
         });
         if (!r.slug) throw new Error("slug missing");
         slug = r.slug;
@@ -92,7 +135,7 @@ export const useNewSessionStore = create<State>((set, get) => ({
         set({ error: "newSession.errCreate" });
         throw e;
       }
-      if (type === "SOLO") {
+      if (sessionType === "SOLO") {
         try {
           for (const p of points) {
             await api.addPoint(slug, {

@@ -21,6 +21,12 @@ export default function TopBar() {
       </Link>
       <nav className="flex items-center gap-2.5">
         {status === "signed" && (
+          /* Keşfet 390'da da görünür (plan teziyle birincil giriş); Oturumlar mobilde avatar menüsünde. */
+          <NavLink to="/kesfet" className={({ isActive }) => `${NAV_LINK} ${isActive ? "bg-sand text-ink" : "text-ink2"}`}>
+            {t("shell.discover")}
+          </NavLink>
+        )}
+        {status === "signed" && (
           <NavLink to="/sessions" className={({ isActive }) => `hidden lg:block ${NAV_LINK} ${isActive ? "bg-sand text-ink" : "text-ink2"}`}>
             {t("shell.sessions")}
           </NavLink>

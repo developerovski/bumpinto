@@ -2,6 +2,7 @@ export { createHttp, createRefreshGate, type AuthProviders, type HttpOptions,
   type RefreshGate } from "./http";
 export {
   createBumpintoApi,
+  type ActivityType,
   type AppConfig,
   type AppConfigSource,
   type AppleLoginRequest,
@@ -9,14 +10,22 @@ export {
   type BumpintoApi,
   type Consents,
   type ConsentsInput,
+  type DiscoverQuery,
+  type DiscoverResponse,
   type MapEngine,
   type MeResponse,
+  type MySeatResponse,
+  type OpenPlanDto,
   type ParticipantDto,
+  type PlanCardDto,
   type ReportReason,
   type Schemas,
+  type SeatRequestDto,
+  type SeatRequestListResponse,
   type SessionPreview,
   type SessionSummaryDto,
   type SessionView,
+  type StatsDto,
   type VenueDto,
 } from "./api";
 export type { components, paths } from "./api-types";
@@ -125,6 +134,42 @@ export {
   type SessionType,
   type VenueMode,
 } from "./newSession";
+export {
+  DURATIONS,
+  MAX_CAPACITY,
+  MIN_CAPACITY,
+  WHERE_LABEL_MAX,
+  anchorForInstant,
+  defaultJoinPolicy,
+  effectiveJoinPolicy,
+  emptyOpenPlanDraft,
+  openPlanError,
+  openPlanInputOf,
+  type Audience,
+  type DurationHours,
+  type JoinPolicy,
+  type OpenPlanDraft,
+  type OpenPlanErrorKey,
+  type WhenMode,
+} from "./openPlan";
+export {
+  RANGES,
+  formatDuration,
+  inRange,
+  meetAtOptions,
+  isInProgress,
+  remainingMinutes,
+  sortPlans,
+  type PlanRange,
+} from "./planRange";
+export {
+  BADGES,
+  badgesFor,
+  newBadges,
+  type BadgeDef,
+  type BadgeId,
+  type BadgeStats,
+} from "./badges";
 export {
   LEGAL_DOCS,
   bodyFor,

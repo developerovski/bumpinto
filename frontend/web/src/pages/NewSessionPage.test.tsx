@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", () => ({ api: { createSession: vi.fn(), addPoint: vi.fn(), findVenues: vi.fn() } }));
 vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }));
@@ -339,5 +339,120 @@ describe("NewSessionPage", () => {
 
     fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
     expect(right()).not.toContain("lg:sticky");
+  });
+});
+
+/* W-17 W2 + W-18 T2 — "Ne zaman: Belirsiz | Şimdi | Tarih seç" + "Kim görsün? Herkes | Kimse"
+   (artboard P3/P3a). "Keşfet'te göster" anahtarı ve Arkadaşlar seçeneği ÇİZİLMEZ (spec §11.5). */
+describe("NewSessionPage · Ne zaman", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useNewSessionStore.getState().reset();
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } });
+  });
+
+  it("Şimdi: süre, Nerede?, katılım (Herkes gelebilir), Kim görsün? görünür; Arkadaşlar ve buluşma yeri seçici yok", () => {
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    expect(screen.queryByRole("switch", { name: "Keşfet'te göster" })).toBeNull();
+    expect(screen.getByRole("radio", { name: "Belirsiz" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Şimdi" }));
+    expect(screen.getByRole("radiogroup", { name: "Kaç saat" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "2 sa" })).toBeChecked();
+    expect(screen.getByLabelText("Nerede?")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Herkes gelebilir" })).toBeChecked();
+    expect(screen.getByRole("radiogroup", { name: "Kim görsün?" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Herkes" })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Arkadaşlar" })).toBeNull();
+    // Çapa kuranın konumundan türer: "Nerede buluşulsun?" seçimi Şimdi'de anlamsız.
+    expect(screen.queryByRole("radiogroup", { name: "Nerede buluşulsun?" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Buradayım" })).toBeInTheDocument();
+    expect(ctas("Buradayım de")).toHaveLength(2);
+  });
+
+  it("?now=1 Şimdi'yi, ?open=1&activity=SWIM Tarih seç'i ve etkinliği önceden seçer", () => {
+    render(<MemoryRouter initialEntries={["/sessions/new?now=1"]}><NewSessionPage /></MemoryRouter>);
+    expect(screen.getByRole("radio", { name: "Şimdi" })).toBeChecked();
+    cleanup();
+    render(<MemoryRouter initialEntries={["/sessions/new?open=1&activity=SWIM"]}><NewSessionPage /></MemoryRouter>);
+    expect(screen.getByRole("radio", { name: "Tarih seç" })).toBeChecked();
+    expect(screen.getByLabelText("Tarih")).toBeInTheDocument();
+    expect(screen.getByLabelText("Saat")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Yüzme" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("heading", { level: 1, name: "Plan aç" })).toBeInTheDocument();
+    expect(ctas("Planı aç")).toHaveLength(2);
+  });
+
+  it("bilinmeyen ?activity= yok sayılır — sunucuya geçersiz tür gitmez", () => {
+    render(<MemoryRouter initialEntries={["/sessions/new?open=1&activity=NOPE"]}><NewSessionPage /></MemoryRouter>);
+    expect(useNewSessionStore.getState().activities).toEqual(["COFFEE"]);
+  });
+
+  it("kapasite stepper'ı 3–8 arasında sayar (artboard P3 .stp)", () => {
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("radio", { name: "Tarih seç" }));
+    expect(screen.getByRole("group", { name: "Kaç kişi" })).toHaveTextContent("4");
+    fireEvent.click(screen.getByRole("button", { name: "Bir kişi artır" }));
+    expect(useNewSessionStore.getState().plan.capacity).toBe(5);
+    const inc = screen.getByRole("button", { name: "Bir kişi artır" });
+    for (let i = 0; i < 6; i++) fireEvent.click(inc);
+    expect(useNewSessionStore.getState().plan.capacity).toBe(8);
+    // Sınırda düğme ODAKTA kalır (native `disabled` klavye odağını sayfaya düşürürdü).
+    expect(inc).toHaveAttribute("aria-disabled", "true");
+    expect(inc).not.toBeDisabled();
+  });
+
+  it("Bireysel'e geçince Ne zaman bloğu kaybolur, plan Belirsiz'e döner", () => {
+    render(<MemoryRouter><NewSessionPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("radio", { name: "Tarih seç" }));
+    fireEvent.click(screen.getAllByRole("radio", { name: "Bireysel" })[0]);
+    expect(screen.queryByRole("radiogroup", { name: "Ne zaman" })).toBeNull();
+    expect(useNewSessionStore.getState().plan.when).toBe("UNSET");
+  });
+
+  it("Şimdi: Nerede boşken istek atılmaz ve hata görünür; yazınca gövde pencere + TAZE konumdan çapa taşır", async () => {
+    // Profilde kayıtlı konum VAR ama çapa o anki konumdan gelmeli (spec §1.3): kayıtlı nokta ev olabilir.
+    useAuthStore.setState({
+      status: "signed",
+      me: { displayName: "Mehmet", defaultLocation: { lat: 51.40, lng: 5.40, label: "Ev" } },
+    });
+    vi.mocked(reverseGeocode).mockResolvedValue("Kleine Berg");
+    vi.mocked(api.createSession).mockResolvedValue({ slug: "x7k2m" } as never);
+    const restore = stubGeolocation(51.4416, 5.4697);
+    try {
+      render(<MemoryRouter initialEntries={["/sessions/new?now=1"]}><NewSessionPage /></MemoryRouter>);
+      await screen.findByText("Kleine Berg civarı · otomatik alındı");
+      fireEvent.click(ctas("Buradayım de")[0]);
+      expect(await screen.findByText("Nerede olduğunu yaz.")).toBeInTheDocument();
+      expect(api.createSession).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Nerede?"), { target: { value: "Café Zwart" } });
+      fireEvent.click(ctas("Buradayım de")[0]);
+      await waitFor(() =>
+        expect(api.createSession).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sessionType: "GROUP",
+            anchor: { lat: 51.4416, lng: 5.4697, label: "Café Zwart" },
+            openPlan: expect.objectContaining({ joinPolicy: "OPEN", audience: "PUBLIC", capacity: 4 }),
+          }),
+        ),
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("Şimdi: kayıtlı profil konumu tek başına çapa OLMAZ — taze konum yoksa düğme kapalı", () => {
+    useAuthStore.setState({
+      status: "signed",
+      me: { displayName: "Mehmet", defaultLocation: { lat: 51.40, lng: 5.40, label: "Ev" } },
+    });
+    render(<MemoryRouter initialEntries={["/sessions/new?now=1"]}><NewSessionPage /></MemoryRouter>);
+    ctas("Buradayım de").forEach((b) => expect(b).toBeDisabled());
+    expect(screen.queryByText("Ev civarı · otomatik alındı")).toBeNull();
+  });
+
+  it("Şimdi: konum yoksa ve adres yazılmadıysa düğme kapalı, konum eksik notu basılır", () => {
+    render(<MemoryRouter initialEntries={["/sessions/new?now=1"]}><NewSessionPage /></MemoryRouter>);
+    ctas("Buradayım de").forEach((b) => expect(b).toBeDisabled());
+    expect(screen.getAllByText("Konumun henüz yok").length).toBeGreaterThan(0);
   });
 });

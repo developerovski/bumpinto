@@ -11,6 +11,22 @@ export type BlockDto = Schemas["BlockDto"];
 export type ReportReason = NonNullable<Schemas["ReportRequest"]["reason"]>;
 export type SessionSummaryDto = Schemas["SessionSummaryDto"];
 export type SessionPreview = Schemas["SessionPreview"];
+export type OpenPlanDto = Schemas["OpenPlanDto"];
+export type PlanCardDto = Schemas["PlanCardDto"];
+export type DiscoverResponse = Schemas["DiscoverResponse"];
+export type SeatRequestDto = Schemas["SeatRequestDto"];
+export type SeatRequestListResponse = Schemas["SeatRequestListResponse"];
+export type MySeatResponse = Schemas["MySeatResponse"];
+export type StatsDto = Schemas["StatsDto"];
+export type ActivityType = Schemas["CreateSessionRequest"]["activityTypes"][number];
+
+/** Keşfet sorgusu. Koordinatı çağıran YUVARLAR — sunucu dakikayı bu noktadan hesaplar. */
+export type DiscoverQuery = {
+  activity?: readonly ActivityType[];
+  lat?: number;
+  lng?: number;
+  travelMode?: NonNullable<Schemas["PlanCardDto"]["travelMode"]>;
+};
 
 /* Yazma gövdesi §2: üç boolean. Üretilen istek şemasının adı B-14'e bağlı olduğundan ELLE
    yazılır — alanlar birebir aynı. Okuma `MeResponse.consents`'tan (updatedAt/version dahil). */
@@ -114,6 +130,30 @@ export function createBumpintoApi(http: AxiosInstance) {
     exportMyData: () =>
       http.get<Blob>("/api/me/export", { responseType: "blob" }).then((r) => r.data),
     deleteMe: () => http.delete("/api/me").then(() => undefined),
+    /* Keşfet (B-17) hesap kimliği ister. Süzgeç VİRGÜLLÜ tek parametre: axios dizileri
+       `activity[]=A&activity[]=B` diye yazar, Spring `List` onu bağlamaz. Boş süzgeç hiç
+       gönderilmez — sunucu profil ilgi alanlarına düşer. */
+    discover: (q: DiscoverQuery = {}) =>
+      http.get<DiscoverResponse>("/api/discover", {
+        params: { ...q, activity: q.activity?.length ? q.activity.join(",") : undefined },
+      }).then((r) => r.data),
+    /* Açık plana koltuk yalnız buradan alınır (K-B37: `join` açık planda 409). Katılımcı
+       jetonu `mine` yanıtında mobil için gövdede gelir; saklamak `join`deki gibi ÇAĞIRANIN
+       işidir (web'de çerez). */
+    requestSeat: (slug: string, body: Schemas["SeatRequestInput"]) =>
+      http.post<SeatRequestDto>(`/api/sessions/${slug}/seat-requests`, body).then((r) => r.data),
+    seatRequests: (slug: string) =>
+      http.get<SeatRequestListResponse>(`/api/sessions/${slug}/seat-requests`).then((r) => r.data),
+    mySeat: (slug: string) =>
+      http.get<MySeatResponse>(`/api/sessions/${slug}/seat-requests/mine`).then((r) => r.data),
+    approveSeat: (slug: string, requestId: string) =>
+      http.post<SeatRequestListResponse>(`/api/sessions/${slug}/seat-requests/${requestId}/approve`)
+        .then((r) => r.data),
+    declineSeat: (slug: string, requestId: string) =>
+      http.post<SeatRequestListResponse>(`/api/sessions/${slug}/seat-requests/${requestId}/decline`)
+        .then((r) => r.data),
+    checkin: (slug: string, met: boolean) =>
+      http.post(`/api/sessions/${slug}/checkin`, { met }).then(() => undefined),
   };
 }
 

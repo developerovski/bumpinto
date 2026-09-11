@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { emptyOpenPlanDraft } from "./openPlan";
 import {
   MAX_ACTIVITIES,
   canSubmit,
@@ -101,5 +102,52 @@ describe("toCreateRequest", () => {
       "Mehmet",
     );
     expect(body.anchor).toBeUndefined();
+  });
+});
+
+describe("toCreateRequest · açık plan", () => {
+  const NOW = new Date("2026-09-13T10:00:00Z");
+  it("Şimdi: openPlan + çapa kendi konumdan, venueMode'a bakmadan", () => {
+    const d = draft({ activityTypes: ["COFFEE"], origin: { lat: 51.44, lng: 5.47, label: "Stratum" },
+      plan: { ...emptyOpenPlanDraft(), when: "NOW", durationHours: 1, whereLabel: "Café Zwart" } });
+    const r = toCreateRequest(d, "M", NOW);
+    expect(r.openPlan).toEqual({ meetAt: "2026-09-13T10:00:00.000Z", openUntil: "2026-09-13T11:00:00.000Z",
+      capacity: 4, joinPolicy: "OPEN", audience: "PUBLIC" });
+    expect(r.anchor).toEqual({ lat: 51.44, lng: 5.47, label: "Café Zwart" });
+  });
+  it("Şimdi: ANCHOR modunda kalmış eski çapa gövdeye SIZMAZ — çapa yalnız kuranın konumundan", () => {
+    const d = draft({ activityTypes: ["COFFEE"], venueMode: "ANCHOR", anchor: { lat: 52.37, lng: 4.9, label: "Amsterdam" },
+      origin: { lat: 51.44, lng: 5.47 }, plan: { ...emptyOpenPlanDraft(), when: "NOW", whereLabel: "Café Zwart" } });
+    expect(toCreateRequest(d, "M", NOW).anchor).toEqual({ lat: 51.44, lng: 5.47, label: "Café Zwart" });
+  });
+  it("geçersiz plan gövdeye SESSİZCE düşmez — fırlatır (gizli oturum kurulmasın)", () => {
+    const past = draft({ activityTypes: ["COFFEE"], origin: { lat: 1, lng: 2 },
+      plan: { ...emptyOpenPlanDraft(), when: "DATE", meetDate: "2020-01-01", meetTime: "10:00" } });
+    expect(() => toCreateRequest(past, "M", NOW)).toThrow("plan.errMeetAtPast");
+    const noOrigin = draft({ activityTypes: ["COFFEE"], plan: { ...emptyOpenPlanDraft(), when: "NOW", whereLabel: "x" } });
+    expect(() => toCreateRequest(noOrigin, "M", NOW)).toThrow("newSession.ownMissing");
+  });
+  it("Belirsiz: openPlan yok (bugünkü gövde)", () => {
+    expect(toCreateRequest(draft({ activityTypes: ["COFFEE"], origin: { lat: 1, lng: 2 } }), "M", NOW).openPlan).toBeUndefined();
+  });
+  it("açık plan her zaman GROUP — SOLO'nun davet linki yok, plana kimse katılamazdı", () => {
+    const d = draft({ activityTypes: ["COFFEE"], sessionType: "SOLO", origin: { lat: 1, lng: 2 },
+      plan: { ...emptyOpenPlanDraft(), when: "DATE", meetDate: "2026-09-20", meetTime: "10:00" } });
+    expect(toCreateRequest(d, "M", NOW).sessionType).toBe("GROUP");
+    expect(toCreateRequest({ ...d, plan: emptyOpenPlanDraft() }, "M", NOW).sessionType).toBe("SOLO");
+  });
+});
+
+describe("canSubmit · açık plan", () => {
+  const NOW = new Date("2026-09-13T10:00:00Z");
+  it("Şimdi: konum + Nerede şart", () => {
+    const base = draft({ activityTypes: ["COFFEE"], origin: { lat: 1, lng: 2 } });
+    expect(canSubmit({ ...base, plan: { ...emptyOpenPlanDraft(), when: "NOW" } }, NOW)).toBe(false);
+    expect(canSubmit({ ...base, plan: { ...emptyOpenPlanDraft(), when: "NOW", whereLabel: "x" } }, NOW)).toBe(true);
+    expect(canSubmit({ ...base, origin: null, plan: { ...emptyOpenPlanDraft(), when: "NOW", whereLabel: "x" } }, NOW)).toBe(false);
+  });
+  it("Tarih seç: geçmiş saat kurulamaz", () => {
+    const base = draft({ activityTypes: ["COFFEE"], origin: { lat: 1, lng: 2 } });
+    expect(canSubmit({ ...base, plan: { ...emptyOpenPlanDraft(), when: "DATE", meetDate: "2020-01-01", meetTime: "10:00" } }, NOW)).toBe(false);
   });
 });

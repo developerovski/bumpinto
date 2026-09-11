@@ -3,7 +3,17 @@ import { create } from "zustand";
 import i18n from "../i18n";
 import { loadLocalAnalyticsConsent, setAnalyticsConsent } from "../lib/analytics";
 import { api } from "../lib/api";
+import { useDiscoverStore } from "./discoverStore";
+import { useSeatRequestsStore } from "./seatRequestsStore";
 import { useSessionsStore } from "./sessionsStore";
+
+/** Hesaba bağlı liste depoları: paylaşılan cihazda sonraki hesaba sızmasınlar (Keşfet'in önceki
+    kullanıcının ilgi alanı süzgeci ve ev konumundan dakikaları; host'un istek listesi). */
+function resetAccountStores() {
+  useSessionsStore.getState().reset();
+  useDiscoverStore.getState().reset();
+  useSeatRequestsStore.getState().reset();
+}
 
 export type AuthStatus = "unknown" | "anon" | "signed";
 type UpdateMeRequest = Schemas["UpdateMeRequest"];
@@ -75,7 +85,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ me: null, status: "anon" });
       setAnalyticsConsent(false);
-      useSessionsStore.getState().reset();
+      resetAccountStores();
     }
   },
   /**
@@ -86,7 +96,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signedOut: () => {
     set({ me: null, status: "anon" });
     setAnalyticsConsent(false);
-    useSessionsStore.getState().reset();
+    resetAccountStores();
   },
   setMe: (me) => set({ me, status: "signed" }),
   updatePrefs: async (patch) => {
@@ -100,6 +110,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       defaultActivity: me.defaultActivity,
       language: me.language,
       defaultTravelMode: me.defaultTravelMode,
+      // `interests` BİLEREK taşınmaz: sunucuda null = "değiştirme". Taşınsaydı uçuştaki bir ilgi alanı
+      // kaydının yeni listesini bu gövdedeki bayat kopya ezerdi. İlgi alanı yalnız kendi patch'iyle yazılır.
       ...patch,
     };
     const result = await api.updateMe(body);
@@ -126,6 +138,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await api.deleteMe();
     set({ me: null, status: "anon" });
     setAnalyticsConsent(false);
-    useSessionsStore.getState().reset();
+    resetAccountStores();
   },
 }));

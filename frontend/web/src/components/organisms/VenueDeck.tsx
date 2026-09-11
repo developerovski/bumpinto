@@ -111,6 +111,8 @@ export default function VenueDeck(props: {
     function onKey(e: KeyboardEvent) {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       if ((e.target as HTMLElement | null)?.closest?.("input,textarea,[contenteditable=true]")) return;
+      // Modal açıkken (ör. "Buluştunuz mu?") tuşlar diyaloğundur: arkada görünmez oy/geri alma olmaz.
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       if (e.key === "ArrowRight") commit("right");
       if (e.key === "ArrowLeft") commit("left");
       if (e.key === "Backspace") undoPrevious();

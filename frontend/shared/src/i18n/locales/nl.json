@@ -6,7 +6,8 @@
     "retry": "Probeer opnieuw",
     "cancel": "Annuleren",
     "close": "Sluiten",
-    "back": "Terug"
+    "back": "Terug",
+    "ok": "OK"
   },
   "shell": {
     "sessions": "Afspraken",
@@ -14,7 +15,8 @@
     "logout": "Uitloggen",
     "langAria": "Taal kiezen",
     "accountAria": "Accountmenu",
-    "account": "Account en gegevens"
+    "account": "Account en gegevens",
+    "discover": "Ontdekken"
   },
   "session": {
     "notFound": "Deze sessie is niet gevonden — klopt de link?",
@@ -321,7 +323,14 @@
     "errSave": "Opslaan mislukt — probeer opnieuw.",
     "defaultTravelMode": "Standaard vervoer",
     "account": "Account",
-    "accountHint": "Privacy · AVG · vermeldingen · account verwijderen"
+    "accountHint": "Privacy · AVG · vermeldingen · account verwijderen",
+    "interests": "Je interesses",
+    "interestsHint": "Ontdekken toont deze eerst · maximaal 5",
+    "statHosted": "geopend",
+    "statMet": "ontmoetingen",
+    "statStreak": "weken op rij",
+    "badges": "Badges",
+    "badgesHand": "je badges zijn van jou, je concurreert met niemand"
   },
   "error": {
     "hmm": "Hmm.",
@@ -368,23 +377,28 @@
   "travelMode": {
     "WALK": {
       "name": "Lopend",
-      "coming": "komt lopend"
+      "coming": "komt lopend",
+      "by": "te voet"
     },
     "BIKE": {
       "name": "Fiets",
-      "coming": "komt met de fiets"
+      "coming": "komt met de fiets",
+      "by": "met de fiets"
     },
     "EBIKE": {
       "name": "E-bike",
-      "coming": "komt met de e-bike"
+      "coming": "komt met de e-bike",
+      "by": "met de e-bike"
     },
     "TRANSIT": {
       "name": "OV",
-      "coming": "komt met het OV"
+      "coming": "komt met het OV",
+      "by": "met het OV"
     },
     "CAR": {
       "name": "Auto",
-      "coming": "komt met de auto"
+      "coming": "komt met de auto",
+      "by": "met de auto"
     },
     "question": "Hoe kom je?",
     "forName": "Hoe komt {{name}}?",
@@ -780,5 +794,162 @@
     "scanSettings": "Instellingen openen",
     "invalid": "De code heeft 5 tekens",
     "notFound": "Geen afspraak gevonden voor die code"
+  },
+  "duration": {
+    "hm": "{{h}} u {{m}} min",
+    "h": "{{h}} u",
+    "m": "{{m}} min"
+  },
+  "discover": {
+    "title": "<0>Doe mee</0> met iemands plan.",
+    "lead": "Nieuw in de stad? Blijf niet thuis omdat je niemand kent. Doe mee met een plan — het ontmoetingspunt ligt voor iedereen even ver.",
+    "overline_one": "{{range}} · {{count}} plan",
+    "overline_other": "{{range}} · {{count}} plannen",
+    "range": {
+      "now": "Nu",
+      "week": "Deze week",
+      "weekend": "Weekend",
+      "all": "Alles"
+    },
+    "rangeAria": "Tijdvak",
+    "filterAria": "Soorten activiteiten",
+    "here": "Ik ben hier",
+    "open": "Plan openen",
+    "openFor": "Plan voor {{activity}} openen",
+    "seats_one": "{{count}} plek",
+    "seats_other": "{{count}} plekken",
+    "seatsAria": "{{approved}} van {{capacity}} plekken bezet",
+    "confirmed": "{{approved}}/{{capacity}} · bevestigd",
+    "nowSticker": "{{approved}}/{{capacity}} · nu",
+    "hostedBy": "Geopend door <0>{{name}}</0>",
+    "nowLabel": "nu",
+    "remaining": "nog ~{{time}}",
+    "inProgress": "nu · nog ~{{time}}",
+    "minutes": "~{{minutes}} min voor jou",
+    "emptyTitle": {
+      "week": "Deze week geen plannen voor {{activity}}.",
+      "weekend": "Dit weekend geen plannen voor {{activity}}.",
+      "all": "Nog geen plannen voor {{activity}}."
+    },
+    "emptyTitlePlain": {
+      "week": "Deze week geen plannen.",
+      "weekend": "Dit weekend geen plannen.",
+      "all": "Nu geen open plannen."
+    },
+    "emptyLead": "Waarschijnlijk wacht er nog iemand zoals jij. Open jij de eerste, wij laten het weten.",
+    "emptyHand": "bevestigd zodra er 3 mensen zijn ↓",
+    "otherTypes": "Bekijk andere soorten",
+    "emptyNowTitle": "Er loopt nu geen plan.",
+    "emptyNowLead": "Ben je ergens? Zeg het. Je plan staat onder \"Nu\" zo lang als je kiest.",
+    "emptyNowHand": "zit je in een café? zeg het — bevestigd zodra er 3 zijn",
+    "backToWeek": "Bekijk de plannen van deze week",
+    "hand": "het exacte punt zie je na deelname — minuten komen van een afgeronde locatie.",
+    "trust": "elk plan op een openbare plek · minstens 3 mensen",
+    "errLoad": "Plannen konden niet worden geladen."
+  },
+  "plan": {
+    "titleDate": "Plan openen",
+    "titleNow": "Ik ben hier",
+    "when": "Wanneer",
+    "whenUnset": "Onbepaald",
+    "now": "Nu",
+    "pickDate": "Datum kiezen",
+    "whenHint": "Onbepaald = privésessie (niet in Ontdekken) · Nu = ik-ben-hier-venster",
+    "date": "Datum",
+    "time": "Tijd",
+    "duration": "Hoe lang",
+    "durationHours_one": "{{count}} u",
+    "durationHours_other": "{{count}} u",
+    "where": "Waar?",
+    "wherePlaceholder": "Café Zwart, Kleine Berg",
+    "whereHint": "je locatie gaat automatisch, jij geeft de naam",
+    "errWhereRequired": "Schrijf waar je bent.",
+    "errMeetAtRequired": "Kies een datum en tijd.",
+    "errMeetAtPast": "Het tijdstip mag niet in het verleden liggen.",
+    "capacity": "Hoeveel mensen",
+    "capacityHint": "inclusief jou · pas bevestigd vanaf 3",
+    "capacityDec": "Eén persoon minder",
+    "capacityInc": "Eén persoon meer",
+    "joinPolicy": "Deelname",
+    "approval": "Ik keur goed",
+    "openJoin": "Iedereen mag komen",
+    "joinDefaultNow": "standaard bij nu-plannen",
+    "audience": "Wie ziet het?",
+    "audiencePublic": "Iedereen",
+    "audienceNone": "Niemand",
+    "audienceHint": "Iedereen = lijst in Ontdekken · Niemand = alleen via uitnodigingslink",
+    "publicPlaceNote": "Kies een openbare plek; thuisadressen zijn niet toegestaan.",
+    "ctaNow": "Zeg: ik ben hier",
+    "ctaDate": "Plan openen",
+    "back": "Ontdekken",
+    "fit": "past bij je interesses: {{activity}}",
+    "exactLater": "het exacte ontmoetingspunt zie je na goedkeuring",
+    "exactLaterOpen": "het exacte ontmoetingspunt zie je na deelname",
+    "startedAt": "begonnen {{time}}",
+    "who": "wie komt er",
+    "hostRow": "{{name}} · heeft het geopend",
+    "host": "host",
+    "seatFree_one": "{{count}} plek vrij — misschien de jouwe",
+    "seatFree_other": "{{count}} plekken vrij — één kan de jouwe zijn",
+    "confirmedSticker": "{{approved}}/{{capacity}} · bevestigd",
+    "safety": "Je spreekt af <0>op een openbare plek</0>, de host keurt deelname goed en het plan is pas bevestigd vanaf 3 mensen. Klopt er iets niet? Meld of blokkeer.",
+    "safetyOpen": "Je spreekt af <0>op een openbare plek</0>. Dit plan staat open voor iedereen: wie een plek neemt ziet het exacte punt, en het is pas bevestigd vanaf 3 mensen. Klopt er iets niet? Meld of blokkeer."
+  },
+  "seat": {
+    "want": "Ik wil meedoen",
+    "join": "Meedoen",
+    "note": "Korte notitie (optioneel)",
+    "afterApprove": "Zodra {{host}} goedkeurt, zie je het exacte punt en de groep.",
+    "joinNote": "Je krijgt direct een plek en ziet het exacte punt.",
+    "pending": "Verzoek verstuurd",
+    "pendingLead": "Dit gaat open zodra {{host}} goedkeurt.",
+    "declined": "Dit plan is vol of paste niet.",
+    "backToDiscover": "Terug naar Ontdekken",
+    "errRequest": "Verzoek kon niet worden verstuurd.",
+    "errFull": "Het plan is vol.",
+    "errClosed": "Dit plan is gesloten.",
+    "requests": "Deelnameverzoeken",
+    "newCount": "{{count}} nieuw",
+    "summary": "{{when}} · {{capacity}} personen · {{approved}} goedgekeurd",
+    "approve": "Goedkeuren",
+    "decline": "Overslaan",
+    "approved": "goedgekeurd, ziet het exacte punt",
+    "confirmedSticker": "{{approved}}/{{capacity}} · bevestigd!",
+    "left_one": "Nog {{count}} plek — \"overslaan\" ziet niemand.",
+    "left_other": "Nog {{count}} plekken — \"overslaan\" ziet niemand.",
+    "noRequests": "Nog geen verzoeken."
+  },
+  "checkin": {
+    "title": "Hebben jullie elkaar ontmoet?",
+    "lead": "Eén tik is genoeg. Je antwoord telt mee voor het plan en je eigen badges; je geeft niemand een cijfer.",
+    "yes": "Ja, we hebben elkaar gezien",
+    "no": "Het is er niet van gekomen",
+    "hand": "was het leuk? plan opnieuw met dezelfde groep →",
+    "error": "Je antwoord is niet opgeslagen — probeer opnieuw."
+  },
+  "badge": {
+    "new": "nieuwe badge",
+    "next": "Volgende: {{title}}.",
+    "hand": "staat op je profiel →",
+    "progressMet_one": "{{have}}/{{goal}} · nog {{count}} ontmoeting.",
+    "progressMet_other": "{{have}}/{{goal}} · nog {{count}} ontmoetingen.",
+    "progressStreak_one": "{{have}}/{{goal}} · nog {{count}} week.",
+    "progressStreak_other": "{{have}}/{{goal}} · nog {{count}} weken.",
+    "first_met": {
+      "title": "Eerste ontmoeting",
+      "hint": "Je hebt voor het eerst iemand ontmoet."
+    },
+    "met_3": {
+      "title": "3 ontmoetingen",
+      "hint": "Je hebt elkaar drie keer echt ontmoet."
+    },
+    "met_10": {
+      "title": "10 ontmoetingen",
+      "hint": "Je hebt elkaar tien keer echt ontmoet."
+    },
+    "streak_3": {
+      "title": "3 weken op rij",
+      "hint": "Je hebt elkaar drie weken op rij ontmoet."
+    }
   }
 }

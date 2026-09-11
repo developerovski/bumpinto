@@ -52,6 +52,24 @@ describe("sessionStore.refresh — üyelik", () => {
     expect(api.preview).toHaveBeenCalled();
   });
 
+  /* Görünüm/önizleme yoldayken SessionPage katılım formunu AÇMAMALI: form otomatik konum izni
+     ister ve açık planda yanlış ekrandır. Karar ancak önizleme denemesi bitince verilir. */
+  it("önizleme denemesi bitene dek previewSettled false; 403 + önizleme sonrası true", async () => {
+    expect(useSessionStore.getState().previewSettled).toBe(false);
+    vi.mocked(api.getSession).mockRejectedValueOnce(httpError(403));
+    await useSessionStore.getState().refresh();
+    await vi.waitFor(() => expect(useSessionStore.getState().previewSettled).toBe(true));
+    expect(useSessionStore.getState().preview).toEqual({ name: "Cuma kahvesi" });
+  });
+
+  it("önizleme de düşerse yine settled — katılım formu yedeği açılır", async () => {
+    vi.mocked(api.preview).mockRejectedValueOnce(new Error("net"));
+    vi.mocked(api.getSession).mockRejectedValueOnce(httpError(403));
+    await useSessionStore.getState().refresh();
+    await vi.waitFor(() => expect(useSessionStore.getState().previewSettled).toBe(true));
+    expect(useSessionStore.getState().preview).toBeNull();
+  });
+
   it("anonim (401) → katılım formu", async () => {
     vi.mocked(api.getSession).mockRejectedValueOnce(httpError(401));
     await useSessionStore.getState().refresh();

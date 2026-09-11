@@ -2,11 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { geocode, reverseGeocode, type Coords } from "../lib/geocode";
 
 export type LocationState = "idle" | "granted" | "denied";
+/** Koordinatın NEREDEN geldiği: "o anki konum" şart olan akışlar (Şimdi planı, spec §1.3) kayıtlı
+    profil varsayılanını (`initial`) kabul etmez — o nokta çoğu zaman ev adresidir. */
+export type LocationSource = "initial" | "detected" | "picked" | "typed";
 
 /** Konum/adres akışı — JoinForm, NewSessionPage ve profil paneli ortak kullanır. */
 export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boolean } = {}) {
   const [state, setState] = useState<LocationState>(opts.initial ? "granted" : "idle");
   const [coords, setCoords] = useState<Coords | null>(opts.initial ?? null);
+  const [source, setSource] = useState<LocationSource | null>(opts.initial ? "initial" : null);
   const [address, setAddressState] = useState("");
   const [busy, setBusy] = useState(false);
   const addressRef = useRef("");
@@ -27,6 +31,7 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
           // kullanıcı bu arada adres yazdıysa geç gelen otomatik konumu üzerine yazma
           if (!addressRef.current.trim()) {
             setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, label });
+            setSource("detected");
             setState("granted");
           }
           setBusy(false);
@@ -56,6 +61,7 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     setAddressState(v);
     addressRef.current = v;
     setCoords(null);
+    setSource(null);
   }
 
   function detect() {
@@ -67,6 +73,18 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
   function otherAddress() {
     setState("idle");
     setCoords(null);
+    setSource(null);
+  }
+
+  /** Kayıtlı varsayılanı EKRANDAN DA düşürüp tarayıcıdan taze konum ister. Yalnız `detect()`
+      yetmez: algılama sürerken ya da reddedilince eski nokta "otomatik alındı" diye kalırdı. */
+  function redetect() {
+    setAddressState("");
+    addressRef.current = "";
+    setCoords(null);
+    setSource(null);
+    setState("idle");
+    runDetect();
   }
 
   /** Konumu tamamen geri al — `otherAddress` yazılan adresi bırakıyor, "kaldır" bırakmamalı:
@@ -75,6 +93,7 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     setAddressState("");
     addressRef.current = "";
     setCoords(null);
+    setSource(null);
     setState("idle");
   }
 
@@ -84,6 +103,7 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     setAddressState("");
     addressRef.current = "";
     setCoords(picked);
+    setSource("picked");
     setState("granted");
   }
 
@@ -91,9 +111,12 @@ export function useOwnLocation(opts: { initial?: Coords | null; autoDetect?: boo
     if (coords) return coords;
     if (!address.trim()) return null;
     const c = await geocode(address.trim());
-    if (c) setCoords(c);
+    if (c) {
+      setCoords(c);
+      setSource("typed");
+    }
     return c;
   }
 
-  return { state, coords, address, busy, setAddress, detect, otherAddress, clear, setPicked, resolve };
+  return { state, coords, source, address, busy, setAddress, detect, redetect, otherAddress, clear, setPicked, resolve };
 }

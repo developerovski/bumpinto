@@ -6,7 +6,8 @@
     "retry": "Tekrar dene",
     "cancel": "Vazgeç",
     "close": "Kapat",
-    "back": "Geri"
+    "back": "Geri",
+    "ok": "Tamam"
   },
   "shell": {
     "sessions": "Oturumlar",
@@ -14,7 +15,8 @@
     "logout": "Çıkış yap",
     "langAria": "Dil seç",
     "accountAria": "Hesap menüsü",
-    "account": "Hesap ve veriler"
+    "account": "Hesap ve veriler",
+    "discover": "Keşfet"
   },
   "session": {
     "notFound": "Bu oturum bulunamadı — link doğru mu?",
@@ -310,7 +312,14 @@
     "errSave": "Kaydedilemedi — tekrar dene.",
     "defaultTravelMode": "Varsayılan ulaşım",
     "account": "Hesap",
-    "accountHint": "Gizlilik · KVKK · atıflar · hesabı sil"
+    "accountHint": "Gizlilik · KVKK · atıflar · hesabı sil",
+    "interests": "İlgi alanların",
+    "interestsHint": "Keşfet bunları önce gösterir · en çok 5",
+    "statHosted": "açtığın",
+    "statMet": "buluşma",
+    "statStreak": "hafta seri",
+    "badges": "Rozetler",
+    "badgesHand": "rozetler sende, kimseyle yarışmıyorsun"
   },
   "error": {
     "hmm": "Hmm.",
@@ -357,23 +366,28 @@
   "travelMode": {
     "WALK": {
       "name": "Yürüyerek",
-      "coming": "yürüyerek geliyor"
+      "coming": "yürüyerek geliyor",
+      "by": "yürüyerek"
     },
     "BIKE": {
       "name": "Bisikletle",
-      "coming": "bisikletle geliyor"
+      "coming": "bisikletle geliyor",
+      "by": "bisikletle"
     },
     "EBIKE": {
       "name": "E-bisikletle",
-      "coming": "e-bisikletle geliyor"
+      "coming": "e-bisikletle geliyor",
+      "by": "e-bisikletle"
     },
     "TRANSIT": {
       "name": "Toplu taşımayla",
-      "coming": "toplu taşımayla geliyor"
+      "coming": "toplu taşımayla geliyor",
+      "by": "toplu taşımayla"
     },
     "CAR": {
       "name": "Arabayla",
-      "coming": "arabayla geliyor"
+      "coming": "arabayla geliyor",
+      "by": "arabayla"
     },
     "question": "Nasıl geliyorsun?",
     "forName": "{{name}} nasıl geliyor?",
@@ -768,5 +782,156 @@
     "scanSettings": "Ayarları aç",
     "invalid": "Kod 5 haneli olmalı",
     "notFound": "Bu kodla oturum bulunamadı"
+  },
+  "duration": {
+    "hm": "{{h}} sa {{m}} dk",
+    "h": "{{h}} sa",
+    "m": "{{m}} dk"
+  },
+  "discover": {
+    "title": "Birinin planına <0>katıl</0>.",
+    "lead": "Şehre yeni misin? Kimse tanımıyorsun diye evde kalma. Bir plana katıl, buluşma noktası herkese aynı uzaklıkta olsun.",
+    "overline": "{{range}} · {{count}} plan",
+    "range": {
+      "now": "Şimdi",
+      "week": "Bu hafta",
+      "weekend": "Hafta sonu",
+      "all": "Hepsi"
+    },
+    "rangeAria": "Zaman aralığı",
+    "filterAria": "Etkinlik türleri",
+    "here": "Buradayım",
+    "open": "Plan aç",
+    "openFor": "{{activity}} planı aç",
+    "seats": "{{count}} yer",
+    "seatsAria": "{{capacity}} koltuğun {{approved}} tanesi dolu",
+    "confirmed": "{{approved}}/{{capacity}} · kesin",
+    "nowSticker": "{{approved}}/{{capacity}} · şimdi",
+    "hostedBy": "<0>{{name}}</0> açtı",
+    "nowLabel": "şimdi",
+    "remaining": "~{{time}} daha",
+    "inProgress": "şimdi · ~{{time}} daha",
+    "minutes": "sana ~{{minutes}} dk",
+    "emptyTitle": {
+      "week": "Bu hafta {{activity}} planı yok.",
+      "weekend": "Hafta sonu {{activity}} planı yok.",
+      "all": "Hiç {{activity}} planı yok."
+    },
+    "emptyTitlePlain": {
+      "week": "Bu hafta plan yok.",
+      "weekend": "Hafta sonu plan yok.",
+      "all": "Şu an açık plan yok."
+    },
+    "emptyLead": "Muhtemelen sen gibi bekleyen biri daha var. İlkini sen aç, gerisini biz duyuralım.",
+    "emptyHand": "3 kişi olunca kesinleşir ↓",
+    "otherTypes": "Diğer türlere bak",
+    "emptyNowTitle": "Şu an süren plan yok.",
+    "emptyNowLead": "Bir yerdeysen sen söyle. Plan, seçtiğin süre boyunca \"Şimdi\" altında durur.",
+    "emptyNowHand": "kahvedeysen söyle, 3 kişi olunca kesinleşir",
+    "backToWeek": "Bu haftanın planlarına bak",
+    "hand": "kesin nokta katılınca görünür — dakika yuvarlanmış konumdan.",
+    "trust": "her plan herkese açık yerde · en az 3 kişi",
+    "errLoad": "Planlar yüklenemedi."
+  },
+  "plan": {
+    "titleDate": "Plan aç",
+    "titleNow": "Buradayım",
+    "when": "Ne zaman",
+    "whenUnset": "Belirsiz",
+    "now": "Şimdi",
+    "pickDate": "Tarih seç",
+    "whenHint": "Belirsiz = gizli oturum (Keşfet'te yok) · Şimdi = Buradayım penceresi",
+    "date": "Tarih",
+    "time": "Saat",
+    "duration": "Kaç saat",
+    "durationHours": "{{count}} sa",
+    "where": "Nerede?",
+    "wherePlaceholder": "Café Zwart, Kleine Berg",
+    "whereHint": "konumun otomatik, adı sen yaz",
+    "errWhereRequired": "Nerede olduğunu yaz.",
+    "errMeetAtRequired": "Tarih ve saat seç.",
+    "errMeetAtPast": "Buluşma saati geçmiş olamaz.",
+    "capacity": "Kaç kişi",
+    "capacityHint": "sen dahil · 3 olmadan kesinleşmez",
+    "capacityDec": "Bir kişi azalt",
+    "capacityInc": "Bir kişi artır",
+    "joinPolicy": "Katılım",
+    "approval": "Ben onaylayayım",
+    "openJoin": "Herkes gelebilir",
+    "joinDefaultNow": "şimdi-planında varsayılan",
+    "audience": "Kim görsün?",
+    "audiencePublic": "Herkes",
+    "audienceNone": "Kimse",
+    "audienceHint": "Herkes = Keşfet listesi · Kimse = yalnız davet linki",
+    "publicPlaceNote": "Herkese açık bir yer seç; ev adresi kabul edilmez.",
+    "ctaNow": "Buradayım de",
+    "ctaDate": "Planı aç",
+    "back": "Keşfet",
+    "fit": "ilgi alanına uyuyor: {{activity}}",
+    "exactLater": "kesin buluşma noktası onaylanınca görünür",
+    "exactLaterOpen": "kesin buluşma noktası katılınca görünür",
+    "startedAt": "başladı {{time}}",
+    "who": "kim geliyor",
+    "hostRow": "{{name}} · açtı",
+    "host": "host",
+    "seatFree_one": "{{count}} yer boş — seninki olabilir",
+    "seatFree_other": "{{count}} yer boş — biri seninki olabilir",
+    "confirmedSticker": "{{approved}}/{{capacity}} · kesinleşti",
+    "safety": "<0>Herkese açık yerde</0> buluşulur, host katılımı onaylar, en az 3 kişi olmadan plan kesinleşmez. Sorun olursa bildir, engelle.",
+    "safetyOpen": "<0>Herkese açık yerde</0> buluşulur. Bu plan herkese açık: koltuk alan kesin noktayı görür, en az 3 kişi olmadan plan kesinleşmez. Sorun olursa bildir, engelle."
+  },
+  "seat": {
+    "want": "Katılmak istiyorum",
+    "join": "Katıl",
+    "note": "Kısa bir not (isteğe bağlı)",
+    "afterApprove": "{{host}} onaylayınca kesin noktayı ve grubu görürsün.",
+    "joinNote": "Anında koltuk alırsın, kesin noktayı görürsün.",
+    "pending": "İsteğin gönderildi",
+    "pendingLead": "{{host}} onaylayınca burası açılır.",
+    "declined": "Bu plan dolmuş ya da uymamış.",
+    "backToDiscover": "Keşfet'e dön",
+    "errRequest": "İstek gönderilemedi.",
+    "errFull": "Plan doldu.",
+    "errClosed": "Bu plan kapandı.",
+    "requests": "Katılmak isteyenler",
+    "newCount": "{{count}} yeni",
+    "summary": "{{when}} · {{capacity}} kişilik · {{approved}} onaylı",
+    "approve": "Onayla",
+    "decline": "Geç",
+    "approved": "onaylandı, kesin noktayı görüyor",
+    "confirmedSticker": "{{approved}}/{{capacity}} · kesinleşti!",
+    "left": "{{count}} yer kaldı — \"geç\" kimseye görünmez.",
+    "noRequests": "Henüz istek yok."
+  },
+  "checkin": {
+    "title": "Buluştunuz mu?",
+    "lead": "Tek dokunuş yeter. Cevabın planın sayımına ve kendi rozetlerine gider; kimseye puan vermezsin.",
+    "yes": "Evet, buluştuk",
+    "no": "Olmadı",
+    "hand": "güzeldiyse aynı grupla bir daha planla →",
+    "error": "Cevabın kaydedilemedi — tekrar dene."
+  },
+  "badge": {
+    "new": "yeni rozet",
+    "next": "Bir sonraki: {{title}}.",
+    "hand": "profilinde durur →",
+    "progressMet": "{{have}}/{{goal}} · {{count}} buluşma kaldı.",
+    "progressStreak": "{{have}}/{{goal}} · {{count}} hafta kaldı.",
+    "first_met": {
+      "title": "İlk buluşma",
+      "hint": "İlk kez biriyle buluştun."
+    },
+    "met_3": {
+      "title": "3 buluşma",
+      "hint": "Üç kez gerçekten buluştun."
+    },
+    "met_10": {
+      "title": "10 buluşma",
+      "hint": "On kez gerçekten buluştun."
+    },
+    "streak_3": {
+      "title": "3 hafta seri",
+      "hint": "Üç hafta üst üste buluştun."
+    }
   }
 }

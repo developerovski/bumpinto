@@ -91,6 +91,12 @@ export default function JoinForm() {
         travelMode,
       });
     } catch (e) {
+      // K-B37: açık plana davet linkinden koltuk yok (409). Önizleme ilk yüklemede düşmüşse ziyaretçi
+      // buraya düşebilir — önizlemeyi tazele; `openPlan` gelince SessionPage plan detayına geçer.
+      if (apiErrorCode(e) === "open_plan_seat_request_required") {
+        await useSessionStore.getState().loadPreview();
+        if (useSessionStore.getState().preview?.openPlan) return;
+      }
       // Kod, prose değil: backend 409'u `participants_too_far_apart` ile işaretliyor, çünkü
       // kullanıcının yapabileceği somut bir şey var — host'tan sabit bir yer istemek.
       setError(apiErrorCode(e) === "participants_too_far_apart"

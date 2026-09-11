@@ -72,6 +72,10 @@ type SessionState = {
   error: string | null;
   /** Katılmadan önce herkese açık özet (id/koordinat yok) — Katıl ekranının sağ kartı. */
   preview: SessionPreview | null;
+  /** Üye olmayan için karar verilebilir mi: önizleme denemesi (başarılı ya da değil) bitti.
+      O ana dek SessionPage katılım formunu AÇMAZ — form konum izni ister ve açık planda yanlış
+      ekrandır (plan detayına gidilmeli). */
+  previewSettled: boolean;
   bind: (slug: string) => void;
   refresh: () => Promise<void>;
   loadPreview: () => Promise<void>;
@@ -91,11 +95,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   view: null,
   error: null,
   preview: null,
+  previewSettled: false,
 
   bind: (slug) => {
     mutations += 1;
     refreshes += 1;
-    set({ slug, view: null, error: null, preview: null });
+    set({ slug, view: null, error: null, preview: null, previewSettled: false });
   },
 
   loadPreview: async () => {
@@ -103,9 +108,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!slug) return;
     try {
       const preview = await api.preview(slug);
-      set({ preview });
+      if (get().slug === slug) set({ preview });
     } catch {
       // önizleme olmadan da katılım formu çalışır — sessiz düş
+    } finally {
+      if (get().slug === slug) set({ previewSettled: true });
     }
   },
 
@@ -128,8 +135,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (status === 401 || status === 403) {
         set({ view: null });
         if (!get().preview) void get().loadPreview();
+        else set({ previewSettled: true });
       } else if (status === 404) set({ error: "session.notFound" });
-      // diğer hatalar: mevcut görünümü koru, polling tekrar dener
+      // diğer hatalar: mevcut görünümü koru, polling tekrar dener — görünüm hiç yoksa katılım
+      // formu yedeği açılsın (ağ hatasında sonsuz "yükleniyor" olmasın).
+      else if (!get().view) set({ previewSettled: true });
     }
   },
 

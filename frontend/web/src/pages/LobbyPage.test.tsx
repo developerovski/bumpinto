@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../lib/geocode", () => ({ geocode: vi.fn(), reverseGeocode: vi.fn() }));
 
 import { geocode } from "../lib/geocode";
+import { useAuthStore } from "../store/authStore";
+import { useSeatRequestsStore } from "../store/seatRequestsStore";
 import { useSessionStore } from "../store/sessionStore";
 import LobbyPage from "./LobbyPage";
 
@@ -15,6 +17,21 @@ const ayse = { id: "a", displayName: "Ayşe", host: false, hasLocation: true, ma
 const ready = { ...base, participants: [host, ayse] };
 
 describe("LobbyPage", () => {
+  it("açık planda host katılım istekleri panelini görür; gizli oturumda panel yok", () => {
+    const load = vi.fn();
+    useSeatRequestsStore.setState({ load, list: null });
+    useAuthStore.setState({ status: "signed", me: { displayName: "Mehmet" } as never });
+    const view = { ...base, participants: [host, ayse],
+      openPlan: { meetAt: "2026-09-13T08:00:00Z", capacity: 4, approvedSeats: 2, confirmed: false, joinPolicy: "APPROVAL", audience: "PUBLIC" } };
+    useSessionStore.setState({ slug: "x7k2m", view: view as never });
+    const { unmount } = render(<LobbyPage view={view as never} />);
+    expect(screen.getByRole("heading", { name: "Katılmak isteyenler" })).toBeInTheDocument();
+    expect(load).toHaveBeenCalledWith("x7k2m");
+    unmount();
+    render(<LobbyPage view={{ ...base, participants: [host, ayse] } as never} />);
+    expect(screen.queryByRole("heading", { name: "Katılmak isteyenler" })).toBeNull();
+  });
+
   it("1 konum: CTA kapalı, davet linki ve geç kalan notu", () => {
     const view = { ...base, participants: [host, kerem] };
     useSessionStore.setState({ slug: "x7k2m", view: view as never });

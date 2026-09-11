@@ -13,7 +13,14 @@ const PANEL =
 const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-export default function Sheet(props: { title: string; onClose: () => void; children: ReactNode }) {
+export default function Sheet(props: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  /** İçerik kendi büyük başlığını çiziyorsa (check-in P5/P5b) panel başlığı BASILMAZ — diyaloğun adı
+      `aria-label`'dan gelir; ikinci bir (gizli) başlık ekran okuyucuya aynı metni iki kez okuturdu. */
+  titleHidden?: boolean;
+}) {
   const panel = useRef<HTMLDivElement>(null);
   const onClose = props.onClose;
 
@@ -37,6 +44,12 @@ export default function Sheet(props: { title: string; onClose: () => void; child
       const first = items[0];
       const last = items[items.length - 1];
       const active = document.activeElement;
+      // Odak panelin DIŞINA düştüyse (odaktaki düğme devre dışı kalıp kaldırıldı) içeri geri çek.
+      if (!panel.current.contains(active)) {
+        first.focus();
+        e.preventDefault();
+        return;
+      }
       if (e.shiftKey && (active === first || active === panel.current)) {
         last.focus();
         e.preventDefault();
@@ -54,7 +67,7 @@ export default function Sheet(props: { title: string; onClose: () => void; child
       <div className="fixed inset-0 z-40 bg-[rgba(39,32,59,0.42)]" onClick={onClose} aria-hidden />
       <div ref={panel} role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} className={PANEL}>
         <span className="mx-auto mb-1 block h-[5px] w-10 rounded-[3px] bg-line2" aria-hidden />
-        <h3>{props.title}</h3>
+        {!props.titleHidden && <h3>{props.title}</h3>}
         {props.children}
       </div>
     </>

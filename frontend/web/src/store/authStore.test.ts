@@ -8,6 +8,8 @@ import { analyticsConsent, resetAnalytics } from "../lib/analytics";
 import { api } from "../lib/api";
 import i18n from "../i18n";
 import { useAuthStore } from "./authStore";
+import { useDiscoverStore } from "./discoverStore";
+import { useSeatRequestsStore } from "./seatRequestsStore";
 
 const me = { id: "u1", email: "m@x.test", displayName: "Mehmet", language: "nl",
   defaultLocation: undefined, defaultActivity: undefined, stats: { sessionsHosted: 1, friendsMet: 2 } };
@@ -33,6 +35,20 @@ describe("authStore", () => {
     await useAuthStore.getState().load();
     expect(useAuthStore.getState().status).toBe("signed");
     expect(document.documentElement.lang).toBe("nl");
+  });
+
+  /* Keşfet sonuçları (önceki hesabın ilgi alanları + ev konumundan dakika) ve host istek listesi
+     (isteyenlerin adı/notu) paylaşılan cihazda sonraki hesaba SIZMAMALI. */
+  it("çıkış Keşfet ve istek listesi depolarını da temizler", async () => {
+    vi.mocked(api.logout).mockResolvedValueOnce(undefined);
+    useDiscoverStore.setState({ loaded: true, plans: [{ slug: "a" }], filter: ["HIKE"] });
+    useSeatRequestsStore.setState({ slug: "gp", list: { requests: [{ id: "r1", displayName: "Tomás" }] } });
+    await useAuthStore.getState().logout();
+    expect(useDiscoverStore.getState()).toMatchObject({ loaded: false, plans: [], filter: [] });
+    expect(useSeatRequestsStore.getState().list).toBeNull();
+    useDiscoverStore.setState({ loaded: true, plans: [{ slug: "a" }] });
+    useAuthStore.getState().signedOut();
+    expect(useDiscoverStore.getState().loaded).toBe(false);
   });
 
   it("logout → anon", async () => {
