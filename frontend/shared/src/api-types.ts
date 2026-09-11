@@ -707,6 +707,10 @@ export interface components {
             sessionsHosted?: number;
             /** Format: int64 */
             friendsMet?: number;
+            /** Format: int64 */
+            plansMet?: number;
+            /** Format: int32 */
+            metStreakWeeks?: number;
         };
         UpdateConsentsRequest: {
             location: boolean;
@@ -745,6 +749,10 @@ export interface components {
             capacity?: number;
             /** @enum {string} */
             joinPolicy?: "OPEN" | "APPROVAL";
+            /** Format: date-time */
+            openUntil?: string;
+            /** @enum {string} */
+            audience?: "PUBLIC" | "FRIENDS" | "NONE";
         };
         CreateSessionResponse: {
             slug?: string;
@@ -801,6 +809,11 @@ export interface components {
             approvedSeats?: number;
             confirmed?: boolean;
             meetPassed?: boolean;
+            /** Format: date-time */
+            openUntil?: string;
+            inProgress?: boolean;
+            /** @enum {string} */
+            audience?: "PUBLIC" | "FRIENDS" | "NONE";
         };
         ParticipantDto: {
             /** Format: uuid */
@@ -1194,6 +1207,8 @@ export interface components {
             minutes?: number;
             /** @enum {string} */
             travelMode?: "WALK" | "BIKE" | "EBIKE" | "TRANSIT" | "CAR";
+            /** Format: date-time */
+            openUntil?: string;
         };
         ConfigResponse: {
             mapEngine?: string;

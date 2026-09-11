@@ -10,6 +10,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.infra.security.ParticipantPrincipal;
@@ -93,15 +94,25 @@ class SessionController {
     }
 
     /**
-     * Girdi -> domain. Kapasite ve politika opsiyoneldir: null -> 4 / APPROVAL. Varsayilan
-     * APPROVAL, cunku Kesfet YABANCILARA aciktir ve host'un kimi aldigina karar hakki engel
-     * listesinden ONCE gelen ilk savunma katmanidir.
+     * Girdi -> domain. Kapasite/politika/kitle opsiyoneldir: null -> 4 / APPROVAL / PUBLIC.
+     * Varsayilan APPROVAL, cunku Kesfet YABANCILARA aciktir ve host'un kimi aldigina karar hakki
+     * engel listesinden ONCE gelen ilk savunma katmanidir. Anlik planin OPEN varsayilanini FORM
+     * secer (spec karar 4), sunucu politika dayatmaz. FRIENDS kitlesi B-19 inene kadar 400:
+     * sozlesmede enum tam, davranis kapili — istemci enum'u simdiden uretir.
      */
     private static OpenPlan openPlanOf(ApiDtos.CreateSessionRequest request) {
         ApiDtos.OpenPlanInput in = request.openPlan();
-        return in == null ? null : new OpenPlan(in.meetAt(),
+        if (in == null) {
+            return null;
+        }
+        Audience audience = in.audience() == null ? Audience.PUBLIC : in.audience();
+        if (audience == Audience.FRIENDS) {
+            throw new IllegalArgumentException("audience_not_available");
+        }
+        return new OpenPlan(in.meetAt(),
                 in.capacity() == null ? OpenPlan.DEFAULT_CAPACITY : in.capacity(),
-                in.joinPolicy() == null ? JoinPolicy.APPROVAL : in.joinPolicy());
+                in.joinPolicy() == null ? JoinPolicy.APPROVAL : in.joinPolicy(),
+                in.openUntil(), audience);
     }
 
     /**

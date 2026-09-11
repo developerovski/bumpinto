@@ -15,13 +15,16 @@ public interface SessionRepository extends JpaRepository<SessionEntity, UUID> {
     List<SessionEntity> findByHostIdOrderByCreatedAtDescIdDesc(UUID hostId, Pageable page);
 
     /**
-     * Kesfet listesi. Dort kapi: (1) ACIK plan (`meetAt is not null` — kismi indeks tam bunu
-     * tasiyor), (2) bulusma GELECEKTE ve ufuk icinde, (3) TTL gecmemis, (4) karar verilmis ya da
-     * suresi dolmus degil. Biri eksik olsaydi Kesfet "herkesin oturumlari" listesine donerdi.
+     * Kesfet listesi. Dort kapi: (1) kitle PUBLIC (kismi indeks tam bunu tasiyor; audience dolu
+     * <=> meet_at dolu, V23), (2) bitis GELECEKTE — noktasal planda meet_at, pencereli planda
+     * open_until, yani SUREN "buradayim" listede kalir — ve baslangic ufuk icinde, (3) TTL
+     * gecmemis, (4) karar verilmis ya da suresi dolmus degil. Biri eksik olsaydi Kesfet
+     * "herkesin oturumlari" listesine donerdi.
      */
     @Query("""
             select s from SessionEntity s
-            where s.meetAt is not null and s.meetAt > :now and s.meetAt < :until
+            where s.audience = 'PUBLIC'
+              and coalesce(s.openUntil, s.meetAt) > :now and s.meetAt < :until
               and s.expiresAt >= :now and s.status not in ('DECIDED', 'EXPIRED')
             order by s.meetAt asc
             """)

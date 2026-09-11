@@ -142,6 +142,15 @@ hepsi oturum kavramının parçasıdır — ayrı bir `domain/discover/` paketi 
 ve deste/karar/presence'ın hangi tarafta olduğu belirsizleşirdi. Uygulama tarafında da aynı:
 `SeatRequests`, `DiscoverQueries` ve `MeetCheckins` `application/session/` altındadır.
 
+**B-18 ("Buradayım") da yeni paket açmadı.** `OpenPlan` iki alan kazandı: `openUntil` (pencere sonu;
+null = noktasal plan — `end()`, `meetPassed`, `expiresAt`, `inProgress` ona bakar) ve `audience`
+(`PUBLIC | FRIENDS | NONE`; `FRIENDS` B-19'a kadar uçta 400). Keşfet sorgusu yalnız `audience = PUBLIC`
+ve `coalesce(open_until, meet_at) > now` okur — süren "buradayım" listede kalır. `Session.locality`
+herkese açık **semt** adıdır (kuruluşta çapa noktasından ya da host konumundan ters geocode),
+`midpointLabel` ise host'un yazdığı etiket ve üyelere özeldir. Pencereli plan çapasız kurulamaz
+(400 `open_plan_anchor_required`). Rozet sayaçları (`plansMet`, `metStreakWeeks`) `MeetCheckinStorePort`
+üzerinden `application/user/MetStreak` ile hesaplanır; rozetler istemcide türer, sunucu saklamaz.
+
 **Gruplama ölçütü ilgi alanıdır, teknik tür değildir.** `domain/session` altında hem `Session`
 kaydı hem `SessionStatus` enum'u hem `Participant` durur; bunları "records/", "enums/" diye
 ayırmak tek bir kavramı üç pakete dağıtır ve görünürlüğü gereksizce genişletir. Aynı sebeple
@@ -412,6 +421,11 @@ herkese bastığı için açık planda slug bir yetenek anahtarı **değildir**.
 `SeatRequests` üzerinden doğar — hesap zorunluluğu, çift yönlü engel, mükerrer istek ve kapasite kapıları tek
 yerdedir. Host ve onaylı üye aynı uçtan koltuğunu geri almaya devam eder (mobil token onarımı). Gizli oturumda
 davranış değişmez.
+
+**Çapa etiketi Keşfet kartına sızmaz (K-B38, B-18).** `PlanCardDto.locality` `Session.locality`'den gelir
+(sunucunun ters geocode ettiği semt); host'un yazdığı çapa etiketi ("Café X, Kleine Berg 12") yalnız
+`SessionView.midpointLabel`'da, yani koltuk sahiplerine görünür. `NONE` kitleli planda davet linki bir
+**keşif** yetkisidir, koltuk yetkisi değil: link sahibi de `SeatRequests`'ten geçer.
 
 **Seat-request uçları hesabı `Authentication`'dan okur**, `@AuthenticationPrincipal Jwt`'den değil: yol
 `/api/sessions/{slug}/` altında olduğu için `ParticipantTokenFilter` kendi planının katılımcı çerezini taşıyan

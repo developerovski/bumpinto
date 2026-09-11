@@ -349,13 +349,14 @@ class SchemaMigrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    /** V23'ten beri acik plan kitlesiz giremez: V20 testleri PUBLIC ile yazar (kisit V20'ninki kalir). */
     private UUID insertOpenPlan(UUID hostId, String slug, Integer capacity, String policy) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 insert into sessions (id, slug, host_id, activity_types, status, expires_at,
-                                      meet_at, capacity, join_policy)
+                                      meet_at, capacity, join_policy, audience)
                 values (?, ?, ?, 'HIKE', 'COLLECTING', now() + interval '1 day',
-                        now() + interval '1 day', ?, ?)
+                        now() + interval '1 day', ?, ?, 'PUBLIC')
                 """, id, slug, hostId, capacity, policy);
         return id;
     }
@@ -365,6 +366,60 @@ class SchemaMigrationTest {
                 insert into seat_requests (id, session_id, user_id, display_name, status)
                 values (?, ?, ?, 'Priya', ?)
                 """, UUID.randomUUID(), sessionId, userId, status);
+    }
+
+    /** V23: pencere/kitle/semt. Kitle acik planin parcasi — kolon yalniz meet_at doluyken dolu. */
+    @Test
+    void v23AddsWindowAudienceAndLocalityColumns() {
+        assertThat(columnsOf("sessions")).contains("open_until", "audience", "locality");
+        assertThat(jdbc.queryForObject("select indexdef from pg_indexes "
+                + "where indexname = 'sessions_discover_idx'", String.class))
+                .contains("audience");
+    }
+
+    @Test
+    void v23RejectsAWindowLongerThanThreeHours() {
+        UUID host = insertHost("v23-win@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v23win1",
+                "2026-09-13T08:00:00Z", "2026-09-13T11:00:01Z", "PUBLIC"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void v23RejectsAudienceOnAHiddenSession() {
+        UUID host = insertHost("v23-aud@bumpinto.test");
+        assertThatThrownBy(() -> jdbc.update("""
+                insert into sessions (id, slug, host_id, activity_types, status, expires_at, audience)
+                values (?, ?, ?, 'COFFEE', 'COLLECTING', now() + interval '1 day', 'PUBLIC')
+                """, UUID.randomUUID(), "v23hid1", host))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void v23RejectsAnUnknownAudience() {
+        UUID host = insertHost("v23-unk@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v23unk1",
+                "2026-09-13T08:00:00Z", null, "EVERYONE"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** V20 satirlari kisittan ONCE PUBLIC'e cekilir; kisit sonrasi kitlesiz acik plan giremez. */
+    @Test
+    void v23RequiresAudienceOnAnOpenPlan() {
+        UUID host = insertHost("v23-req@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v23req1",
+                "2026-09-13T08:00:00Z", null, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void insertOpenPlan(UUID host, String slug, String meetAt, String openUntil,
+                                String audience) {
+        jdbc.update("""
+                insert into sessions (id, slug, host_id, activity_types, status, expires_at,
+                                      meet_at, capacity, join_policy, open_until, audience)
+                values (?, ?, ?, 'HIKE', 'COLLECTING', ?::timestamptz + interval '3 hours',
+                        ?::timestamptz, 4, 'OPEN', ?::timestamptz, ?)
+                """, UUID.randomUUID(), slug, host, meetAt, meetAt, openUntil, audience);
     }
 
     private UUID insertHost(String email) {

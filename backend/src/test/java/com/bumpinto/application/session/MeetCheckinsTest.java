@@ -6,6 +6,7 @@ import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.JoinPolicy;
 import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.Participant;
@@ -98,6 +99,22 @@ class MeetCheckinsTest {
     void theMeetInstantItselfIsAlreadyPast() {
         at(MEET).record(plan.slug(), hostSeat.id(), true);
 
+        assertThat(checkins.saved).hasSize(1);
+    }
+
+    /** Pencereli planda soru pencere KAPANINCA sorulur; surerken "bulustunuz mu" niyet olur. */
+    @Test
+    void aWindowedPlanAsksAfterItsWindowNotAtItsStart() {
+        Instant until = MEET.plus(java.time.Duration.ofHours(2));
+        SessionCommands.CreateSessionResult r = commands.createSession(host, "Kahve",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, new GeoPoint(51.44, 5.47), "Ayşe",
+                null, TravelMode.WALK,
+                new SessionCommands.Anchor(new GeoPoint(51.44, 5.47), "Café Zwart"),
+                new OpenPlan(MEET, 4, JoinPolicy.OPEN, until, Audience.PUBLIC));
+
+        assertThatThrownBy(() -> at(MEET.plusSeconds(60)).record(r.session().slug(),
+                r.hostParticipant().id(), true)).isInstanceOf(ConflictException.class);
+        at(until).record(r.session().slug(), r.hostParticipant().id(), true);
         assertThat(checkins.saved).hasSize(1);
     }
 }

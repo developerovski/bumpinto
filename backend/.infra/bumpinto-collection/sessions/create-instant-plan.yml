@@ -1,0 +1,65 @@
+info:
+  name: Create Instant Plan (Buradayım)
+  type: http
+  seq: 14
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions"
+  headers:
+    - name: content-type
+      value: application/json
+    - name: X-Client
+      value: web
+  body:
+    type: json
+    data: |-
+      {
+        "activityTypes": ["COFFEE"],
+        "name": "Öğleden sonra kahve",
+        "displayName": "Mehmet",
+        "travelMode": "WALK",
+        "anchor": { "lat": 51.4382, "lng": 5.4765, "label": "Café Zwart, Kleine Berg" },
+        "openPlan": {
+          "meetAt": "{{nowIso}}",
+          "openUntil": "{{nowPlus2hIso}}",
+          "capacity": 4,
+          "joinPolicy": "OPEN",
+          "audience": "PUBLIC"
+        }
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: pre-request
+      code: |-
+        const now = new Date();
+        bru.setVar("nowIso", now.toISOString());
+        bru.setVar("nowPlus2hIso", new Date(now.getTime() + 2 * 3600 * 1000).toISOString());
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("slug", res.body.slug);
+          bru.setVar("sessionId", res.body.sessionId);
+        }
+    - type: tests
+      code: |-
+        test("201 doner", function() {
+          expect(res.status).to.equal(201);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    B-18 "Buradayım": `openPlan.openUntil` verilirse plan PENCERELİDİR — `(meetAt, meetAt+3h]`
+    dışı 400. Pencereli plan `anchor` ister (400 `open_plan_anchor_required`): çapa noktası
+    host'un konumu, `label` mekân adı (üyelere özel `midpointLabel`). `audience`:
+    `PUBLIC` (varsayılan, Keşfet) | `NONE` (listelenmez, yalnız davet linki) | `FRIENDS`
+    (B-19'a kadar 400 `audience_not_available`).
+
+    Keşfet süren planı `openUntil` geçene kadar listeler (`meetAt` geçmiş olsa da); kart
+    `locality` olarak çapa ETİKETİNİ değil sunucunun ters geocode ettiği semti basar (K-B38).
+    "Buluştunuz mu?" pencere kapanınca sorulur; TTL = `openUntil` + 3 saat.

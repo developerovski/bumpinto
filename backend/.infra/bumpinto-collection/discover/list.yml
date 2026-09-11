@@ -47,3 +47,8 @@ docs:
 
     Listeden dusenler: gizli oturumlar, gecmis ya da 14 gunden uzak bulusmalar, karari
     verilmis planlar, DOLU planlar ve engelli ciftler (iki yonde).
+
+    **B-18:** yalnizca `audience = PUBLIC` planlar listelenir (`NONE` yalniz davet linkiyle).
+    Pencereli ("buradayim") plan `openUntil` gecene kadar listede KALIR, `meetAt` gecmis olsa
+    da; kart `openUntil` tasir, istemci "suruyor" satirini ondan cizer. `locality` sunucunun ters
+    geocode ettigi SEMTTIR — host'un capa etiketi degil (K-B38).

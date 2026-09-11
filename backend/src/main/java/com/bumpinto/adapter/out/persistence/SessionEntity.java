@@ -39,4 +39,8 @@ class SessionEntity {
     Instant meetAt;
     Short capacity;
     String joinPolicy;
+    /** B-18 (V23): pencere sonu (null = noktasal), kitle, kaba yer adi. Kisitlar semada. */
+    Instant openUntil;
+    String audience;
+    String locality;
 }

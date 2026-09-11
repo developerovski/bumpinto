@@ -24,12 +24,30 @@ public record Session(UUID id, String slug, UUID hostId, String name,
                        * bugunku davet-linkli davranis aynen surer. Bayrak alani yok, varligin
                        * kendisi bayraktir.
                        */
-                      OpenPlan openPlan) {
+                      OpenPlan openPlan,
+                      /**
+                       * Kesfet'in HERKESE ACIK, KABA yer adi (B-18, K-B38): capa noktasinin ya da
+                       * host konumunun semti. {@code midpointLabel}in aksine host'un yazdigi etiket
+                       * DEGILDIR — o etiket uyelere ozeldir. Gizli oturumda null.
+                       */
+                      String locality) {
 
     /** Listeler KOPYALANIR: cagiranin elindeki liste sonradan degisse oturum bozulmaz. */
     public Session {
         activityTypes = List.copyOf(activityTypes);
         runoffVenueIds = List.copyOf(runoffVenueIds);
+    }
+
+    /** Semt ONCESI imza (B-17 cagri yerleri kirilmaz): locality null. */
+    public Session(UUID id, String slug, UUID hostId, String name,
+                   List<ActivityType> activityTypes, SessionType sessionType,
+                   SessionStatus status, Instant expiresAt, UUID decidedVenueId,
+                   List<UUID> runoffVenueIds, Instant decidedAt, DecisionKind decisionKind,
+                   RunoffReason runoffReason, String midpointLabel, GeoPoint anchor,
+                   String joinCode, OpenPlan openPlan) {
+        this(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
+                decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
+                midpointLabel, anchor, joinCode, openPlan, null);
     }
 
     /**
@@ -83,13 +101,13 @@ public record Session(UUID id, String slug, UUID hostId, String name,
     public Session withStatus(SessionStatus newStatus) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, newStatus,
                 expiresAt, decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
-                midpointLabel, anchor, joinCode, openPlan);
+                midpointLabel, anchor, joinCode, openPlan, locality);
     }
 
     public Session withMidpointLabel(String label) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
                 decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason, label,
-                anchor, joinCode, openPlan);
+                anchor, joinCode, openPlan, locality);
     }
 
     /** runoffReason KORUNUR: "runoff'tan cikan karar" izini karar sonrasi da anlatir. */
@@ -98,13 +116,13 @@ public record Session(UUID id, String slug, UUID hostId, String name,
         Objects.requireNonNull(when, "when");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.DECIDED, expiresAt, venueId, runoffVenueIds, when, kind,
-                runoffReason, midpointLabel, anchor, joinCode, openPlan);
+                runoffReason, midpointLabel, anchor, joinCode, openPlan, locality);
     }
 
     public Session inRunoff(List<UUID> venueIds, RunoffReason reason) {
         Objects.requireNonNull(reason, "reason");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.RUNOFF, expiresAt, null, List.copyOf(venueIds), null, null, reason,
-                midpointLabel, anchor, joinCode, openPlan);
+                midpointLabel, anchor, joinCode, openPlan, locality);
     }
 }

@@ -96,19 +96,26 @@ public class SessionCommands {
                                              String hostDisplayName, String hostLocationLabel,
                                              TravelMode hostTravelMode, Anchor anchor,
                                              OpenPlan openPlan) {
+        if (openPlan != null && openPlan.openUntil() != null && anchor == null) {
+            // "Buradayim" noktasiz olamaz; IllegalArgumentException -> 400 (ApiExceptionHandler).
+            throw new IllegalArgumentException("open_plan_anchor_required");
+        }
         // Kolaylik ctor'u degil TAM ctor: capali oturumda merkezin adi find-venues'i
         // BEKLEMEDEN yazilir, boylece Lobi'de capa aninda gorunur ve sunucu istemcinin
         // zaten cozdugu adi ikinci kez geocode etmez.
-        // Acik planin TTL'i bulusma + 3 saat; gizli oturumda 24 saatlik varsayilan surer.
+        // Acik planda TEK ters geocode: `locality` (herkese acik semt) buradan; capasiz planda
+        // `midpointLabel` de ayni addir. Capali planda midpointLabel host'un etiketi kalir.
+        // Acik planin TTL'i bitis + 3 saat; gizli oturumda 24 saatlik varsayilan surer.
+        String locality = localityAt(anchor, hostLocation, openPlan);
         Instant expiresAt = openPlan == null ? clock.instant().plus(SESSION_TTL)
                 : openPlan.expiresAt();
         Session session = store.saveSession(new Session(UUID.randomUUID(), Ids.slug(), hostUserId,
                 Texts.sessionName(name), types, sessionType, SessionStatus.COLLECTING,
                 expiresAt, null, List.of(),
                 null, null, null,
-                midpointLabelAt(anchor, hostLocation, openPlan),
+                midpointLabelAt(anchor, openPlan, locality),
                 anchor == null ? null : anchor.point(),
-                store.freshJoinCode(), openPlan));
+                store.freshJoinCode(), openPlan, locality));
         requireWithinSpread(session, hostLocation, null);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
@@ -118,24 +125,31 @@ public class SessionCommands {
     }
 
     /**
-     * Merkezin adi. Capali oturumda host'un yazdigi ad esastir (eskiden beri boyle).
-     *
-     * <p>ACIK PLANDA capa yoksa ad BURADA cozulur (K-B15): Kesfet karti semt adini basiyor ve
-     * plan daha COLLECTING'ken listeleniyor — `DeckFlow`'un `find-venues` anindaki ters geocode'u
-     * beklenirse kart bos cikar. Tek katilimcinin (host) konumu o andaki orta noktadir; kisi
-     * eklendikce orta nokta kayar ve ad `find-venues` aninda zaten tazelenir.
+     * Kesfet'in HERKESE ACIK, KABA yer adi (B-18, K-B38). Capali planda capa ETIKETI degil
+     * capanin SEMTI: host "Café X, Kleine Berg 12" yazarsa kesin nokta onaysiz herkese gitmesin.
+     * Capasiz planda host'un konumu — tek katilimcinin konumu o andaki orta noktadir (K-B15);
+     * kisi eklendikce orta nokta kayar ve `midpointLabel` `find-venues` aninda zaten tazelenir.
      *
      * <p>Gizli oturum bu cagriyi YAPMAZ: bugunku davranis korunur, bosuna ag istegi yok.
-     * Basarisizlik NORMALDIR — null etiketle devam edilir, kart o satiri hic cizmez.
+     * Basarisizlik NORMALDIR — null kalir, kart o satiri hic cizmez.
      */
-    private String midpointLabelAt(Anchor anchor, GeoPoint hostLocation, OpenPlan openPlan) {
+    private String localityAt(Anchor anchor, GeoPoint hostLocation, OpenPlan openPlan) {
+        if (openPlan == null) {
+            return null;
+        }
+        GeoPoint target = anchor != null ? anchor.point() : hostLocation;
+        return target == null ? null : geocoder.label(target).orElse(null);
+    }
+
+    /**
+     * Merkezin adi (uyelere ozel). Capali oturumda host'un yazdigi ad esastir (eskiden beri
+     * boyle); capasiz acik planda kurulusta cozulen semt; gizli oturumda null (find-venues yazar).
+     */
+    private static String midpointLabelAt(Anchor anchor, OpenPlan openPlan, String locality) {
         if (anchor != null) {
             return Texts.label(anchor.label());
         }
-        if (openPlan == null || hostLocation == null) {
-            return null;
-        }
-        return geocoder.label(hostLocation).orElse(null);
+        return openPlan == null ? null : locality;
     }
 
     /**

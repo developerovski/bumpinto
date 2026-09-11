@@ -4,6 +4,10 @@ import com.bumpinto.domain.port.MeetCheckinStorePort;
 import com.bumpinto.domain.session.MeetCheckin;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 @Component
 class MeetCheckinStoreAdapter implements MeetCheckinStorePort {
 
@@ -22,5 +26,9 @@ class MeetCheckinStoreAdapter implements MeetCheckinStorePort {
         e.id = new MeetCheckinEntity.Id(checkin.sessionId(), checkin.participantId());
         e.met = checkin.met();
         repo.save(e);
+    }
+
+    @Override public List<Instant> metCheckinTimesOf(UUID userId) {
+        return repo.findMetByUser(userId).stream().map(e -> e.createdAt).toList();
     }
 }

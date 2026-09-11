@@ -5,6 +5,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.RunoffReason;
@@ -67,6 +68,9 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.meetAt = s.openPlan() == null ? null : s.openPlan().meetAt();
         e.capacity = s.openPlan() == null ? null : (short) s.openPlan().capacity();
         e.joinPolicy = s.openPlan() == null ? null : s.openPlan().joinPolicy().name();
+        e.openUntil = s.openPlan() == null ? null : s.openPlan().openUntil();
+        e.audience = s.openPlan() == null ? null : s.openPlan().audience().name();
+        e.locality = s.locality();
         sessions.save(e);
         return s;
     }
@@ -223,13 +227,14 @@ public class SessionStoreAdapter implements SessionStorePort {
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
                 e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
-                e.midpointLabel, anchor, e.joinCode, openPlanOf(e));
+                e.midpointLabel, anchor, e.joinCode, openPlanOf(e), e.locality);
     }
 
-    /** Uc kolon birlikte gider birlikte gelir; sekil kisiti semada, burada tek bir null kapisi. */
+    /** Kolonlar birlikte gider birlikte gelir; sekil kisiti semada, burada tek bir null kapisi. */
     private static OpenPlan openPlanOf(SessionEntity e) {
         return e.meetAt == null ? null
-                : new OpenPlan(e.meetAt, e.capacity, JoinPolicy.valueOf(e.joinPolicy));
+                : new OpenPlan(e.meetAt, e.capacity, JoinPolicy.valueOf(e.joinPolicy),
+                        e.openUntil, Audience.valueOf(e.audience));
     }
 
     static Participant toParticipant(ParticipantEntity e) {

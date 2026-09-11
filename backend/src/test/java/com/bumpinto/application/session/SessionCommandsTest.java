@@ -7,6 +7,7 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -244,17 +246,66 @@ class SessionCommandsTest {
         assertThat(geocoder.calls).isZero();
     }
 
-    /** Capali acik planda host'un YAZDIGI ad esastir: ters geocode onu ezmez, cagrilmaz bile. */
+    /**
+     * Capali acik planda host'un YAZDIGI ad uyelere kalir (`midpointLabel`), Kesfet'e giden
+     * `locality` ise capanin ters geocode'lu SEMTIDIR (K-B38): "Café X, Kleine Berg 12" onaysiz
+     * herkese gitmez. Tek geocode cagrisi: ikisi ayni noktadan turemez, yalniz biri ag ister.
+     */
     @Test
-    void anAnchoredOpenPlanKeepsTheHostsOwnLabel() {
+    void anAnchoredOpenPlanKeepsTheHostsLabelButPublishesOnlyTheDistrict() {
+        geocoder.label = "Stratum";
+
         SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
                 "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
                 null, TravelMode.BIKE,
-                new SessionCommands.Anchor(SOMEREN, "Someren Meydanı"),
+                new SessionCommands.Anchor(SOMEREN, "Café Zwart, Kleine Berg 12"),
                 new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
 
-        assertThat(r.session().midpointLabel()).isEqualTo("Someren Meydanı");
-        assertThat(geocoder.calls).isZero();
+        assertThat(r.session().midpointLabel()).isEqualTo("Café Zwart, Kleine Berg 12");
+        assertThat(r.session().locality()).isEqualTo("Stratum");
+        assertThat(geocoder.calls).isEqualTo(1);
+    }
+
+    /** Capasiz acik planda semt host konumundan: `locality` ve `midpointLabel` ayni ada duser, tek cagri. */
+    @Test
+    void anAnchorlessOpenPlanUsesTheHostDistrictForBothLabels() {
+        geocoder.label = "Woensel";
+
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
+                null, TravelMode.BIKE, null,
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+
+        assertThat(r.session().locality()).isEqualTo("Woensel");
+        assertThat(r.session().midpointLabel()).isEqualTo("Woensel");
+        assertThat(geocoder.calls).isEqualTo(1);
+    }
+
+    /** "Buradayim" noktasiz olamaz: pencereli plan capa ister, 400'e esleneni IllegalArgumentException. */
+    @Test
+    void aWindowedPlanRequiresAnAnchor() {
+        Instant now = Instant.parse("2026-09-13T08:00:00Z");
+        OpenPlan windowed = new OpenPlan(now, 4, JoinPolicy.OPEN, now.plus(Duration.ofHours(2)),
+                Audience.PUBLIC);
+
+        assertThatThrownBy(() -> commands.createSession(UUID.randomUUID(), "Kahve",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Ayşe", null,
+                TravelMode.WALK, null, windowed))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("open_plan_anchor_required");
+        assertThat(store.sessions).isEmpty();
+    }
+
+    /** Pencereli planin TTL'i pencere sonu + 3 saat (OpenPlan.end). */
+    @Test
+    void aWindowedPlanExpiresThreeHoursAfterItsWindowEnds() {
+        Instant now = Instant.parse("2026-09-13T08:00:00Z");
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(), "Kahve",
+                List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Ayşe", null,
+                TravelMode.WALK, new SessionCommands.Anchor(SOMEREN, "Café Zwart"),
+                new OpenPlan(now, 4, JoinPolicy.OPEN, now.plus(Duration.ofHours(2)), Audience.PUBLIC));
+
+        assertThat(r.session().expiresAt()).isEqualTo(Instant.parse("2026-09-13T13:00:00Z"));
     }
 
     /** Ters geocode basarisizligi NORMALDIR: plan yine kurulur, ad null kalir. */

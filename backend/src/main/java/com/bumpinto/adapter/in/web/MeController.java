@@ -138,7 +138,8 @@ class MeController {
                         profile.defaultLocation().lng(), profile.defaultLocationLabel());
         return new ApiDtos.MeResponse(profile.id(), profile.email(), profile.name(), location,
                 profile.defaultActivity(), profile.language(), profile.defaultTravelMode(),
-                new ApiDtos.StatsDto(me.stats().sessionsHosted(), me.stats().friendsMet()),
+                new ApiDtos.StatsDto(me.stats().sessionsHosted(), me.stats().friendsMet(),
+                        me.stats().plansMet(), me.stats().metStreakWeeks()),
                 profile.authProviders().stream().sorted().toList(), toDto(profile.consents()),
                 profile.interests());
     }

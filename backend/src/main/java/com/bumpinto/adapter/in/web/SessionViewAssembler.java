@@ -28,6 +28,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -151,8 +152,10 @@ public class SessionViewAssembler {
         }
         int approved = (int) participants.stream()
                 .filter(p -> !p.manual() && p.userId() != null).count();
+        Instant now = clock.instant();
         return new ApiDtos.OpenPlanDto(plan.meetAt(), plan.capacity(), plan.joinPolicy(),
-                approved, plan.confirmed(approved), plan.meetPassed(clock.instant()));
+                approved, plan.confirmed(approved), plan.meetPassed(now),
+                plan.openUntil(), plan.inProgress(now), plan.audience());
     }
 
     /**
@@ -196,9 +199,10 @@ public class SessionViewAssembler {
     }
 
     /**
-     * Kesfet listesi. {@code locality} yalniz SEMTTIR: `midpointLabel` (acik planda kurulusta
-     * yazilir, K-B15) ya da host'un kendi etiketi — sokak/numara asla. Kart kesin koordinat da
-     * tasimaz; dakika isteyenin kendi yuvarlanmis konumundan gelir (DiscoverQueries).
+     * Kesfet listesi. {@code locality} yalniz SEMTTIR: `Session.locality` (B-18, K-B38 — acik
+     * planda kurulusta ters geocode edilir; host'un capa etiketi DEGIL, o `midpointLabel`da ve
+     * uyelere ozeldir) — sokak/numara asla. Kart kesin koordinat da tasimaz; dakika isteyenin
+     * kendi yuvarlanmis konumundan gelir (DiscoverQueries). {@code openUntil} pencereli plani isaretler.
      */
     public ApiDtos.DiscoverResponse toDiscover(List<DiscoverQueries.Row> rows,
                                                Set<ActivityType> filter, TravelMode mode) {
@@ -206,7 +210,8 @@ public class SessionViewAssembler {
                 r.session().slug(), r.session().name(), r.session().activityTypes(),
                 r.session().openPlan().meetAt(), r.session().openPlan().capacity(),
                 r.approvedSeats(), r.confirmed(), r.session().openPlan().joinPolicy(),
-                r.hostDisplayName(), r.session().midpointLabel(), r.minutes(), mode)).toList();
+                r.hostDisplayName(), r.session().locality(), r.minutes(), mode,
+                r.session().openPlan().openUntil())).toList();
         return new ApiDtos.DiscoverResponse(plans, filter.stream().sorted().toList());
     }
 

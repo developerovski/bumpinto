@@ -6,6 +6,7 @@ import jakarta.validation.constraints.AssertTrue;
 import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.JoinPolicy;
 import com.bumpinto.domain.session.SeatStatus;
@@ -276,27 +277,34 @@ public final class ApiDtos {
     }
 
     /**
-     * Acik plan GIRDISI. Kapasite ve politika opsiyonel: null -> 4 / APPROVAL. Sinirlar burada
-     * ve DOMAIN'de (OpenPlan) ve SEMADA (V20) — uc katman da ayni sayiyi soyler.
+     * Acik plan GIRDISI. Kapasite/politika/kitle opsiyonel: null -> 4 / APPROVAL / PUBLIC.
+     * Sinirlar burada ve DOMAIN'de (OpenPlan) ve SEMADA (V20/V23) — uc katman da ayni sayiyi
+     * soyler. {@code openUntil} (B-18) verilirse plan "buradayim" penceresidir: (meetAt,
+     * meetAt+3h]. FRIENDS kitlesi B-19'a kadar 400 (SessionController.openPlanOf).
      */
     public record OpenPlanInput(@NotNull Instant meetAt,
                                 @Min(3) @Max(8) Integer capacity,
-                                JoinPolicy joinPolicy) {
+                                JoinPolicy joinPolicy,
+                                Instant openUntil,
+                                Audience audience) {
     }
 
-    /** Acik planin OKUMA yuzu. `approvedSeats`/`confirmed` turetilir, saklanmaz. */
+    /** Acik planin OKUMA yuzu. `approvedSeats`/`confirmed`/`meetPassed`/`inProgress` turetilir, saklanmaz. */
     public record OpenPlanDto(Instant meetAt, int capacity, JoinPolicy joinPolicy,
-                              int approvedSeats, boolean confirmed, boolean meetPassed) {
+                              int approvedSeats, boolean confirmed, boolean meetPassed,
+                              Instant openUntil, boolean inProgress, Audience audience) {
     }
 
     /**
-     * Kesfet karti. Kesin konum TASIMAZ: {@code locality} semt adi, {@code minutes} isteyenin
+     * Kesfet karti. Kesin konum TASIMAZ: {@code locality} SEMT adi (B-18'den beri
+     * {@code Session.locality}; host'un capa etiketi DEGIL — K-B38), {@code minutes} isteyenin
      * kendi yuvarlanmis konumundan 5 dk basamaginda. Katilimci kimligi ve mekan da yok.
+     * {@code openUntil} doluysa plan pencereli ("buradayim"); istemci "suruyor" satirini ondan cizer.
      */
     public record PlanCardDto(String slug, String name, List<ActivityType> activityTypes,
                               Instant meetAt, int capacity, int approvedSeats, boolean confirmed,
                               JoinPolicy joinPolicy, String hostDisplayName, String locality,
-                              Integer minutes, TravelMode travelMode) {
+                              Integer minutes, TravelMode travelMode, Instant openUntil) {
     }
 
     /** `filter` geri doner: istemci "hangi filtreyle bakiyorum"u sunucudan ogrenir (profil varsayilani). */
@@ -395,7 +403,8 @@ public final class ApiDtos {
                                   @Size(max = 80) String label) {
     }
 
-    public record StatsDto(long sessionsHosted, long friendsMet) {
+    /** `plansMet`/`metStreakWeeks` (B-18): "bulustuk" sayisi ve haftalik seri; rozetler istemcide turer. */
+    public record StatsDto(long sessionsHosted, long friendsMet, long plansMet, int metStreakWeeks) {
     }
 
     /** §2: consents{location, microphone, analytics, updatedAt, version}. */

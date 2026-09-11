@@ -2,6 +2,7 @@ package com.bumpinto.application.user;
 
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.application.session.SessionExpiry;
+import com.bumpinto.domain.port.MeetCheckinStorePort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.session.SessionSummary;
@@ -18,7 +19,8 @@ public class UserProfileQueries {
 
     static final int LIST_LIMIT = 20;
 
-    public record Stats(long sessionsHosted, long friendsMet) {
+    /** `plansMet`/`metStreakWeeks` (B-18): rozetler istemcide bu sayilardan turer, sunucu yalniz sayar. */
+    public record Stats(long sessionsHosted, long friendsMet, long plansMet, int metStreakWeeks) {
     }
 
     public record Me(UserProfile profile, Stats stats) {
@@ -35,19 +37,25 @@ public class UserProfileQueries {
 
     private final UserStorePort users;
     private final SessionStorePort sessions;
+    private final MeetCheckinStorePort checkins;
     private final Clock clock;
 
-    public UserProfileQueries(UserStorePort users, SessionStorePort sessions, Clock clock) {
+    public UserProfileQueries(UserStorePort users, SessionStorePort sessions,
+                              MeetCheckinStorePort checkins, Clock clock) {
         this.users = users;
         this.sessions = sessions;
+        this.checkins = checkins;
         this.clock = clock;
     }
 
     public Me me(UUID userId) {
         UserProfile profile = users.profileOf(userId)
                 .orElseThrow(() -> new NotFoundException("user not found"));
+        // "Bulustuk" cevaplari koltuk uzerinden hesaba baglanir; rozetler istemcide bu sayidan turer.
+        List<Instant> met = checkins.metCheckinTimesOf(userId);
         return new Me(profile, new Stats(sessions.hostedSessionCount(userId),
-                sessions.distinctGuestsOfHost(userId)));
+                sessions.distinctGuestsOfHost(userId), met.size(),
+                MetStreak.weeks(met, clock.instant())));
     }
 
     /**

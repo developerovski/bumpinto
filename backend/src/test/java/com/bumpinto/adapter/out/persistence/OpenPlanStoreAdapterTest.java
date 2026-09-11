@@ -5,6 +5,7 @@ import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.MeetCheckinStorePort;
 import com.bumpinto.domain.port.SeatRequestStorePort;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.Audience;
 import com.bumpinto.domain.session.JoinPolicy;
 import com.bumpinto.domain.session.MeetCheckin;
 import com.bumpinto.domain.session.OpenPlan;
@@ -148,6 +149,69 @@ class OpenPlanStoreAdapterTest {
 
         assertThat(checkinRows.findAll()).hasSize(1);
         assertThat(checkinRows.findAll().get(0).met).isFalse();
+    }
+
+    @Test
+    void roundTripsAWindowedPlanWithAudienceAndLocality() {
+        OpenPlan plan = new OpenPlan(NOW, 4, JoinPolicy.OPEN, NOW.plus(Duration.ofHours(2)),
+                Audience.NONE);
+
+        sessions.saveSession(session("rt-window", plan, "Stratum"));
+
+        Session back = sessions.sessionBySlug("rt-window").orElseThrow();
+        assertThat(back.openPlan()).isEqualTo(plan);
+        assertThat(back.locality()).isEqualTo("Stratum");
+        assertThat(back.midpointLabel()).isEqualTo("Café Zwart"); // ikisi AYRI alan
+    }
+
+    /**
+     * Kesfet: SUREN pencereli plan listede (meetAt gecmis ama openUntil gelecek), penceresi
+     * biten dusmus, NONE/FRIENDS kitleli plan hic yok.
+     */
+    @Test
+    void findPublicUpcomingListsInProgressWindowsAndOnlyPublicAudience() {
+        sessions.saveSession(session("win-live", new OpenPlan(NOW.minus(Duration.ofMinutes(30)),
+                4, JoinPolicy.OPEN, NOW.plus(Duration.ofHours(1)), Audience.PUBLIC), "Stratum"));
+        sessions.saveSession(session("win-over", new OpenPlan(NOW.minus(Duration.ofHours(3)),
+                4, JoinPolicy.OPEN, NOW.minus(Duration.ofMinutes(1)), Audience.PUBLIC), "Stratum"));
+        sessions.saveSession(session("win-none", new OpenPlan(NOW.minus(Duration.ofMinutes(30)),
+                4, JoinPolicy.OPEN, NOW.plus(Duration.ofHours(1)), Audience.NONE), "Stratum"));
+        sessions.saveSession(session("pt-friends", new OpenPlan(NOW.plus(Duration.ofDays(1)),
+                4, JoinPolicy.OPEN, null, Audience.FRIENDS), "Stratum"));
+
+        assertThat(sessions.findPublicUpcoming(NOW, NOW.plus(Duration.ofDays(14))))
+                .extracting(Session::slug).containsExactly("win-live");
+    }
+
+    /** Sayac sorgusu: yalniz o hesabin, yalniz met=true satirlari; baskasinin ve "olmadi" disarida. */
+    @Test
+    void metCheckinTimesOfReturnsOnlyThatUsersMetRows() {
+        Session s = sessions.saveSession(session("rt-met",
+                new OpenPlan(NOW.plus(Duration.ofDays(1)), 4, JoinPolicy.OPEN)));
+        UUID me = users.upsertByEmail("me-met@bumpinto.test", "Ben");
+        UUID other = users.upsertByEmail("other-met@bumpinto.test", "O");
+        Participant mine = sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(),
+                "Ben", null, true, null, false, null, TravelMode.CAR, me));
+        Participant theirs = sessions.saveParticipant(new Participant(UUID.randomUUID(), s.id(),
+                "O", null, false, null, false, null, TravelMode.CAR, other));
+        checkins.upsert(new MeetCheckin(s.id(), mine.id(), true, NOW));
+        checkins.upsert(new MeetCheckin(s.id(), theirs.id(), true, NOW));
+
+        assertThat(checkins.metCheckinTimesOf(me)).hasSize(1);
+        assertThat(checkins.metCheckinTimesOf(other)).hasSize(1);
+
+        checkins.upsert(new MeetCheckin(s.id(), mine.id(), false, NOW));
+        assertThat(checkins.metCheckinTimesOf(me)).isEmpty();
+    }
+
+    /** B-18: capali, semtli oturum — `midpointLabel` (host etiketi) ile `locality` (semt) ayri alanlar. */
+    private Session session(String slug, OpenPlan plan, String locality) {
+        UUID host = users.upsertByEmail(slug + "-host@bumpinto.test", "Mehmet");
+        Instant expires = plan == null ? NOW.plus(Duration.ofDays(1)) : plan.expiresAt();
+        return new Session(UUID.randomUUID(), slug, host, "Yürüyüş",
+                List.of(ActivityType.HIKE), SessionType.GROUP, SessionStatus.COLLECTING, expires,
+                null, List.of(), null, null, null, "Café Zwart", new GeoPoint(51.44, 5.47), null,
+                plan, locality);
     }
 
     /** `sessions.host_id` users'a FK: host GERCEK bir satir olmali. */

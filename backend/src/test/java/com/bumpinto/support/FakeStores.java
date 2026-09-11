@@ -62,11 +62,12 @@ public class FakeStores {
             return sessions.values().stream().filter(s -> s.slug().equals(slug)).findFirst();
         }
 
-        /** Gercek sorgunun (SessionRepository.findPublicUpcoming) dort kapisinin aynisi. */
+        /** Gercek sorgunun (SessionRepository.findPublicUpcoming) dort kapisinin aynisi (V23 sonrasi). */
         @Override public List<Session> findPublicUpcoming(Instant now, Instant until) {
             return sessions.values().stream()
                     .filter(Session::isOpenPlan)
-                    .filter(s -> s.openPlan().meetAt().isAfter(now)
+                    .filter(s -> s.openPlan().listedInDiscover())
+                    .filter(s -> s.openPlan().end().isAfter(now)
                             && s.openPlan().meetAt().isBefore(until))
                     .filter(s -> !s.expiresAt().isBefore(now))
                     .filter(s -> s.status() != SessionStatus.DECIDED
@@ -539,9 +540,20 @@ public class FakeStores {
     /** B-17: "Bulustunuz mu?" cevaplari. Kisi basina TEK satir (gercek semadaki bilesik PK). */
     public static class InMemoryMeetCheckinStore implements MeetCheckinStorePort {
         public final Map<String, MeetCheckin> saved = new LinkedHashMap<>();
+        /** Gercek sorgu participants.user_id uzerinden gider; sahte magaza eslemeyi testten alir. */
+        public final Map<UUID, UUID> userOfParticipant = new HashMap<>();
 
         @Override public void upsert(MeetCheckin c) {
             saved.put(c.sessionId() + ":" + c.participantId(), c);
+        }
+
+        @Override public List<Instant> metCheckinTimesOf(UUID userId) {
+            return saved.values().stream()
+                    .filter(MeetCheckin::met)
+                    .filter(c -> userId.equals(userOfParticipant.get(c.participantId())))
+                    .map(MeetCheckin::createdAt)
+                    .sorted(Comparator.reverseOrder())
+                    .toList();
         }
     }
 }

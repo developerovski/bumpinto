@@ -2,6 +2,7 @@ package com.bumpinto.domain.session;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -84,5 +85,81 @@ class OpenPlanTest {
                 MEET, null, List.of());
         assertThat(s.openPlan()).isNull();
         assertThat(s.isOpenPlan()).isFalse();
+    }
+
+    static final Instant UNTIL = MEET.plus(Duration.ofHours(2));
+
+    /** Pencere (meetAt, meetAt+3h] icinde: 0 ya da 3 saat ustu "buradayim" TTL'siz surerdi. */
+    @Test
+    void windowMustEndAfterMeetAndWithinThreeHours() {
+        assertThatThrownBy(() -> new OpenPlan(MEET, 4, JoinPolicy.OPEN, MEET, Audience.PUBLIC))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new OpenPlan(MEET, 4, JoinPolicy.OPEN,
+                MEET.plus(Duration.ofHours(3)).plusSeconds(1), Audience.PUBLIC))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatCode(() -> new OpenPlan(MEET, 4, JoinPolicy.OPEN,
+                MEET.plus(Duration.ofHours(3)), Audience.PUBLIC)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> new OpenPlan(MEET, 4, JoinPolicy.OPEN, null, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    /** Pencereli planda "bitis" openUntil'dir: meetPassed, TTL ve check-in ona bakar. */
+    @Test
+    void windowedPlanEndsAtOpenUntil() {
+        OpenPlan p = new OpenPlan(MEET, 4, JoinPolicy.OPEN, UNTIL, Audience.PUBLIC);
+        assertThat(p.end()).isEqualTo(UNTIL);
+        assertThat(p.meetPassed(UNTIL.minusSeconds(1))).isFalse();
+        assertThat(p.meetPassed(UNTIL)).isTrue();
+        assertThat(p.expiresAt()).isEqualTo(UNTIL.plus(Duration.ofHours(3)));
+    }
+
+    @Test
+    void inProgressOnlyInsideTheWindow() {
+        OpenPlan p = new OpenPlan(MEET, 4, JoinPolicy.OPEN, UNTIL, Audience.PUBLIC);
+        assertThat(p.inProgress(MEET.minusSeconds(1))).isFalse();
+        assertThat(p.inProgress(MEET)).isTrue();
+        assertThat(p.inProgress(UNTIL.minusSeconds(1))).isTrue();
+        assertThat(p.inProgress(UNTIL)).isFalse();
+        // Noktasal plan hicbir zaman "suruyor" degildir.
+        assertThat(new OpenPlan(MEET, 4, JoinPolicy.APPROVAL).inProgress(MEET)).isFalse();
+    }
+
+    /** B-17 imzasi noktasal + PUBLIC uretir: eski cagri yerleri anlam degistirmez. */
+    @Test
+    void threeArgConstructorIsAPublicPointPlan() {
+        OpenPlan p = new OpenPlan(MEET, 4, JoinPolicy.APPROVAL);
+        assertThat(p.openUntil()).isNull();
+        assertThat(p.audience()).isEqualTo(Audience.PUBLIC);
+        assertThat(p.end()).isEqualTo(MEET);
+        assertThat(p.listedInDiscover()).isTrue();
+    }
+
+    @Test
+    void onlyPublicPlansAreListedInDiscover() {
+        assertThat(new OpenPlan(MEET, 4, JoinPolicy.OPEN, null, Audience.NONE).listedInDiscover())
+                .isFalse();
+        assertThat(new OpenPlan(MEET, 4, JoinPolicy.OPEN, null, Audience.FRIENDS).listedInDiscover())
+                .isFalse();
+    }
+
+    /** `locality` de wither'lardan gecer; dusmesi Kesfet kartini semtsiz birakirdi. */
+    @Test
+    void sessionWithersKeepLocality() {
+        OpenPlan p = new OpenPlan(MEET, 4, JoinPolicy.APPROVAL);
+        Session s = new Session(UUID.randomUUID(), "abc12345", UUID.randomUUID(), "Yürüyüş",
+                List.of(ActivityType.HIKE), SessionType.GROUP, SessionStatus.COLLECTING,
+                p.expiresAt(), null, List.of(), null, null, null, "Café Zwart", null, "ABCDE", p,
+                "Stratum");
+        assertThat(s.locality()).isEqualTo("Stratum");
+        assertThat(s.withStatus(SessionStatus.BROWSING).locality()).isEqualTo("Stratum");
+        assertThat(s.withMidpointLabel("x").locality()).isEqualTo("Stratum");
+        assertThat(s.inRunoff(List.of(), RunoffReason.INTERSECTION).locality()).isEqualTo("Stratum");
+        assertThat(s.decided(UUID.randomUUID(), DecisionKind.UNANIMOUS, MEET).locality())
+                .isEqualTo("Stratum");
+        // 17-arg ctor: locality null (B-17 cagri yerleri kirilmaz).
+        Session legacy = new Session(UUID.randomUUID(), "abc12345", UUID.randomUUID(), "Yürüyüş",
+                List.of(ActivityType.HIKE), SessionType.GROUP, SessionStatus.COLLECTING,
+                p.expiresAt(), null, List.of(), null, null, null, null, null, "ABCDE", p);
+        assertThat(legacy.locality()).isNull();
     }
 }

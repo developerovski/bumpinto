@@ -6,11 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.MeetCheckin;
+import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.support.FakeStores;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -24,6 +27,7 @@ class UserProfileQueriesTest {
 
     FakeStores.InMemorySessionStore sessions;
     FakeStores.InMemoryUserStore users;
+    FakeStores.InMemoryMeetCheckinStore checkins;
     UserProfileQueries queries;
     UUID host;
     Session s1;
@@ -34,7 +38,9 @@ class UserProfileQueriesTest {
     void setUp() {
         sessions = new FakeStores.InMemorySessionStore();
         users = new FakeStores.InMemoryUserStore();
-        queries = new UserProfileQueries(users, sessions, Clock.fixed(NOW, ZoneOffset.UTC));
+        checkins = new FakeStores.InMemoryMeetCheckinStore();
+        queries = new UserProfileQueries(users, sessions, checkins,
+                Clock.fixed(NOW, ZoneOffset.UTC));
         host = users.upsertByEmail("h@x.test", "Host");
 
         s1 = newSession("t1sess", SessionStatus.COLLECTING, NOW.minusSeconds(1));
@@ -44,13 +50,13 @@ class UserProfileQueriesTest {
         s3 = newSession("t3sess", SessionStatus.SWIPING, NOW.plusSeconds(3600));
         sessions.createdAt.put(s3.id(), NOW.minusSeconds(100));
 
-        join(s1, "Host", true, false);
-        join(s1, "Ayşe", false, false);
-        join(s1, "Nokta", false, true);
-        join(s2, "Host", true, false);
-        join(s2, "Ayşe", false, false);
-        join(s3, "Host", true, false);
-        join(s3, "Kerem", false, false);
+        join(s1, "Host", true, false, host);
+        join(s1, "Ayşe", false, false, UUID.randomUUID());
+        join(s1, "Nokta", false, true, null);
+        join(s2, "Host", true, false, host);
+        join(s2, "Ayşe", false, false, UUID.randomUUID());
+        join(s3, "Host", true, false, host);
+        join(s3, "Kerem", false, false, UUID.randomUUID());
     }
 
     Session newSession(String slug, SessionStatus status, Instant expiresAt) {
@@ -60,9 +66,9 @@ class UserProfileQueriesTest {
         return sessions.saveSession(session);
     }
 
-    void join(Session session, String name, boolean isHost, boolean manual) {
-        sessions.saveParticipant(new com.bumpinto.domain.session.Participant(UUID.randomUUID(),
-                session.id(), name, new GeoPoint(51.7, 5.3), isHost, null, manual, null, null));
+    Participant join(Session session, String name, boolean isHost, boolean manual, UUID userId) {
+        return sessions.saveParticipant(new Participant(UUID.randomUUID(), session.id(), name,
+                new GeoPoint(51.7, 5.3), isHost, null, manual, null, null, userId));
     }
 
     @Test
@@ -132,5 +138,25 @@ class UserProfileQueriesTest {
 
         assertThatThrownBy(() -> queries.me(UUID.randomUUID()))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    /** plansMet = kendi koltuklarimin met=true cevaplari; seri bu/gecen haftadan geriye ardisik. */
+    @Test
+    void meReportsPlansMetAndWeeklyStreak() {
+        Participant mineInS1 = join(s1, "Host", true, false, host);
+        Participant mineInS2 = join(s2, "Host", true, false, host);
+        Participant someoneElse = join(s2, "Kerem", false, false, UUID.randomUUID());
+        checkins.userOfParticipant.put(mineInS1.id(), host);
+        checkins.userOfParticipant.put(mineInS2.id(), host);
+        checkins.userOfParticipant.put(someoneElse.id(), someoneElse.userId());
+        checkins.upsert(new MeetCheckin(s1.id(), mineInS1.id(), true, NOW.minusSeconds(60)));
+        checkins.upsert(new MeetCheckin(s2.id(), mineInS2.id(), true, NOW.minus(Duration.ofDays(7))));
+        checkins.upsert(new MeetCheckin(s2.id(), someoneElse.id(), true, NOW)); // baskasinin
+        checkins.upsert(new MeetCheckin(s3.id(), mineInS1.id(), false, NOW)); // "olmadi" sayilmaz
+
+        UserProfileQueries.Stats stats = queries.me(host).stats();
+
+        assertThat(stats.plansMet()).isEqualTo(2);
+        assertThat(stats.metStreakWeeks()).isEqualTo(2);
     }
 }

@@ -1,5 +1,6 @@
 package com.bumpinto;
 
+import com.bumpinto.adapter.out.geocode.NominatimGeocoder;
 import com.bumpinto.domain.port.VenueProviderPort;
 import com.bumpinto.infra.security.GoogleIdVerifier;
 import com.bumpinto.infra.security.RateLimitFilter;
@@ -20,8 +21,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,6 +58,12 @@ class DiscoverApiTest {
     @Autowired RateLimitFilter rateLimit;
     @MockitoBean VenueProviderPort provider;
     @MockitoBean GoogleIdVerifier google;
+    /**
+     * B-18: semt sunucuda cozulur; ag yerine sabit cevap. SOMUT sinif mock'lanir: tek bean hem
+     * GeocodePort hem ReverseGeocodePort'tur, yalniz arayuz mock'lansa GeocodeController kalir.
+     * Stub'lanmayan metotlar Optional.empty() doner (locality null — kart satiri cizilmez).
+     */
+    @MockitoBean NominatimGeocoder geocoder;
 
     private static final String JSON = "application/json";
     /**
@@ -76,6 +85,75 @@ class DiscoverApiTest {
         return mvc.perform(post("/api/auth/google").header("X-Client", "web")
                         .contentType(JSON).content("{\"idToken\":\"" + idToken + "\"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getCookie("bumpinto_at");
+    }
+
+    /**
+     * B-18: suren "buradayim" plani Kesfet'te (meetAt gecmis, openUntil gelecek), kart capa
+     * ETIKETINI degil semti basar (K-B38), NONE kitleli plan listede yok ama linkle onizlenir,
+     * FRIENDS kitlesi B-19'a kadar 400, pencereli plan capasiz olamaz.
+     */
+    @Test
+    void instantPlansAreListedWhileOpenAndNeverLeakTheAnchorLabel() throws Exception {
+        when(geocoder.label(any())).thenReturn(Optional.of("Stratum"));
+        Cookie host = login("gid-ip-host", "host-ip@bumpinto.test", "Ayşe");
+        Cookie guest = login("gid-ip-guest", "guest-ip@bumpinto.test", "Priya");
+        java.time.Instant now = java.time.Instant.now();
+        String meetAt = now.minus(java.time.Duration.ofMinutes(5)).toString();
+        String openUntil = now.plus(java.time.Duration.ofHours(2)).toString();
+
+        String live = json.writeValueAsString(Map.of(
+                "activityTypes", List.of("COFFEE"), "displayName", "Ayşe", "name", "Kahve",
+                "travelMode", "WALK",
+                "anchor", Map.of("lat", 51.44, "lng", 5.47, "label", "Café Zwart, Kleine Berg 12"),
+                "openPlan", Map.of("meetAt", meetAt, "openUntil", openUntil, "capacity", 4,
+                        "joinPolicy", "OPEN", "audience", "PUBLIC")));
+        String liveSlug = json.readTree(mvc.perform(post("/api/sessions").header("X-Client", "web")
+                        .cookie(host).contentType(JSON).content(live))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("slug").asString();
+
+        String hidden = json.writeValueAsString(Map.of(
+                "activityTypes", List.of("COFFEE"), "displayName", "Ayşe", "name", "Gizli kahve",
+                "travelMode", "WALK",
+                "anchor", Map.of("lat", 51.44, "lng", 5.47, "label", "Café Zwart"),
+                "openPlan", Map.of("meetAt", meetAt, "openUntil", openUntil, "capacity", 4,
+                        "joinPolicy", "OPEN", "audience", "NONE")));
+        String hiddenSlug = json.readTree(mvc.perform(post("/api/sessions").header("X-Client", "web")
+                        .cookie(host).contentType(JSON).content(hidden))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("slug").asString();
+
+        MvcResult list = mvc.perform(get("/api/discover").param("activity", "COFFEE").cookie(guest))
+                .andExpect(status().isOk()).andReturn();
+        String body = list.getResponse().getContentAsString();
+        assertThat(body).contains("\"slug\":\"" + liveSlug + "\"")
+                .contains("\"locality\":\"Stratum\"")
+                .contains("\"openUntil\":\"" + openUntil.substring(0, 19))
+                .doesNotContain("Kleine Berg")
+                .doesNotContain(hiddenSlug);
+
+        // NONE: listede yok ama davet linki onizler; kitle DTO'da gorunur.
+        mvc.perform(get("/api/sessions/" + hiddenSlug + "/preview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openPlan.audience").value("NONE"))
+                .andExpect(jsonPath("$.openPlan.inProgress").value(true));
+
+        // FRIENDS: B-19'a kadar 400 (sozlesmede enum tam, davranis kapili).
+        String friends = live.replace("\"audience\":\"PUBLIC\"", "\"audience\":\"FRIENDS\"");
+        mvc.perform(post("/api/sessions").header("X-Client", "web").cookie(host)
+                        .contentType(JSON).content(friends))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("audience_not_available"));
+
+        // Pencereli plan capasiz olamaz.
+        String noAnchor = json.writeValueAsString(Map.of(
+                "activityTypes", List.of("COFFEE"), "displayName", "Ayşe", "lat", 51.44, "lng", 5.47,
+                "travelMode", "WALK",
+                "openPlan", Map.of("meetAt", meetAt, "openUntil", openUntil, "joinPolicy", "OPEN")));
+        mvc.perform(post("/api/sessions").header("X-Client", "web").cookie(host)
+                        .contentType(JSON).content(noAnchor))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("open_plan_anchor_required"));
     }
 
     @Test
