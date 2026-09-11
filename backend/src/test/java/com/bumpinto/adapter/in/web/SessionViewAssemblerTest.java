@@ -44,8 +44,12 @@ class SessionViewAssemblerTest {
     RoutingPort routing = (s, d, m) -> Optional.empty();
     Blocks blocks = mock(Blocks.class);
     PresenceStampsPort stamps = mock(PresenceStampsPort.class);
+    /** `OpenPlanDto.meetPassed` icin: sabit saat, testler tarihe gore kaymaz. */
+    static final java.time.Clock CLOCK =
+            java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T10:00:00Z"),
+                    java.time.ZoneOffset.UTC);
     SessionViewAssembler assembler =
-            new SessionViewAssembler(presence, rooms, routing, blocks, stamps);
+            new SessionViewAssembler(presence, rooms, routing, blocks, stamps, CLOCK);
 
     Session session(SessionType type) {
         return new Session(UUID.randomUUID(), "s1", UUID.randomUUID(), "Cuma",
@@ -158,7 +162,7 @@ class SessionViewAssemblerTest {
             default -> Optional.empty();
         };
         SessionViewAssembler real =
-                new SessionViewAssembler(presence, rooms, canned, blocks, stamps);
+                new SessionViewAssembler(presence, rooms, canned, blocks, stamps, CLOCK);
 
         ApiDtos.SessionView view = real.toView(new SessionQueries.SessionSnapshot(
                 s, List.of(walker, driver), List.of(v), Map.of(), Map.of(), Map.of()), null);

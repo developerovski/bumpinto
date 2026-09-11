@@ -1,0 +1,49 @@
+info:
+  name: List Open Plans
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/discover?activity=HIKE&lat=51.45&lng=5.48&travelMode=BIKE"
+  params:
+    - name: activity
+      value: HIKE
+    - name: lat
+      value: "51.45"
+    - name: lng
+      value: "5.48"
+    - name: travelMode
+      value: BIKE
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 ve plan listesi", function() {
+          expect(res.status).to.equal(200);
+          expect(res.body.plans).to.be.an("array");
+        });
+        test("kart KESIN konum tasimaz", function() {
+          (res.body.plans || []).forEach(function(p) {
+            expect(p.lat).to.equal(undefined);
+            expect(p.lng).to.equal(undefined);
+          });
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    **Kimlik:** hesap JWT (anonim 401). **Kota:** `discover` 60/dk (IP).
+
+    Parametrelerin hepsi opsiyonel:
+    - `activity` (coklu) — verilmezse **profil ilgi alanlari** (V21) kullanilir ve
+      cevabin `filter` alaninda geri doner: istemci kendi varsayilanini uydurmaz.
+    - `lat`/`lng` + `travelMode` — verilirse her karta `minutes` eklenir. Dakika IKI
+      yuvarlanmis nokta arasindan (~1.1 km) hesaplanir ve **5 dk** basamagina duser.
+
+    Kart **kesin konum tasimaz**: yalnizca `locality` (semt adi) ve `~minutes`.
+    Katilimci kimligi, koordinat ve mekan listesi bu uctan HIC donmez.
+
+    Listeden dusenler: gizli oturumlar, gecmis ya da 14 gunden uzak bulusmalar, karari
+    verilmis planlar, DOLU planlar ve engelli ciftler (iki yonde).

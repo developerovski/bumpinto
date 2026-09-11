@@ -1,6 +1,9 @@
 package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.safety.Blocks;
+import com.bumpinto.domain.session.Session;
+import com.bumpinto.domain.session.OpenPlan;
+import com.bumpinto.application.session.DiscoverQueries;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.Fairness;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,14 +48,16 @@ public class SessionViewAssembler {
     private final RoutingPort routing;
     private final Blocks blocks;
     private final PresenceStampsPort stamps;
+    private final Clock clock;
 
     public SessionViewAssembler(PresencePort presence, VoiceRoomsPort rooms, RoutingPort routing,
-                                Blocks blocks, PresenceStampsPort stamps) {
+                                Blocks blocks, PresenceStampsPort stamps, Clock clock) {
         this.presence = presence;
         this.rooms = rooms;
         this.routing = routing;
         this.blocks = blocks;
         this.stamps = stamps;
+        this.clock = clock;
     }
 
     public ApiDtos.SessionView toView(SessionQueries.SessionSnapshot snap, Authentication auth) {
@@ -134,7 +140,23 @@ public class SessionViewAssembler {
                 room.map(r -> new ApiDtos.VoiceDto(r.endsAt())).orElse(null),
                 // Uc zaten uye olmayana 403 veriyor; alan yine de viewer'a bagli — savunma tek
                 // satirdir ve kodun kime gittigini kodun kendisi soyler.
-                viewer == null ? null : snap.session().joinCode());
+                viewer == null ? null : snap.session().joinCode(),
+                openPlanDto(snap.session(), snap.participants()));
+    }
+
+    /**
+     * Acik planin okuma yuzu. {@code approvedSeats} ve {@code confirmed} TURETILIR: sayilan
+     * degeri saklamak, koltuk eklendikce bayatlayan ikinci bir gercek yaratirdi.
+     */
+    ApiDtos.OpenPlanDto openPlanDto(Session session, List<Participant> participants) {
+        OpenPlan plan = session.openPlan();
+        if (plan == null) {
+            return null;
+        }
+        int approved = (int) participants.stream()
+                .filter(p -> !p.manual() && p.userId() != null).count();
+        return new ApiDtos.OpenPlanDto(plan.meetAt(), plan.capacity(), plan.joinPolicy(),
+                approved, plan.confirmed(approved), plan.meetPassed(clock.instant()));
     }
 
     /**
@@ -174,7 +196,22 @@ public class SessionViewAssembler {
         return new ApiDtos.SessionPreview(snap.session().slug(), snap.session().name(),
                 snap.session().activityTypes(), snap.session().sessionType(),
                 snap.session().status(), hostDisplayName, participants.size(), participants,
-                hostOnline);
+                hostOnline, openPlanDto(snap.session(), snap.participants()));
+    }
+
+    /**
+     * Kesfet listesi. {@code locality} yalniz SEMTTIR: `midpointLabel` (acik planda kurulusta
+     * yazilir, K-B15) ya da host'un kendi etiketi — sokak/numara asla. Kart kesin koordinat da
+     * tasimaz; dakika isteyenin kendi yuvarlanmis konumundan gelir (DiscoverQueries).
+     */
+    public ApiDtos.DiscoverResponse toDiscover(List<DiscoverQueries.Row> rows,
+                                               Set<ActivityType> filter, TravelMode mode) {
+        List<ApiDtos.PlanCardDto> plans = rows.stream().map(r -> new ApiDtos.PlanCardDto(
+                r.session().slug(), r.session().name(), r.session().activityTypes(),
+                r.session().openPlan().meetAt(), r.session().openPlan().capacity(),
+                r.approvedSeats(), r.confirmed(), r.session().openPlan().joinPolicy(),
+                r.hostDisplayName(), r.session().midpointLabel(), r.minutes(), mode)).toList();
+        return new ApiDtos.DiscoverResponse(plans, filter.stream().sorted().toList());
     }
 
     /**

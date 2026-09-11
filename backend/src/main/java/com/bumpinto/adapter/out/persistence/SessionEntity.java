@@ -32,4 +32,11 @@ class SessionEntity {
     Double anchorLng;
     /** 5 haneli davet kodu (V18); unique index sema tarafinda. */
     String joinCode;
+    /**
+     * Acik plan (V20). Ucu ya hep null (gizli oturum) ya hep dolu — sekil kisiti semada
+     * ({@code sessions_open_plan_check}), burada tekrar edilmiyor.
+     */
+    Instant meetAt;
+    Short capacity;
+    String joinPolicy;
 }

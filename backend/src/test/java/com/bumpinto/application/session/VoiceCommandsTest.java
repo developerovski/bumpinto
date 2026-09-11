@@ -84,7 +84,7 @@ class VoiceCommandsTest {
             issuedTtls.add(ttl);
             return IceConfig.stunOnly();
         };
-        sessions = new SessionCommands(store, events, clock);
+        sessions = new SessionCommands(store, events, new FakeStores.FakeReverseGeocoder(), clock);
         voice = new VoiceCommands(store, rooms, turn, events, clock, props(), presence);
         SessionCommands.CreateSessionResult created = sessions.createSession(UUID.randomUUID(),
                 "Cuma", List.of(ActivityType.COFFEE), SessionType.GROUP, DEN_BOSCH, "Mehmet",

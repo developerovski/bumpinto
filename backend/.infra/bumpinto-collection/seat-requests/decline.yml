@@ -1,0 +1,22 @@
+info:
+  name: Decline Request (host)
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/seat-requests/{{seatRequestId}}/decline"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 doner", function() {
+          expect(res.status).to.equal(200);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    **Yalniz HOST** (hesap JWT). Reddedilen istek kayit olarak KALIR (`DECLINED`):
+    silinseydi ayni kisi mukerrer istek kapisini atlayip tekrar tekrar istek atardi.

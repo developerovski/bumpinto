@@ -6,6 +6,8 @@ import com.bumpinto.application.error.NotFoundException;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
@@ -29,13 +31,16 @@ class SessionCommandsTest {
 
     FakeStores.InMemorySessionStore store;
     FakeStores.RecordingEvents events;
+    /** K-B15: acik plan kurulurken ters geocode edilir; gizli oturumda hic cagrilmaz. */
+    FakeStores.FakeReverseGeocoder geocoder;
     SessionCommands commands;
 
     @BeforeEach
     void setUp() {
         store = new FakeStores.InMemorySessionStore();
         events = new FakeStores.RecordingEvents();
-        commands = new SessionCommands(store, events,
+        geocoder = new FakeStores.FakeReverseGeocoder();
+        commands = new SessionCommands(store, events, geocoder,
                 Clock.fixed(Instant.parse("2026-09-01T10:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -141,6 +146,74 @@ class SessionCommandsTest {
 
         assertThatThrownBy(() -> commands.join(r.session().slug(), Caller.ANONYMOUS,
                 "Ayşe", SOMEREN, null, null)).isInstanceOf(ConflictException.class);
+    }
+
+    /** Acik planin TTL'i bulusma + 3 saat; 24 saatlik varsayilan burada gecersiz. */
+    @Test
+    void anOpenPlanSessionExpiresThreeHoursAfterTheMeeting() {
+        OpenPlan plan = new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4,
+                JoinPolicy.APPROVAL);
+
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
+                null, TravelMode.BIKE, null, plan);
+
+        assertThat(r.session().openPlan()).isEqualTo(plan);
+        assertThat(r.session().expiresAt()).isEqualTo(Instant.parse("2026-09-13T11:00:00Z"));
+    }
+
+    /**
+     * K-B15: Kesfet karti semt adini basiyor ve plani daha COLLECTING'ken listeliyor. Ad
+     * `find-venues`'e kadar beklenirse kart BOS cikardi — o yuzden acik planda kurulusta bir
+     * kez ters geocode edilir.
+     */
+    @Test
+    void anOpenPlanResolvesItsMidpointLabelAtCreation() {
+        geocoder.label = "Woensel";
+
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
+                null, TravelMode.BIKE, null,
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+
+        assertThat(r.session().midpointLabel()).isEqualTo("Woensel");
+        assertThat(geocoder.calls).isEqualTo(1);
+    }
+
+    /** GIZLI oturum bu cagriyi YAPMAZ: bugunku davranis korunur, bosuna ag istegi yok. */
+    @Test
+    void aHiddenSessionDoesNotReverseGeocodeAtCreation() {
+        commands.createSession(UUID.randomUUID(), "Kahve", List.of(ActivityType.COFFEE),
+                SessionType.GROUP, DEN_BOSCH, "Ayşe", null, TravelMode.CAR, null);
+
+        assertThat(geocoder.calls).isZero();
+    }
+
+    /** Capali acik planda host'un YAZDIGI ad esastir: ters geocode onu ezmez, cagrilmaz bile. */
+    @Test
+    void anAnchoredOpenPlanKeepsTheHostsOwnLabel() {
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
+                null, TravelMode.BIKE,
+                new SessionCommands.Anchor(SOMEREN, "Someren Meydanı"),
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+
+        assertThat(r.session().midpointLabel()).isEqualTo("Someren Meydanı");
+        assertThat(geocoder.calls).isZero();
+    }
+
+    /** Ters geocode basarisizligi NORMALDIR: plan yine kurulur, ad null kalir. */
+    @Test
+    void aFailedReverseGeocodeStillCreatesTheOpenPlan() {
+        geocoder.label = null;
+
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe",
+                null, TravelMode.BIKE, null,
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+
+        assertThat(r.session().midpointLabel()).isNull();
+        assertThat(r.session().isOpenPlan()).isTrue();
     }
 
     /** Davet linki anonim katilima ACIK kalir: kimliksiz her katilim yeni bir koltuktur. */
@@ -283,7 +356,8 @@ class SessionCommandsTest {
     }
 
     SessionCommands commandsAt(String instant) {
-        return new SessionCommands(store, events, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+        return new SessionCommands(store, events, geocoder,
+                Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     }
 
     @Test

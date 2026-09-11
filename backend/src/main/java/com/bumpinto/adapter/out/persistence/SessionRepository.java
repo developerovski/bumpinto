@@ -15,6 +15,19 @@ public interface SessionRepository extends JpaRepository<SessionEntity, UUID> {
     List<SessionEntity> findByHostIdOrderByCreatedAtDescIdDesc(UUID hostId, Pageable page);
 
     /**
+     * Kesfet listesi. Dort kapi: (1) ACIK plan (`meetAt is not null` — kismi indeks tam bunu
+     * tasiyor), (2) bulusma GELECEKTE ve ufuk icinde, (3) TTL gecmemis, (4) karar verilmis ya da
+     * suresi dolmus degil. Biri eksik olsaydi Kesfet "herkesin oturumlari" listesine donerdi.
+     */
+    @Query("""
+            select s from SessionEntity s
+            where s.meetAt is not null and s.meetAt > :now and s.meetAt < :until
+              and s.expiresAt >= :now and s.status not in ('DECIDED', 'EXPIRED')
+            order by s.meetAt asc
+            """)
+    List<SessionEntity> findPublicUpcoming(Instant now, Instant until);
+
+    /**
      * Acik oturumlar: kapanmamis VE TTL'i gecmemis. Kosul, tembel expiry'nin
      * {@code Session.isExpired} kuralinin (now > expiresAt) SQL karsiligidir — tam anina denk
      * gelen satir hala aciktir, bu yuzden {@code >=}.

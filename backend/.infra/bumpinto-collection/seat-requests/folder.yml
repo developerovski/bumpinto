@@ -1,0 +1,21 @@
+info:
+  name: Seat Requests
+  type: folder
+  seq: 10
+
+http:
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+docs:
+  type: text/markdown
+  content: |-
+    Acik plana katilim istekleri (B-17).
+
+    **Kimlik burada HESAP JWT'sidir, katilimci token'i DEGIL** — "oturum uclarinda kimlik
+    katilimci token'idir" kuralinin (ARCHITECTURE §8) bilincli istisnasi. Gerekce: isteyen
+    henuz katilimci DEGILDIR (koltugu yok, token'i da yok); koltuk ancak onaydan sonra dogar.
+
+    Gizli oturumda bu uclarin hepsi **404** doner (403 degil): 403, oturumun VAR oldugunu
+    sizdirir ve slug tahminini bir varlik oracle'ina cevirirdi.

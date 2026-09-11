@@ -71,6 +71,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 // ucuz reddeder, gercek limiti kurmaz.
                 // R-B9: kod uzayi 32^5 ama 10/dk kaba kuvveti anlamsiz kilar.
                 new Policy("bycode", "GET", Pattern.compile("^/api/sessions/by-code/[^/]+$"), 10),
+                // B-17: Kesfet listesi filtre degistikce yeniden cekilir; 60/dk kaydirmali bir
+                // filtre seridine yeter, kazimaya yetmez.
+                new Policy("discover", "GET", Pattern.compile("^/api/discover$"), 60),
+                // Katilim istegi yazar ve host'un panelinde gorunur: 10/dk zaten comert.
+                new Policy("seat", "POST",
+                        Pattern.compile("^/api/sessions/[^/]+/seat-requests$"), 10),
                 // R-B10: OG karti /api ALTINDA DEGIL, yani catch-all'a hic dusmez; kendi
                 // politikasi olmasa 240'lik FALLBACK'te kalirdi. 60/dk onizleme botlarinin
                 // ayni linki paralel cekmesine yeter (render zaten surec ici onbellekli).

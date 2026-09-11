@@ -9,12 +9,16 @@ import com.bumpinto.domain.port.ReportStorePort;
 import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEvent;
 import com.bumpinto.domain.port.SessionEventsPort;
+import com.bumpinto.domain.port.MeetCheckinStorePort;
+import com.bumpinto.domain.port.SeatRequestStorePort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.port.UserStorePort;
 import com.bumpinto.domain.port.VoiceRoomsPort;
 import com.bumpinto.domain.safety.Block;
 import com.bumpinto.domain.safety.Report;
+import com.bumpinto.domain.session.MeetCheckin;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.SeatRequest;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -55,6 +59,19 @@ public class FakeStores {
 
         @Override public Optional<Session> sessionBySlug(String slug) {
             return sessions.values().stream().filter(s -> s.slug().equals(slug)).findFirst();
+        }
+
+        /** Gercek sorgunun (SessionRepository.findPublicUpcoming) dort kapisinin aynisi. */
+        @Override public List<Session> findPublicUpcoming(Instant now, Instant until) {
+            return sessions.values().stream()
+                    .filter(Session::isOpenPlan)
+                    .filter(s -> s.openPlan().meetAt().isAfter(now)
+                            && s.openPlan().meetAt().isBefore(until))
+                    .filter(s -> !s.expiresAt().isBefore(now))
+                    .filter(s -> s.status() != SessionStatus.DECIDED
+                            && s.status() != SessionStatus.EXPIRED)
+                    .sorted(Comparator.comparing(s -> s.openPlan().meetAt()))
+                    .toList();
         }
 
         @Override public Participant saveParticipant(Participant p) {
@@ -488,6 +505,40 @@ public class FakeStores {
                     room.endsAt(), members);
             rooms.put(sessionId, next);
             return Optional.of(next);
+        }
+    }
+
+    /** B-17: katilim istekleri. Gercek adaptorde (oturum, kullanici) UNIQUE — burada da oyle. */
+    public static class InMemorySeatRequestStore implements SeatRequestStorePort {
+        public final Map<UUID, SeatRequest> requests = new LinkedHashMap<>();
+
+        @Override public SeatRequest save(SeatRequest r) {
+            requests.put(r.id(), r);
+            return r;
+        }
+
+        @Override public Optional<SeatRequest> findById(UUID id) {
+            return Optional.ofNullable(requests.get(id));
+        }
+
+        @Override public Optional<SeatRequest> findBySessionAndUser(UUID sessionId, UUID userId) {
+            return requests.values().stream()
+                    .filter(r -> r.sessionId().equals(sessionId) && r.userId().equals(userId))
+                    .findFirst();
+        }
+
+        @Override public List<SeatRequest> findBySession(UUID sessionId) {
+            return requests.values().stream()
+                    .filter(r -> r.sessionId().equals(sessionId)).toList();
+        }
+    }
+
+    /** B-17: "Bulustunuz mu?" cevaplari. Kisi basina TEK satir (gercek semadaki bilesik PK). */
+    public static class InMemoryMeetCheckinStore implements MeetCheckinStorePort {
+        public final Map<String, MeetCheckin> saved = new LinkedHashMap<>();
+
+        @Override public void upsert(MeetCheckin c) {
+            saved.put(c.sessionId() + ":" + c.participantId(), c);
         }
     }
 }

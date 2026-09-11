@@ -1,0 +1,45 @@
+info:
+  name: Request a Seat
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/seat-requests"
+  body:
+    type: json
+    json: |-
+      {
+        "displayName": "Priya",
+        "lat": 51.45,
+        "lng": 5.48,
+        "locationLabel": "Woensel",
+        "travelMode": "BIKE",
+        "note": "Yeni geldim, tanismak isterim"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201 ve PENDING", function() {
+          expect(res.status).to.equal(201);
+          expect(res.body.status).to.equal("PENDING");
+        });
+        test("istek kimligi zincire aktarilir", function() {
+          bru.setVar("seatRequestId", res.body.id);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    **Kimlik:** hesap JWT. **Kota:** `seat` 10/dk (IP).
+
+    Dogrulama: `displayName` zorunlu (<=40), `note` <=140 (semada da kisit var),
+    `locationLabel` <=80, `lat`/`lng` ikisi birlikte ya da hic (V20 sekil kisiti).
+
+    Kapi SIRASI: kendi planin (409) -> engel (403) -> mukerrer istek (409) -> dolu plan (409).
+    Dolu kontrolu EN SONDA: one alinsaydi zaten istek atmis biri "plan dolu" cevabi alir ve
+    kendi bekleyen istegini kaybettigini sanirdi.
+
+    `joinPolicy: OPEN` olan planda istek ANINDA `APPROVED` doner ve koltuk acilir.

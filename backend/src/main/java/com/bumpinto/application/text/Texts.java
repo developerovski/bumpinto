@@ -17,6 +17,15 @@ public final class Texts {
         return raw == null || raw.isBlank() ? null : normalize(raw, 80);
     }
 
+    /**
+     * Katilim istegindeki tek cumlelik tanitim (B-17). 140 sinir SEMADA da var
+     * ({@code seat_requests_note_len}) — burada kirpiliyor ki uzun metin 500 degil sessiz
+     * kisaltma olsun; kisit yine de son savunma hatti olarak duruyor.
+     */
+    public static String note(String raw) {
+        return raw == null || raw.isBlank() ? null : normalize(raw, 140);
+    }
+
     // Kontrol karakterlerini söker, boşlukları toplar, uzunluğu sınırlar.
     // Tırnak/SQL keyword TEMİZLEMEZ — 's-Hertogenbosch geçerli veridir.
     private static String normalize(String raw, int maxLength) {

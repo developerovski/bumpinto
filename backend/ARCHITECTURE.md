@@ -121,6 +121,7 @@ com.bumpinto                                   (111 sınıf)
 │       ├── turn/          1 — CloudflareTurnCredentials (Cloudflare TURN kimliği)
 │       ├── presence/      2 — InMemoryPresence · InMemoryVoiceRooms
 │       ├── geocode/       1 — NominatimReverseGeocoder
+│       ├── quota/         1 — InMemoryAccountQuota (hesap başına kota; K-B34)
 │       └── image/         1 — OG kartı PNG render'ı (saf `java.awt`; domain yalnız `OgImagePort`'u görür)
 │
 └── infra/                                      9 sınıf — iş kuralı YOK
@@ -134,6 +135,12 @@ com.bumpinto                                   (111 sınıf)
 oturum kavramına yapışırdı. `adapter/out/apple/` Apple token takasını ve revoke'unu tutar; Apple
 sunucusuna giden TEK kapı orasıdır (`AppleTokensPort`), kimlik token'ı DOĞRULAMA ise dış çağrı
 olmadığı için `infra/security/AppleIdVerifier`'da kalır (Google'ın eşi).
+
+**B-17 (Keşfet) yeni paket AÇMADI.** Açık plan `Session`'ın bir varyantıdır: `OpenPlan`,
+`JoinPolicy`, `SeatRequest`, `SeatStatus` ve `MeetCheckin` `domain/session/` altında durur, çünkü
+hepsi oturum kavramının parçasıdır — ayrı bir `domain/discover/` paketi tek kavramı ikiye bölerdi
+ve deste/karar/presence'ın hangi tarafta olduğu belirsizleşirdi. Uygulama tarafında da aynı:
+`SeatRequests`, `DiscoverQueries` ve `MeetCheckins` `application/session/` altındadır.
 
 **Gruplama ölçütü ilgi alanıdır, teknik tür değildir.** `domain/session` altında hem `Session`
 kaydı hem `SessionStatus` enum'u hem `Participant` durur; bunları "records/", "enums/" diye
@@ -386,6 +393,20 @@ geçerli token'ı burada işe yaramaz.
 Tek yer: `ParticipantTokenDelivery` / `AuthCookies`. Host token'ı ve katılımcı token'ı **aynı**
 kuraldan geçer — host da bir katılımcıdır.
 
+### Bilinçli istisna: katılım istekleri hesap JWT'siyle çalışır (B-17)
+
+Kural şudur: *oturum uçlarında kimlik katılımcı token'ıdır.* `/api/sessions/{slug}/seat-requests`
+uçları bunun **tek istisnasıdır** ve hesap JWT'si ister. Gerekçe kolaylık değil, zorunluluk:
+isteyen kişi henüz katılımcı **değildir** — koltuğu yoktur, dolayısıyla token'ı da yoktur; koltuk
+ancak host onayladıktan sonra doğar. Host kararı da Keşfet'ten gelen hesaplı kullanıcıyla ilgilidir
+(engel listesi ve mükerrer istek kapısı hesap kimliğine dayanır).
+
+`/api/discover` aynı sebeple hesap JWT'si ister: engel süzgeci "kim bakıyor" bilgisine dayanır ve
+anonim bir çağıran için engel diye bir şey yoktur.
+
+`POST /api/sessions/{slug}/checkin` ise kurala **uyar** (katılımcı token'ı): cevabı veren kişi
+zaten koltuk sahibidir.
+
 Cookie'ler `HttpOnly` + `SameSite=Lax`; `secure` bayrağı profilden gelir (local `false`, prod `true`).
 **Yol ve isim kapsamlıdır** — bu bir güvenlik tercihidir, kozmetik değil:
 
@@ -447,6 +468,8 @@ Politikalar sırayla eşleşir; ilk eşleşen kazanır:
 | `find` | POST | `/api/sessions/*/find-venues` | 3 |
 | `create` | POST | `/api/sessions` | 10 |
 | `ws` | GET | `/api/sessions/*/ws` | 240 |
+| `discover` | GET | `/api/discover` | 60 |
+| `seat` | POST | `/api/sessions/*/seat-requests` | 10 |
 | `api` | * | `/api/**` | 120 |
 | `fallback` | * | her şey | 240 |
 
@@ -608,6 +631,11 @@ istemciye tek yönlüdür — tek istisna ses sinyali (kural 5).
 | `voice_roster_changed` | — |
 | `nudged` | `fromParticipantId`, `toParticipantId` |
 | `blocked` | — |
+| `seat_requests_changed` | — |
+
+`seat_requests_changed` (B-17) katılım isteği geldiğinde ya da karara bağlandığında çalar.
+**Gövdesi boştur ve konu oturum geneline açıktır**: isteyen kimliği buradan sızmamalı — host
+`GET /api/sessions/{slug}/seat-requests` ile tazeler, diğerleri zili görür ama içini göremez.
 
 Tablo `SessionEvent`'in fabrikalarıyla birebirdir; yeni bir olay eklerken buraya da satır düşer.
 `voice_roster_changed` yalnız üye kümesi **gerçekten** değiştiğinde yayınlanır — SUBSCRIBE/

@@ -6,6 +6,7 @@ import com.bumpinto.domain.session.ActivityType;
 
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,13 +14,25 @@ import java.util.UUID;
 public record UserProfile(UUID id, String email, String name, GeoPoint defaultLocation,
                           String defaultLocationLabel, ActivityType defaultActivity,
                           String language, TravelMode defaultTravelMode,
-                          Set<AuthProvider> authProviders, Consents consents) {
+                          Set<AuthProvider> authProviders, Consents consents,
+                          /** Kesfet'in varsayilan filtresi (B-17); en cok 5 tur, bos = filtresiz. */
+                          List<ActivityType> interests) {
 
     public UserProfile {
         authProviders = authProviders == null || authProviders.isEmpty()
                 ? Set.of(AuthProvider.GOOGLE)
                 : Collections.unmodifiableSet(EnumSet.copyOf(authProviders));
         consents = consents == null ? Consents.none() : consents;
+        interests = interests == null ? List.of() : List.copyOf(interests);
+    }
+
+    /** Ilgi alani ONCESI imza (B-16 ve oncesi cagri yerleri kirilmaz). */
+    public UserProfile(UUID id, String email, String name, GeoPoint defaultLocation,
+                       String defaultLocationLabel, ActivityType defaultActivity, String language,
+                       TravelMode defaultTravelMode, Set<AuthProvider> authProviders,
+                       Consents consents) {
+        this(id, email, name, defaultLocation, defaultLocationLabel, defaultActivity, language,
+                defaultTravelMode, authProviders, consents, null);
     }
 
     /** Eski 8'li imza: saglayici/riza bilinmiyor -> GOOGLE + riza yok. */
@@ -38,12 +51,21 @@ public record UserProfile(UUID id, String email, String name, GeoPoint defaultLo
 
     public UserProfile withPreferences(String newName, GeoPoint location, String label,
                                        ActivityType activity, String lang, TravelMode mode) {
+        return withPreferences(newName, location, label, activity, lang, mode, interests);
+    }
+
+    /** Tam degistirme (B-17): `interests` null ise MEVCUT liste korunur, bos liste temizler. */
+    public UserProfile withPreferences(String newName, GeoPoint location, String label,
+                                       ActivityType activity, String lang, TravelMode mode,
+                                       List<ActivityType> newInterests) {
         return new UserProfile(id, email, newName == null ? name : newName, location, label,
-                activity, lang, mode, authProviders, consents);
+                activity, lang, mode, authProviders, consents,
+                newInterests == null ? interests : newInterests);
     }
 
     public UserProfile withConsents(Consents newConsents) {
         return new UserProfile(id, email, name, defaultLocation, defaultLocationLabel,
-                defaultActivity, language, defaultTravelMode, authProviders, newConsents);
+                defaultActivity, language, defaultTravelMode, authProviders, newConsents,
+                interests);
     }
 }

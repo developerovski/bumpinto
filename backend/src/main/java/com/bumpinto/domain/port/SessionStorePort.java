@@ -12,6 +12,9 @@ import java.util.UUID;
 public interface SessionStorePort {
     Session saveSession(Session session);
     Optional<Session> sessionBySlug(String slug);
+
+    /** Kesfet: `[now, until]` penceresinde bulusan, karari verilmemis ACIK planlar. */
+    List<Session> findPublicUpcoming(Instant now, Instant until);
     Participant saveParticipant(Participant participant);
     List<Participant> participantsOf(UUID sessionId);
 

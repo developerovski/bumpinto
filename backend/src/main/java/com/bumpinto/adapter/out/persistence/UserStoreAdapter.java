@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -142,6 +143,10 @@ public class UserStoreAdapter implements UserStorePort {
         u.defaultLocationLabel = p.defaultLocationLabel();
         u.defaultActivity = p.defaultActivity() == null ? null : p.defaultActivity().name();
         u.language = p.language();
+        // Bos liste -> null: "hic secmedim" ile "hepsini sildim" ayni sey, sema da null bekliyor.
+        u.interests = p.interests().isEmpty() ? null
+                : p.interests().stream().map(ActivityType::name)
+                        .collect(java.util.stream.Collectors.joining(","));
         u.defaultTravelMode = p.defaultTravelMode() == null ? null : p.defaultTravelMode().name();
         u.consentLocation = p.consents().location();
         u.consentMicrophone = p.consents().microphone();
@@ -161,6 +166,13 @@ public class UserStoreAdapter implements UserStorePort {
                 u.defaultTravelMode == null ? null : TravelMode.valueOf(u.defaultTravelMode),
                 parseProviders(u.authProviders),
                 new Consents(u.consentLocation, u.consentMicrophone, u.consentAnalytics,
-                        u.consentsUpdatedAt, u.consentsVersion));
+                        u.consentsUpdatedAt, u.consentsVersion),
+                parseInterests(u.interests));
+    }
+
+    /** CSV -> liste. Bos/null ayni sey: filtresiz. */
+    private static List<ActivityType> parseInterests(String csv) {
+        return csv == null || csv.isBlank() ? List.of()
+                : java.util.Arrays.stream(csv.split(",")).map(ActivityType::valueOf).toList();
     }
 }

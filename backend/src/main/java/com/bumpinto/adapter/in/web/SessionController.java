@@ -2,12 +2,15 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.error.ForbiddenException;
+import com.bumpinto.application.session.MeetCheckins;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.port.PresenceStampsPort;
 import com.bumpinto.domain.session.Participant;
+import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.SessionType;
 import com.bumpinto.infra.security.ParticipantPrincipal;
 import jakarta.validation.Valid;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Clock;
@@ -39,11 +43,13 @@ class SessionController {
     private final ParticipantTokenDelivery tokens;
     private final UserProfileQueries profiles;
     private final PresenceStampsPort stamps;
+    private final MeetCheckins checkins;
     private final Clock clock;
 
     SessionController(SessionCommands commands, DeckFlow deckFlow, SessionQueries queries,
                       SessionViewAssembler assembler, ParticipantTokenDelivery tokens,
-                      UserProfileQueries profiles, PresenceStampsPort stamps, Clock clock) {
+                      UserProfileQueries profiles, PresenceStampsPort stamps,
+                      MeetCheckins checkins, Clock clock) {
         this.commands = commands;
         this.deckFlow = deckFlow;
         this.queries = queries;
@@ -51,6 +57,7 @@ class SessionController {
         this.tokens = tokens;
         this.profiles = profiles;
         this.stamps = stamps;
+        this.checkins = checkins;
         this.clock = clock;
     }
 
@@ -75,7 +82,7 @@ class SessionController {
                 WebPrincipals.accountId(jwt), request.name(), request.activityTypes(),
                 request.sessionType() == null ? SessionType.GROUP : request.sessionType(),
                 hostLocation, request.displayName(),
-                request.locationLabel(), request.travelMode(), anchor);
+                request.locationLabel(), request.travelMode(), anchor, openPlanOf(request));
         // Host da bir katılımcıdır: token'ı katılımdaki kuralın AYNISIYLA teslim edilir.
         ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
         String bodyToken = tokens.deliver(response, client, result.session().slug(),
@@ -83,6 +90,29 @@ class SessionController {
         return response.body(new ApiDtos.CreateSessionResponse(result.session().slug(),
                 result.session().id(), result.hostParticipant().id(), bodyToken,
                 result.session().expiresAt()));
+    }
+
+    /**
+     * Girdi -> domain. Kapasite ve politika opsiyoneldir: null -> 4 / APPROVAL. Varsayilan
+     * APPROVAL, cunku Kesfet YABANCILARA aciktir ve host'un kimi aldigina karar hakki engel
+     * listesinden ONCE gelen ilk savunma katmanidir.
+     */
+    private static OpenPlan openPlanOf(ApiDtos.CreateSessionRequest request) {
+        ApiDtos.OpenPlanInput in = request.openPlan();
+        return in == null ? null : new OpenPlan(in.meetAt(),
+                in.capacity() == null ? OpenPlan.DEFAULT_CAPACITY : in.capacity(),
+                in.joinPolicy() == null ? JoinPolicy.APPROVAL : in.joinPolicy());
+    }
+
+    /**
+     * "Bulustunuz mu?" — kimlik KATILIMCI token'idir (oda ici kural), seat-request uclarinin
+     * aksine: cevabi veren kisi zaten koltuk sahibidir.
+     */
+    @PostMapping("/{slug}/checkin")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void checkin(@AuthenticationPrincipal ParticipantPrincipal me, @PathVariable String slug,
+            @Valid @RequestBody ApiDtos.CheckinRequest request) {
+        checkins.record(slug, WebPrincipals.participantId(me), request.met());
     }
 
     /**

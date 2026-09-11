@@ -1,0 +1,34 @@
+info:
+  name: Meet Check-in
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/checkin"
+  body:
+    type: json
+    json: |-
+      { "met": true }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204 doner", function() {
+          expect(res.status).to.equal(204);
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    "Bulustunuz mu?" — 1. asama kapisinin tek olcumu.
+
+    **Kimlik KATILIMCI token'idir** (seat-request uclarinin aksine): cevabi veren zaten
+    koltuk sahibidir.
+
+    Iki kapi: yalniz **acik planda** sorulur (gizli oturumda 404 — bir arkadas grubunun kendi
+    isi urun basarisinin gostergesi degildir) ve yalniz **bulusma gectikten** sonra (once
+    sorulursa 409; erken cevap olcum degil niyet olurdu).
+
+    Kisi basina TEK cevap; ikincisi USTUNE yazar (fikrini degistirebilir).

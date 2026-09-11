@@ -1,0 +1,16 @@
+info:
+  name: Discover
+  type: folder
+  seq: 9
+
+http:
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+docs:
+  type: text/markdown
+  content: |-
+    Kesfet (B-17). Kimlik **hesap JWT'sidir**: liste yabancilarin planlarini gosteriyor ve
+    engel suzgeci "kim bakiyor" bilgisine dayaniyor — anonim cagiran icin engel diye bir sey
+    yoktur ve liste bir kazima yuzeyine donerdi.

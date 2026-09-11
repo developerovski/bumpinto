@@ -18,6 +18,7 @@ import com.bumpinto.domain.user.Consents;
 import com.bumpinto.application.user.UserPreferences;
 import com.bumpinto.application.user.UserProfileQueries;
 import com.bumpinto.domain.geo.GeoPoint;
+import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.user.UserProfile;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -69,7 +70,8 @@ class MeController {
         prefs.update(id, request.displayName(),
                 location == null ? null : new GeoPoint(location.lat(), location.lng()),
                 location == null ? null : location.label(),
-                request.defaultActivity(), request.language(), request.defaultTravelMode());
+                request.defaultActivity(), request.language(), request.defaultTravelMode(),
+                request.interests());
         return toResponse(queries.me(id));
     }
 
@@ -137,6 +139,7 @@ class MeController {
         return new ApiDtos.MeResponse(profile.id(), profile.email(), profile.name(), location,
                 profile.defaultActivity(), profile.language(), profile.defaultTravelMode(),
                 new ApiDtos.StatsDto(me.stats().sessionsHosted(), me.stats().friendsMet()),
-                profile.authProviders().stream().sorted().toList(), toDto(profile.consents()));
+                profile.authProviders().stream().sorted().toList(), toDto(profile.consents()),
+                profile.interests());
     }
 }

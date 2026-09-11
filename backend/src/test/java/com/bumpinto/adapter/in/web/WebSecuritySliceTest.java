@@ -2,6 +2,7 @@ package com.bumpinto.adapter.in.web;
 
 import com.bumpinto.application.deck.DeckFlow;
 import com.bumpinto.application.error.NotFoundException;
+import com.bumpinto.application.session.MeetCheckins;
 import com.bumpinto.application.session.SessionCommands;
 import com.bumpinto.application.session.SessionQueries;
 import com.bumpinto.application.session.VoiceCommands;
@@ -86,6 +87,7 @@ class WebSecuritySliceTest {
     @Autowired TokenService tokens;
     @Autowired RateLimitFilter rateLimit;
     @MockitoBean SessionCommands commands;
+    @MockitoBean MeetCheckins checkins;
     @MockitoBean DeckFlow deckFlow;
     @MockitoBean SessionQueries queries;
     @MockitoBean SessionStorePort store;
@@ -240,7 +242,7 @@ class WebSecuritySliceTest {
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, null, false, null, null);
         when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any(),
-                any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
+                any(), any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         String bearer = tokens.issueAccessToken(hostId, "m@x.dev");
         MvcResult created = mvc.perform(post("/api/sessions")
@@ -267,7 +269,7 @@ class WebSecuritySliceTest {
         Participant host = new Participant(UUID.randomUUID(), session.id(), "M",
                 new GeoPoint(51.7, 5.3), true, null, false, null, null);
         when(commands.createSession(eq(hostId), any(), any(), any(), any(), any(), any(), any(),
-                any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
+                any(), any())).thenReturn(new SessionCommands.CreateSessionResult(session, host));
 
         MvcResult result = mvc.perform(post("/api/sessions")
                         .header("Authorization", "Bearer " + tokens.issueAccessToken(hostId, "m@x.dev"))

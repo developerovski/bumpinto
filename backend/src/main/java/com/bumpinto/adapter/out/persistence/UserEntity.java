@@ -29,6 +29,8 @@ class UserEntity {
     String defaultLocationLabel;
     String defaultActivity;
     String language;
+    /** Kesfet filtresinin varsayilani (V21). CSV — activity_types ile ayni kalip (V8). */
+    String interests;
     String defaultTravelMode;
 
     static UserEntity of(UUID id, String email, String name, AuthProvider provider) {

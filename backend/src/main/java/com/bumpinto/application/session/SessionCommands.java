@@ -8,15 +8,18 @@ import com.bumpinto.domain.geo.GeoPoint;
 import com.bumpinto.domain.geo.SpreadLimit;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.port.SessionEvent;
+import com.bumpinto.domain.port.ReverseGeocodePort;
 import com.bumpinto.domain.port.SessionEventsPort;
 import com.bumpinto.domain.port.SessionStorePort;
 import com.bumpinto.domain.session.ActivityType;
+import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
@@ -41,11 +44,20 @@ public class SessionCommands {
 
     private final SessionStorePort store;
     private final SessionEventsPort events;
+    private final ReverseGeocodePort geocoder;
     private final Clock clock;
 
-    public SessionCommands(SessionStorePort store, SessionEventsPort events, Clock clock) {
+    /**
+     * Ters geocode BURADA da gerekiyor (K-B15): acik planin semt adi KURULURKEN yazilir, cunku
+     * Kesfet karti daha COLLECTING asamasindaki plani listeliyor ve `find-venues`'e kadar
+     * beklerse ad bos cikar. Gizli oturum bu cagriyi YAPMAZ — orada etiket eskisi gibi
+     * `DeckFlow`'da, mekan ararken cozulur.
+     */
+    public SessionCommands(SessionStorePort store, SessionEventsPort events,
+                           ReverseGeocodePort geocoder, Clock clock) {
         this.store = store;
         this.events = events;
+        this.geocoder = geocoder;
         this.clock = clock;
     }
 
@@ -60,28 +72,64 @@ public class SessionCommands {
     public record Anchor(GeoPoint point, String label) {
     }
 
+    /** Acik plan ONCESI imza: uretilen oturum GIZLIDIR (Kesfet'te listelenmez). */
     @Transactional
     public CreateSessionResult createSession(UUID hostUserId, String name,
                                              List<ActivityType> types,
                                              SessionType sessionType, GeoPoint hostLocation,
                                              String hostDisplayName, String hostLocationLabel,
                                              TravelMode hostTravelMode, Anchor anchor) {
+        return createSession(hostUserId, name, types, sessionType, hostLocation, hostDisplayName,
+                hostLocationLabel, hostTravelMode, anchor, null);
+    }
+
+    @Transactional
+    public CreateSessionResult createSession(UUID hostUserId, String name,
+                                             List<ActivityType> types,
+                                             SessionType sessionType, GeoPoint hostLocation,
+                                             String hostDisplayName, String hostLocationLabel,
+                                             TravelMode hostTravelMode, Anchor anchor,
+                                             OpenPlan openPlan) {
         // Kolaylik ctor'u degil TAM ctor: capali oturumda merkezin adi find-venues'i
         // BEKLEMEDEN yazilir, boylece Lobi'de capa aninda gorunur ve sunucu istemcinin
         // zaten cozdugu adi ikinci kez geocode etmez.
+        // Acik planin TTL'i bulusma + 3 saat; gizli oturumda 24 saatlik varsayilan surer.
+        Instant expiresAt = openPlan == null ? clock.instant().plus(SESSION_TTL)
+                : openPlan.expiresAt();
         Session session = store.saveSession(new Session(UUID.randomUUID(), Ids.slug(), hostUserId,
                 Texts.sessionName(name), types, sessionType, SessionStatus.COLLECTING,
-                clock.instant().plus(SESSION_TTL), null, List.of(),
+                expiresAt, null, List.of(),
                 null, null, null,
-                anchor == null ? null : Texts.label(anchor.label()),
+                midpointLabelAt(anchor, hostLocation, openPlan),
                 anchor == null ? null : anchor.point(),
-                store.freshJoinCode()));
+                store.freshJoinCode(), openPlan));
         requireWithinSpread(session, hostLocation, null);
         // null -> CAR: Participant'in compact ctor'u zaten coerce eder, burada tekrar etmiyoruz.
         Participant host = store.saveParticipant(new Participant(UUID.randomUUID(), session.id(),
                 Texts.displayName(hostDisplayName), hostLocation, true,
                 null, false, Texts.label(hostLocationLabel), hostTravelMode, hostUserId));
         return new CreateSessionResult(session, host);
+    }
+
+    /**
+     * Merkezin adi. Capali oturumda host'un yazdigi ad esastir (eskiden beri boyle).
+     *
+     * <p>ACIK PLANDA capa yoksa ad BURADA cozulur (K-B15): Kesfet karti semt adini basiyor ve
+     * plan daha COLLECTING'ken listeleniyor — `DeckFlow`'un `find-venues` anindaki ters geocode'u
+     * beklenirse kart bos cikar. Tek katilimcinin (host) konumu o andaki orta noktadir; kisi
+     * eklendikce orta nokta kayar ve ad `find-venues` aninda zaten tazelenir.
+     *
+     * <p>Gizli oturum bu cagriyi YAPMAZ: bugunku davranis korunur, bosuna ag istegi yok.
+     * Basarisizlik NORMALDIR — null etiketle devam edilir, kart o satiri hic cizmez.
+     */
+    private String midpointLabelAt(Anchor anchor, GeoPoint hostLocation, OpenPlan openPlan) {
+        if (anchor != null) {
+            return Texts.label(anchor.label());
+        }
+        if (openPlan == null || hostLocation == null) {
+            return null;
+        }
+        return geocoder.label(hostLocation).orElse(null);
     }
 
     /**

@@ -1,0 +1,29 @@
+info:
+  name: Approve Request (host)
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/sessions/{{slug}}/seat-requests/{{seatRequestId}}/approve"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 ve guncel liste", function() {
+          expect(res.status).to.equal(200);
+          expect(res.body.requests).to.be.an("array");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    **Yalniz HOST** (hesap JWT). Onay: istek `APPROVED` + hesaba bagli koltuk (Participant,
+    `userId` dolu) + iki zil (`participant_joined`, `seat_requests_changed`).
+
+    Dolu kontrolu onayda TEKRAR yapilir: istek sirasinda yer vardi, arada baskasi onaylanmis
+    olabilir (409 `plan full`).
+
+    Karar BIR KEZ verilir: karara baglanmis bir istege ikinci karar 409.
+    Cevap GUNCEL listeyi doner — panel ikinci bir GET atmaz.

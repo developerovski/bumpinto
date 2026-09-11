@@ -8,6 +8,8 @@ import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.Participant;
 import com.bumpinto.domain.session.DecisionKind;
 import com.bumpinto.domain.session.RunoffReason;
+import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.OpenPlan;
 import com.bumpinto.domain.session.Session;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionSummary;
@@ -62,12 +64,20 @@ public class SessionStoreAdapter implements SessionStorePort {
         e.anchorLat = s.anchor() == null ? null : s.anchor().lat();
         e.anchorLng = s.anchor() == null ? null : s.anchor().lng();
         e.joinCode = s.joinCode();
+        e.meetAt = s.openPlan() == null ? null : s.openPlan().meetAt();
+        e.capacity = s.openPlan() == null ? null : (short) s.openPlan().capacity();
+        e.joinPolicy = s.openPlan() == null ? null : s.openPlan().joinPolicy().name();
         sessions.save(e);
         return s;
     }
 
     @Override public Optional<Session> sessionBySlug(String slug) {
         return sessions.findBySlug(slug).map(SessionStoreAdapter::toSession);
+    }
+
+    @Override public List<Session> findPublicUpcoming(Instant now, Instant until) {
+        return sessions.findPublicUpcoming(now, until).stream()
+                .map(SessionStoreAdapter::toSession).toList();
     }
 
     @Override public Participant saveParticipant(Participant p) {
@@ -213,7 +223,13 @@ public class SessionStoreAdapter implements SessionStorePort {
                 e.decidedVenueId, runoff, e.decidedAt,
                 e.decisionKind == null ? null : DecisionKind.valueOf(e.decisionKind),
                 e.runoffReason == null ? null : RunoffReason.valueOf(e.runoffReason),
-                e.midpointLabel, anchor, e.joinCode);
+                e.midpointLabel, anchor, e.joinCode, openPlanOf(e));
+    }
+
+    /** Uc kolon birlikte gider birlikte gelir; sekil kisiti semada, burada tek bir null kapisi. */
+    private static OpenPlan openPlanOf(SessionEntity e) {
+        return e.meetAt == null ? null
+                : new OpenPlan(e.meetAt, e.capacity, JoinPolicy.valueOf(e.joinPolicy));
     }
 
     static Participant toParticipant(ParticipantEntity e) {

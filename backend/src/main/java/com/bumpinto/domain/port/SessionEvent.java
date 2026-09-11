@@ -91,6 +91,15 @@ public record SessionEvent(String type, Map<String, Object> payload) {
     }
 
     /** Biri birini engelledi/kaldirdi: roster ve ses uyeligi bayat kaldi, tazele. */
+    /**
+     * Katilim istekleri degisti (yeni istek ya da karar). Govde BOS ve konu oturum GENELINE
+     * aciktir: isteyen kimligi buradan sizmamali — host GET ile tazeler, digerleri zili
+     * gorur ama icini goremez.
+     */
+    public static SessionEvent seatRequestsChanged() {
+        return new SessionEvent("seat_requests_changed", Map.of());
+    }
+
     public static SessionEvent blocked() {
         return new SessionEvent("blocked", Map.of());
     }

@@ -7,6 +7,8 @@ import com.bumpinto.domain.user.AuthProvider;
 import com.bumpinto.domain.geo.TravelMode;
 import com.bumpinto.domain.session.ActivityType;
 import com.bumpinto.domain.session.DecisionKind;
+import com.bumpinto.domain.session.JoinPolicy;
+import com.bumpinto.domain.session.SeatStatus;
 import com.bumpinto.domain.session.RunoffReason;
 import com.bumpinto.domain.session.SessionStatus;
 import com.bumpinto.domain.session.SessionType;
@@ -15,6 +17,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -73,7 +77,12 @@ public final class ApiDtos {
                                        /** null → CAR (spec §4.5b varsayilani). */
                                        TravelMode travelMode,
                                        /** null → orta nokta modu (bugunku davranis). */
-                                       @Valid AnchorDto anchor) {
+                                       @Valid AnchorDto anchor,
+                                       /**
+                                        * B-17: dolu ise oturum ACIK PLAN olur ve Kesfet'te
+                                        * listelenir; null ise bugunku GIZLI oturum (davet linki).
+                                        */
+                                       @Valid OpenPlanInput openPlan) {
 
         /**
          * Konum ya da capa: ikisinden biri sart. Capali oturumda host kendi konumunu
@@ -236,7 +245,9 @@ public final class ApiDtos {
                               /** Ses odasi: null = kapali. SOLO'da hep null (start SOLO'yu reddeder). */
                               VoiceDto voice,
                               /** 5 haneli davet kodu; YALNIZ uyeye gonderilir (R-B9). */
-                              String joinCode) {
+                              String joinCode,
+                              /** B-17: acik plan; null ise gizli oturum. */
+                              OpenPlanDto openPlan) {
     }
 
     public record VoiceDto(Instant endsAt) {
@@ -263,12 +274,75 @@ public final class ApiDtos {
     public record PreviewParticipantDto(String displayName, boolean host, boolean hasLocation) {
     }
 
+    /**
+     * Acik plan GIRDISI. Kapasite ve politika opsiyonel: null -> 4 / APPROVAL. Sinirlar burada
+     * ve DOMAIN'de (OpenPlan) ve SEMADA (V20) — uc katman da ayni sayiyi soyler.
+     */
+    public record OpenPlanInput(@NotNull Instant meetAt,
+                                @Min(3) @Max(8) Integer capacity,
+                                JoinPolicy joinPolicy) {
+    }
+
+    /** Acik planin OKUMA yuzu. `approvedSeats`/`confirmed` turetilir, saklanmaz. */
+    public record OpenPlanDto(Instant meetAt, int capacity, JoinPolicy joinPolicy,
+                              int approvedSeats, boolean confirmed, boolean meetPassed) {
+    }
+
+    /**
+     * Kesfet karti. Kesin konum TASIMAZ: {@code locality} semt adi, {@code minutes} isteyenin
+     * kendi yuvarlanmis konumundan 5 dk basamaginda. Katilimci kimligi ve mekan da yok.
+     */
+    public record PlanCardDto(String slug, String name, List<ActivityType> activityTypes,
+                              Instant meetAt, int capacity, int approvedSeats, boolean confirmed,
+                              JoinPolicy joinPolicy, String hostDisplayName, String locality,
+                              Integer minutes, TravelMode travelMode) {
+    }
+
+    /** `filter` geri doner: istemci "hangi filtreyle bakiyorum"u sunucudan ogrenir (profil varsayilani). */
+    public record DiscoverResponse(List<PlanCardDto> plans, List<ActivityType> filter) {
+    }
+
+    public record SeatRequestInput(@NotBlank @Size(max = 40) String displayName,
+                                   @DecimalMin("-90") @DecimalMax("90") Double lat,
+                                   @DecimalMin("-180") @DecimalMax("180") Double lng,
+                                   @Size(max = 80) String locationLabel,
+                                   TravelMode travelMode,
+                                   @Size(max = 140) String note) {
+    }
+
+    /** Host panelindeki satir. Koordinat YOK: semt + yuvarlanmis dakika. */
+    public record SeatRequestDto(UUID id, String displayName, String locality, Integer minutes,
+                                 TravelMode travelMode, String note, SeatStatus status,
+                                 Instant createdAt, List<ActivityType> interests) {
+    }
+
+    public record SeatRequestListResponse(List<SeatRequestDto> requests, int approvedSeats,
+                                          int capacity, boolean confirmed) {
+    }
+
+    /**
+     * Isteyenin KENDI durumu. {@code participantToken} yalniz APPROVED'da ve yalniz mobilde
+     * govdede doner; web'de cookie'ye yazilir ve burada null kalir (ParticipantTokenDelivery).
+     */
+    public record MySeatResponse(SeatStatus status, String participantToken) {
+
+        @Override
+        public String toString() {
+            return "MySeatResponse[status=" + status + ", participantToken=***]";
+        }
+    }
+
+    public record CheckinRequest(@NotNull Boolean met) {
+    }
+
     public record SessionPreview(String slug, String name, List<ActivityType> activityTypes,
                                  SessionType sessionType, SessionStatus status,
                                  String hostDisplayName, int participantCount,
                                  List<PreviewParticipantDto> participants,
                                  /** Host su an oturumda mi — Katil ekranindaki rozet. Katilimi ENGELLEMEZ. */
-                                 boolean hostOnline) {
+                                 boolean hostOnline,
+                                 /** B-17: acik plan; null ise gizli oturum (davet linki). */
+                                 OpenPlanDto openPlan) {
     }
 
     /**
@@ -331,7 +405,9 @@ public final class ApiDtos {
     public record MeResponse(UUID id, String email, String displayName,
                              LocationPrefDto defaultLocation, ActivityType defaultActivity,
                              String language, TravelMode defaultTravelMode, StatsDto stats,
-                             List<AuthProvider> authProviders, ConsentsDto consents) {
+                             List<AuthProvider> authProviders, ConsentsDto consents,
+                             /** Kesfet'in varsayilan filtresi (B-17); bos = filtresiz. */
+                             List<ActivityType> interests) {
     }
 
     /** Uc anahtar da ZORUNLU: eksik alan "degistirme" degil, belirsiz rizadir. */
@@ -386,7 +462,12 @@ public final class ApiDtos {
                                   @Valid LocationPrefDto defaultLocation,
                                   ActivityType defaultActivity,
                                   String language,
-                                  TravelMode defaultTravelMode) {
+                                  TravelMode defaultTravelMode,
+                                  /**
+                                   * B-17: null = DEGISTIRME (displayName ile ayni kural), bos
+                                   * liste = temizle. Sinir domainde ve semada da var (V21).
+                                   */
+                                  @Size(max = 5) @UniqueElements List<ActivityType> interests) {
     }
 
     public record ConfigTilesDto(String styleUrl) {}

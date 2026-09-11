@@ -18,12 +18,33 @@ public record Session(UUID id, String slug, UUID hostId, String name,
                       /** Host'un sabit bulusma noktasi; null ise orta nokta modu. */
                       GeoPoint anchor,
                       /** 5 haneli davet kodu (R-B9); eski satirlarda ve backfill disinda null. */
-                      String joinCode) {
+                      String joinCode,
+                      /**
+                       * Acik plan (B-17); null ise oturum GIZLIDIR — Kesfet'te listelenmez ve
+                       * bugunku davet-linkli davranis aynen surer. Bayrak alani yok, varligin
+                       * kendisi bayraktir.
+                       */
+                      OpenPlan openPlan) {
 
     /** Listeler KOPYALANIR: cagiranin elindeki liste sonradan degisse oturum bozulmaz. */
     public Session {
         activityTypes = List.copyOf(activityTypes);
         runoffVenueIds = List.copyOf(runoffVenueIds);
+    }
+
+    /**
+     * Acik plan ONCESI imza (B-16 ve oncesi cagri yerleri kirilmaz): uretilen oturum GIZLIDIR.
+     * Alan eklendi diye bugunku cagri yerlerinin anlami degismez.
+     */
+    public Session(UUID id, String slug, UUID hostId, String name,
+                   List<ActivityType> activityTypes, SessionType sessionType,
+                   SessionStatus status, Instant expiresAt, UUID decidedVenueId,
+                   List<UUID> runoffVenueIds, Instant decidedAt, DecisionKind decisionKind,
+                   RunoffReason runoffReason, String midpointLabel, GeoPoint anchor,
+                   String joinCode) {
+        this(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
+                decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
+                midpointLabel, anchor, joinCode, null);
     }
 
     /** Kod ONCESI imza (B-14 ve oncesi cagri yerleri kirilmaz). */
@@ -54,16 +75,21 @@ public record Session(UUID id, String slug, UUID hostId, String name,
         return sessionType == SessionType.SOLO;
     }
 
+    /** Kesfet'te listelenir mi. Bayrak sutunu YOK: acik plan kaydinin varligi bayraktir. */
+    public boolean isOpenPlan() {
+        return openPlan != null;
+    }
+
     public Session withStatus(SessionStatus newStatus) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, newStatus,
                 expiresAt, decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason,
-                midpointLabel, anchor, joinCode);
+                midpointLabel, anchor, joinCode, openPlan);
     }
 
     public Session withMidpointLabel(String label) {
         return new Session(id, slug, hostId, name, activityTypes, sessionType, status, expiresAt,
                 decidedVenueId, runoffVenueIds, decidedAt, decisionKind, runoffReason, label,
-                anchor, joinCode);
+                anchor, joinCode, openPlan);
     }
 
     /** runoffReason KORUNUR: "runoff'tan cikan karar" izini karar sonrasi da anlatir. */
@@ -72,13 +98,13 @@ public record Session(UUID id, String slug, UUID hostId, String name,
         Objects.requireNonNull(when, "when");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.DECIDED, expiresAt, venueId, runoffVenueIds, when, kind,
-                runoffReason, midpointLabel, anchor, joinCode);
+                runoffReason, midpointLabel, anchor, joinCode, openPlan);
     }
 
     public Session inRunoff(List<UUID> venueIds, RunoffReason reason) {
         Objects.requireNonNull(reason, "reason");
         return new Session(id, slug, hostId, name, activityTypes, sessionType,
                 SessionStatus.RUNOFF, expiresAt, null, List.copyOf(venueIds), null, null, reason,
-                midpointLabel, anchor, joinCode);
+                midpointLabel, anchor, joinCode, openPlan);
     }
 }

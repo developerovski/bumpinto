@@ -223,6 +223,150 @@ class SchemaMigrationTest {
         assertThat(deleteRuleOf("refresh_tokens", "user_id")).isEqualTo("CASCADE");
     }
 
+    /**
+     * V20: acik plan sessions'in VARYANTIDIR. Ayri bir `visibility` kolonu yok — uc kolon ya hep
+     * null (gizli oturum) ya hep dolu. Kisitin degeri tam burada: bayrak kolonu olsaydi "public
+     * ama meet_at yok" gibi anlamsiz bir satir DB'ye girebilirdi ve Kesfet sorgusu onu
+     * sessizce atlardi.
+     */
+    @Test
+    void v20OpenPlanColumnsAreAllNullOrAllSet() {
+        assertThat(columnsOf("sessions")).contains("meet_at", "capacity", "join_policy");
+        UUID host = insertHost("v20-shape@bumpinto.test");
+
+        insertOpenPlan(host, "v20ok01", 4, "APPROVAL"); // ucu de dolu: gecer
+        insertSession(host, "v20ok02", null);           // ucu de null: gecer (gizli oturum)
+
+        assertThatThrownBy(() -> jdbc.update("""
+                insert into sessions (id, slug, host_id, activity_types, status, expires_at,
+                                      meet_at, capacity, join_policy)
+                values (?, ?, ?, 'HIKE', 'COLLECTING', now() + interval '1 day',
+                        now() + interval '1 day', null, null)
+                """, UUID.randomUUID(), "v20bad01", host))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * Kapasite [3,8]: 2 kisilik bir "grup" yeter sayiya (3) hic ulasamaz.
+     *
+     * <p>Iki sinir AYRI testlerde: {@code @JdbcTest} tek transaction'da kosar ve ilk kisit ihlali
+     * transaction'i iptal eder — ayni testteki ikinci insert sema hatasi degil "transaction
+     * aborted" verirdi, yani kisiti hic sinamazdi.
+     */
+    @Test
+    void v20RejectsCapacityBelowThree() {
+        UUID host = insertHost("v20-cap-lo@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v20bad02", 2, "APPROVAL"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** Ust sinir: 9 kisi destenin adalet siralamasini bozar (spec §4.5). */
+    @Test
+    void v20RejectsCapacityAboveEight() {
+        UUID host = insertHost("v20-cap-hi@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v20bad03", 9, "APPROVAL"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void v20RejectsAnUnknownJoinPolicy() {
+        UUID host = insertHost("v20-policy@bumpinto.test");
+        assertThatThrownBy(() -> insertOpenPlan(host, "v20bad04", 4, "MAYBE"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * Kisi basina TEK istek. Olmasaydi reddedilen biri ayni plana defalarca istek atip host'un
+     * panelini doldururdu — engel listesinin kapatmak icin var oldugu tacizin ta kendisi.
+     */
+    @Test
+    void v20KeepsSeatRequestsUniquePerSessionAndUser() {
+        UUID host = insertHost("v20-seat-host@bumpinto.test");
+        UUID guest = insertHost("v20-seat-guest@bumpinto.test");
+        UUID session = insertOpenPlan(host, "v20seat1", 4, "APPROVAL");
+
+        insertSeatRequest(session, guest, "PENDING");
+
+        assertThatThrownBy(() -> insertSeatRequest(session, guest, "PENDING"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** Not 140 karakter: istek bir MESAJ kutusu degil, tek cumlelik tanitim. */
+    @Test
+    void v20CapsTheSeatRequestNoteAt140Chars() {
+        UUID host = insertHost("v20-note-host@bumpinto.test");
+        UUID guest = insertHost("v20-note-guest@bumpinto.test");
+        UUID session = insertOpenPlan(host, "v20note1", 4, "APPROVAL");
+
+        assertThatThrownBy(() -> jdbc.update("""
+                insert into seat_requests (id, session_id, user_id, display_name, status, note)
+                values (?, ?, ?, 'Priya', 'PENDING', ?)
+                """, UUID.randomUUID(), session, guest, "x".repeat(141)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** Oturum silinince istek de gider: askida kalan istek host'u olmayan bir panel demek. */
+    @Test
+    void v20CascadesSeatRequestsAndCheckinsWithTheSession() {
+        assertThat(deleteRuleOf("seat_requests", "session_id")).isEqualTo("CASCADE");
+        assertThat(deleteRuleOf("seat_requests", "user_id")).isEqualTo("CASCADE");
+        assertThat(deleteRuleOf("meet_checkins", "session_id")).isEqualTo("CASCADE");
+    }
+
+    /** Kisi basina TEK cevap: birincil anahtar (session, participant). */
+    @Test
+    void v20KeepsOneCheckinPerParticipant() {
+        assertThat(columnsOf("meet_checkins")).contains("session_id", "participant_id", "met");
+        assertThat(jdbc.queryForObject("""
+                select indexdef from pg_indexes where indexname = 'meet_checkins_pkey'
+                """, String.class)).contains("session_id").contains("participant_id");
+    }
+
+    /** Kesfet sorgusu yalniz acik planlara bakar; kismi indeks gizli oturumlari hic tasimaz. */
+    @Test
+    void v20IndexesOnlyOpenPlansForDiscover() {
+        assertThat(jdbc.queryForObject("""
+                select indexdef from pg_indexes where indexname = 'sessions_discover_idx'
+                """, String.class)).contains("meet_at").contains("WHERE");
+    }
+
+    /** V21: Kesfet'in varsayilan filtresi. CSV — activity_types ile ayni kalip (V8). */
+    @Test
+    void v21AddsUserInterestsAsAShapeCheckedCsv() {
+        assertThat(columnsOf("users")).contains("interests");
+        UUID id = insertHost("v21-ok@bumpinto.test");
+        jdbc.update("update users set interests = 'HIKE,COFFEE' where id = ?", id);
+        assertThat(jdbc.queryForObject("select interests from users where id = ?", String.class,
+                id)).isEqualTo("HIKE,COFFEE");
+    }
+
+    /** En cok 5: filtre "her sey"e donerse Kesfet listesi kisisellesmez. */
+    @Test
+    void v21RejectsMoreThanFiveInterests() {
+        UUID id = insertHost("v21-cap@bumpinto.test");
+        assertThatThrownBy(() -> jdbc.update(
+                "update users set interests = 'A,B,C,D,E,F' where id = ?", id))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private UUID insertOpenPlan(UUID hostId, String slug, Integer capacity, String policy) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                insert into sessions (id, slug, host_id, activity_types, status, expires_at,
+                                      meet_at, capacity, join_policy)
+                values (?, ?, ?, 'HIKE', 'COLLECTING', now() + interval '1 day',
+                        now() + interval '1 day', ?, ?)
+                """, id, slug, hostId, capacity, policy);
+        return id;
+    }
+
+    private void insertSeatRequest(UUID sessionId, UUID userId, String status) {
+        jdbc.update("""
+                insert into seat_requests (id, session_id, user_id, display_name, status)
+                values (?, ?, ?, 'Priya', ?)
+                """, UUID.randomUUID(), sessionId, userId, status);
+    }
+
     private UUID insertHost(String email) {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into users (id, email, name) values (?, ?, ?)", id, email, "V18");

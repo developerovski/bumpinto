@@ -1,0 +1,26 @@
+info:
+  name: List Requests (host)
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/sessions/{{slug}}/seat-requests"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 ve sayac", function() {
+          expect(res.status).to.equal(200);
+          expect(res.body.approvedSeats).to.be.a("number");
+          expect(res.body.capacity).to.be.a("number");
+        });
+
+docs:
+  type: text/markdown
+  content: |-
+    **Yalniz HOST** (hesap JWT; baskasi 403). Istekler gelis sirasinda doner.
+
+    Satirda **koordinat YOKTUR**: host'un gordugu tek yer bilgisi isteyenin kendi yazdigi
+    semt etiketidir (`locality`). `interests` isteyenin profil ilgi alanlaridir.
