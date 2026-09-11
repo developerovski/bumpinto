@@ -404,6 +404,18 @@ ancak host onayladıktan sonra doğar. Host kararı da Keşfet'ten gelen hesapl�
 `/api/discover` aynı sebeple hesap JWT'si ister: engel süzgeci "kim bakıyor" bilgisine dayanır ve
 anonim bir çağıran için engel diye bir şey yoktur.
 
+**Davet linki açık planda koltuk açmaz (K-B37, 2026-09-11 güvenlik incelemesi).** Keşfet kartı slug'ı
+herkese bastığı için açık planda slug bir yetenek anahtarı **değildir**. `POST /api/sessions/{slug}/participants`
+(PUBLIC) açık planda koltuk kurtarmadan sonra **409 `open_plan_seat_request_required`** döner; koltuk yalnız
+`SeatRequests` üzerinden doğar — hesap zorunluluğu, çift yönlü engel, mükerrer istek ve kapasite kapıları tek
+yerdedir. Host ve onaylı üye aynı uçtan koltuğunu geri almaya devam eder (mobil token onarımı). Gizli oturumda
+davranış değişmez.
+
+**Seat-request uçları hesabı `Authentication`'dan okur**, `@AuthenticationPrincipal Jwt`'den değil: yol
+`/api/sessions/{slug}/` altında olduğu için `ParticipantTokenFilter` kendi planının katılımcı çerezini taşıyan
+host'ta principal'i ezer; hesap `details`'te durur (`WebPrincipals.accountId(Authentication)`). Yalnız katılımcı
+çerezi taşıyan istek yine 403.
+
 `POST /api/sessions/{slug}/checkin` ise kurala **uyar** (katılımcı token'ı): cevabı veren kişi
 zaten koltuk sahibidir.
 

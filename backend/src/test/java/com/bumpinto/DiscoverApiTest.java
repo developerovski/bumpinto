@@ -217,6 +217,121 @@ class DiscoverApiTest {
                 .andExpect(jsonPath("$.openPlan").doesNotExist());
     }
 
+    /**
+     * K-B37 (2026-09-11 guvenlik incelemesi): Kesfet slug'i herkese basar; davet-linki ucu
+     * (POST /participants, PUBLIC) host onayini, engeli ve kapasiteyi bilmiyordu — slug'i
+     * Kesfet'ten okuyan herkes 201 + katilimci jetonu alip SessionView'i okuyabiliyordu.
+     * Simdi 409 + makine kodu; oda kapali kalir. Onayli uye ise ayni uctan koltugunu geri alir
+     * (mobil token onarimi) ve koltuk sayisi degismez.
+     */
+    @Test
+    void aSlugTakenFromDiscoverDoesNotOpenASeatThroughTheInviteLink() throws Exception {
+        Cookie host = login("gid-op5-host", "host5-op@bumpinto.test", "Host");
+        Cookie stranger = login("gid-op5-stranger", "stranger5-op@bumpinto.test", "Yabancı");
+        Cookie priya = login("gid-op5-guest", "guest5-op@bumpinto.test", "Priya");
+
+        String body = json.writeValueAsString(Map.of(
+                "activityTypes", List.of("COFFEE"), "displayName", "Host",
+                "lat", 51.44, "lng", 5.47, "openPlan", Map.of("meetAt", MEET_AT)));
+        String slug = json.readTree(mvc.perform(post("/api/sessions").cookie(host)
+                        .header("X-Client", "web").contentType(JSON).content(body))
+                .andExpect(status().isCreated()).andReturn().getResponse()
+                .getContentAsString()).get("slug").asString();
+
+        // Slug Kesfet'ten okunur — kart onu basar, gizli degildir.
+        mvc.perform(get("/api/discover").cookie(stranger).param("activity", "COFFEE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plans[?(@.slug == '" + slug + "')]").isNotEmpty());
+
+        // Konum YOK: yayilim kapisi calismaz, tek kapi acik plan kapisidir.
+        String join = "{\"displayName\":\"Yabancı\"}";
+        mvc.perform(post("/api/sessions/" + slug + "/participants").cookie(stranger)
+                        .header("X-Client", "web").contentType(JSON).content(join))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("open_plan_seat_request_required"));
+        // Uc PUBLIC: anonim cagiran da ayni cevabi alir.
+        mvc.perform(post("/api/sessions/" + slug + "/participants")
+                        .header("X-Client", "web").contentType(JSON).content(join))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("open_plan_seat_request_required"));
+        // Oda KAPALI kaldi, koltuk acilmadi.
+        mvc.perform(get("/api/sessions/" + slug).cookie(stranger))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/sessions/" + slug + "/preview"))
+                .andExpect(jsonPath("$.participantCount").value(1));
+
+        // Onayli uye: istek → onay → davet-linki ucundan kurtarma (mobil) 201 + jeton.
+        mvc.perform(post("/api/sessions/" + slug + "/seat-requests").cookie(priya)
+                        .contentType(JSON).content("{\"displayName\":\"Priya\"}"))
+                .andExpect(status().isCreated());
+        String reqId = json.readTree(mvc.perform(get("/api/sessions/" + slug + "/seat-requests")
+                        .cookie(host)).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString()).get("requests").get(0).get("id").asString();
+        mvc.perform(post("/api/sessions/" + slug + "/seat-requests/" + reqId + "/approve")
+                .cookie(host)).andExpect(status().isOk());
+        mvc.perform(post("/api/sessions/" + slug + "/participants").cookie(priya)
+                        .header("X-Client", "mobile").contentType(JSON)
+                        .content("{\"displayName\":\"Priya\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.participantToken").isString());
+        mvc.perform(get("/api/sessions/" + slug + "/preview"))
+                .andExpect(jsonPath("$.participantCount").value(2)); // kurtarma katilim degildir
+    }
+
+    /**
+     * K-B37 yan bulgusu: seat-request uclari /api/sessions/{slug}/ altinda yasar ve
+     * ParticipantTokenFilter o yolu eslestirir — kendi planinin katilimci cerezini tasiyan host
+     * (gercek tarayici onu HER ZAMAN tasir; MockMvc tasimadigi icin gorulmemisti) hesap
+     * principal'ini kaybediyor ve panelinden 403 aliyordu. Hesap details'ten okunur. Fail-closed
+     * KORUNUR: yalniz katilimci cerezi tasiyan istek yine 403.
+     */
+    @Test
+    void theHostPanelWorksWhileTheHostCarriesItsOwnParticipantCookie() throws Exception {
+        Cookie host = login("gid-op6-host", "host6-op@bumpinto.test", "Host");
+        Cookie guest = login("gid-op6-guest", "guest6-op@bumpinto.test", "Guest");
+
+        MvcResult created = mvc.perform(post("/api/sessions").cookie(host)
+                        .header("X-Client", "web").contentType(JSON)
+                        .content(json.writeValueAsString(Map.of(
+                                "activityTypes", List.of("COFFEE"), "displayName", "Host",
+                                "lat", 51.44, "lng", 5.47,
+                                "openPlan", Map.of("meetAt", MEET_AT)))))
+                .andExpect(status().isCreated()).andReturn();
+        String slug = json.readTree(created.getResponse().getContentAsString())
+                .get("slug").asString();
+        Cookie hostSeat = created.getResponse().getCookie("bumpinto_pt_" + slug);
+        assertThat(hostSeat).isNotNull();
+
+        mvc.perform(post("/api/sessions/" + slug + "/seat-requests").cookie(guest)
+                        .contentType(JSON).content("{\"displayName\":\"Guest\"}"))
+                .andExpect(status().isCreated());
+
+        // Hesap + katilimci cerezi BIRLIKTE (gercek tarayici): panel acik, karar calisir.
+        String reqId = json.readTree(mvc.perform(get("/api/sessions/" + slug + "/seat-requests")
+                        .cookie(host, hostSeat)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString())
+                .get("requests").get(0).get("id").asString();
+        mvc.perform(post("/api/sessions/" + slug + "/seat-requests/" + reqId + "/approve")
+                        .cookie(host, hostSeat))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.approvedSeats").value(2));
+
+        // Onaylanan misafir de /mine'i ikinci kez (artik cerezli) cagirabilir.
+        Cookie guestSeat = mvc.perform(get("/api/sessions/" + slug + "/seat-requests/mine")
+                        .cookie(guest).header("X-Client", "web"))
+                .andExpect(status().isOk()).andReturn().getResponse()
+                .getCookie("bumpinto_pt_" + slug);
+        assertThat(guestSeat).isNotNull();
+        mvc.perform(get("/api/sessions/" + slug + "/seat-requests/mine")
+                        .cookie(guest, guestSeat).header("X-Client", "web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        // YALNIZ katilimci cerezi: hesap yok → 403. Kapi gevsemedi.
+        mvc.perform(get("/api/sessions/" + slug + "/seat-requests").cookie(hostSeat))
+                .andExpect(status().isForbidden());
+    }
+
     /** Katilim istegi ucu anonim cagirana KAPALI. */
     @Test
     void seatRequestsRequireAnAccount() throws Exception {

@@ -42,6 +42,12 @@ public class SessionCommands {
     private static final Set<SessionStatus> CLOSED_TO_NEW_SEATS = EnumSet.of(
             SessionStatus.SWIPING, SessionStatus.RUNOFF, SessionStatus.DECIDED);
 
+    /**
+     * Acik plana davet linkiyle koltuk ACILMAZ (K-B37): 409 govdesindeki makine kodu. Istemci
+     * bunu gorunce katilim formunu degil plan detayini / katilim istegini acar (W-17, M-11).
+     */
+    public static final String OPEN_PLAN_SEAT_REQUEST_REQUIRED = "open_plan_seat_request_required";
+
     private final SessionStorePort store;
     private final SessionEventsPort events;
     private final ReverseGeocodePort geocoder;
@@ -147,6 +153,10 @@ public class SessionCommands {
      * bittikten (DECIDED) sonra kimligi olan cagiran yine de kendi koltugunu geri alir, cunku
      * kapi seatOf'tan SONRA calisir — yoksa sekmesini yenileyen bir uye kendi oturumundan 409 ile
      * atilirdi.
+     *
+     * <p>ACIK PLANDA yeni koltuk bu uctan hic acilmaz (K-B37): Kesfet slug'i herkese bastigi
+     * icin davet linki orada bir sir degildir ve host onayi / engel / kapasite kapilari
+     * {@code SeatRequests}'te yasar. Kurtarma yine calisir — kapi seatOf'tan SONRADIR.
      */
     @Transactional
     public Participant join(String slug, Caller caller, String displayName, GeoPoint location,
@@ -161,6 +171,14 @@ public class SessionCommands {
         }
         if (session.isSolo()) {
             throw new ConflictException("solo session has no invite link");
+        }
+        if (session.isOpenPlan()) {
+            // K-B37: Kesfet slug'i HERKESE basar; acik planda slug gizli bir yetenek DEGILDIR.
+            // Bu yol host onayini, cift yonlu engeli, kapasiteyi ve hesap zorunlulugunu bilmez —
+            // hepsi SeatRequests'te yasar ve acik planda koltuk YALNIZ oradan dogar. Kapi koltuk
+            // kurtarmadan SONRA: host ve onayli uye kendi koltugunu buradan geri almaya devam
+            // eder (mobil token onarimi, K-M39).
+            throw new ConflictException(OPEN_PLAN_SEAT_REQUEST_REQUIRED);
         }
         if (CLOSED_TO_NEW_SEATS.contains(session.status())) {
             throw new ConflictException("session is closed for new participants: " + session.status());

@@ -9,8 +9,7 @@ import com.bumpinto.domain.session.SeatStatus;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +27,11 @@ import java.util.UUID;
  * katilimci token'idir" kuralinin (ARCHITECTURE §8) bilincli istisnasi. Gerekcesi: isteyen
  * henuz katilimci DEGILDIR (koltugu yok, token'i da yok) ve host karari Kesfet'ten gelen
  * hesapli kullaniciyla ilgilidir. Koltuk ancak onaydan SONRA dogar.
+ *
+ * <p>Hesap {@code Authentication}'dan okunur, {@code @AuthenticationPrincipal Jwt} ile DEGIL
+ * (K-B37): bu uclar {@code /api/sessions/{slug}/} altinda yasar ve {@code ParticipantTokenFilter}
+ * kendi planinin katilimci cerezini tasiyan host'ta principal'i ezer — hesap {@code details}'te
+ * durur ({@link WebPrincipals#accountId(Authentication)}). Yalniz katilimci cerezi → yine 403.
  */
 @RestController
 @RequestMapping("/api/sessions/{slug}/seat-requests")
@@ -49,20 +53,19 @@ class SeatRequestController {
     }
 
     @PostMapping
-    ResponseEntity<ApiDtos.SeatRequestDto> request(@AuthenticationPrincipal Jwt jwt,
+    ResponseEntity<ApiDtos.SeatRequestDto> request(Authentication auth,
             @PathVariable String slug, @Valid @RequestBody ApiDtos.SeatRequestInput body) {
         GeoPoint location = body.lat() == null || body.lng() == null ? null
                 : new GeoPoint(body.lat(), body.lng());
-        SeatRequest r = seats.request(slug, new SeatRequests.Ask(WebPrincipals.accountId(jwt),
+        SeatRequest r = seats.request(slug, new SeatRequests.Ask(WebPrincipals.accountId(auth),
                 body.displayName(), location, body.locationLabel(), body.travelMode(),
                 body.note()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(r));
     }
 
     @GetMapping
-    ApiDtos.SeatRequestListResponse list(@AuthenticationPrincipal Jwt jwt,
-            @PathVariable String slug) {
-        return listFor(slug, WebPrincipals.accountId(jwt));
+    ApiDtos.SeatRequestListResponse list(Authentication auth, @PathVariable String slug) {
+        return listFor(slug, WebPrincipals.accountId(auth));
     }
 
     /**
@@ -70,10 +73,9 @@ class SeatRequestController {
      * web'de cookie, mobilde govde (ParticipantTokenDelivery) — ikinci bir kanal acilmaz.
      */
     @GetMapping("/mine")
-    ResponseEntity<ApiDtos.MySeatResponse> mine(@AuthenticationPrincipal Jwt jwt,
-            @PathVariable String slug,
+    ResponseEntity<ApiDtos.MySeatResponse> mine(Authentication auth, @PathVariable String slug,
             @RequestHeader(value = "X-Client", defaultValue = "mobile") String client) {
-        UUID me = WebPrincipals.accountId(jwt);
+        UUID me = WebPrincipals.accountId(auth);
         SeatRequest r = seats.mine(slug, me)
                 .orElseThrow(() -> new com.bumpinto.application.error.NotFoundException(
                         "seat request not found"));
@@ -88,17 +90,17 @@ class SeatRequestController {
     }
 
     @PostMapping("/{requestId}/approve")
-    ApiDtos.SeatRequestListResponse approve(@AuthenticationPrincipal Jwt jwt,
+    ApiDtos.SeatRequestListResponse approve(Authentication auth,
             @PathVariable String slug, @PathVariable UUID requestId) {
-        UUID host = WebPrincipals.accountId(jwt);
+        UUID host = WebPrincipals.accountId(auth);
         seats.approve(slug, host, requestId);
         return listFor(slug, host);
     }
 
     @PostMapping("/{requestId}/decline")
-    ApiDtos.SeatRequestListResponse decline(@AuthenticationPrincipal Jwt jwt,
+    ApiDtos.SeatRequestListResponse decline(Authentication auth,
             @PathVariable String slug, @PathVariable UUID requestId) {
-        UUID host = WebPrincipals.accountId(jwt);
+        UUID host = WebPrincipals.accountId(auth);
         seats.decline(slug, host, requestId);
         return listFor(slug, host);
     }

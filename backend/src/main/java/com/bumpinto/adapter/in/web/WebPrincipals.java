@@ -45,6 +45,17 @@ final class WebPrincipals {
     }
 
     /**
+     * OTURUM YOLU altinda yasayan hesap uclari icin "kim soruyor" (seat-requests, K-B37):
+     * {@code ParticipantTokenFilter} o yolu eslestirir ve kendi planinin katilimci cerezini
+     * tasiyan host'ta principal'i ezer — {@code @AuthenticationPrincipal Jwt} null gelir ve host
+     * kendi paneline giremezdi. Hesap {@code details}'te durur, oradan okunur. Hesap hicbir yerde
+     * yoksa yine 403: yalniz katilimci cerezi tasiyan istek hesap ucunu ACMAZ.
+     */
+    static UUID accountId(Authentication auth) {
+        return accountId(accountOf(auth));
+    }
+
+    /**
      * Kimliksiz ya da uye olmayan cagiran icin null.
      *
      * <p>Hesabin koltugu ONCELIKLIDIR. Elde hem hesap hem katilimci token'i olabilir ve token

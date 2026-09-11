@@ -148,6 +148,61 @@ class SessionCommandsTest {
                 "Ayşe", SOMEREN, null, null)).isInstanceOf(ConflictException.class);
     }
 
+    /**
+     * K-B37: Kesfet slug'i HERKESE basar, yani acik planda slug gizli bir yetenek DEGILDIR.
+     * Davet-linki yolu host onayini, cift yonlu engeli, kapasiteyi ve hesap zorunlulugunu
+     * bilmez — acik planda koltuk YALNIZ SeatRequests'ten dogar. Konum verilmez: yayilim kapisi
+     * calismaz, tek kapi bu. Kapi koltuk kurtarmadan SONRA calisir: host kendi koltugunu bu
+     * uctan geri almaya devam eder (mobil token onarimi, K-M39).
+     */
+    @Test
+    void anOpenPlanNeverOpensASeatThroughTheInviteLink() {
+        UUID hostAccount = UUID.randomUUID();
+        SessionCommands.CreateSessionResult r = commands.createSession(hostAccount, "Yürüyüş",
+                List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe", null,
+                TravelMode.BIKE, null,
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+        String slug = r.session().slug();
+
+        assertThatThrownBy(() -> commands.join(slug, Caller.account(UUID.randomUUID()),
+                "Yabancı", SOMEREN, null, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage(SessionCommands.OPEN_PLAN_SEAT_REQUEST_REQUIRED);
+        assertThatThrownBy(() -> commands.join(slug, Caller.ANONYMOUS, "Yabancı", null, null, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage(SessionCommands.OPEN_PLAN_SEAT_REQUEST_REQUIRED);
+        assertThat(store.participantsOf(r.session().id())).hasSize(1);
+        assertThat(events.published).isEmpty();
+
+        Participant again = commands.join(slug, Caller.account(hostAccount), "Ayşe", null, null, null);
+        assertThat(again.id()).isEqualTo(r.hostParticipant().id());
+        assertThat(again.host()).isTrue();
+    }
+
+    /**
+     * Onayli uye (SeatRequests.seat'in yazdigi gibi hesaba bagli Participant) davet-linki
+     * ucundan koltugunu GERI ALIR — hem hesapla hem elindeki koltuk token'iyla. Bu yol kapansa
+     * mobil, acik planda katilimci token'ini hicbir zaman onaramazdi (K-M39).
+     */
+    @Test
+    void anApprovedMemberOfAnOpenPlanRecoversItsSeatThroughTheInviteLink() {
+        SessionCommands.CreateSessionResult r = commands.createSession(UUID.randomUUID(),
+                "Yürüyüş", List.of(ActivityType.HIKE), SessionType.GROUP, DEN_BOSCH, "Ayşe", null,
+                TravelMode.BIKE, null,
+                new OpenPlan(Instant.parse("2026-09-13T08:00:00Z"), 4, JoinPolicy.APPROVAL));
+        UUID priya = UUID.randomUUID();
+        Participant seat = store.saveParticipant(new Participant(UUID.randomUUID(),
+                r.session().id(), "Priya", SOMEREN, false, null, false, "Woensel",
+                TravelMode.BIKE, priya));
+
+        assertThat(commands.join(r.session().slug(), Caller.account(priya), "Priya", null, null, null)
+                .id()).isEqualTo(seat.id());
+        assertThat(commands.join(r.session().slug(), Caller.participant(seat.id()), "Priya",
+                null, null, null).id()).isEqualTo(seat.id());
+        assertThat(store.participantsOf(r.session().id())).hasSize(2);
+        assertThat(events.published).isEmpty(); // kurtarma katilim DEGILDIR
+    }
+
     /** Acik planin TTL'i bulusma + 3 saat; 24 saatlik varsayilan burada gecersiz. */
     @Test
     void anOpenPlanSessionExpiresThreeHoursAfterTheMeeting() {
