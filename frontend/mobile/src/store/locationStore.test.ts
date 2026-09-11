@@ -83,6 +83,45 @@ test("konum okunamazsa phase=failed — 'izin yok' ile karıştırılmaz", async
   expect(store.getState().point).toBeNull();
 });
 
+/* Şimdi planının çapası O ANKİ konum (spec §1.3). Depo globaldir ve nokta saatlerce önce
+   okunmuş olabilir — OPEN planda koltuk alan herkes o noktayı kesin buluşma yeri olarak görür. */
+test("refresh(): izin varsa konumu YENİDEN okur; okurken eski noktayı TUTMAZ; yeni diyalog açmaz", async () => {
+  store.setState({ phase: "granted", point: { lat: 1, lng: 1, label: "eski" } });
+  let resolvePos: (v: unknown) => void = () => {};
+  (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(
+    new Promise((r) => { resolvePos = r; }),
+  );
+  const pending = store.getState().refresh();
+  expect(store.getState()).toMatchObject({ phase: "asking", point: null });
+  resolvePos({ coords: { latitude: 51.7, longitude: 5.3 } });
+  await pending;
+  expect(store.getState().point).toEqual({ lat: 51.7, lng: 5.3, label: "'s-Hertogenbosch" });
+  expect(asked).not.toHaveBeenCalled();
+});
+
+test("refresh(): elle yazılmış ESKİ adres çapa olmaz, düşer; izinsiz fazlar değişmez", async () => {
+  store.setState({ phase: "manual", point: { lat: 41, lng: 29, label: "Kadıköy" } });
+  await store.getState().refresh();
+  expect(store.getState()).toMatchObject({ phase: "idle", point: null });
+
+  store.setState({ phase: "denied", point: null });
+  await store.getState().refresh();
+  expect(store.getState().phase).toBe("denied");
+  expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+});
+
+test("refresh(): okuma SÜRERKEN (asking) Şimdi'ye girilirse eski nokta yine düşer", async () => {
+  store.setState({ phase: "asking", point: { lat: 1, lng: 1, label: "eski" } });
+  await store.getState().refresh();
+  expect(store.getState().point).toBeNull();
+});
+
+test("refresh(): adres moduna YENİ girilmişse (nokta yok) mod korunur — adres kutusu kapanmaz", async () => {
+  store.setState({ phase: "manual", point: null });
+  await store.getState().refresh();
+  expect(store.getState().phase).toBe("manual");
+});
+
 test("fromAddress(): adres backend geocode'undan noktaya çevrilir", async () => {
   const geocode = jest.fn(async () => ({ lat: 41, lng: 29, label: "İstanbul, Kadıköy" }));
   (api as unknown as { geocode: unknown }).geocode = geocode;

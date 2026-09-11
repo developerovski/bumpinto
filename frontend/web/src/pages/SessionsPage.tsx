@@ -1,5 +1,6 @@
+import { PAST_PREVIEW } from "@bumpinto/shared";
 import { Plus } from "@phosphor-icons/react";
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Button, ErrorText, LinkButton, Note, Overline, Page } from "../components/atoms";
 import EmptySessions from "../components/molecules/EmptySessions";
@@ -78,8 +79,13 @@ export default function SessionsPage() {
   const { t } = useTranslation();
   const { open, past, pastTruncated, loaded, error, load } = useSessionsStore();
   const { online } = useOnlineState();
+  const [pastExpanded, setPastExpanded] = useState(false);
   useEffect(() => { void load(); }, [load]);
   const empty = open.length === 0 && past.length === 0;
+  // 20 satırlık geçmiş kartı sol sütunun üç katı uzuyordu: kart en yeni satırlarla kısa açılır,
+  // kalanı yerinde genişler (bkz. PAST_PREVIEW — neden sayfalama değil).
+  const pastCollapsible = past.length > PAST_PREVIEW;
+  const visiblePast = pastExpanded || !pastCollapsible ? past : past.slice(0, PAST_PREVIEW);
   // Artboard W10b: ağ yokken gövde SON GÖRÜLEN halidir — soluklaşır (1280 `.wrap` opacity .6,
   // 390 kart opacity .6) ve "Yeni buluşma kur" kilitlenir. Bir <a> disabled OLAMAZ (href'i
   // silmek odağı da götürür), bu yüzden çevrimdışında aynı ölçüdeki disabled <Button> basılır:
@@ -108,12 +114,35 @@ export default function SessionsPage() {
         <EmptySessions />
       ) : (
         <TwoZone
-          left={<><Overline>{t("sessions.open")}</Overline>{open.map((r, i) => <SessionCard key={r.slug ?? String(i)} row={r} />)}</>}
-          right={<><Overline>{t("sessions.past")}</Overline><PastSessionList rows={past} /><Note small>
-            {/* Liste kesildiyse bunu SÖYLE: sessizce yutulan satır, kullanıcının "eksik" diye
-                aradığı satırdır. Kesilmediyse yalnız saklama cümlesi kalır. */}
-            {pastTruncated ? t("sessions.retentionTruncated", { count: past.length }) : t("sessions.retention")}
-          </Note></>}
+          left={<>
+            <Overline>{t("sessions.open")}</Overline>
+            {/* Açık buluşma yokken başlığın altı bomboş kalıyordu — yanında uzun geçmiş listesi
+                dururken "yüklenmedi mi?" diye okunuyordu. CTA sayfa başlığında tek; not yalnız söyler. */}
+            {open.length === 0
+              ? <Note card>{t("sessions.openEmpty")}</Note>
+              : open.map((r, i) => <SessionCard key={r.slug ?? String(i)} row={r} />)}
+          </>}
+          right={<>
+            <Overline>{t("sessions.past")}</Overline>
+            {/* Boş liste eskiden içi boş bir kart çerçevesi basıyordu. */}
+            {past.length === 0
+              ? <Note card>{t("sessions.pastEmpty")}</Note>
+              : <PastSessionList rows={visiblePast} />}
+            {pastCollapsible && (
+              <Button type="button" kind="white" size="sm" className="self-center"
+                aria-expanded={pastExpanded} onClick={() => setPastExpanded((v) => !v)}>
+                {pastExpanded ? t("sessions.showLess") : t("sessions.showAll", { count: past.length })}
+              </Button>
+            )}
+            <Note small>
+              {/* Liste kesildiyse bunu SÖYLE: sessizce yutulan satır, kullanıcının "eksik" diye
+                  aradığı satırdır. Kart kısa kapalıyken "son 20 gösteriliyor" yanlış olur — kesinti
+                  yalnız bütün satırlar görünürken söylenir; aksi hâlde saklama cümlesi kalır. */}
+              {pastTruncated && visiblePast.length === past.length
+                ? t("sessions.retentionTruncated", { count: past.length })
+                : t("sessions.retention")}
+            </Note>
+          </>}
         />
       )}
       </div>

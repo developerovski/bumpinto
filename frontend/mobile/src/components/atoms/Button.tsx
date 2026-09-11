@@ -15,6 +15,8 @@ export default function Button(p: {
   disabled?: boolean;
   small?: boolean;
   icon?: ReactNode;
+  /** Ekran okuyucuya ek bağlam — ör. listede tekrarlanan "Onayla"nın KİMİN için olduğu. */
+  hint?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const kind = p.kind ?? "flame";
@@ -24,6 +26,7 @@ export default function Button(p: {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={p.title}
+      accessibilityHint={p.hint}
       accessibilityState={{ disabled: !!p.disabled }}
       onPress={onPress}
       disabled={p.disabled}

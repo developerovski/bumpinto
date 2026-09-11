@@ -1,8 +1,9 @@
+import { PAST_PREVIEW } from "@bumpinto/shared";
 import { router } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { PlusIcon } from "phosphor-react-native";
+import { CompassIcon, PlusIcon } from "phosphor-react-native";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,6 +13,7 @@ import {
   Button,
   Card,
   HandNote,
+  IconButton,
   Skeleton,
   Wordmark,
 } from "../../src/components/atoms";
@@ -39,6 +41,7 @@ export default function SessionsScreen() {
   const online = useNetStore((s) => s.online);
   // Çift dokunuşta profil İKİ KEZ yığına girmesin.
   const openProfile = useOncePress(() => router.push("/profile"));
+  const [pastExpanded, setPastExpanded] = useState(false);
 
   useEffect(() => {
     void loadList();
@@ -47,6 +50,9 @@ export default function SessionsScreen() {
   const open = list?.open ?? [];
   const past = list?.past ?? [];
   const empty = !loading && open.length === 0 && past.length === 0;
+  // Geçmiş kartı en yeni satırlarla kısa açılır, kalanı yerinde genişler (bkz. PAST_PREVIEW).
+  const pastCollapsible = past.length > PAST_PREVIEW;
+  const visiblePast = pastExpanded || !pastCollapsible ? past : past.slice(0, PAST_PREVIEW);
 
   return (
     <View style={s.screen}>
@@ -54,13 +60,21 @@ export default function SessionsScreen() {
           erişilebilir kalır; kaydırma içine konursa liste uzadıkça ikisi de kaybolur. */}
       <View style={[s.bar, { paddingTop: insets.top + 10 }]}>
         <Wordmark />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("shell.profile")}
-          onPress={openProfile}
-        >
-          <Avatar name={displayName ?? ""} tint={0} />
-        </Pressable>
+        <View style={s.barRight}>
+          {/* Keşfet girişi (M-11): alt sekme YOK, sabit üst çubuktan itilir. */}
+          <IconButton
+            label={t("shell.discover")}
+            icon={<CompassIcon size={20} color={colors.ink} />}
+            onPress={() => router.push("/discover")}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("shell.profile")}
+            onPress={openProfile}
+          >
+            <Avatar name={displayName ?? ""} tint={0} />
+          </Pressable>
+        </View>
       </View>
 
       <OfflineBanner onRetry={() => void loadList()} />
@@ -93,6 +107,19 @@ export default function SessionsScreen() {
 
       {empty ? <EmptyState /> : null}
 
+      {/* Geçmiş varken açık buluşma yoksa bunu SÖYLE: başlık doğrudan "Geçmiş buluşmalar"a
+          atlıyordu. Hiç buluşma yoksa EmptyState konuşur; CTA sabit alt çubukta tek. */}
+      {list && open.length === 0 && past.length > 0 ? (
+        <>
+          <AppText variant="over" style={s.over}>
+            {t("sessions.open")}
+          </AppText>
+          <Card>
+            <AppText variant="muted">{t("sessions.openEmpty")}</AppText>
+          </Card>
+        </>
+      ) : null}
+
       {open.length > 0 ? (
         <>
           <AppText variant="over" style={s.over}>
@@ -119,7 +146,7 @@ export default function SessionsScreen() {
           {/* Artboard P1: geçmiş satırları tek KART içinde, aralarında 16px içeriden
               başlayan ayırıcı. Kağıt üstünde serbest dururken liste dağılmış görünüyordu. */}
           <Card padded={false} style={s.pastCard}>
-            {past.map((session, i) => (
+            {visiblePast.map((session, i) => (
               <View key={session.slug ?? i}>
                 {i > 0 ? <View style={s.divider} /> : null}
                 <PastSessionRow
@@ -130,10 +157,28 @@ export default function SessionsScreen() {
               </View>
             ))}
           </Card>
+          {pastCollapsible ? (
+            <Button
+              kind="ghost"
+              small
+              title={
+                pastExpanded
+                  ? t("sessions.showLess")
+                  : t("sessions.showAll", { count: past.length })
+              }
+              onPress={() => setPastExpanded((v) => !v)}
+              style={s.pastToggle}
+            />
+          ) : null}
+          {/* Kart kısa kapalıyken "son 20 gösteriliyor" yanlış olur — kesinti yalnız bütün
+              satırlar görünürken söylenir. */}
           <AppText variant="muted" style={s.retention}>
-            {t(list?.pastTruncated ? "sessions.retentionTruncated" : "sessions.retention", {
-              count: past.length,
-            })}
+            {t(
+              list?.pastTruncated && visiblePast.length === past.length
+                ? "sessions.retentionTruncated"
+                : "sessions.retention",
+              { count: past.length },
+            )}
           </AppText>
         </>
       ) : null}
@@ -204,8 +249,10 @@ const s = StyleSheet.create({
     paddingBottom: 14,
     backgroundColor: colors.paper,
   },
+  barRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   title: { marginBottom: 4 },
   pastCard: { paddingVertical: 2 },
+  pastToggle: { marginTop: 8 },
   divider: { height: 1, backgroundColor: colors.line, marginHorizontal: space.cardX },
   skeletons: { gap: space.gap },
   over: { marginTop: 18, marginBottom: 8 },

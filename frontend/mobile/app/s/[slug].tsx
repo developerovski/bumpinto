@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Skeleton } from "../../src/components/atoms";
+import CheckinPrompt from "../../src/components/organisms/CheckinPrompt";
 import VoiceDock from "../../src/components/organisms/VoiceDock";
 import DeckScreen from "../../src/screens/DeckScreen";
 import ErrorScreen from "../../src/screens/ErrorScreen";
@@ -15,8 +16,10 @@ import SoloSetupScreen from "../../src/screens/SoloSetupScreen";
 import TieScreen from "../../src/screens/TieScreen";
 import VenuesScreen from "../../src/screens/VenuesScreen";
 import WaitingScreen from "../../src/screens/WaitingScreen";
+import { useAuthStore } from "../../src/store/authStore";
+import { useSeatRequestsStore } from "../../src/store/seatRequestsStore";
 import { useSessionLive } from "../../src/store/useSessionLive";
-import { useSessionStore } from "../../src/store/sessionStore";
+import { isHost, useSessionStore } from "../../src/store/sessionStore";
 import { useSocialStore } from "../../src/store/socialStore";
 import { colors, space } from "../../src/theme";
 
@@ -33,6 +36,18 @@ export default function SessionRoute() {
   const listen = useSocialStore((s) => s.listen);
   useEffect(() => listen(selfId), [listen, selfId]);
 
+  /* `seat_requests_changed` zili de oturum boyunca (host istek ekranı bu rotanın ÜSTÜNE itilir).
+     Zil TÜM koltuklu abonelere gider; liste ucu host'a özel ve hesap kimliği ister — kapı olay
+     anında okunur (host/giriş sonradan değişebilir). */
+  const listenSeatRequests = useSeatRequestsStore((s) => s.listen);
+  useEffect(() => {
+    if (!slug) return;
+    return listenSeatRequests(
+      slug,
+      () => isHost(useSessionStore.getState().view) && useAuthStore.getState().status === "in",
+    );
+  }, [listenSeatRequests, slug]);
+
   // Hata görünümden ÖNCE gelir: bayat bir `view` üstünde "süresi doldu" yazmaktansa
   // kullanıcıyı çıkışı olan bir ekrana koy.
   if (error) return <ErrorScreen kind={error === "session.expired" ? "expired" : "notFound"} />;
@@ -40,11 +55,14 @@ export default function SessionRoute() {
 
   /* Dock ekranın KARDEŞİ: her ekran kendi `ScrollView`ini kuruyor ve dock oraya girerse
      mutlak konumu kaydırma içeriğine tutunup listenin dibine düşer (2026-09-09 emülatörde).
-     Burada bir kez mount edilir — mesh ekran geçişlerinde de ayakta kalır (spec §7). */
+     Burada bir kez mount edilir — mesh ekran geçişlerinde de ayakta kalır (spec §7).
+     "Buluştunuz mu?" da KARDEŞ: buluşma herhangi bir aşamada geçebilir. `key`: başka plana
+     geçince yerel durum (kapatıldı, rozet anı) taşınmaz. */
   return (
     <View style={s.host}>
       {screenFor(view)}
       <VoiceDock view={view} />
+      <CheckinPrompt key={view.slug} view={view} />
     </View>
   );
 }

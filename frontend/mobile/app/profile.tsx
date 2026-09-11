@@ -2,6 +2,7 @@ import { LANGUAGES, MODE_LABEL_KEY } from "@bumpinto/shared";
 import { router } from "expo-router";
 import {
   CaretRightIcon,
+  CompassIcon,
   GlobeIcon,
   GoogleLogoIcon,
   LifebuoyIcon,
@@ -15,7 +16,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText, Avatar, Badge, Button, Card } from "../src/components/atoms";
-import { ScreenHeader } from "../src/components/molecules";
+import { BadgeGrid, ScreenHeader } from "../src/components/molecules";
 import MapPickerSheet from "../src/components/organisms/MapPickerSheet";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -26,12 +27,16 @@ import { colors, space } from "../src/theme";
 import { goBackOr } from "../src/lib/nav";
 
 /**
- * Artboard P22 · Profil.
+ * Artboard P22 · Profil + Keşfet POC P6 (sayaçlar ve rozetler).
  *
  * "Hesap ve veriler" ve "Destek" satırları M-5'te açıldı (`app/account/*`).
  * Varsayılan KONUM satırı K-M7'de açıldı: M-7'nin `MapPickerSheet`i profilin ÜSTÜNDE açılır
  * (`sessions/new.tsx` deseni), seçim `meStore.update` ile yazılır — gövde diğer tercihleri
  * taşır (K-M46). Varsayılanı temizlemek kapsam dışı.
+ *
+ * M-11/M-12: iki sayaç kartı ("buluşma kuruldu" / "dost görüldü") yerini P6'nın `BadgeGrid`ine
+ * bıraktı (spec §11.6 — `friendsMet` artık çizilmez); İLGİ ALANLARI satırı tercihlere girdi
+ * (Keşfet'in varsayılan süzgeci).
  */
 const ICON = { size: 17, color: colors.ink2 } as const;
 /** `LocationPrefDto.label` @Size(max = 80) — sunucu uzun etiketi 400 ile reddeder. */
@@ -56,6 +61,7 @@ export default function ProfileScreen() {
   const Activity = me?.defaultActivity ? ACTIVITY_ICON[me.defaultActivity] : null;
   // EBIKE iki glif basar; satır ikonu olarak ilki yeter.
   const Mode = me?.defaultTravelMode ? MODE_ICON[me.defaultTravelMode][0] : null;
+  const interests = me?.interests ?? [];
 
   return (
     <View style={s.screen}>
@@ -84,15 +90,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={s.stats}>
-          <Card style={[s.stat, { transform: [{ rotate: "-1deg" }] }]}>
-            <AppText variant="display" style={s.statNum}>{me?.stats?.sessionsHosted ?? 0}</AppText>
-            <AppText variant="muted">{t("profile.hosted")}</AppText>
-          </Card>
-          <Card style={[s.stat, { transform: [{ rotate: "1deg" }] }]}>
-            <AppText variant="display" style={s.statNum}>{me?.stats?.friendsMet ?? 0}</AppText>
-            <AppText variant="muted">{t("profile.friends")}</AppText>
-          </Card>
+        {/* Keşfet POC P6: sunucu sayar, rozet istemcide türer. */}
+        <View style={s.badges}>
+          <BadgeGrid stats={me?.stats} />
         </View>
 
         <AppText variant="over" style={s.over}>
@@ -116,6 +116,20 @@ export default function ProfileScreen() {
               router.push({
                 pathname: "/(sheets)/prefs",
                 params: { field: "activity" },
+              })
+            }
+          />
+          <Row
+            label={t("profile.interests")}
+            value={interests.length ? interests.map((a) => t(`activity.${a}`)).join(", ") : undefined}
+            hint={t("profile.interestsHint")}
+            icon={<CompassIcon {...ICON} />}
+            // Çoklu seçim anında yazılır: yüklenmemiş profile yazılamaz.
+            disabled={!me}
+            onPress={() =>
+              router.push({
+                pathname: "/(sheets)/prefs",
+                params: { field: "interests" },
               })
             }
           />
@@ -268,9 +282,7 @@ const s = StyleSheet.create({
   identity: { alignItems: "center", paddingTop: 6, paddingBottom: 2, gap: 10 },
   identityText: { alignItems: "center", gap: 3 },
   loginBadge: { alignSelf: "center", marginTop: 2 },
-  stats: { flexDirection: "row", gap: 10, marginTop: 14 },
-  stat: { flex: 1, alignItems: "center", paddingVertical: 14 },
-  statNum: { fontSize: 28, lineHeight: 32 },
+  badges: { marginTop: 14 },
   over: { marginTop: 14, marginBottom: 8 },
   row: {
     minHeight: 56,

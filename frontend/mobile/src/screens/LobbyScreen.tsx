@@ -1,9 +1,10 @@
 import { activityListLabel, sessionActivities, type SessionView } from "@bumpinto/shared";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState } from "react";
+import { CaretRightIcon, UsersThreeIcon } from "phosphor-react-native";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppText, Badge, Button } from "../components/atoms";
@@ -12,8 +13,11 @@ import ParticipantList from "../components/organisms/ParticipantList";
 import VoiceDockSlot from "../components/organisms/VoiceDockSlot";
 import { ACTIVITY_ICON } from "../icons";
 import { api } from "../lib/api";
+import { useOncePress } from "../lib/useOncePress";
+import { useAuthStore } from "../store/authStore";
+import { useSeatRequestsStore } from "../store/seatRequestsStore";
 import { useSessionStore } from "../store/sessionStore";
-import { colors, space } from "../theme";
+import { colors, radius, shadow, space } from "../theme";
 
 /**
  * Artboard P6 (orta noktalı, canlı) ve P7 (çapalı, tek kişi) — GRUP oturumunun HOST görünümü.
@@ -23,11 +27,18 @@ import { colors, space } from "../theme";
  * ÇAPALI oturumda (P7) merkez katılımcılardan türemez, bu yüzden backend'in "en az 2 konum"
  * önkoşulu düşer — kapı da bilmeli, yoksa sunucu kabul ederken düğme kapalı kalır ve oturum
  * COLLECTING'de asılı kalır.
+ *
+ * AÇIK PLANDA (M-11 M4) Keşfet'ten gelen katılım istekleri host'a buradan açılır (P4 ayrı ekran;
+ * web panelinin yerleşimi davet kartının hemen ardı).
  */
 export default function LobbyScreen({ view }: { view: SessionView }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const loadView = useSessionStore((s) => s.loadView);
+  const authed = useAuthStore((s) => s.status === "in");
+  const requestsSlug = useSeatRequestsStore((s) => s.slug);
+  const requests = useSeatRequestsStore((s) => s.list);
+  const loadRequests = useSeatRequestsStore((s) => s.load);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +51,17 @@ export default function LobbyScreen({ view }: { view: SessionView }) {
   // Çapalıda kimsenin konumu BEKLENMİYOR: "X yetişemezse sonradan katılır" cümlesi orada
   // yanlış beklenti kurar (üstelik tek kişilik çapalı oturumda host'un KENDİSİNİ işaret eder).
   const waiting = anchored ? undefined : participants.find((p) => !p.hasLocation);
+
+  /* İstek uçları HESAP kimliği ister: katılımcı jetonuyla lobide kalan ama hesabı kapanmış host
+     401 alır ve yenileme kesicisi onu çıkışa düşürürdü — giriş yoksa giriş satırı da çizilmez. */
+  const openPlan = !!view.openPlan;
+  const showRequests = openPlan && authed;
+  useEffect(() => {
+    if (showRequests) void loadRequests(slug);
+  }, [showRequests, slug, loadRequests]);
+  const pending =
+    requestsSlug === slug ? (requests?.requests ?? []).filter((r) => r.status === "PENDING").length : 0;
+  const openRequests = useOncePress(() => router.push(`/sessions/${slug}/requests`));
 
   async function findVenues() {
     setBusy(true);
@@ -88,6 +110,22 @@ export default function LobbyScreen({ view }: { view: SessionView }) {
           sessionName={view.name}
           compact={participants.length > 1}
         />
+
+        {showRequests ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("seat.requests")}
+            onPress={openRequests}
+            style={({ pressed }) => [s.requests, pressed ? { backgroundColor: colors.paper } : null]}
+          >
+            <UsersThreeIcon size={18} color={colors.flameDeep} />
+            <AppText variant="h3" style={s.requestsText}>
+              {t("seat.requests")}
+            </AppText>
+            {pending > 0 ? <Badge tone="flame">{t("seat.newCount", { count: pending })}</Badge> : null}
+            <CaretRightIcon size={16} color={colors.ink3} />
+          </Pressable>
+        ) : null}
 
         <MidpointCard view={view} />
 
@@ -148,4 +186,17 @@ const s = StyleSheet.create({
   badges: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   note: { fontSize: 12 },
   error: { textAlign: "center", color: colors.flameDeep, fontWeight: "600" },
+  requests: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 52,
+    paddingHorizontal: space.cardX,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.card,
+    ...shadow.s1,
+  },
+  requestsText: { flex: 1 },
 });

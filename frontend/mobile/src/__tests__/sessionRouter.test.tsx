@@ -102,6 +102,23 @@ test("SOLO oturum Bireysel kuruluma düşer, davet linki çizilmez", async () =>
   expect(screen.queryByText("Davet linki")).toBeNull();
 });
 
+/* Açık planın buluşması (pencereli planda penceresi) HER aşamada geçebilir — lobi, mekanlar,
+   deste, karar; 30 sn'lik tur `meetPassed`'i ekran açıkken çevirebilir. Soru ekrandan bağımsız. */
+test("buluşma geçince üyeye 'Buluştunuz mu?' hangi aşamada olursa sorulur (Mekanlar'da da)", async () => {
+  (api.getSession as jest.Mock).mockResolvedValue({
+    ...base,
+    status: "BROWSING",
+    viewer: { host: true, participantId: "p1" },
+    openPlan: {
+      meetAt: "2026-09-09T08:00:00Z", capacity: 4, approvedSeats: 3, confirmed: true, meetPassed: true,
+      joinPolicy: "APPROVAL",
+    },
+  });
+  await render(<SessionRoute />);
+  await waitFor(() => expect(screen.getByText("Buluştunuz mu?")).toBeTruthy());
+  expect(screen.getByText("Karıştır ve kaydır")).toBeTruthy();
+});
+
 test("görünüm gelmeden iskelet çizilir, hata ekranı DEĞİL", async () => {
   (api.getSession as jest.Mock).mockReturnValue(new Promise(() => {}));
   await render(<SessionRoute />);

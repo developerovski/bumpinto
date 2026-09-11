@@ -16,11 +16,23 @@ import { api } from "../lib/api";
  * Rıza (`PUT /api/me/consents`) da tam yerine koymadır: `setConsents` eksik alanı mevcut
  * değerle doldurur — yoksa gönderilmeyen rıza sessizce `false`'a düşer. Sunucu yanıt gövdesi sözleşmede sabit olmadığından yazımdan sonra
  * `me()` yeniden çekilir: rızanın TEK kaynağı sunucudur, istemci hafızası değil.
+ *
+ * Yazma SIRASI (M-11/M-12 T5 incelemesi): her `update` sürümü artırır ve yalnız EN SON başlayan
+ * kaydın yanıtı `me`ye yazılır — yavaş ağda sırasız dönen eski yanıt yenisini ezerdi. `saving`
+ * uçuşta kayıt varken doğrudur ve DEPODA yaşar: ilgi alanı seçicisinin kilidi bileşende olsaydı sayfa
+ * kapanıp açılınca sıfırlanır, eski listeden kurulmuş ikinci bir kayıt atılırdı. `load` başladığı
+ * sürümü not eder; arada bir kayıt başladıysa bayat okumayı yazmaz. `clear` sürümü artırır: çıkıştan
+ * sonra dönen eski hesabın yanıtı yeni oturuma yazılmaz.
  */
+let revision = 0;
+let inflight = 0;
+
 export const useMeStore = create<{
   me: MeResponse | null;
   /** i18n ANAHTARI (metin değil). */
   error: string | null;
+  /** Uçuşta bir `update` var mı. */
+  saving: boolean;
   load: () => Promise<void>;
   update: (patch: Schemas["UpdateMeRequest"]) => Promise<boolean>;
   setConsents: (patch: Partial<ConsentsInput>) => Promise<boolean>;
@@ -28,14 +40,17 @@ export const useMeStore = create<{
 }>((set, get) => ({
   me: null,
   error: null,
+  saving: false,
 
   async load() {
+    const at = revision;
     try {
       const me = await api.me();
+      if (at !== revision) return; // arada kayıt başladı ya da çıkış yapıldı: bu okuma bayat
       set({ me, error: null });
       applyAnalyticsConsent(me.consents?.analytics === true);
     } catch {
-      set({ error: "profile.errSave" });
+      if (at === revision) set({ error: "profile.errSave" });
     }
   },
 
@@ -58,7 +73,8 @@ export const useMeStore = create<{
   },
 
   clear() {
-    set({ me: null, error: null });
+    revision += 1;
+    set({ me: null, error: null, saving: false });
     applyAnalyticsConsent(false);
   },
 
@@ -77,12 +93,19 @@ export const useMeStore = create<{
       defaultTravelMode: me.defaultTravelMode,
       ...patch,
     };
+    const mine = ++revision;
+    inflight += 1;
+    set({ saving: true });
     try {
-      set({ me: await api.updateMe(body), error: null });
+      const result = await api.updateMe(body);
+      if (mine === revision) set({ me: result, error: null });
       return true;
     } catch {
-      set({ error: "profile.errSave" });
+      if (mine === revision) set({ error: "profile.errSave" });
       return false;
+    } finally {
+      inflight -= 1;
+      if (inflight === 0) set({ saving: false });
     }
   },
 }));

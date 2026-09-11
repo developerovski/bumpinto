@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { router } from "expo-router";
 
 import DeleteAccountScreen from "../../app/account/delete";
-import { api } from "../lib/api";
+import { api, clearParticipantTokens } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import { typeText } from "../testUtils/interact";
 
@@ -10,6 +10,8 @@ jest.mock("../lib/api", () => ({
   // `logout` SÖZ döndürmeli: `signOut()` üzerine `.catch` zincirliyor.
   api: { deleteMe: jest.fn(), me: jest.fn(), logout: jest.fn(async () => undefined) },
   webBase: "https://bumpinto.app",
+  // Çıkış hesaba bağlı durumu sıfırlarken katılımcı jetonlarını da düşürür (M-11/M-12).
+  clearParticipantTokens: jest.fn(),
 }));
 
 const openSheet = async (text: string) => {
@@ -61,6 +63,8 @@ test("onaylayınca DELETE /api/me çağrılır, oturum kapanır, O17'ye gidilir"
   await waitFor(() => expect(api.deleteMe).toHaveBeenCalledTimes(1));
   await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/account/deleted"));
   expect(useAuthStore.getState().status).toBe("out");
+  // Silinen hesabın koltuk jetonları cihazda KALMAZ.
+  expect(clearParticipantTokens).toHaveBeenCalled();
 });
 
 test("silme başarısızsa oturum KAPANMAZ ve hata gösterilir", async () => {

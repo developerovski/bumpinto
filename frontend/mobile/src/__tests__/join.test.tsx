@@ -7,6 +7,7 @@ import { router } from "expo-router";
 
 import JoinScreen from "../../app/j/[slug]";
 import { api, hasParticipantToken, rememberParticipantToken } from "../lib/api";
+import { useAuthStore } from "../store/authStore";
 import { useLocationStore } from "../store/locationStore";
 import { tap, typeText } from "../testUtils/interact";
 
@@ -31,6 +32,9 @@ const preview = {
 beforeEach(() => {
   jest.clearAllMocks();
   (hasParticipantToken as jest.Mock).mockReturnValue(false);
+  // Davet linkiyle gelen misafir: hesabı yok. Ekran oturum durumu bilinmeden önizleme sormaz
+  // (soğuk açılışta "hesabıyla koltuğu var mı" sorusu için bekler) — kökteki `restore` burada yok.
+  useAuthStore.setState({ status: "out" });
   // Katılım konumsuz da mümkün ama testler formun DOLU hâlini sınıyor: konum store'dan gelir.
   useLocationStore.setState({
     phase: "granted",

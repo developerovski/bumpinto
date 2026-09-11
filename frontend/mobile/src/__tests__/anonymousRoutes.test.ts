@@ -27,6 +27,9 @@ test("uyumluluk rotalarının dosyaları yerinde", () => {
     "s/[slug].tsx",
     "j/[slug].tsx",
     "(sheets)/location-mode.tsx",
+    // M-11/M-12 (Keşfet + Buradayım): liste ve host'un istek ekranı.
+    "discover/index.tsx",
+    "sessions/[slug]/requests.tsx",
   ]) {
     expect({ file, exists: existsSync(app(file)) }).toEqual({ file, exists: true });
   }
@@ -61,6 +64,8 @@ test("hesap ekranları oturum GEREKTİRİR (anonim listede değil)", () => {
     "/profile",
     "/participant",
     "/prefs",
+    // Keşfet hesap kimliği ister (`GET /api/discover` anonime 401 → çıkış kesicisi).
+    "/discover",
   ]) {
     expect({ path, anonymous: isAnonymousRoute(path) }).toEqual({ path, anonymous: false });
   }

@@ -26,6 +26,15 @@ export const rememberParticipantToken = (slug: string, token: string) =>
 
 export const hasParticipantToken = (slug: string) => participantTokens.has(slug);
 
+/** Çıkışta HEPSİ düşer: jetonlar hesabın koltuklarıdır — paylaşılan cihazda sonraki kullanıcı (ya
+    da anonim ziyaretçi) öncekinin koltuğuyla odaya girmesin (sunucu katılımcı jetonunu tek başına
+    kabul eder). Sonraki girişte onarım (K-M39) hesap koltuğundan yeniden alır. */
+export const clearParticipantTokens = () => participantTokens.clear();
+
+/** Tek oturumun jetonunu düşürür: sunucu süresi geçmiş/geçersiz jetonu SESSİZCE yok sayar ve 403
+    döner — bellekteki bayat jeton durdukça onarım (`hasParticipantToken` kapısı) hiç tetiklenmez. */
+export const forgetParticipantToken = (slug: string) => void participantTokens.delete(slug);
+
 export const webBase = extra.webBase;
 
 /** STOMP kanalının el sıkışma adresi buradan türetilir (M-6 T3) — ikinci bir taban URL yok. */

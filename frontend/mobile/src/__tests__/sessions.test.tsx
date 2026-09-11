@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react-native";
+import { router } from "expo-router";
 
 import { api } from "../lib/api";
 import SessionsScreen from "../../app/sessions/index";
+import { tap } from "../testUtils/interact";
 
 /* NOT: `jest.mock` babel-plugin-jest-hoist ile import'ların ÜSTÜNE taşınır.
 
@@ -61,6 +63,16 @@ test("üst çubuk ve birincil eylem ScrollView'ın DIŞINDA, sabit durur", async
 
   expect(insideScrollView("Yeni buluşma kur")).toBe(false);
   expect(insideScrollView("Profil")).toBe(false);
+});
+
+/* Alt sekme YOK (plan38 "tek stack"): Keşfet'e giriş Oturumlar'ın sabit üst çubuğundan. */
+test("üst çubuktaki Keşfet düğmesi /discover'a iter", async () => {
+  (api.listSessions as jest.Mock).mockResolvedValue({ open: [], past: [] });
+  await render(<SessionsScreen />);
+  await waitFor(() => expect(screen.getByText("Henüz buluşma yok")).toBeTruthy());
+  expect(insideScrollView("Keşfet")).toBe(false);
+  await tap("Keşfet");
+  expect(router.push).toHaveBeenCalledWith("/discover");
 });
 
 test("boş durumda 'Yeni buluşma' TEK kez çizilir (sabit çubuk + kart tekrarı yok)", async () => {

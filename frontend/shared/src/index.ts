@@ -111,6 +111,7 @@ export { backupOf } from "./backupPlan";
 export { DECIDING_MINUTES, DECIDING_RATING, isDeciding } from "./runoffTrailer";
 export { LANGUAGES, type LanguageCode } from "./languages";
 export { sessionCtaKey } from "./sessionCta";
+export { PAST_PREVIEW } from "./sessionList";
 export { activityListLabel } from "./activityLabel";
 export {
   ACTIVITY_GROUPS,

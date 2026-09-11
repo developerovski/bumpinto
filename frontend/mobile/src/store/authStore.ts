@@ -3,12 +3,29 @@ import Constants from "expo-constants";
 import { create } from "zustand";
 
 import i18n from "../i18n";
-import { api } from "../lib/api";
+import { api, clearParticipantTokens } from "../lib/api";
 import { signInWithApple } from "../lib/appleAuth";
 import {
   clearAccessToken, clearRefreshToken, getAccessToken, getRefreshToken, setAccessToken,
   setRefreshToken,
 } from "../lib/tokenStore";
+import { useDiscoverStore } from "./discoverStore";
+import { useMeStore } from "./meStore";
+import { useSeatRequestsStore } from "./seatRequestsStore";
+import { useSeatStore } from "./seatStore";
+
+/** Hesaba bağlı durum: paylaşılan cihazda sonraki hesaba (ya da anonim ziyaretçiye) sızmasın.
+    Keşfet önceki kullanıcının ilgi alanı süzgecini taşır; profil (`meStore`) onun ev konumunu —
+    Keşfet dakika konumunu ve rozet farkını ORADAN okur. Koltuk isteği durumu ve host'un istek
+    listesi de hesabındır. Katılımcı jetonları hesabın koltuklarıdır: kalsaydı sonraki kişi
+    öncekinin koltuğuyla odaya girerdi. */
+function resetAccountStores() {
+  useDiscoverStore.getState().reset();
+  useSeatStore.getState().reset();
+  useSeatRequestsStore.getState().reset();
+  useMeStore.getState().clear();
+  clearParticipantTokens();
+}
 
 /**
  * Giriş durumu. Google ve Apple AYNI yolu kullanır (`finishLogin`): token'ı yaz, profili çek,
@@ -98,6 +115,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await clearAccessToken();
     await clearRefreshToken();
     set({ status: "out", userId: null, displayName: null });
+    resetAccountStores();
   },
 
   /**
@@ -109,5 +127,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     await clearAccessToken();
     await clearRefreshToken();
     set({ status: "out", userId: null, displayName: null });
+    resetAccountStores();
   },
 }));

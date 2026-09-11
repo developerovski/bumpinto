@@ -273,6 +273,10 @@
     "errLoad": "Couldn't load your meetups — try again.",
     "retentionTruncated": "Showing the last {{count}} meet-ups. Meet-ups close in 24 hours and are deleted after 30 days.",
     "retention": "Meetups close after 24 hours and are deleted after 30 days.",
+    "openEmpty": "No open meetups right now — start one and send the link.",
+    "pastEmpty": "No past meetups yet.",
+    "showAll": "Show all ({{count}})",
+    "showLess": "Show less",
     "emptyTitle": "No meetups yet",
     "emptyCopy": "Start one, send the link — the deck fills in once locations are in.",
     "emptyHand": "takes 30 seconds, promise",
@@ -848,6 +852,7 @@
     "errLoad": "Couldn't load plans."
   },
   "plan": {
+    "title": "Plan",
     "titleDate": "Open a plan",
     "titleNow": "I'm here",
     "when": "When",
@@ -929,6 +934,8 @@
   },
   "badge": {
     "new": "new badge",
+    "earned": "earned",
+    "locked": "locked",
     "next": "Next up: {{title}}.",
     "hand": "it stays on your profile →",
     "progressMet_one": "{{have}}/{{goal}} · {{count}} meetup to go.",

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Share, StyleSheet, View } from "react-native";
 
 import { api, rememberParticipantToken, webBase } from "../../lib/api";
+import { apiErrorCode, statusOf } from "../../lib/apiError";
 import { useLocationStore } from "../../store/locationStore";
 import { colors, space } from "../../theme";
 import { AppText, Button, Card, Input } from "../atoms";
@@ -23,7 +24,15 @@ import TravelModeField from "../molecules/TravelModeField";
  * yüzden artboard'daki "sen ~1.900 km" satırı BASILMAZ — uydurma sayı yazılmaz (sözleşme
  * kuralı: eksik alanda satır gizlenir).
  */
-export default function JoinForm(p: { slug: string; hostName?: string; sessionName?: string }) {
+export default function JoinForm(p: {
+  slug: string;
+  hostName?: string;
+  sessionName?: string;
+  /** K-B37: sunucu bu oturumu AÇIK PLAN olarak tanıdı (409 `open_plan_seat_request_required`).
+      Ekran önizlemeyi tazeler ve plan detayına geçer — "çok uzaksın" yanlış sebebi basılmaz.
+      Döner: plan detayına geçildi mi (geçilmediyse form sessiz kalmaz, hata basar). */
+  onOpenPlan?: () => Promise<boolean>;
+}) {
   const { t } = useTranslation();
   const point = useLocationStore((s) => s.point);
 
@@ -51,8 +60,12 @@ export default function JoinForm(p: { slug: string; hostName?: string; sessionNa
       if (res.participantToken) rememberParticipantToken(p.slug, res.participantToken);
       router.replace(`/s/${p.slug}`);
     } catch (e) {
-      const status = (e as { response?: { status?: number } }).response?.status;
-      setError(status === 409 ? "join.errTooFar" : "join.errJoin");
+      if (apiErrorCode(e) === "open_plan_seat_request_required") {
+        // Önizleme tazelenemediyse (ağ) ya da yine gizli göründüyse form SESSİZ kalmaz.
+        if (!(p.onOpenPlan && (await p.onOpenPlan()))) setError("join.errJoin");
+        return;
+      }
+      setError(statusOf(e) === 409 ? "join.errTooFar" : "join.errJoin");
     } finally {
       setBusy(false);
     }

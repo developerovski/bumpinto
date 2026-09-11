@@ -1,25 +1,36 @@
-import { LANGUAGES, MODE_LABEL_KEY, TRAVEL_MODES, type TravelMode } from "@bumpinto/shared";
+import {
+  LANGUAGES,
+  MODE_LABEL_KEY,
+  TRAVEL_MODES,
+  type Activity,
+  type TravelMode,
+} from "@bumpinto/shared";
 import { useLocalSearchParams } from "expo-router";
 import { CheckIcon, type Icon } from "phosphor-react-native";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { AppText, Card } from "../../src/components/atoms";
-import { ScreenHeader } from "../../src/components/molecules";
+import { ActivityPicker, ScreenHeader } from "../../src/components/molecules";
 import i18n from "../../src/i18n";
 import { ACTIVITY_ICON, MODE_ICON } from "../../src/icons";
 import { useMeStore } from "../../src/store/meStore";
 import { colors, space } from "../../src/theme";
 import { goBackOr } from "../../src/lib/nav";
 
-type Field = "language" | "activity" | "travelMode";
+type Field = "language" | "activity" | "travelMode" | "interests";
 
 const ACTIVITIES = Object.keys(ACTIVITY_ICON) as (keyof typeof ACTIVITY_ICON)[];
+
+/** `UpdateMeRequest.interests` sunucu sınırı — web profil tercihleriyle aynı sayı. */
+const INTERESTS_MAX = 5;
 
 const TITLE_KEY: Record<Field, string> = {
   language: "profile.language",
   activity: "profile.defaultActivity",
   travelMode: "profile.defaultTravelMode",
+  interests: "profile.interests",
 };
 
 export default function PrefsSheet() {
@@ -58,26 +69,30 @@ export default function PrefsSheet() {
         onBack={() => goBackOr("/profile")}
       />
       <ScrollView contentContainerStyle={s.body}>
-        <Card padded={false}>
-          {optionsFor(field, t).map((o, i) => (
-            <Pressable
-              key={o.value}
-              accessibilityRole="radio"
-              accessibilityLabel={o.label}
-              accessibilityState={{ selected: o.value === value }}
-              onPress={() => void choose(o.value)}
-              style={[s.row, i > 0 ? s.divider : null]}
-            >
-              {o.Icon ? <o.Icon size={18} color={colors.ink2} /> : null}
-              <AppText variant="label" style={{ flex: 1 }}>
-                {o.label}
-              </AppText>
-              {o.value === value ? (
-                <CheckIcon size={18} color={colors.grass} weight="bold" />
-              ) : null}
-            </Pressable>
-          ))}
-        </Card>
+        {field === "interests" ? (
+          <InterestsPicker />
+        ) : (
+          <Card padded={false}>
+            {optionsFor(field, t).map((o, i) => (
+              <Pressable
+                key={o.value}
+                accessibilityRole="radio"
+                accessibilityLabel={o.label}
+                accessibilityState={{ selected: o.value === value }}
+                onPress={() => void choose(o.value)}
+                style={[s.row, i > 0 ? s.divider : null]}
+              >
+                {o.Icon ? <o.Icon size={18} color={colors.ink2} /> : null}
+                <AppText variant="label" style={{ flex: 1 }}>
+                  {o.label}
+                </AppText>
+                {o.value === value ? (
+                  <CheckIcon size={18} color={colors.grass} weight="bold" />
+                ) : null}
+              </Pressable>
+            ))}
+          </Card>
+        )}
 
         {field === "language" ? (
           <AppText variant="muted" style={s.hint}>
@@ -95,9 +110,51 @@ export default function PrefsSheet() {
   );
 }
 
+const NO_INTERESTS: readonly Activity[] = [];
+
+/**
+ * İlgi alanları (M-11 M5) — Keşfet'in varsayılan süzgeci. ÇOKLU seçim, en çok 5; tek seçimli
+ * tercihlerin aksine sayfa seçimde kapanmaz. Her dokunuş hemen yazılır: iyimser çizilir, sonra
+ * ekran SUNUCUNUN ONAYLADIĞI listeye oturur (`update` başarıda `me`yi yanıttan yazar, hatada
+ * dokunmaz — seçim geri döner, hata satırı söyler).
+ *
+ * Kilit DEPODAN (`meStore.saving`): bileşende yaşasaydı sayfa kapanıp açılınca sıfırlanır ve uçuştaki
+ * kaydın üstüne eski listeden kurulmuş ikinci bir kayıt atılırdı. İyimser liste yalnız BU seçicinin
+ * kaydı uçuştayken çizilir; aksi hâlde ekran `me`yi gösterir.
+ */
+function InterestsPicker() {
+  const { t } = useTranslation();
+  const confirmed = useMeStore((s) => s.me?.interests) ?? NO_INTERESTS;
+  const saving = useMeStore((s) => s.saving);
+  const update = useMeStore((s) => s.update);
+  const [optimistic, setOptimistic] = useState<readonly Activity[] | null>(null);
+  const selected = optimistic ?? confirmed;
+
+  async function toggle(a: Activity) {
+    if (saving) return;
+    const on = selected.includes(a);
+    if (!on && selected.length >= INTERESTS_MAX) return;
+    const next = on ? selected.filter((x) => x !== a) : [...selected, a];
+    setOptimistic(next);
+    await update({ interests: next });
+    setOptimistic(null);
+  }
+
+  return (
+    <View style={s.interests}>
+      <AppText variant="muted">{t("profile.interestsHint")}</AppText>
+      <ActivityPicker
+        value={selected}
+        onToggle={(a) => void toggle(a)}
+        isLocked={(a) => saving || (!selected.includes(a) && selected.length >= INTERESTS_MAX)}
+      />
+    </View>
+  );
+}
+
 type Option = { value: string; label: string; Icon?: Icon };
 
-function optionsFor(field: Field, t: (key: string) => string): Option[] {
+function optionsFor(field: Exclude<Field, "interests">, t: (key: string) => string): Option[] {
   if (field === "language") return LANGUAGES.map((l) => ({ value: l.code, label: l.label }));
   if (field === "activity")
     return ACTIVITIES.map((a) => ({ value: a, label: t(`activity.${a}`), Icon: ACTIVITY_ICON[a] }));
@@ -120,4 +177,5 @@ const s = StyleSheet.create({
   },
   divider: { borderTopWidth: 1, borderTopColor: colors.line },
   hint: { marginTop: 12 },
+  interests: { gap: 12 },
 });

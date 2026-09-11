@@ -1,7 +1,7 @@
 import { activityListLabel, type SessionPreview } from "@bumpinto/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { MoonIcon } from "phosphor-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,8 +11,10 @@ import { LanguageButton } from "../../src/components/molecules";
 import JoinForm from "../../src/components/organisms/JoinForm";
 import { ACTIVITY_ICON } from "../../src/icons";
 import { api, hasParticipantToken } from "../../src/lib/api";
+import { useAuthStore } from "../../src/store/authStore";
 import { useLocationStore, type PrimerOutcome } from "../../src/store/locationStore";
 import ErrorScreen from "../../src/screens/ErrorScreen";
+import PlanIntroScreen from "../../src/screens/PlanIntroScreen";
 import { colors, space } from "../../src/theme";
 
 export default function JoinScreen() {
@@ -24,8 +26,11 @@ export default function JoinScreen() {
   }>();
 
   const adopt = useLocationStore((s) => s.adopt);
+  const status = useAuthStore((s) => s.status);
   const [preview, setPreview] = useState<SessionPreview | null>(null);
   const [failed, setFailed] = useState(false);
+  /** Önizleme bir kez geldi mi: giriş durumu değişince yalnız koltuk sorusu yeniden sorulur. */
+  const loaded = useRef(false);
 
   // O3 ön-ekranı sonucu rota parametresiyle döner (M-5 sözleşmesi).
   useEffect(() => {
@@ -39,21 +44,60 @@ export default function JoinScreen() {
       router.replace(`/s/${slug}`);
       return;
     }
+    // Oturum geri yüklenirken (soğuk açılış / App Link) ya da giriş sürerken BEKLE: "hesabıyla
+    // koltuğu var mı" sorusu ancak durum bilinince sorulabilir.
+    if (status === "unknown" || status === "busy") return;
     let alive = true;
-    void api
-      .preview(slug)
-      .then((p) => alive && setPreview(p))
-      .catch(() => alive && setFailed(true));
+    void (async () => {
+      /* Hesabıyla koltuğu olan (host, onaylanmış istek) plan detayında TAKILMASIN: Keşfet kişinin
+         kendi planını da listeler ve bellekteki jeton uygulama yeniden başlayınca düşer. Üye
+         olmayan hesaba sunucu 403 döner (401 değil) — çıkış kesicisi tetiklenmez. Anonimde
+         hesap ucu SORULMAZ. Bu ekranda giriş yapılınca da yeniden sorulur. */
+      if (status === "in") {
+        const seated = await api
+          .getSession(slug)
+          .then((v) => !!v.viewer?.participantId, () => false);
+        if (!alive) return;
+        if (seated) {
+          router.replace(`/s/${slug}`);
+          return;
+        }
+      }
+      if (loaded.current) return;
+      try {
+        const p = await api.preview(slug);
+        if (!alive) return;
+        loaded.current = true;
+        setPreview(p);
+      } catch {
+        if (alive) setFailed(true);
+      }
+    })();
     return () => {
       alive = false;
     };
-  }, [slug]);
+  }, [slug, status]);
+
+  /** K-B37 devri: katılım 409 `open_plan_seat_request_required` — önizleme bayat (gizli sanıldı).
+      Tazelenir; `openPlan` gelince ekran plan detayına geçer. Döner: geçildi mi. */
+  async function reloadPreview(): Promise<boolean> {
+    try {
+      const p = await api.preview(slug);
+      loaded.current = true;
+      setPreview(p);
+      return !!p.openPlan;
+    } catch {
+      return false;
+    }
+  }
 
   if (failed) return <ErrorScreen kind="notFound" />;
   // Kapanmış buluşmaya katılım YOK: form gönderilince 409 dönerdi (çıkmaz sokak).
   // Durumu KAMU önizlemesi taşır — üye olmayan da okuyabilir.
   if (preview?.status === "EXPIRED") return <ErrorScreen kind="expired" />;
   if (preview?.status === "DECIDED") return <ErrorScreen kind="decided" />;
+  // Açık plan (kitle ne olursa olsun, NONE dahil): katılım formu YOK, koltuk yalnız istekle (K-B37).
+  if (preview?.openPlan) return <PlanIntroScreen slug={slug} preview={preview} />;
 
   const activities = preview?.activityTypes ?? [];
   const people = preview?.participants ?? [];
@@ -150,7 +194,12 @@ export default function JoinScreen() {
 
             <View style={s.divider} />
 
-            <JoinForm slug={slug} hostName={preview.hostDisplayName} sessionName={preview.name} />
+            <JoinForm
+              slug={slug}
+              hostName={preview.hostDisplayName}
+              sessionName={preview.name}
+              onOpenPlan={reloadPreview}
+            />
           </>
         )}
       </ScrollView>

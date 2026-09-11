@@ -19,6 +19,12 @@ export const colors = {
   highlight: "#FFE27A",
   grass: "#0B7A44",
   grassWash: "#DFF5E9",
+  /** Yeşil yıkamalı kutuların kenarı (`.safe`, `.rq.ok`, `.loc.on`). */
+  grassLine: "#BFE5CF",
+  /** Fotoğrafsız kart monogramı (`.pho-mono`). */
+  photoMono: "rgba(255,255,255,0.5)",
+  /** Fotoğraf köşesindeki tür etiketi zemini — artboard %35'i WCAG için koyulaştırıldı (W-18). */
+  photoTag: "rgba(39,32,59,0.62)",
   violet: "#6234D8",
   violetWash: "#F1EBFF",
   amber: "#A96A0B",
@@ -26,6 +32,10 @@ export const colors = {
   amberInk: "#7E4F06",
   line: "#F1E8DE",
   line2: "#E4D9CD",
+  /** DS `--line-in` — kesikli boş koltuk noktası, kilitli rozet kenarı (Keşfet POC). */
+  lineIn: "#91869C",
+  /** Nötr kum zemin — kilitli rozet ikonu, bekleyen yuvalar (`#F4EEE6`). */
+  sand: "#F4EEE6",
   track: "#EFE7DC",
 } as const;
 

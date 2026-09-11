@@ -21,7 +21,7 @@ export default function Avatar(p: {
   tint?: number;
   size?: Size;
   ring?: boolean;
-  /** Henüz katılmamış kişi: kesikli kenar + nabız. */
+  /** Henüz katılmamış kişi: kesikli kenar + nabız. Dizin VERİLMEZSE nötr (aşağıda). */
   waiting?: boolean;
   online?: boolean;
   /** Sesli sohbette konuşuyor: çevrimiçi noktasının çevresinde halka (M-6 kullanır). */
@@ -31,6 +31,10 @@ export default function Avatar(p: {
   const dim = PX[p.size ?? "m"];
   const initial = p.name.trim()[0]?.toUpperCase() ?? "?";
   const pulse = usePulse(!!p.waiting);
+  /* Kimliği henüz olmayan bekleyen (boş koltuk, onay bekleyen istek) NÖTR: dizinsiz avatar ilk
+     rengi — host'unkini — ödünç alırdı (bir kişi = bir renk; artboard `.av-wt`). Dizini olan
+     bekleyen (konumu gelmemiş katılımcı) kendi rengini korur. */
+  const neutral = !!p.waiting && p.tint == null;
 
   return (
     <View accessibilityLabel={p.name} style={[{ width: dim, height: dim }, p.style]}>
@@ -39,16 +43,28 @@ export default function Avatar(p: {
           s.disc,
           { borderRadius: dim / 2, opacity: pulse },
           p.ring ? { borderWidth: 3, borderColor: colors.card } : null,
-          p.waiting ? { borderWidth: 1.5, borderColor: colors.line2, borderStyle: "dashed" } : null,
+          p.waiting
+            ? { borderWidth: 1.5, borderColor: neutral ? colors.lineIn : colors.line2, borderStyle: "dashed" }
+            : null,
+          neutral ? { backgroundColor: colors.sand } : null,
         ]}
       >
-        <LinearGradient
-          colors={[...personTint(p.tint)]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFill, { borderRadius: dim / 2 }]}
-        />
-        <AppText style={{ fontFamily: fonts.headBold, fontSize: FONT[p.size ?? "m"], color: "#fff" }}>
+        {neutral ? null : (
+          <LinearGradient
+            testID="avatar-tint"
+            colors={[...personTint(p.tint)]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFill, { borderRadius: dim / 2 }]}
+          />
+        )}
+        <AppText
+          style={{
+            fontFamily: fonts.headBold,
+            fontSize: FONT[p.size ?? "m"],
+            color: neutral ? colors.ink3 : "#fff",
+          }}
+        >
           {initial}
         </AppText>
       </Animated.View>

@@ -273,6 +273,10 @@
     "errLoad": "Afspraken laden mislukt — probeer opnieuw.",
     "retentionTruncated": "De laatste {{count}} afspraken worden getoond. Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd.",
     "retention": "Afspraken sluiten na 24 uur en worden na 30 dagen verwijderd.",
+    "openEmpty": "Er staan nu geen afspraken open — maak er een en stuur de link.",
+    "pastEmpty": "Nog geen eerdere afspraken.",
+    "showAll": "Alles tonen ({{count}})",
+    "showLess": "Minder tonen",
     "emptyTitle": "Nog geen afspraken",
     "emptyCopy": "Maak er een, stuur de link — de stapel vult zich zodra locaties binnen zijn.",
     "emptyHand": "kost 30 seconden, beloofd",
@@ -848,6 +852,7 @@
     "errLoad": "Plannen konden niet worden geladen."
   },
   "plan": {
+    "title": "Plan",
     "titleDate": "Plan openen",
     "titleNow": "Ik ben hier",
     "when": "Wanneer",
@@ -929,6 +934,8 @@
   },
   "badge": {
     "new": "nieuwe badge",
+    "earned": "behaald",
+    "locked": "vergrendeld",
     "next": "Volgende: {{title}}.",
     "hand": "staat op je profiel →",
     "progressMet_one": "{{have}}/{{goal}} · nog {{count}} ontmoeting.",

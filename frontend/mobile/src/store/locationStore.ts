@@ -43,6 +43,13 @@ type LocationState = {
   adopt: (outcome: PrimerOutcome) => Promise<DraftPoint | null>;
   /** Yazılan adresi backend geocode'uyla noktaya çevirir. Bulunamazsa null. */
   fromAddress: (query: string) => Promise<DraftPoint | null>;
+  /**
+   * "O anki konum" isteyen akışlar için TAZELER (Şimdi planının çapası, spec §1.3). Depo globaldir
+   * ve nokta saatler önce okunmuş olabilir. İzin varsa konumu yeniden okur — sistem diyaloğu
+   * AÇMAZ — ve okurken eski noktayı TUTMAZ; elle yazılmış eski adres düşer (kullanıcı yeniden
+   * yazar); izin yoksa hiçbir şey değişmez (O6 kurtarması ekranda kalır).
+   */
+  refresh: () => Promise<DraftPoint | null>;
   clear: () => void;
 };
 
@@ -96,6 +103,25 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       // Adres bulunamadı: faz DEĞİŞMEZ (kullanıcı hâlâ adres modunda), ekran hatayı yazar.
       return null;
     }
+  },
+
+  async refresh() {
+    const { phase, point } = get();
+    if (phase === "manual") {
+      // Yazılmış ESKİ adres düşer. Adres moduna YENİ girilmişse (nokta yok) mod KORUNUR: O3'ten
+      // "adres yazayım" dönüşünde kutu hemen kapanıp kullanıcıyı başa atmasın.
+      if (point) set({ phase: "idle", point: null });
+      return null;
+    }
+    if (phase === "asking") {
+      // Okuma zaten sürüyor ve taze noktayı o yazacak; o ana dek eski nokta çapa sayılmasın.
+      set({ point: null });
+      return null;
+    }
+    if (phase !== "granted") return point;
+    // Nokta ÖNCE düşer: okuma sürerken eski nokta "hazır konum" sayılıp çapa olarak gönderilmesin.
+    set({ point: null });
+    return get().adopt("granted");
   },
 
   clear: () => set({ phase: "idle", point: null }),

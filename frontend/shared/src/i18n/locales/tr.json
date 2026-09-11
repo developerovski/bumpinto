@@ -262,6 +262,10 @@
     "errLoad": "Buluşmalar yüklenemedi — tekrar dene.",
     "retentionTruncated": "Son {{count}} buluşma gösteriliyor. Buluşmalar 24 saatte kapanır, 30 günde silinir.",
     "retention": "Buluşmalar 24 saatte kapanır, 30 günde silinir.",
+    "openEmpty": "Şu an açık buluşma yok — yenisini kur, linki at.",
+    "pastEmpty": "Henüz geçmiş buluşma yok.",
+    "showAll": "Tümünü göster ({{count}})",
+    "showLess": "Daha az göster",
     "emptyTitle": "Henüz buluşma yok",
     "emptyCopy": "İlkini kur, linki at — konumlar toplanınca deste kendiliğinden gelir.",
     "emptyHand": "30 saniye sürer, söz",
@@ -834,6 +838,7 @@
     "errLoad": "Planlar yüklenemedi."
   },
   "plan": {
+    "title": "Plan",
     "titleDate": "Plan aç",
     "titleNow": "Buradayım",
     "when": "Ne zaman",
@@ -913,6 +918,8 @@
   },
   "badge": {
     "new": "yeni rozet",
+    "earned": "kazanıldı",
+    "locked": "kilitli",
     "next": "Bir sonraki: {{title}}.",
     "hand": "profilinde durur →",
     "progressMet": "{{have}}/{{goal}} · {{count}} buluşma kaldı.",

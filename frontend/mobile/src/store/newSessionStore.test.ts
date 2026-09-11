@@ -44,3 +44,67 @@ test("MIDPOINT'e dönünce çapa temizlenir", () => {
   expect(s().anchor).toBeNull();
   expect(s().toRequest("Mehmet").anchor).toBeUndefined();
 });
+
+/* M-12 T1 — "Ne zaman" bağlantısı. Kurallar shared `openPlan.ts`'te (K-M8); burada yalnız
+   store'un onları DOĞRU ANDA ve DOĞRU saatle çağırdığı sınanır. */
+test("Şimdi: gövde pencereyi, OPEN varsayılanını ve kendi konumdan çapayı taşır; mod değişince katılım varsayılana döner", () => {
+  jest.useFakeTimers().setSystemTime(new Date("2026-09-13T10:00:00Z"));
+  try {
+    s().toggleActivity("COFFEE");
+    s().setOrigin({ lat: 51.44, lng: 5.47, label: "Stratum" });
+    s().setPlan({ when: "DATE" });
+    s().setPlan({ joinPolicy: "APPROVAL" });
+    s().setPlan({ when: "NOW", durationHours: 1, whereLabel: "Café Zwart" });
+    expect(s().plan.joinPolicy).toBeNull();
+
+    const r = s().toRequest("M");
+    expect(r.openPlan).toEqual({
+      meetAt: "2026-09-13T10:00:00.000Z",
+      openUntil: "2026-09-13T11:00:00.000Z",
+      capacity: 4,
+      joinPolicy: "OPEN",
+      audience: "PUBLIC",
+    });
+    expect(r.anchor).toEqual({ lat: 51.44, lng: 5.47, label: "Café Zwart" });
+    expect(r.sessionType).toBe("GROUP");
+    expect(s().canSubmit()).toBe(true);
+
+    s().setPlan({ whereLabel: "" });
+    expect(s().canSubmit()).toBe(false);
+    expect(s().planError()).toBe("plan.errWhereRequired");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+/* SOLO'nun davet linki yok → açık plan olamaz. Değişmez SETTER'larda: gövdede GROUP'a zorlamak
+   (shared) Bireysel arayüzünü ekranda bırakırdı. */
+test("SOLO seçilince plan Belirsiz'e döner; plan modu seçilince tür GROUP olur", () => {
+  s().setPlan({ when: "DATE", joinPolicy: "OPEN" });
+  s().setSessionType("SOLO");
+  expect(s().plan).toMatchObject({ when: "UNSET", joinPolicy: null });
+  s().setPlan({ when: "NOW" });
+  expect(s().sessionType).toBe("GROUP");
+});
+
+test("geçersiz planda toRequest gizli oturuma DÜŞMEZ — hata anahtarıyla fırlatır", () => {
+  s().toggleActivity("COFFEE");
+  s().setOrigin({ lat: 51.44, lng: 5.47 });
+  s().setPlan({ when: "DATE", meetDate: "2020-01-01", meetTime: "10:00" });
+  expect(() => s().toRequest("M")).toThrow("plan.errMeetAtPast");
+});
+
+test("Şimdi'de ANCHOR modunda kalmış eski çapa gövdeye sızmaz", () => {
+  s().toggleActivity("COFFEE");
+  s().setVenueMode("ANCHOR");
+  s().setAnchor({ lat: 52.37, lng: 4.9, label: "Amsterdam" });
+  s().setOrigin({ lat: 51.44, lng: 5.47 });
+  s().setPlan({ when: "NOW", whereLabel: "Café Zwart" });
+  expect(s().toRequest("M").anchor).toEqual({ lat: 51.44, lng: 5.47, label: "Café Zwart" });
+});
+
+test("Keşfet'ten gelen tür seçimi tek türe indirir", () => {
+  (["COFFEE", "FOOD"] as const).forEach((a) => s().toggleActivity(a));
+  s().selectActivity("SWIM");
+  expect(s().activityTypes).toEqual(["SWIM"]);
+});
